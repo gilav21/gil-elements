@@ -1,3 +1,4 @@
+import { ref as buttonRef } from '../lib/button-ref.mjs';
 // shadcn-angular card.component.ts and sub/*.ts: the class strings, copied; the host is a plain
 // element carrying the same classes and data-slot, and unknown ui-* tags stand in for the
 // component hosts so they keep the inline default display Angular's hosts have.
@@ -9,10 +10,10 @@ const SPIN = '<svg class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/sv
 const W = 'width:22rem;';
 
 const parts = (extraHeader = '', extraFooter = '') => ({
-    ref: `<div data-slot="card" class="${SURFACE}"><ui-card-header data-slot="card-header" class="${HEADER}${extraHeader}"><ui-card-title class="leading-none font-semibold">Create project</ui-card-title><ui-card-description class="text-muted-foreground text-sm">Deploy your new project in one click.</ui-card-description>${extraHeader ? `<span data-slot="card-action" class="${ACTION}">Edit</span>` : ''}</ui-card-header><ui-card-content data-slot="card-content">Your name and framework go here.</ui-card-content><ui-card-footer data-slot="card-footer" class="${FOOTER}${extraFooter}">Cancel · Deploy</ui-card-footer></div>`,
+    ref: `<div data-slot="card" class="${SURFACE}"><ui-card-header data-slot="card-header" class="${HEADER}${extraHeader}"><ui-card-title class="leading-none font-semibold">Create project</ui-card-title><ui-card-description class="text-muted-foreground text-sm">Deploy your new project in one click.</ui-card-description>${extraHeader ? `<div data-slot="card-action" class="${ACTION}">${buttonRef('outline', 'sm', 'Edit')}</div>` : ''}</ui-card-header><ui-card-content data-slot="card-content">Your name and framework go here.</ui-card-content><ui-card-footer data-slot="card-footer" class="${FOOTER}${extraFooter}">Cancel · Deploy</ui-card-footer></div>`,
 });
 const elParts = (bordered = false) =>
-    `<ge-card><ge-card-header${bordered ? ' bordered' : ''}><ge-card-title>Create project</ge-card-title><ge-card-description>Deploy your new project in one click.</ge-card-description>${bordered ? '<span slot="action">Edit</span>' : ''}</ge-card-header><ge-card-content>Your name and framework go here.</ge-card-content><ge-card-footer${bordered ? ' bordered' : ''}>Cancel · Deploy</ge-card-footer></ge-card>`;
+    `<ge-card><ge-card-header${bordered ? ' bordered' : ''}><ge-card-title>Create project</ge-card-title><ge-card-description>Deploy your new project in one click.</ge-card-description>${bordered ? '<div slot="action"><ge-button variant="outline" size="sm">Edit</ge-button></div>' : ''}</ge-card-header><ge-card-content>Your name and framework go here.</ge-card-content><ge-card-footer${bordered ? ' bordered' : ''}>Cancel · Deploy</ge-card-footer></ge-card>`;
 
 const simpleRef = (overlay = '') =>
     `<div data-slot="card" class="${SURFACE}${overlay ? ' relative overflow-hidden' : ''}"><div class="${HEADER}" data-slot="card-header"><div class="leading-none font-semibold" data-slot="card-title">Notifications</div><div class="text-muted-foreground text-sm" data-slot="card-description">You have 3 unread messages.</div></div><div data-slot="card-content">Push everything to your phone.</div>${overlay}</div>`;

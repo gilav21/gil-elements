@@ -9,3 +9,5 @@ import '../packages/elements/src/avatar/define.js';
 import '../packages/elements/src/card/define.js';
 import '../packages/elements/src/empty/define.js';
 import '../packages/elements/src/page-header/define.js';
+import '../packages/elements/src/button/define.js';
+import '../packages/elements/src/button-group/define.js';

@@ -5,6 +5,8 @@ import { html } from 'lit';
 import './alert/define.js';
 import './avatar/define.js';
 import './badge/define.js';
+import './button/define.js';
+import './button-group/define.js';
 import './card/define.js';
 import './empty/define.js';
 import './kbd/define.js';
@@ -24,6 +26,8 @@ describe('elements on the server', () => {
         ['ge-spinner', html`<ge-spinner variant="dots" label="Saving"></ge-spinner>`, 'aria-label="Saving"'],
         ['ge-alert', html`<ge-alert variant="destructive" heading="Failed"></ge-alert>`, 'role="alert"'],
         ['ge-avatar', html`<ge-avatar fallback="JD"></ge-avatar>`, 'JD'],
+        ['ge-button', html`<ge-button variant="outline" aria-label="Close">x</ge-button>`, 'aria-label="Close"'],
+        ['ge-button-group', html`<ge-button-group orientation="vertical"></ge-button-group>`, 'role="group"'],
         ['ge-card', html`<ge-card heading="Plan" description="Monthly"></ge-card>`, 'Monthly'],
         ['ge-card-header', html`<ge-card-header bordered></ge-card-header>`, 'name="action"'],
         ['ge-empty', html`<ge-empty><ge-empty-title>None</ge-empty-title></ge-empty>`, '<slot'],

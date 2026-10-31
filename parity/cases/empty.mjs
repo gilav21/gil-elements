@@ -1,3 +1,4 @@
+import { ref as buttonRef } from '../lib/button-ref.mjs';
 // shadcn-angular empty.component.ts and sub/*.ts
 const BOX = 'flex min-w-0 flex-1 flex-col items-center justify-center gap-4 sm:gap-6 rounded-lg border border-dashed p-4 sm:p-6 text-center text-balance md:p-12';
 const HEADER = 'flex max-w-sm flex-col items-center gap-2 text-center';
@@ -14,8 +15,8 @@ export default {
         {
             id: 'icon-full',
             wrap: W,
-            ref: `<div data-slot="empty" class="${BOX}"><div data-slot="empty-header" class="${HEADER}"><div data-slot="empty-media" class='${MEDIA} ${MEDIA_ICON}'>${FOLDER}</div><div class="${TITLE}">No projects yet</div><p class="${DESC}">You have not created any projects. <a href="#">Learn more</a></p></div><div class="${CONTENT}"><span>Create project</span></div></div>`,
-            el: `<ge-empty><ge-empty-header><ge-empty-media variant="icon">${FOLDER}</ge-empty-media><ge-empty-title>No projects yet</ge-empty-title><ge-empty-description>You have not created any projects. <a href="#">Learn more</a></ge-empty-description></ge-empty-header><ge-empty-content><span>Create project</span></ge-empty-content></ge-empty>`,
+            ref: `<div data-slot="empty" class="${BOX}"><div data-slot="empty-header" class="${HEADER}"><div data-slot="empty-media" class='${MEDIA} ${MEDIA_ICON}'>${FOLDER}</div><div class="${TITLE}">No projects yet</div><p class="${DESC}">You have not created any projects. <a href="#">Learn more</a></p></div><div class="${CONTENT}">${buttonRef('default', 'default', 'Create project')}</div></div>`,
+            el: `<ge-empty><ge-empty-header><ge-empty-media variant="icon">${FOLDER}</ge-empty-media><ge-empty-title>No projects yet</ge-empty-title><ge-empty-description>You have not created any projects. <a href="#">Learn more</a></ge-empty-description></ge-empty-header><ge-empty-content><ge-button>Create project</ge-button></ge-empty-content></ge-empty>`,
         },
         {
             id: 'text-only',

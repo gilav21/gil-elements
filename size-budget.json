@@ -1,5 +1,5 @@
 {
-  "index.js": 460,
+  "index.js": 520,
   "badge/index.js": 120,
   "badge/define.js": 180,
   "chunks/badge.js": 1150,
@@ -33,5 +33,11 @@
   "empty/define.js": 210,
   "empty/index.js": 140,
   "page-header/define.js": 150,
-  "page-header/index.js": 90
+  "page-header/index.js": 90,
+  "button/define.js": 150,
+  "button/index.js": 80,
+  "button-group/define.js": 180,
+  "button-group/index.js": 120,
+  "chunks/button-group-text.js": 920,
+  "chunks/button.js": 2660
 }

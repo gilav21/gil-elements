@@ -298,17 +298,18 @@ export const demos: Demo[] = [
             },
             {
                 title: 'Composed, with an action and dividers',
-                note: 'The `action` slot lands top-end beside the title; `bordered` adds the divider and its padding.',
+                note: 'The `action` slot lands top-end beside the title (give it a box: a `ge-button` draws none of its own, so wrap it in a `div`); `bordered` adds the divider and its padding.',
                 block: true,
                 html: `<ge-card style="max-width:24rem">
   <ge-card-header bordered>
     <ge-card-title>Team plan</ge-card-title>
     <ge-card-description>Billed monthly</ge-card-description>
-    <button slot="action">Edit</button>
+    <div slot="action"><ge-button variant="outline" size="sm">Edit</ge-button></div>
   </ge-card-header>
   <ge-card-content>Up to 10 members, unlimited projects.</ge-card-content>
-  <ge-card-footer bordered>
-    <ge-badge variant="secondary" label="Active"></ge-badge>
+  <ge-card-footer bordered style="gap:.5rem">
+    <ge-button variant="outline" size="sm">Cancel</ge-button>
+    <ge-button size="sm">Upgrade</ge-button>
   </ge-card-footer>
 </ge-card>`,
             },
@@ -349,7 +350,7 @@ export const demos: Demo[] = [
     <ge-empty-title>No projects yet</ge-empty-title>
     <ge-empty-description>You have not created any projects. <a href="#empty">Learn more</a></ge-empty-description>
   </ge-empty-header>
-  <ge-empty-content><button>Create project</button></ge-empty-content>
+  <ge-empty-content><ge-button>Create project</ge-button></ge-empty-content>
 </ge-empty>`,
             },
         ],
@@ -368,8 +369,8 @@ export const demos: Demo[] = [
                 title: 'Heading, description and actions',
                 block: true,
                 html: `<ge-page-header heading="Invoices" description="Manage and send invoices.">
-  <button>Export</button>
-  <button>New invoice</button>
+  <ge-button variant="outline">Export</ge-button>
+  <ge-button>New invoice</ge-button>
 </ge-page-header>`,
             },
             {
@@ -378,7 +379,7 @@ export const demos: Demo[] = [
                 block: true,
                 html: `<ge-page-header heading="Invoice 1042" heading-level="2" description="Issued 12 March.">
   <nav slot="breadcrumb">Home / Billing / Invoices</nav>
-  <button>Download</button>
+  <ge-button variant="outline">Download</ge-button>
 </ge-page-header>`,
             },
         ],
@@ -387,6 +388,113 @@ export const demos: Demo[] = [
             { name: 'description', type: 'string', default: "''", description: 'Muted text under the title.' },
             { name: 'heading-level', type: '1 | 2 | 3 | 4 | 5 | 6', default: '1', description: 'Which heading element to render; out-of-range values are clamped.' },
             { name: 'slot "breadcrumb"', type: 'content', default: '-', description: 'Trail above the heading.' },
+        ],
+    },
+    {
+        id: 'button',
+        group: 'Rung 3 · Interactive',
+        name: 'Button',
+        tag: 'ge-button',
+        description:
+            'A button. It is form-associated, so `type="submit"` and `type="reset"` work inside a form even though the real `<button>` is inside the shadow root.',
+        examples: [
+            {
+                title: 'Variants',
+                html: `<ge-button>Default</ge-button>
+<ge-button variant="secondary">Secondary</ge-button>
+<ge-button variant="destructive">Destructive</ge-button>
+<ge-button variant="outline">Outline</ge-button>
+<ge-button variant="ghost">Ghost</ge-button>
+<ge-button variant="link">Link</ge-button>`,
+            },
+            {
+                title: 'Sizes',
+                html: `<ge-button size="sm">Small</ge-button>
+<ge-button>Default</ge-button>
+<ge-button size="lg">Large</ge-button>
+<ge-button variant="outline" size="icon-sm" aria-label="Add"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg></ge-button>
+<ge-button variant="outline" size="icon" aria-label="Add"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg></ge-button>
+<ge-button variant="outline" size="icon-lg" aria-label="Add"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5v14"/></svg></ge-button>`,
+            },
+            {
+                title: 'With an icon',
+                html: `<ge-button>
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-inline-end:.5rem"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+  Send message
+</ge-button>`,
+            },
+            {
+                title: 'States',
+                note: '`loading` disables the button and shows a spinner; `skeleton` is a placeholder.',
+                html: `<ge-button disabled>Disabled</ge-button>
+<ge-button loading>Saving</ge-button>
+<ge-button skeleton></ge-button>`,
+            },
+            {
+                title: 'Ripple',
+                html: `<ge-button ripple>Click me</ge-button>
+<ge-button ripple variant="outline">And me</ge-button>`,
+            },
+            {
+                title: 'Inside a form',
+                note: 'Submit and Reset act on the surrounding form like native buttons. The page cancels the real submit so you stay here.',
+                block: true,
+                html: `<form id="demo-form" onsubmit="event.preventDefault(); this.querySelector('output').textContent = 'Submitted: ' + new FormData(this).get('name')" style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem">
+  <input name="name" value="Gil" aria-label="Name" style="padding:.4rem .6rem;border:1px solid var(--input);border-radius:6px;background:transparent;color:inherit">
+  <ge-button type="submit">Submit</ge-button>
+  <ge-button type="reset" variant="outline">Reset</ge-button>
+  <output style="color:var(--muted-foreground)"></output>
+</form>`,
+            },
+        ],
+        api: [
+            { name: 'variant', type: "'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'", default: "'default'", description: 'Colour treatment.' },
+            { name: 'size', type: "'default' | 'sm' | 'lg' | 'icon' | 'icon-sm' | 'icon-lg'", default: "'default'", description: 'Height, padding and radius; the icon sizes are square.' },
+            { name: 'type', type: "'button' | 'submit' | 'reset'", default: "'button'", description: 'What a click does inside a form.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks interaction; a disabled fieldset does the same.' },
+            { name: 'loading', type: 'boolean', default: 'false', description: 'Disables and shows a spinner.' },
+            { name: 'skeleton', type: 'boolean', default: 'false', description: 'Placeholder instead of the button.' },
+            { name: 'ripple / ripple-color', type: 'boolean / string', default: 'false / tint of the text colour', description: 'Pointer ripple on click.' },
+            { name: 'label', type: 'string', default: "''", description: 'Plain-text label; slotted content wins.' },
+            { name: 'aria-label, aria-expanded, aria-pressed, aria-haspopup', type: 'string', default: '-', description: 'Forwarded to the inner button, where assistive technology looks.' },
+        ],
+    },
+    {
+        id: 'button-group',
+        group: 'Rung 3 · Interactive',
+        name: 'Button group',
+        tag: 'ge-button-group',
+        description: 'Joins buttons into one control: outer corners stay round, neighbouring borders merge.',
+        examples: [
+            {
+                title: 'Horizontal',
+                html: `<ge-button-group>
+  <ge-button variant="outline">Years</ge-button>
+  <ge-button variant="outline">Months</ge-button>
+  <ge-button variant="outline">Days</ge-button>
+</ge-button-group>`,
+            },
+            {
+                title: 'Vertical',
+                html: `<ge-button-group orientation="vertical">
+  <ge-button variant="outline">Top</ge-button>
+  <ge-button variant="outline">Middle</ge-button>
+  <ge-button variant="outline">Bottom</ge-button>
+</ge-button-group>`,
+            },
+            {
+                title: 'With text and a separator',
+                html: `<ge-button-group>
+  <ge-button-group-text>USD</ge-button-group-text>
+  <ge-button variant="outline">Pay</ge-button>
+  <ge-button-group-separator></ge-button-group-separator>
+  <ge-button variant="outline">Cancel</ge-button>
+</ge-button-group>`,
+            },
+        ],
+        api: [
+            { name: 'orientation', type: "'horizontal' | 'vertical'", default: "'horizontal'", description: 'Direction of the group.' },
+            { name: 'ge-button-group-separator: orientation', type: "'horizontal' | 'vertical'", default: "'vertical'", description: 'Direction of the line.' },
         ],
     },
 ];

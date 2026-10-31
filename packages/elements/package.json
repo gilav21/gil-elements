@@ -127,6 +127,26 @@
       "types": "./dist/page-header/define.d.ts",
       "development": "./src/page-header/define.ts",
       "default": "./dist/page-header/define.js"
+    },
+    "./button": {
+      "types": "./dist/button/index.d.ts",
+      "development": "./src/button/index.ts",
+      "default": "./dist/button/index.js"
+    },
+    "./button/define": {
+      "types": "./dist/button/define.d.ts",
+      "development": "./src/button/define.ts",
+      "default": "./dist/button/define.js"
+    },
+    "./button-group": {
+      "types": "./dist/button-group/index.d.ts",
+      "development": "./src/button-group/index.ts",
+      "default": "./dist/button-group/index.js"
+    },
+    "./button-group/define": {
+      "types": "./dist/button-group/define.d.ts",
+      "development": "./src/button-group/define.ts",
+      "default": "./dist/button-group/define.js"
     }
   },
   "scripts": {

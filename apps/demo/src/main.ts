@@ -3,6 +3,8 @@ import './demo.css';
 import '@gilav21/elements/alert/define';
 import '@gilav21/elements/avatar/define';
 import '@gilav21/elements/badge/define';
+import '@gilav21/elements/button/define';
+import '@gilav21/elements/button-group/define';
 import '@gilav21/elements/card/define';
 import '@gilav21/elements/empty/define';
 import '@gilav21/elements/kbd/define';
@@ -30,13 +32,19 @@ function renderExample(ex: Example): HTMLElement {
     if (ex.note) wrap.append(el('p', { class: 'note' }, prose(ex.note)));
     wrap.append(el('div', { class: ex.block ? 'preview block' : 'preview' }, ex.html));
     const code = el('div', { class: 'code' }, `<pre><code>${escapeHtml(ex.html)}</code></pre>`);
-    const copy = el('button', { class: 'btn copy', type: 'button' }, 'Copy');
+    const copy = document.createElement('ge-button');
+    copy.setAttribute('variant', 'outline');
+    copy.setAttribute('size', 'sm');
+    copy.textContent = 'Copy';
     copy.addEventListener('click', async () => {
         await navigator.clipboard.writeText(ex.html);
         copy.textContent = 'Copied';
         setTimeout(() => (copy.textContent = 'Copy'), 1200);
     });
-    code.append(copy);
+    // ge-button draws no box of its own, so the corner placement goes on a wrapper.
+    const corner = el('div', { class: 'copy' });
+    corner.append(copy);
+    code.append(corner);
     wrap.append(code);
     return wrap;
 }
@@ -101,6 +109,7 @@ function toggle(id: string, apply: (on: boolean) => void) {
     btn.addEventListener('click', () => {
         const on = btn.getAttribute('aria-pressed') !== 'true';
         btn.setAttribute('aria-pressed', String(on));
+        btn.setAttribute('variant', on ? 'default' : 'outline');
         apply(on);
     });
 }

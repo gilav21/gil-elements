@@ -121,3 +121,37 @@
         width: calc(2.5rem * var(--_d));
     }
 }
+
+/* shadcn-angular button.component.css: the host carries data-size, density drives height and padding */
+ui-button {
+    --_d: var(--density-button, var(--density, 1));
+}
+@layer components {
+    ui-button [data-slot="button"] {
+        height: calc(2.25rem * var(--_d));
+        padding-inline: calc(1rem * var(--_d));
+    }
+    ui-button[data-size="sm"] [data-slot="button"] {
+        height: calc(2rem * var(--_d));
+        padding-inline: calc(0.75rem * var(--_d));
+    }
+    ui-button[data-size="lg"] [data-slot="button"] {
+        height: calc(2.5rem * var(--_d));
+        padding-inline: calc(2rem * var(--_d));
+    }
+    ui-button[data-size="icon"] [data-slot="button"] {
+        height: calc(2.25rem * var(--_d));
+        width: calc(2.25rem * var(--_d));
+        padding: 0;
+    }
+    ui-button[data-size="icon-sm"] [data-slot="button"] {
+        height: calc(2rem * var(--_d));
+        width: calc(2rem * var(--_d));
+        padding: 0;
+    }
+    ui-button[data-size="icon-lg"] [data-slot="button"] {
+        height: calc(2.5rem * var(--_d));
+        width: calc(2.5rem * var(--_d));
+        padding: 0;
+    }
+}

@@ -13,14 +13,14 @@
       </aside>
       <div class="main">
         <header class="topbar">
-          <button class="btn icon" id="menu" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+          <ge-button variant="ghost" size="icon" id="menu" aria-label="Toggle navigation" aria-expanded="false">☰</ge-button>
           <div class="controls">
             <label>Density
               <input id="density" type="range" min="0.75" max="1.25" step="0.125" value="1" />
               <output id="density-out">1</output>
             </label>
-            <button class="btn" id="rtl" aria-pressed="false">RTL</button>
-            <button class="btn" id="theme" aria-pressed="false">Dark</button>
+            <ge-button variant="outline" size="sm" id="rtl" aria-pressed="false">RTL</ge-button>
+            <ge-button variant="outline" size="sm" id="theme" aria-pressed="false">Dark</ge-button>
           </div>
         </header>
         <main id="content"></main>

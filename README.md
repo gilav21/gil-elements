@@ -48,7 +48,9 @@ Rules that keep this library coherent:
 - **Named slots instead of sibling selectors.** An alert's icon goes in `slot="icon"`, a card header's control in `slot="action"`, a page header's trail in `slot="breadcrumb"`. `::slotted()` takes no combinators, so Angular's `[&>svg~*]` has no equivalent.
 - **`bordered` instead of a `border-b` class.** `ge-card-header` and `ge-card-footer` take a `bordered` attribute that adds the divider and its padding; there is no Tailwind to detect a class.
 - **Avatar watches a plain `<img>`.** There are no `avatar-image` or `avatar-fallback` sub-elements: slot your own `<img>` and a `fallback` slot, and the avatar follows the image's load and error events.
-- **`ge-button-group` waits for `ge-button`** (rung 3), because its job is joining the corners of the buttons inside it.
+- **Joined buttons read CSS variables.** A `ge-button`'s box is inside its own shadow root, out of reach of `::slotted()`, so `ge-button-group` sets `--ge-join-*` custom properties on its items and the button reads them. A plain `<button>` is not joined, because a page's own styles on it would win over anything the group says from its shadow root.
+- **`ge-button` is form-associated** (`ElementInternals`): `type="submit"` and `type="reset"` act on the surrounding form. It does not contribute `name`/`value` to form data.
+- **A `ge-button` draws no box of its own** (like the Angular one, its host is `display: contents`), so margins, `slot` placement and grid or flex item properties go on a wrapper element.
 
 ## Licence
 
