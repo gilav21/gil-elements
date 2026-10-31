@@ -1,0 +1,21 @@
+{
+  "name": "@gilav21/elements-base",
+  "version": "0.0.0",
+  "description": "Shared base class, styles and tokens for Gil Elements.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": ["./dist/tokens.css"],
+  "files": ["dist", "src"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./tokens.css": "./src/tokens.css"
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist"
+  },
+  "dependencies": { "lit": "^3.3.0" }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "@gilav21/elements",
+  "version": "0.0.0",
+  "description": "Lit web components with the look and feel of shadcn-angular.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": ["**/define.js", "**/define.ts"],
+  "files": ["dist", "src"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./badge": {
+      "types": "./dist/badge/index.d.ts",
+      "development": "./src/badge/index.ts",
+      "default": "./dist/badge/index.js"
+    },
+    "./badge/define": {
+      "types": "./dist/badge/define.d.ts",
+      "development": "./src/badge/define.ts",
+      "default": "./dist/badge/define.js"
+    }
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly --declaration --outDir dist"
+  },
+  "dependencies": {
+    "@gilav21/elements-base": "workspace:*",
+    "lit": "^3.3.0"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules
+dist
+*.tsbuildinfo
+coverage
+.vitest-attachments
+__screenshots__/**/__diff_output__
+parity/out
+.vitest
