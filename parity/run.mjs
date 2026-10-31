@@ -48,6 +48,20 @@ const shell = (theme, body, extraCss) =>
      [data-case]{display:block;width:max-content;max-width:100%}
      </style></head><body>${body}</body></html>`;
 
+// Where the differing pixels sit (CSS px), so a failure from a machine you cannot screenshot is still locatable.
+const boundsOfDiff = (d) => {
+    let [x0, y0, x1, y1] = [d.width, d.height, -1, -1];
+    for (let y = 0; y < d.height; y++) {
+        for (let x = 0; x < d.width; x++) {
+            const i = (y * d.width + x) * 4;
+            const marked = d.data[i] === 255 && d.data[i + 1] === 0 && d.data[i + 2] === 0;
+            if (!marked) continue;
+            [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x), Math.max(y1, y)];
+        }
+    }
+    return `at x ${x0 / 2}-${x1 / 2}, y ${y0 / 2}-${y1 / 2}`;
+};
+
 const browser = await chromium.launch();
 let failures = 0;
 let compared = 0;
@@ -109,18 +123,20 @@ for (const theme of ['light', 'dark']) {
         const b = PNG.sync.read(shots.el.get(key));
         const same = a.width === b.width && a.height === b.height;
         let diff = -1;
+        let where = '';
         const safe = key.replace('/', '-');
         if (same) {
             const d = new PNG({ width: a.width, height: a.height });
             diff = pixelmatch(a.data, b.data, d.data, a.width, a.height, { threshold: 0.02 });
             if (diff > 0) writeFileSync(`${out}/diff-${theme}-${safe}.png`, PNG.sync.write(d));
+            if (diff > 0) where = boundsOfDiff(d);
         }
         writeFileSync(`${out}/${theme}-${safe}-ref.png`, refShot);
         writeFileSync(`${out}/${theme}-${safe}-el.png`, shots.el.get(key));
         compared++;
         if (diff !== 0) {
             failures++;
-            report.push(`${theme.padEnd(5)} ${key.padEnd(24)} ${same ? `${diff} px differ` : `SIZE ${a.width / 2}x${a.height / 2} vs ${b.width / 2}x${b.height / 2}`}`);
+            report.push(`${theme.padEnd(5)} ${key.padEnd(24)} ${same ? `${diff} px differ ${where}` : `SIZE ${a.width / 2}x${a.height / 2} vs ${b.width / 2}x${b.height / 2}`}`);
         }
     }
 }
