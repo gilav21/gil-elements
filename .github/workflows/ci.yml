@@ -17,3 +17,5 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run check
       - run: node parity/run.mjs
+        env:
+          PARITY_DEBUG: "1"

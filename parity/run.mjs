@@ -68,6 +68,7 @@ let compared = 0;
 const report = [];
 for (const theme of ['light', 'dark']) {
     const shots = {};
+    const rects = {};
     for (const side of ['ref', 'el']) {
         const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 700, height: 900 } });
         const body = rows(cases, side) + (side === 'el' ? `<script>${bundle}</script>` : '');
@@ -111,6 +112,25 @@ for (const theme of ['light', 'dark']) {
             };
             freeze(document, 700);
         });
+        rects[side] = await page.evaluate(() => {
+            // Rendered position of every label's text, shadow trees included: a fractional y or x here is what makes
+            // two otherwise identical buttons rasterise their glyphs differently.
+            const found = {};
+            const visit = (root, key) => {
+                for (const el of root.querySelectorAll('*')) {
+                    for (const node of el.childNodes) {
+                        if (node.nodeType !== Node.TEXT_NODE || !node.textContent.trim()) continue;
+                        const range = document.createRange();
+                        range.selectNodeContents(node);
+                        const r = range.getBoundingClientRect();
+                        (found[key] ??= []).push(`${node.textContent.trim().slice(0, 12)}@${r.x.toFixed(2)},${r.y.toFixed(2)} ${r.width.toFixed(2)}x${r.height.toFixed(2)}`);
+                    }
+                    if (el.shadowRoot) visit(el.shadowRoot, key);
+                }
+            };
+            for (const c of document.querySelectorAll('[data-case]')) visit(c, c.dataset.case);
+            return found;
+        });
         shots[side] = new Map();
         for (const handle of await page.locator('[data-case]').all()) {
             const key = await handle.getAttribute('data-case');
@@ -136,6 +156,7 @@ for (const theme of ['light', 'dark']) {
         compared++;
         if (diff !== 0) {
             failures++;
+            if (process.env.PARITY_DEBUG) console.log(`${theme} ${key}\n  ref ${(rects.ref[key] ?? []).join(' | ')}\n  el  ${(rects.el[key] ?? []).join(' | ')}`);
             report.push(`${theme.padEnd(5)} ${key.padEnd(24)} ${same ? `${diff} px differ ${where}` : `SIZE ${a.width / 2}x${a.height / 2} vs ${b.width / 2}x${b.height / 2}`}`);
         }
     }
