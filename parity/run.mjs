@@ -62,6 +62,21 @@ const boundsOfDiff = (d) => {
     return `at x ${x0 / 2}-${x1 / 2}, y ${y0 / 2}-${y1 / 2}`;
 };
 
+// How far apart the differing pixels are: tiny deltas mean antialiasing, large ones mean different glyphs or colours.
+const deltaStats = (a, b) => {
+    let max = 0;
+    let count = 0;
+    let sum = 0;
+    for (let i = 0; i < a.data.length; i += 4) {
+        const delta = Math.max(...[0, 1, 2].map((c) => Math.abs(a.data[i + c] - b.data[i + c])));
+        if (delta === 0) continue;
+        count++;
+        sum += delta;
+        max = Math.max(max, delta);
+    }
+    return `pixels ${count}, max channel delta ${max}, mean ${(sum / Math.max(count, 1)).toFixed(1)}`;
+};
+
 const browser = await chromium.launch();
 let failures = 0;
 let compared = 0;
@@ -123,7 +138,8 @@ for (const theme of ['light', 'dark']) {
                         const range = document.createRange();
                         range.selectNodeContents(node);
                         const r = range.getBoundingClientRect();
-                        (found[key] ??= []).push(`${node.textContent.trim().slice(0, 12)}@${r.x.toFixed(2)},${r.y.toFixed(2)} ${r.width.toFixed(2)}x${r.height.toFixed(2)}`);
+                        const cs = getComputedStyle(node.parentElement);
+                        (found[key] ??= []).push(`${node.textContent.trim().slice(0, 12)}[${cs.fontFamily}|${cs.fontWeight}|${cs.fontSize}|${cs.letterSpacing}|${cs.color}|${cs.fontKerning}|${cs.textRendering}|${cs.fontFeatureSettings}|${cs.fontVariationSettings}]@${r.x.toFixed(2)},${r.y.toFixed(2)} ${r.width.toFixed(2)}x${r.height.toFixed(2)}`);
                     }
                     if (el.shadowRoot) visit(el.shadowRoot, key);
                 }
@@ -150,12 +166,7 @@ for (const theme of ['light', 'dark']) {
             diff = pixelmatch(a.data, b.data, d.data, a.width, a.height, { threshold: 0.02 });
             if (diff > 0) writeFileSync(`${out}/diff-${theme}-${safe}.png`, PNG.sync.write(d));
             if (diff > 0) where = boundsOfDiff(d);
-            if (diff > 0 && process.env.PARITY_DEBUG && key === 'button/density-0.75' && theme === 'light') {
-                const crop = (src) => {
-                    return PNG.sync.write(src).toString('base64');
-                };
-                console.log(`CROP-REF ${crop(a)}\nCROP-EL ${crop(b)}`);
-            }
+            if (diff > 0 && process.env.PARITY_DEBUG) console.log(`${theme} ${key} ${deltaStats(a, b)}`);
         }
         writeFileSync(`${out}/${theme}-${safe}-ref.png`, refShot);
         writeFileSync(`${out}/${theme}-${safe}-el.png`, shots.el.get(key));
