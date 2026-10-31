@@ -162,4 +162,27 @@ describe('ge-input', () => {
 
         expect(result.violations.map((v) => v.id)).toEqual([]);
     });
+
+    it('submits what was typed under its name, skips a disabled one, and a form reset restores the markup', async () => {
+        const page = await mount(`
+            <form>
+                <ge-input name="first" value="Gil"></ge-input>
+                <ge-input name="off" value="x" disabled></ge-input>
+                <ge-input value="nameless"></ge-input>
+            </form>`);
+        const form = page.querySelector('form')!;
+        const input = first(page);
+        const submitted = () => Object.fromEntries(new FormData(form).entries());
+
+        expect(submitted()).toEqual({ first: 'Gil' });
+
+        inner(input).focus();
+        await userEvent.keyboard('{Control>}a{/Control}Avraham');
+        expect(submitted()).toEqual({ first: 'Avraham' });
+
+        form.reset();
+        await input.updateComplete;
+        expect(submitted()).toEqual({ first: 'Gil' });
+        expect(inner(input).value).toBe('Gil');
+    });
 });

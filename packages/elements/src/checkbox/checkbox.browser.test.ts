@@ -110,4 +110,30 @@ describe('ge-checkbox', () => {
             <ge-checkbox aria-label="Select all" indeterminate disabled></ge-checkbox>`);
         expect((await axe.run(page)).violations).toEqual([]);
     });
+
+    it('submits its value only while checked and not disabled, and a form reset restores the markup', async () => {
+        const page = await mount(`
+            <form>
+                <ge-checkbox name="a" checked></ge-checkbox>
+                <ge-checkbox name="b"></ge-checkbox>
+                <ge-checkbox name="c" value="yes" checked></ge-checkbox>
+                <ge-checkbox name="d" checked disabled></ge-checkbox>
+                <ge-checkbox name="e" checked indeterminate></ge-checkbox>
+            </form>`);
+        const form = page.querySelector('form')!;
+        const [a, b] = page.querySelectorAll<GeCheckbox>('ge-checkbox');
+        const submitted = () => [...new FormData(form).entries()];
+
+        expect(submitted()).toEqual([['a', 'on'], ['c', 'yes'], ['e', 'on']]);
+
+        b.click();
+        a.click();
+        await Promise.all([a.updateComplete, b.updateComplete]);
+        expect(submitted().map(([name]) => name)).toEqual(['b', 'c', 'e']);
+
+        form.reset();
+        await Promise.all([a.updateComplete, b.updateComplete]);
+        expect([a.checked, b.checked]).toEqual([true, false]);
+        expect(submitted().map(([name]) => name)).toEqual(['a', 'c', 'e']);
+    });
 });

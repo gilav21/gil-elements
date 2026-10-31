@@ -15,6 +15,8 @@ const DASH = svg`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
  *
  * @attr {boolean} checked - Checked state. Toggled by the user, and reflected so CSS can match it.
  * @attr {boolean} indeterminate - Show the dash. Purely visual: it does not change `checked`, and toggling does not clear it.
+ * @attr {string} name - Field name; a checked box is submitted with the surrounding form under it.
+ * @attr {string} value - What is submitted while checked. Defaults to `on`, like a native checkbox.
  * @attr {boolean} disabled - Blocks interaction and dims the box.
  * @attr {boolean} skeleton - Show a placeholder instead of the checkbox.
  * @attr {string} label - Plain text label beside the box, for the simple case. Clicking it toggles.
@@ -33,6 +35,8 @@ export class GeCheckbox extends UiElement {
         disabled: { type: Boolean, reflect: true },
         skeleton: { type: Boolean, reflect: true },
         label: { reflect: true },
+        name: { reflect: true },
+        value: {},
         fieldsetDisabled: { state: true },
     };
 
@@ -41,9 +45,12 @@ export class GeCheckbox extends UiElement {
     declare disabled: boolean;
     declare skeleton: boolean;
     declare label: string | null;
+    declare name: string;
+    declare value: string;
     declare fieldsetDisabled: boolean;
 
     private readonly internals?: ElementInternals;
+    private defaultChecked?: boolean;
 
     constructor() {
         super();
@@ -52,6 +59,8 @@ export class GeCheckbox extends UiElement {
         this.disabled = false;
         this.skeleton = false;
         this.label = null;
+        this.name = '';
+        this.value = 'on';
         this.fieldsetDisabled = false;
         // Not available while server rendering.
         this.internals = this.attachInternals?.();
@@ -70,8 +79,14 @@ export class GeCheckbox extends UiElement {
         this.fieldsetDisabled = disabled;
     }
 
+    /** Called by the browser when the form is reset: back to how the markup first declared it. */
+    formResetCallback(): void {
+        this.checked = this.defaultChecked ?? false;
+    }
+
     override connectedCallback(): void {
         super.connectedCallback();
+        this.defaultChecked ??= this.checked;
         // A form-associated element that is disabled, directly or by a fieldset, is not focusable and gets no
         // clicks from the browser itself, so the tab stop needs no disabled handling here.
         if (!this.hasAttribute('tabindex')) this.tabIndex = 0;
@@ -82,6 +97,10 @@ export class GeCheckbox extends UiElement {
         if (changed.has('checked') || changed.has('indeterminate') || changed.has('skeleton')) {
             this.internals.role = this.skeleton ? null : 'checkbox';
             this.internals.ariaChecked = this.indeterminate ? 'mixed' : String(this.checked);
+        }
+        if (changed.has('checked') || changed.has('value')) {
+            // Like a native checkbox: only a checked one contributes, whatever its mixed display.
+            this.internals.setFormValue(this.checked ? this.value : null);
         }
         if (changed.has('disabled') || changed.has('fieldsetDisabled')) {
             this.internals.ariaDisabled = this.isDisabled ? 'true' : null;

@@ -21,6 +21,7 @@ let nextId = 0;
  *
  * @fires input - On every edit; the native event, which already crosses the shadow boundary.
  * @fires change - When an edit is committed (blur or Enter), re-fired from the host because the native one does not leave the shadow root.
+ * @attr {string} name - Field name; with it the value is submitted with the surrounding form.
  * @attr {string} value - Current text.
  * @attr {string} type - Native input type: `text`, `email`, `password`, ... Defaults to `text`.
  * @attr {string} placeholder - Hint shown while empty. Not a label.
@@ -47,6 +48,7 @@ export class GeInput extends UiElement {
     static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
     static formAssociated = true;
     static override properties = {
+        name: { reflect: true },
         value: {},
         type: { reflect: true },
         placeholder: {},
@@ -68,6 +70,7 @@ export class GeInput extends UiElement {
         fieldsetDisabled: { state: true },
     };
 
+    declare name: string;
     declare value: string;
     declare type: string;
     declare placeholder: string;
@@ -89,10 +92,13 @@ export class GeInput extends UiElement {
     declare fieldsetDisabled: boolean;
 
     private readonly input = createRef<HTMLInputElement>();
+    private readonly internals?: ElementInternals;
+    private defaultValue?: string;
     private readonly autoId = `ge-input-${++nextId}`;
 
     constructor() {
         super();
+        this.name = '';
         this.value = '';
         this.type = 'text';
         this.placeholder = '';
@@ -112,6 +118,8 @@ export class GeInput extends UiElement {
         this.ariaDescribedby = null;
         this.focused = false;
         this.fieldsetDisabled = false;
+        // Not available while server rendering.
+        this.internals = this.attachInternals?.();
     }
 
     get isDisabled(): boolean {
@@ -128,8 +136,22 @@ export class GeInput extends UiElement {
         return this.input.value;
     }
 
+    /** Called by the browser when the form is reset: back to the value the markup first declared. */
+    formResetCallback(): void {
+        this.value = this.defaultValue ?? '';
+    }
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        this.defaultValue ??= this.value;
+    }
+
     protected override firstUpdated(): void {
         if (this.autofocus) this.inner?.focus();
+    }
+
+    protected override willUpdate(changed: PropertyValues<this>): void {
+        if (changed.has('value')) this.internals?.setFormValue(this.value);
     }
 
     protected override updated(changed: PropertyValues<this>): void {
