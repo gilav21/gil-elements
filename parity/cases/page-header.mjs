@@ -17,5 +17,8 @@ export default {
         { id: 'basic', wrap: W, ref: ref('', 1, 'Invoices', 'Manage and send invoices.', ACT_REF), el: `<ge-page-header heading="Invoices" description="Manage and send invoices.">${ACT}</ge-page-header>` },
         { id: 'breadcrumb-h2', wrap: W, ref: ref('<nav data-slot="breadcrumb">Home / Billing</nav>', 2, 'Invoices', 'Manage and send invoices.', ACT_REF), el: `<ge-page-header heading="Invoices" heading-level="2" description="Manage and send invoices."><nav slot="breadcrumb">Home / Billing</nav>${ACT}</ge-page-header>` },
         { id: 'wraps-narrow', wrap: 'width:340px;', ref: ref('', 1, 'Quarterly revenue and expense report', 'Everything in one place.', ACT_REF), el: `<ge-page-header heading="Quarterly revenue and expense report" description="Everything in one place.">${ACT}</ge-page-header>` },
+        { id: 'no-description', wrap: W, ref: ref('', 1, 'Invoices', '', ACT_REF).replace(`<p class="${P}"></p>`, ''), el: `<ge-page-header heading="Invoices">${ACT}</ge-page-header>` },
+        { id: 'level-6', wrap: W, ref: ref('', 6, 'Invoices', 'Manage and send invoices.', ACT_REF), el: `<ge-page-header heading="Invoices" heading-level="6" description="Manage and send invoices.">${ACT}</ge-page-header>` },
+        { id: 'no-actions', wrap: W, ref: ref('', 1, 'Invoices', 'Manage and send invoices.', ''), el: '<ge-page-header heading="Invoices" description="Manage and send invoices."></ge-page-header>' },
     ],
 };

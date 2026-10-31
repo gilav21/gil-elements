@@ -8,6 +8,7 @@ const TITLE = 'text-lg font-medium tracking-tight';
 const DESC = 'text-muted-foreground text-sm/relaxed [&>a:hover]:text-primary [&>a]:underline [&>a]:underline-offset-4';
 const CONTENT = 'flex flex-col items-center gap-3';
 const FOLDER = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>';
+const PLAIN = FOLDER.replace('<svg ', '<svg width="24" height="24" ');
 const W = 'width:30rem;';
 export default {
     name: 'empty',
@@ -17,6 +18,13 @@ export default {
             wrap: W,
             ref: `<div data-slot="empty" class="${BOX}"><div data-slot="empty-header" class="${HEADER}"><div data-slot="empty-media" class='${MEDIA} ${MEDIA_ICON}'>${FOLDER}</div><div class="${TITLE}">No projects yet</div><p class="${DESC}">You have not created any projects. <a href="#">Learn more</a></p></div><div class="${CONTENT}">${buttonRef('default', 'default', 'Create project')}</div></div>`,
             el: `<ge-empty><ge-empty-header><ge-empty-media variant="icon">${FOLDER}</ge-empty-media><ge-empty-title>No projects yet</ge-empty-title><ge-empty-description>You have not created any projects. <a href="#">Learn more</a></ge-empty-description></ge-empty-header><ge-empty-content><ge-button>Create project</ge-button></ge-empty-content></ge-empty>`,
+        },
+        {
+            // The default media variant is only a flex box for whatever you put in it: no tile, no icon sizing.
+            id: 'media-default',
+            wrap: W,
+            ref: `<div data-slot="empty" class="${BOX}"><div data-slot="empty-header" class="${HEADER}"><div data-slot="empty-media" class="${MEDIA}">${PLAIN}</div><div class="${TITLE}">No projects yet</div></div></div>`,
+            el: `<ge-empty><ge-empty-header><ge-empty-media>${PLAIN}</ge-empty-media><ge-empty-title>No projects yet</ge-empty-title></ge-empty-header></ge-empty>`,
         },
         {
             id: 'text-only',

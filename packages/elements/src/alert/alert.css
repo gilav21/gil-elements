@@ -16,13 +16,19 @@
     color: var(--destructive);
 }
 /*
- * The icon is a flex item beside the text rather than absolutely positioned: the indent then
- * exists exactly when an icon does, with no script and no `:has()` (which `:host()` does not
- * accept). Its margins reproduce the Angular alert's 1rem inset and 1.75rem text indent.
+ * The icon sits beside the text without ever adding to the alert's height, like the Angular alert's absolutely
+ * positioned svg: a zero-height wrapper lets it overflow, so a one-line alert is as tall as its text. The indent
+ * lives on the slotted icon's own margin, so it exists exactly when an icon does, with no script and no `:has()`
+ * (which `:host()` does not accept). The margins reproduce the Angular alert's 1rem inset and 1.75rem text indent.
  */
-::slotted([slot="icon"]) {
+.icon {
+    position: relative;
+    top: 0.25rem;
     flex-shrink: 0;
-    margin-top: 0.25rem;
+    height: 0;
+}
+::slotted([slot="icon"]) {
+    display: block;
     margin-inline-end: 0.75rem;
 }
 .body {

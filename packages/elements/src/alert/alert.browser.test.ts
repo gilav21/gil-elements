@@ -29,6 +29,15 @@ describe('ge-alert', () => {
         expect(textStart('icon')).toBe(1 + 16 + 16 + 12); // + icon + gap
     });
 
+    it('is as tall as its text with or without an icon, like an absolutely positioned one', async () => {
+        const page = await mount(`
+            <ge-alert heading="Saved"></ge-alert>
+            <ge-alert heading="Saved"><svg slot="icon" width="16" height="16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></svg></ge-alert>`);
+        const [plain, withIcon] = [...page.querySelectorAll('ge-alert')].map((el) => el.getBoundingClientRect().height);
+
+        expect(withIcon).toBe(plain);
+    });
+
     it('gives the same layout in simple mode and with composed title and description', async () => {
         const page = await mount(`
             <ge-alert id="simple" heading="Update" description="Restart to apply it.">${ICON}</ge-alert>

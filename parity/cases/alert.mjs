@@ -17,6 +17,10 @@ export default {
         { id: 'default-icon', wrap: W, ref: ref('default', true, simple), el: `<ge-alert heading="Heads up!" description="You can add components to your app.">${ICON('slot="icon" width="16" height="16"')}</ge-alert>` },
         { id: 'destructive-icon', wrap: W, ref: ref('destructive', true, simple), el: `<ge-alert variant="destructive" heading="Heads up!" description="You can add components to your app.">${ICON('slot="icon" width="16" height="16"')}</ge-alert>` },
         { id: 'default-no-icon', wrap: W, ref: ref('default', false, simple), el: '<ge-alert heading="Heads up!" description="You can add components to your app."></ge-alert>' },
+        { id: 'destructive-no-icon', wrap: W, ref: ref('destructive', false, simple), el: '<ge-alert variant="destructive" heading="Heads up!" description="You can add components to your app."></ge-alert>' },
+        { id: 'title-only', wrap: W, ref: ref('default', true, `<ui-alert-title class="${TITLE}">Heads up!</ui-alert-title>`), el: `<ge-alert heading="Heads up!">${ICON('slot="icon" width="16" height="16"')}</ge-alert>` },
+        // Angular renders the description only under a title, so a description alone leaves the alert empty.
+        { id: 'description-without-heading', wrap: W, ref: ref('default', false, ''), el: '<ge-alert description="You can add components to your app."></ge-alert>' },
         {
             id: 'custom-paragraphs',
             wrap: W,
