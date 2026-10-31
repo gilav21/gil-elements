@@ -4,7 +4,7 @@ Framework-agnostic web components (Lit) with the look, feel and features of
 [shadcn-angular](https://github.com/gilav21/shadcn-angular). Tag prefix `ge-`:
 `<ge-badge variant="secondary" label="New"></ge-badge>`.
 
-**Status: Milestone 0.** One component (`badge`) takes the whole pipeline end to end. Nothing is published yet.
+**Status: early.** Rung 1 of 10 is in: badge, kbd, label, separator, skeleton, spinner. Nothing is published yet.
 
 ## Layout
 
@@ -31,7 +31,7 @@ Importing a class (`@gilav21/elements/badge`) never registers a tag; importing `
 ```bash
 pnpm install
 pnpm run check          # typecheck, build, tests (Chromium + Node), size budget
-node parity/badge.mjs   # visual parity vs shadcn-angular
+node parity/run.mjs    # visual parity vs shadcn-angular (all components)
 ```
 
 Rules that keep this library coherent:
