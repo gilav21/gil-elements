@@ -203,29 +203,34 @@ export const demos: Demo[] = [
         description: 'A callout. A leading icon goes in the `icon` slot, so the text sits beside it whatever the icon is.',
         examples: [
             {
-                title: 'Variants',
+                title: 'Composed',
                 note: '`destructive` is announced assertively (`role="alert"`), `default` politely (`role="status"`).',
                 block: true,
-                html: `<div style="display:grid;gap:1rem;width:100%;max-width:32rem">
-  <ge-alert heading="Heads up!" description="You can add components to your app.">
-    <svg slot="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                html: `<div style="display:grid;gap:1rem">
+  <ge-alert>
+    <ge-alert-title>Heads up!</ge-alert-title>
+    <ge-alert-description>You can add components to your app using the CLI.</ge-alert-description>
   </ge-alert>
-  <ge-alert variant="destructive" heading="Error" description="Your session has expired. Please log in again.">
-    <svg slot="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+  <ge-alert variant="destructive">
+    <ge-alert-title>Error</ge-alert-title>
+    <ge-alert-description>Your session has expired. Please log in again.</ge-alert-description>
   </ge-alert>
 </div>`,
             },
             {
-                title: 'Composed',
-                note: 'Slot `ge-alert-title` and `ge-alert-description` for full control, including paragraphs.',
+                title: 'Simple mode',
                 block: true,
-                html: `<ge-alert style="max-width:32rem">
-  <svg slot="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-  <ge-alert-title>Update available</ge-alert-title>
-  <ge-alert-description>
-    <p>A new version is ready.</p>
-    <p>Restart to apply it.</p>
-  </ge-alert-description>
+                html: `<div style="display:grid;gap:1rem">
+  <ge-alert heading="Note" description="This is a simple alert using inputs."></ge-alert>
+  <ge-alert variant="destructive" heading="Critical Error" description="Something went wrong, and this alert was created with just two inputs."></ge-alert>
+</div>`,
+            },
+            {
+                title: 'With an icon',
+                note: 'Put any `<svg>` in the `icon` slot; the text sits beside it. Without one, nothing is reserved.',
+                block: true,
+                html: `<ge-alert heading="Heads up!" description="You can add components to your app.">
+  <svg slot="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16v-4M12 8h.01"/><circle cx="12" cy="12" r="10"/></svg>
 </ge-alert>`,
             },
         ],
