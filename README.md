@@ -45,3 +45,7 @@ Rules that keep this library coherent:
 ## Licence
 
 MIT
+
+## Demo
+
+`pnpm demo` starts the demo app (`apps/demo`): a sidebar of every element, live examples with copy-paste markup, an API table, and light/dark, RTL and density controls. Each example is one HTML string rendered live and shown as code, so the two cannot drift. Add a new element's page by appending to `apps/demo/src/demos.ts`.

@@ -8,10 +8,12 @@
   },
   "scripts": {
     "build": "pnpm -r --filter './packages/*' run build",
-    "typecheck": "tsc -p packages/base --noEmit && tsc -p packages/elements --noEmit",
+    "typecheck": "tsc -p packages/base --noEmit && tsc -p packages/elements --noEmit && tsc -p apps/demo --noEmit",
     "test": "vitest --run",
     "size": "node scripts/size.mjs",
-    "check": "pnpm run typecheck && pnpm run build && pnpm run test && pnpm run size"
+    "check": "pnpm run typecheck && pnpm run build && pnpm run build:demo && pnpm run test && pnpm run size",
+    "demo": "pnpm --filter @gilav21/elements-demo dev",
+    "build:demo": "pnpm --filter @gilav21/elements-demo build"
   },
   "devDependencies": {
     "@lit-labs/ssr": "^4.1.0",
