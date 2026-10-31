@@ -297,17 +297,17 @@ export const demos: Demo[] = [
                 html: `<ge-card style="max-width:24rem" heading="Notifications" description="You have 3 unread messages." content="Push everything to your phone."></ge-card>`,
             },
             {
-                title: 'Composed, with an action and dividers',
-                note: 'The `action` slot lands top-end beside the title (give it a box: a `ge-button` draws none of its own, so wrap it in a `div`); `bordered` adds the divider and its padding.',
+                title: 'Composed, with an action',
+                note: 'The `action` slot lands top-end beside the title. Give it a box: a `ge-button` draws none of its own, so wrap it in a `div`.',
                 block: true,
                 html: `<ge-card style="max-width:24rem">
-  <ge-card-header bordered>
+  <ge-card-header>
     <ge-card-title>Team plan</ge-card-title>
     <ge-card-description>Billed monthly</ge-card-description>
     <div slot="action"><ge-button variant="outline" size="sm">Edit</ge-button></div>
   </ge-card-header>
   <ge-card-content>Up to 10 members, unlimited projects.</ge-card-content>
-  <ge-card-footer bordered style="gap:.5rem">
+  <ge-card-footer style="gap:.5rem">
     <ge-button variant="outline" size="sm">Cancel</ge-button>
     <ge-button size="sm">Upgrade</ge-button>
   </ge-card-footer>
