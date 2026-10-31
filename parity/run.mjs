@@ -134,23 +134,25 @@ for (const theme of ['light', 'dark']) {
             freeze(document, 700);
         });
         rects[side] = await page.evaluate(() => {
-            // Rendered position of every label's text, shadow trees included: a fractional y or x here is what makes
-            // two otherwise identical buttons rasterise their glyphs differently.
+            // The flat-tree parent of each case's first label text: its whole computed style, so a failure on a machine
+            // we cannot screenshot can be explained by which property differs between the two sides.
             const found = {};
-            const visit = (root, key) => {
+            const firstText = (root) => {
                 for (const el of root.querySelectorAll('*')) {
                     for (const node of el.childNodes) {
-                        if (node.nodeType !== Node.TEXT_NODE || !node.textContent.trim()) continue;
-                        const range = document.createRange();
-                        range.selectNodeContents(node);
-                        const r = range.getBoundingClientRect();
-                        const cs = getComputedStyle(node.assignedSlot?.parentElement ?? node.parentElement);
-                        (found[key] ??= []).push(`${node.textContent.trim().slice(0, 12)}[${cs.fontFamily}|${cs.fontWeight}|${cs.fontSize}|${cs.letterSpacing}|${cs.color}|${cs.fontKerning}|${cs.textRendering}|${cs.fontFeatureSettings}|${cs.fontVariationSettings}]@${r.x.toFixed(2)},${r.y.toFixed(2)} ${r.width.toFixed(2)}x${r.height.toFixed(2)}`);
+                        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() && /button/i.test((node.assignedSlot?.parentElement ?? node.parentElement).localName)) return node;
                     }
-                    if (el.shadowRoot) visit(el.shadowRoot, key);
+                    const inner = el.shadowRoot && firstText(el.shadowRoot);
+                    if (inner) return inner;
                 }
+                return undefined;
             };
-            for (const c of document.querySelectorAll('[data-case]')) visit(c, c.dataset.case);
+            for (const c of document.querySelectorAll('[data-case]')) {
+                const node = firstText(c);
+                if (!node) continue;
+                const cs = getComputedStyle(node.assignedSlot?.parentElement ?? node.parentElement);
+                found[c.dataset.case] = Object.fromEntries([...cs].map((name) => [name, cs.getPropertyValue(name)]));
+            }
             return found;
         });
         shots[side] = new Map();
@@ -179,7 +181,10 @@ for (const theme of ['light', 'dark']) {
         compared++;
         if (diff !== 0) {
             failures++;
-            if (process.env.PARITY_DEBUG) console.log(`${theme} ${key}\n  ref ${(rects.ref[key] ?? []).join(' | ')}\n  el  ${(rects.el[key] ?? []).join(' | ')}`);
+            if (process.env.PARITY_DEBUG && rects.ref[key] && rects.el[key]) {
+                const names = Object.keys(rects.ref[key]).filter((n) => rects.ref[key][n] !== rects.el[key][n]);
+                console.log(`${theme} ${key} style differences: ${names.map((n) => `${n}: ${rects.ref[key][n]} | ${rects.el[key][n]}`).join('; ') || 'none'}`);
+            }
             report.push(`${theme.padEnd(5)} ${key.padEnd(24)} ${same ? `${diff} px differ ${where}` : `SIZE ${a.width / 2}x${a.height / 2} vs ${b.width / 2}x${b.height / 2}`}`);
         }
     }
