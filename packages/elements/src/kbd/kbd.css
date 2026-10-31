@@ -1,0 +1,18 @@
+:host {
+    display: contents;
+}
+kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 1.25rem;
+    min-width: 1.25rem;
+    padding-inline: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    background-color: var(--muted);
+    color: var(--muted-foreground);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 10px;
+    font-weight: 500;
+}

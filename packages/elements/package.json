@@ -4,8 +4,14 @@
   "description": "Lit web components with the look and feel of shadcn-angular.",
   "license": "MIT",
   "type": "module",
-  "sideEffects": ["**/define.js", "**/define.ts"],
-  "files": ["dist", "src"],
+  "sideEffects": [
+    "**/define.js",
+    "**/define.ts"
+  ],
+  "files": [
+    "dist",
+    "src"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -21,6 +27,56 @@
       "types": "./dist/badge/define.d.ts",
       "development": "./src/badge/define.ts",
       "default": "./dist/badge/define.js"
+    },
+    "./kbd": {
+      "types": "./dist/kbd/index.d.ts",
+      "development": "./src/kbd/index.ts",
+      "default": "./dist/kbd/index.js"
+    },
+    "./kbd/define": {
+      "types": "./dist/kbd/define.d.ts",
+      "development": "./src/kbd/define.ts",
+      "default": "./dist/kbd/define.js"
+    },
+    "./label": {
+      "types": "./dist/label/index.d.ts",
+      "development": "./src/label/index.ts",
+      "default": "./dist/label/index.js"
+    },
+    "./label/define": {
+      "types": "./dist/label/define.d.ts",
+      "development": "./src/label/define.ts",
+      "default": "./dist/label/define.js"
+    },
+    "./separator": {
+      "types": "./dist/separator/index.d.ts",
+      "development": "./src/separator/index.ts",
+      "default": "./dist/separator/index.js"
+    },
+    "./separator/define": {
+      "types": "./dist/separator/define.d.ts",
+      "development": "./src/separator/define.ts",
+      "default": "./dist/separator/define.js"
+    },
+    "./skeleton": {
+      "types": "./dist/skeleton/index.d.ts",
+      "development": "./src/skeleton/index.ts",
+      "default": "./dist/skeleton/index.js"
+    },
+    "./skeleton/define": {
+      "types": "./dist/skeleton/define.d.ts",
+      "development": "./src/skeleton/define.ts",
+      "default": "./dist/skeleton/define.js"
+    },
+    "./spinner": {
+      "types": "./dist/spinner/index.d.ts",
+      "development": "./src/spinner/index.ts",
+      "default": "./dist/spinner/index.js"
+    },
+    "./spinner/define": {
+      "types": "./dist/spinner/define.d.ts",
+      "development": "./src/spinner/define.ts",
+      "default": "./dist/spinner/define.js"
     }
   },
   "scripts": {

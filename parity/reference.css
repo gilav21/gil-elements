@@ -2,7 +2,7 @@
    compares against what the Angular library actually paints. Mirrors the relevant parts of its
    packages/styles.css (pinned in parity/README.md). */
 @import "tailwindcss";
-@source "./badge-reference.html";
+@source "./out/reference-source.html";
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -64,4 +64,19 @@
         padding-inline: calc(0.625rem * var(--_d));
         padding-block: calc(0.125rem * var(--_d));
     }
+}
+
+/* shadcn-angular skeleton.component.css (shimmer); the dark values come from its .dark rule */
+.animate-shimmer {
+    background: linear-gradient(to right, #f6f7f8 8%, #edeef1 18%, #f6f7f8 33%);
+    background-size: 800px 104px;
+    animation: shimmer 2s linear infinite forwards;
+}
+.dark .animate-shimmer {
+    background: linear-gradient(to right, #1e293b 8%, #0f172a 18%, #1e293b 33%);
+    background-size: 800px 104px;
+}
+@keyframes shimmer {
+    0% { background-position: -800px 0; }
+    100% { background-position: 800px 0; }
 }

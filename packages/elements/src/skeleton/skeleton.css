@@ -1,0 +1,31 @@
+/* Like shadcn-angular, the element has no size of its own: give it a width and height. */
+:host {
+    display: block;
+    border-radius: calc(var(--radius) - 2px);
+    background-color: color-mix(in oklab, var(--primary) 10%, transparent);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+:host([variant="shimmer"]) {
+    background: linear-gradient(to right, var(--skeleton-shimmer-base) 8%, var(--skeleton-shimmer-highlight) 18%, var(--skeleton-shimmer-base) 33%);
+    background-size: 800px 104px;
+    animation: shimmer 2s linear infinite forwards;
+}
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
+@keyframes shimmer {
+    0% {
+        background-position: -800px 0;
+    }
+    100% {
+        background-position: 800px 0;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    :host,
+    :host([variant="shimmer"]) {
+        animation: none;
+    }
+}

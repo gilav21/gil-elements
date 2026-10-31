@@ -1,6 +1,21 @@
 {
-  "index.js": 150,
+  "index.js": 260,
   "badge/index.js": 120,
   "badge/define.js": 180,
-  "chunks/badge.js": 1200
+  "chunks/badge.js": 1150,
+  "kbd/index.js": 120,
+  "kbd/define.js": 180,
+  "chunks/kbd.js": 520,
+  "label/index.js": 120,
+  "label/define.js": 180,
+  "chunks/label.js": 800,
+  "separator/index.js": 120,
+  "separator/define.js": 180,
+  "chunks/separator.js": 500,
+  "skeleton/index.js": 120,
+  "skeleton/define.js": 180,
+  "chunks/skeleton.js": 620,
+  "spinner/index.js": 120,
+  "spinner/define.js": 180,
+  "chunks/spinner.js": 1500
 }
