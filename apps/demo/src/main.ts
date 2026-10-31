@@ -115,7 +115,15 @@ function toggle(id: string, apply: (on: boolean) => void) {
         apply(on);
     });
 }
-toggle('theme', (on) => root.classList.toggle('dark', on));
+// The tokens match `.dark` or `[data-theme="dark"]`. Setting both, on the root and on the body, keeps the
+// theme applied when a host page that embeds this one rewrites the root element's class list.
+toggle('theme', (on) => {
+    for (const el of [root, document.body]) {
+        el.classList.toggle('dark', on);
+        el.dataset.theme = on ? 'dark' : 'light';
+    }
+    root.style.colorScheme = on ? 'dark' : 'light';
+});
 toggle('rtl', (on) => root.setAttribute('dir', on ? 'rtl' : 'ltr'));
 
 const density = document.getElementById('density') as HTMLInputElement;
