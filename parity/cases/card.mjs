@@ -15,6 +15,10 @@ const parts = (extraHeader = '', extraFooter = '') => ({
 const elParts = (bordered = false) =>
     `<ge-card><ge-card-header${bordered ? ' bordered' : ''}><ge-card-title>Create project</ge-card-title><ge-card-description>Deploy your new project in one click.</ge-card-description>${bordered ? '<div slot="action"><ge-button variant="outline" size="sm">Edit</ge-button></div>' : ''}</ge-card-header><ge-card-content>Your name and framework go here.</ge-card-content><ge-card-footer${bordered ? ' bordered' : ''}>Cancel · Deploy</ge-card-footer></ge-card>`;
 
+// `bordered` pads 1rem on the divider side where Angular's [.border-b]:pb-6 pads 1.5rem, which read as bloated beside the
+// card's own 1.5rem gap; the reference is adjusted to that one deliberate difference so everything else stays compared.
+const dividerPadding = (html) => html.replaceAll('[.border-b]:pb-6', '[.border-b]:pb-4').replaceAll('[.border-t]:pt-6', '[.border-t]:pt-4');
+
 const simpleRef = (overlay = '') =>
     `<div data-slot="card" class="${SURFACE}${overlay ? ' relative overflow-hidden' : ''}"><div class="${HEADER}" data-slot="card-header"><div class="leading-none font-semibold" data-slot="card-title">Notifications</div><div class="text-muted-foreground text-sm" data-slot="card-description">You have 3 unread messages.</div></div><div data-slot="card-content">Push everything to your phone.</div>${overlay}</div>`;
 
@@ -22,7 +26,7 @@ export default {
     name: 'card',
     items: [
         { id: 'custom', wrap: W, ref: parts().ref, el: elParts() },
-        { id: 'custom-bordered-action', wrap: W, ref: parts(' border-b', ' border-t').ref, el: elParts(true) },
+        { id: 'custom-bordered-action', wrap: W, ref: dividerPadding(parts(' border-b', ' border-t').ref), el: elParts(true) },
         { id: 'simple', wrap: W, ref: simpleRef(), el: '<ge-card heading="Notifications" description="You have 3 unread messages." content="Push everything to your phone."></ge-card>' },
         {
             id: 'simple-loading',

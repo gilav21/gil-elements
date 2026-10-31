@@ -263,6 +263,22 @@ export const demos: Demo[] = [
 </ge-avatar>`,
             },
             {
+                title: 'With dividers',
+                note: 'An extra beyond the Angular demo: `bordered` on the header or footer adds a divider with matching padding.',
+                block: true,
+                html: `<ge-card style="max-width:24rem">
+  <ge-card-header bordered>
+    <ge-card-title>Team plan</ge-card-title>
+    <ge-card-description>Billed monthly</ge-card-description>
+  </ge-card-header>
+  <ge-card-content>Up to 10 members, unlimited projects.</ge-card-content>
+  <ge-card-footer bordered style="gap:.5rem">
+    <ge-button variant="outline" size="sm">Cancel</ge-button>
+    <ge-button size="sm">Upgrade</ge-button>
+  </ge-card-footer>
+</ge-card>`,
+            },
+            {
                 title: 'Loading and skeleton',
                 html: `<ge-avatar loading fallback="JD"></ge-avatar>
 <ge-avatar skeleton></ge-avatar>`,

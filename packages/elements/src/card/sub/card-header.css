@@ -24,6 +24,6 @@
     align-self: start;
 }
 :host([bordered]) {
-    padding-bottom: 1.5rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid var(--border);
 }
