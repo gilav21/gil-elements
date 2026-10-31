@@ -1,5 +1,5 @@
 import axe from 'axe-core';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import '@gilav21/elements-base/tokens.css';
 import '../button/define.js';
 import './define.js';
@@ -38,6 +38,18 @@ describe('ge-button-group', () => {
         // the first item is on the right in RTL, so its right corners are the round ones
         expect(corners(ra)).toEqual([false, true, true, false]);
         expect(corners(rb)).toEqual([true, false, false, true]);
+    });
+
+    it('lifts the focused button above its neighbours so the whole ring shows', async () => {
+        const page = await mount(`
+            <ge-button-group><ge-button variant="outline">A</ge-button><ge-button variant="outline">B</ge-button></ge-button-group>`);
+        const [a, b] = [...page.querySelectorAll('ge-button')].map(box);
+        expect([a, b].map((el) => getComputedStyle(el).zIndex)).toEqual(['auto', 'auto']);
+
+        b.focus();
+        // z-index only takes effect on a positioned box, and computed z-index reads back the declared value either way
+        await vi.waitFor(() => expect([getComputedStyle(b).zIndex, getComputedStyle(b).position]).toEqual(['10', 'relative']));
+        expect(getComputedStyle(a).position).toBe('static');
     });
 
     it('lays out text and separator items between buttons', async () => {

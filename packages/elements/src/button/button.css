@@ -7,7 +7,6 @@
     display: contents;
 }
 button {
-    position: relative;
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
@@ -41,6 +40,8 @@ button {
     }
 }
 button:focus-visible {
+    /* z-index only acts on a positioned box; a static button is positioned only while focused, so joined buttons can lift the ring. */
+    position: relative;
     border-color: var(--ring);
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
     z-index: var(--ge-join-focus-z, auto);
@@ -96,6 +97,7 @@ button:disabled {
 
 :host([size="sm"]) button {
     height: calc(2rem * var(--_d));
+    padding-block: 0;
     padding-inline: calc(0.75rem * var(--_d));
     border-start-start-radius: var(--ge-join-ss, calc(var(--radius) - 2px));
     border-start-end-radius: var(--ge-join-se, calc(var(--radius) - 2px));
@@ -106,6 +108,7 @@ button:disabled {
 }
 :host([size="lg"]) button {
     height: calc(2.5rem * var(--_d));
+    padding-block: 0;
     padding-inline: calc(2rem * var(--_d));
     border-start-start-radius: var(--ge-join-ss, calc(var(--radius) - 2px));
     border-start-end-radius: var(--ge-join-se, calc(var(--radius) - 2px));
@@ -127,6 +130,11 @@ button:disabled {
     padding: 0;
 }
 
+:host([ripple]) button,
+:host([loading]) button,
+:host([skeleton]) button {
+    position: relative;
+}
 :host([ripple]) button {
     overflow: hidden;
 }
