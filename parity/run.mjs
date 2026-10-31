@@ -45,7 +45,8 @@ const shell = (theme, body, extraCss) =>
      *,*::before,*::after{box-sizing:border-box} html{line-height:1.5}
      @layer base{h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit} h1,h2,h3,h4,h5,h6,p{margin:0}}
      body{margin:0;padding:16px;background:var(--background);color:var(--foreground);font-family:system-ui,sans-serif}
-     [data-case]{display:block;width:max-content;max-width:100%}
+     [data-case]{display:block;width:max-content;max-width:100%;isolation:isolate;will-change:transform}
+     /* ^ each case gets its own compositing layer, so antialiasing does not depend on what is stacked above it */
      </style></head><body>${body}</body></html>`;
 
 // Where the differing pixels sit (CSS px), so a failure from a machine you cannot screenshot is still locatable.
@@ -160,7 +161,11 @@ for (const theme of ['light', 'dark']) {
             const key = await handle.getAttribute('data-case');
             // A focused control paints its focus ring; focus it just before the shot, one case at a time.
             const focus = await handle.getAttribute('data-focus');
-            if (focus) await handle.locator(focus).first().focus();
+            if (focus) {
+                await handle.locator(focus).first().focus();
+                // Focus starts the ring and floating-label transitions; the reference page has nothing left to animate.
+                await page.waitForTimeout(400);
+            }
             shots[side].set(key, await handle.screenshot({ animations: 'allow' }));
         }
         await page.close();

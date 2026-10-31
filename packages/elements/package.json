@@ -28,6 +28,16 @@
       "development": "./src/badge/define.ts",
       "default": "./dist/badge/define.js"
     },
+    "./input": {
+      "types": "./dist/input/index.d.ts",
+      "development": "./src/input/index.ts",
+      "default": "./dist/input/index.js"
+    },
+    "./input/define": {
+      "types": "./dist/input/define.d.ts",
+      "development": "./src/input/define.ts",
+      "default": "./dist/input/define.js"
+    },
     "./kbd": {
       "types": "./dist/kbd/index.d.ts",
       "development": "./src/kbd/index.ts",

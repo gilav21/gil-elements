@@ -31,6 +31,8 @@ export default defineConfig({
                 'page-header/define': 'src/page-header/define.ts',
                 'button/index': 'src/button/index.ts',
                 'button/define': 'src/button/define.ts',
+                'input/index': 'src/input/index.ts',
+                'input/define': 'src/input/define.ts',
                 'checkbox/index': 'src/checkbox/index.ts',
                 'checkbox/define': 'src/checkbox/define.ts',
                 'button-group/index': 'src/button-group/index.ts',
