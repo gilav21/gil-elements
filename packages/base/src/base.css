@@ -1,0 +1,12 @@
+/* Rules every element shares. Element-specific rules live next to the element. */
+:host {
+    box-sizing: border-box;
+}
+:host *,
+:host *::before,
+:host *::after {
+    box-sizing: inherit;
+}
+:host([hidden]) {
+    display: none !important;
+}

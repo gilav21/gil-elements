@@ -1,0 +1,86 @@
+/*
+ * Matches shadcn-angular's badge: text-xs / font-semibold / rounded-md / border,
+ * padding scaled by density (--density-badge overrides the global --density).
+ */
+:host {
+    --_d: var(--density-badge, var(--density, 1));
+    display: inline-flex;
+    align-items: center;
+    padding-inline: calc(0.625rem * var(--_d));
+    padding-block: calc(0.125rem * var(--_d));
+    border: 1px solid transparent;
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.75rem;
+    line-height: calc(1 / 0.75);
+    font-weight: 600;
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-duration: 150ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+:host(:hover) {
+    background-color: color-mix(in oklab, var(--primary) 80%, transparent);
+}
+:host(:focus-visible) {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+
+:host([variant="secondary"]) {
+    border-color: var(--border);
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
+    box-shadow: none;
+}
+:host([variant="secondary"]:hover) {
+    background-color: color-mix(in oklab, var(--secondary) 80%, transparent);
+}
+
+:host([variant="destructive"]) {
+    background-color: var(--destructive);
+    color: var(--destructive-foreground);
+}
+:host([variant="destructive"]:hover) {
+    background-color: color-mix(in oklab, var(--destructive) 80%, transparent);
+}
+
+:host([variant="outline"]) {
+    border-color: var(--border);
+    background-color: transparent;
+    color: var(--foreground);
+    box-shadow: none;
+}
+:host([variant="outline"]:hover) {
+    background-color: transparent;
+}
+
+/* Loading placeholder: drops all variant styling so it cannot shift layout. */
+:host([skeleton]) {
+    padding: 0;
+    border-color: transparent;
+    background-color: transparent;
+    box-shadow: none;
+}
+:host([skeleton]:hover) {
+    background-color: transparent;
+}
+.skeleton {
+    display: block;
+    width: 4rem;
+    height: 1.25rem;
+    border-radius: calc(var(--radius) - 2px);
+    background-color: color-mix(in oklab, var(--primary) 10%, transparent);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .skeleton {
+        animation: none;
+    }
+}
