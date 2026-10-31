@@ -150,6 +150,14 @@ for (const theme of ['light', 'dark']) {
             diff = pixelmatch(a.data, b.data, d.data, a.width, a.height, { threshold: 0.02 });
             if (diff > 0) writeFileSync(`${out}/diff-${theme}-${safe}.png`, PNG.sync.write(d));
             if (diff > 0) where = boundsOfDiff(d);
+            if (diff > 0 && process.env.PARITY_DEBUG && key === 'button/density-0.75' && theme === 'light') {
+                const crop = (src) => {
+                    const c = new PNG({ width: 260, height: 40 });
+                    PNG.bitblt(src, c, 40, 30, 260, 40, 0, 0);
+                    return PNG.sync.write(c).toString('base64');
+                };
+                console.log(`CROP-REF ${crop(a)}\nCROP-EL ${crop(b)}`);
+            }
         }
         writeFileSync(`${out}/${theme}-${safe}-ref.png`, refShot);
         writeFileSync(`${out}/${theme}-${safe}-el.png`, shots.el.get(key));
