@@ -100,6 +100,11 @@ input:disabled {
     flex: 1 1 0%;
     height: 100%;
     padding-inline: 0;
+    /* Not in shadcn-angular yet (gilav21/shadcn-angular#215): without a prefix the text would sit on the border. */
+    padding-inline-start: calc(0.75rem * var(--_d));
+}
+.prefix + .inner {
+    padding-inline-start: 0;
 }
 .affix {
     display: flex;

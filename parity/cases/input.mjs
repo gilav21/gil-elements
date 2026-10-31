@@ -18,7 +18,8 @@ const refPlain = (variant, p) => `<ui-input class="contents"><input class="${BAS
 const refContainer = (p, { prefix, suffix, clearable, loading }) =>
     `<ui-input class="contents"><div class="${CONTAINER}${p.disabled ? ` ${DISABLED_CONTAINER}` : ''}" data-slot="input-container">` +
     (prefix ? `<span class="${AFFIX} ps-3 pe-1">${prefix}</span>` : '') +
-    `<input class="${BASE} ${VARIANT.ghost} flex-1 h-full" ${attrs(p)} data-slot="input">` +
+    // Adjusted reference: shadcn-angular leaves the inner field flush when there is no prefix; we pad it (agreed with Gil, gilav21/shadcn-angular#215).
+    `<input class="${BASE} ${VARIANT.ghost} flex-1 h-full${prefix ? '' : ' ps-[calc(0.75rem*var(--\\_d))]'}" ${attrs(p)} data-slot="input">` +
     (clearable && p.value
         ? `<button type="button" tabindex="-1" class="flex shrink-0 items-center justify-center pe-2 text-muted-foreground hover:text-foreground" aria-label="Clear">${X}</button>`
         : '') +

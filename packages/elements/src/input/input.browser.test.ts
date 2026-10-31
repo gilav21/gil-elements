@@ -185,4 +185,14 @@ describe('ge-input', () => {
         expect(submitted()).toEqual({ first: 'Gil' });
         expect(inner(input).value).toBe('Gil');
     });
+
+    it('keeps text off the border in a container, and flush against a prefix, scaling with density', async () => {
+        const page = await mount(`
+            <ge-input id="suffix" suffix="kg"></ge-input>
+            <ge-input id="prefix" prefix="$"></ge-input>
+            <div style="--density: 0.75"><ge-input id="dense" clearable value="x"></ge-input></div>`);
+        const start = (id: string) => getComputedStyle(inner(page.querySelector(`#${id}`)!)).paddingInlineStart;
+
+        expect([start('suffix'), start('prefix'), start('dense')]).toEqual(['12px', '0px', '9px']);
+    });
 });
