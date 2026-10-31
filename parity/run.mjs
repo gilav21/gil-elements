@@ -111,6 +111,12 @@ for (const theme of ['light', 'dark']) {
             await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
         });
         await page.evaluate(() => document.fonts.ready);
+        // `transition: all` runs whenever a style settles after first paint (Lit renders asynchronously, so the
+        // shadow button is restyled after the host is). A slow machine can still be mid-fade at screenshot time,
+        // which paints the label in an in-between colour; let every transition run out before freezing.
+        await page.evaluate(
+            () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 400)))),
+        );
         // Freeze every animation (shadow trees included) at the same instant, so keyframes, delays and
         // durations are compared instead of being cancelled away.
         await page.evaluate(() => {
