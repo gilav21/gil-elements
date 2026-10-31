@@ -78,6 +78,93 @@ export const demos: Demo[] = [
         api: [{ name: 'default slot', type: 'content', default: '-', description: 'The key text.' }],
     },
     {
+        id: 'checkbox',
+        group: 'Rung 3 · Interactive',
+        name: 'Checkbox',
+        tag: 'ge-checkbox',
+        description: 'A checkbox that acts like the native one: Space toggles it, a form submits it and a form reset restores it.',
+        examples: [
+            {
+                title: 'States',
+                html: `<ge-checkbox></ge-checkbox>
+<ge-checkbox checked></ge-checkbox>
+<ge-checkbox indeterminate></ge-checkbox>
+<ge-checkbox disabled></ge-checkbox>
+<ge-checkbox disabled checked></ge-checkbox>`,
+            },
+            {
+                title: 'With a label',
+                note: 'Click the text: it toggles the box.',
+                html: `<ge-checkbox label="Accept terms and conditions"></ge-checkbox>`,
+            },
+            {
+                title: 'Skeleton',
+                html: `<ge-checkbox skeleton label="Loading"></ge-checkbox>`,
+            },
+        ],
+        api: [
+            { name: 'checked', type: 'boolean', default: 'false', description: 'Checked state; reflected, so CSS can match it.' },
+            { name: 'indeterminate', type: 'boolean', default: 'false', description: 'Shows the dash. Purely visual: it does not change checked.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks interaction; a disabled fieldset does the same.' },
+            { name: 'skeleton', type: 'boolean', default: 'false', description: 'Placeholder instead of the box.' },
+            { name: 'label', type: 'string', default: '-', description: 'Text beside the box; clicking it toggles.' },
+            { name: 'name / value', type: 'string', default: "- / 'on'", description: 'Submitted with the form while checked.' },
+        ],
+    },
+    {
+        id: 'input',
+        group: 'Rung 3 · Interactive',
+        name: 'Input',
+        tag: 'ge-input',
+        description: 'A text input. The native input lives inside, so typing, selection and autofill stay native.',
+        examples: [
+            {
+                title: 'Variants',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:16rem">
+  <ge-input placeholder="Outline (default)"></ge-input>
+  <ge-input variant="underline" placeholder="Underline"></ge-input>
+  <ge-input variant="ghost" placeholder="Ghost"></ge-input>
+</div>`,
+            },
+            {
+                title: 'Prefix, suffix, clearable and loading',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:16rem">
+  <ge-input prefix="$" placeholder="0.00"></ge-input>
+  <ge-input suffix="kg" placeholder="Weight"></ge-input>
+  <ge-input clearable value="Clear me"></ge-input>
+  <ge-input loading value="Searching"></ge-input>
+</div>`,
+            },
+            {
+                title: 'Floating label',
+                block: true,
+                html: `<div style="width:16rem"><ge-input floating label="Email" placeholder="you@example.com"></ge-input></div>`,
+            },
+            {
+                title: 'States',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:16rem">
+  <ge-input disabled value="Disabled"></ge-input>
+  <ge-input skeleton></ge-input>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'value / name', type: 'string', default: "''", description: 'Current text; with a name it is submitted with the form.' },
+            { name: 'type', type: 'string', default: "'text'", description: 'Native input type.' },
+            { name: 'placeholder', type: 'string', default: "''", description: 'Hint shown while empty.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment.' },
+            { name: 'disabled / loading / skeleton', type: 'boolean', default: 'false', description: 'Blocks editing / shows a spinner / shows a placeholder bar.' },
+            { name: 'clearable', type: 'boolean', default: 'false', description: 'Clear button once there is a value.' },
+            { name: 'floating / label', type: 'boolean / string', default: 'false / -', description: 'Floating label above the field.' },
+            { name: 'prefix / suffix', type: 'string', default: "''", description: 'Text before / after the field.' },
+            { name: 'autofocus, inputmode', type: 'boolean / string', default: '-', description: 'Focus on first render; on-screen keyboard.' },
+            { name: 'aria-label, aria-labelledby, aria-describedby', type: 'string', default: '-', description: 'Resolved for the inner input, across the shadow boundary.' },
+        ],
+    },
+    {
         id: 'label',
         group: 'Rung 1 · Static',
         name: 'Label',
@@ -90,7 +177,7 @@ export const demos: Demo[] = [
                 note: 'Click the label: the input gets focus.',
                 html: `<div style="display:grid;gap:.5rem;width:16rem">
   <ge-label for="email">Email</ge-label>
-  <input id="email" type="email" placeholder="you@example.com" style="padding:.4rem .6rem;border:1px solid var(--input);border-radius:6px;background:transparent;color:inherit">
+  <ge-input id="email" type="email" placeholder="you@example.com"></ge-input>
 </div>`,
                 block: true,
             },
@@ -98,7 +185,7 @@ export const demos: Demo[] = [
                 title: 'Label for a checkbox',
                 note: 'Clicking the label toggles the box.',
                 html: `<div style="display:flex;align-items:center;gap:.5rem">
-  <input id="terms" type="checkbox">
+  <ge-checkbox id="terms"></ge-checkbox>
   <ge-label for="terms">Accept terms and conditions</ge-label>
 </div>`,
                 block: true,
@@ -456,7 +543,7 @@ export const demos: Demo[] = [
                 note: 'Submit and Reset act on the surrounding form like native buttons. The page cancels the real submit so you stay here.',
                 block: true,
                 html: `<form id="demo-form" onsubmit="event.preventDefault(); this.querySelector('output').textContent = 'Submitted: ' + new FormData(this).get('name')" style="display:flex;flex-wrap:wrap;align-items:center;gap:.5rem">
-  <input name="name" value="Gil" aria-label="Name" style="padding:.4rem .6rem;border:1px solid var(--input);border-radius:6px;background:transparent;color:inherit">
+  <ge-input name="name" value="Gil" aria-label="Name"></ge-input>
   <ge-button type="submit">Submit</ge-button>
   <ge-button type="reset" variant="outline">Reset</ge-button>
   <output style="color:var(--muted-foreground)"></output>
