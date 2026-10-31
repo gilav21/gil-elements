@@ -11,3 +11,4 @@ import '../packages/elements/src/empty/define.js';
 import '../packages/elements/src/page-header/define.js';
 import '../packages/elements/src/button/define.js';
 import '../packages/elements/src/button-group/define.js';
+import '../packages/elements/src/checkbox/define.js';

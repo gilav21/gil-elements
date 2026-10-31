@@ -36,8 +36,8 @@ const bundle = readFileSync(`${out}/bundle/elements.js`, 'utf8');
 
 const rows = (cases_, side) =>
     cases_
-        .flatMap((c) => c.items.map((i) => ({ key: `${c.name}/${i.id}`, html: i[side], wrap: i.wrap ?? '', at: i.at })))
-        .map((i) => `<div data-case="${i.key}" ${i.at ? `data-at="${i.at}"` : ''} style="padding:12px;${i.wrap}">${i.html}</div>`)
+        .flatMap((c) => c.items.map((i) => ({ key: `${c.name}/${i.id}`, html: i[side], wrap: i.wrap ?? '', at: i.at, focus: i.focus?.[side] })))
+        .map((i) => `<div data-case="${i.key}" ${i.at ? `data-at="${i.at}"` : ''} ${i.focus ? `data-focus="${i.focus}"` : ''} style="padding:12px;${i.wrap}">${i.html}</div>`)
         .join('\n');
 const shell = (theme, body, extraCss) =>
     `<!doctype html><html class="${theme}"><head><style>${tokens}${extraCss}
@@ -158,6 +158,9 @@ for (const theme of ['light', 'dark']) {
         shots[side] = new Map();
         for (const handle of await page.locator('[data-case]').all()) {
             const key = await handle.getAttribute('data-case');
+            // A focused control paints its focus ring; focus it just before the shot, one case at a time.
+            const focus = await handle.getAttribute('data-focus');
+            if (focus) await handle.locator(focus).first().focus();
             shots[side].set(key, await handle.screenshot({ animations: 'allow' }));
         }
         await page.close();

@@ -155,3 +155,14 @@ ui-button {
         padding: 0;
     }
 }
+
+/* shadcn-angular checkbox.component.css, the density part */
+ui-checkbox {
+    --_d: var(--density-checkbox, var(--density, 1));
+}
+@layer components {
+    [data-slot="checkbox"] {
+        height: calc(1rem * var(--_d));
+        width: calc(1rem * var(--_d));
+    }
+}

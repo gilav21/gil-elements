@@ -108,6 +108,16 @@
       "development": "./src/card/define.ts",
       "default": "./dist/card/define.js"
     },
+    "./checkbox": {
+      "types": "./dist/checkbox/index.d.ts",
+      "development": "./src/checkbox/index.ts",
+      "default": "./dist/checkbox/index.js"
+    },
+    "./checkbox/define": {
+      "types": "./dist/checkbox/define.d.ts",
+      "development": "./src/checkbox/define.ts",
+      "default": "./dist/checkbox/define.js"
+    },
     "./empty": {
       "types": "./dist/empty/index.d.ts",
       "development": "./src/empty/index.ts",

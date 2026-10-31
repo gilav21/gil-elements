@@ -4,6 +4,7 @@ export * from './badge/index.js';
 export * from './button-group/index.js';
 export * from './button/index.js';
 export * from './card/index.js';
+export * from './checkbox/index.js';
 export * from './empty/index.js';
 export * from './kbd/index.js';
 export * from './label/index.js';
