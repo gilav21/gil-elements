@@ -1,8 +1,13 @@
 import '@gilav21/elements-base/tokens.css';
 import './demo.css';
+import '@gilav21/elements/alert/define';
+import '@gilav21/elements/avatar/define';
 import '@gilav21/elements/badge/define';
+import '@gilav21/elements/card/define';
+import '@gilav21/elements/empty/define';
 import '@gilav21/elements/kbd/define';
 import '@gilav21/elements/label/define';
+import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
 import '@gilav21/elements/spinner/define';
@@ -63,8 +68,11 @@ const content = document.getElementById('content')!;
 content.append(...demos.map(renderSection));
 
 const nav = document.getElementById('nav')!;
-nav.append(el('div', { class: 'nav-group' }, 'Rung 1 · Static'));
-for (const d of demos) nav.append(el('a', { class: 'nav-link', href: `#${d.id}` }, d.name));
+let group = '';
+for (const d of demos) {
+    if (d.group !== group) nav.append(el('div', { class: 'nav-group' }, (group = d.group)));
+    nav.append(el('a', { class: 'nav-link', href: `#${d.id}` }, d.name));
+}
 
 // Highlight the section nearest the top of the viewport.
 const links = new Map([...nav.querySelectorAll<HTMLAnchorElement>('a')].map((a) => [a.hash.slice(1), a]));

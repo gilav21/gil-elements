@@ -1,5 +1,5 @@
 {
-  "index.js": 260,
+  "index.js": 460,
   "badge/index.js": 120,
   "badge/define.js": 180,
   "chunks/badge.js": 1150,
@@ -17,5 +17,21 @@
   "chunks/skeleton.js": 620,
   "spinner/index.js": 120,
   "spinner/define.js": 180,
-  "chunks/spinner.js": 1500
+  "chunks/spinner.js": 1500,
+  "alert/define.js": 170,
+  "alert/index.js": 110,
+  "avatar/define.js": 150,
+  "avatar/index.js": 80,
+  "card/define.js": 210,
+  "card/index.js": 140,
+  "chunks/alert-title.js": 900,
+  "chunks/avatar.js": 1240,
+  "chunks/card-title.js": 1490,
+  "chunks/empty-title.js": 880,
+  "chunks/loading-overlay.js": 680,
+  "chunks/page-header.js": 1090,
+  "empty/define.js": 210,
+  "empty/index.js": 140,
+  "page-header/define.js": 150,
+  "page-header/index.js": 90
 }

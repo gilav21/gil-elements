@@ -1,0 +1,6 @@
+:host {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+}

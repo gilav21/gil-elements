@@ -43,6 +43,7 @@ const shell = (theme, body, extraCss) =>
     `<!doctype html><html class="${theme}"><head><style>${tokens}${extraCss}
      /* The two parts of Tailwind's preflight that change layout; applied to both pages so only the components differ. */
      *,*::before,*::after{box-sizing:border-box} html{line-height:1.5}
+     @layer base{h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit} h1,h2,h3,h4,h5,h6,p{margin:0}}
      body{margin:0;padding:16px;background:var(--background);color:var(--foreground);font-family:system-ui,sans-serif}
      [data-case]{display:block;width:max-content;max-width:100%}
      </style></head><body>${body}</body></html>`;
@@ -65,6 +66,20 @@ for (const theme of ['light', 'dark']) {
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
             });
         }
+        // Images (shadow trees included) must be decoded, and the elements that react to them settled, before the shot.
+        await page.evaluate(async () => {
+            const images = [];
+            const walk = (root) => {
+                for (const el of root.querySelectorAll('*')) {
+                    if (el instanceof HTMLImageElement) images.push(el);
+                    if (el.shadowRoot) walk(el.shadowRoot);
+                }
+            };
+            walk(document);
+            await Promise.all(images.map((img) => img.decode().catch(() => undefined)));
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+        });
         await page.evaluate(() => document.fonts.ready);
         // Freeze every animation (shadow trees included) at the same instant, so keyframes, delays and
         // durations are compared instead of being cancelled away.

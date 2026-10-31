@@ -1,0 +1,41 @@
+/* shadcn-angular alert: a bordered block with an optional leading icon beside the text. */
+:host {
+    display: flex;
+    align-items: flex-start;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--background);
+    color: var(--foreground);
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+}
+:host([variant="destructive"]) {
+    border-color: color-mix(in oklab, var(--destructive) var(--destructive-border-mix, 50%), transparent);
+    color: var(--destructive);
+}
+/*
+ * The icon is a flex item beside the text rather than absolutely positioned: the indent then
+ * exists exactly when an icon does, with no script and no `:has()` (which `:host()` does not
+ * accept). Its margins reproduce the Angular alert's 1rem inset and 1.75rem text indent.
+ */
+::slotted([slot="icon"]) {
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+    margin-inline-end: 0.75rem;
+}
+.body {
+    min-width: 0;
+    flex: 1 1 0%;
+}
+.title {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.025em;
+}
+.description {
+    display: block;
+}

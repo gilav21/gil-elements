@@ -42,6 +42,14 @@ Rules that keep this library coherent:
 - Styling hooks are CSS variables and documented `part`s. Slots are the custom-content mode, attributes the simple mode.
 - Every element ships with: browser tests, an axe check in light and dark, a server-render test, a parity check, and a size budget in `size-budget.json`.
 
+## Where Gil Elements differs from the Angular library, on purpose
+
+- **`heading`, not `title`.** On a custom element `title` is a native attribute and shows a tooltip over the whole component, so simple-mode titles (card, alert, page header) use `heading`.
+- **Named slots instead of sibling selectors.** An alert's icon goes in `slot="icon"`, a card header's control in `slot="action"`, a page header's trail in `slot="breadcrumb"`. `::slotted()` takes no combinators, so Angular's `[&>svg~*]` has no equivalent.
+- **`bordered` instead of a `border-b` class.** `ge-card-header` and `ge-card-footer` take a `bordered` attribute that adds the divider and its padding; there is no Tailwind to detect a class.
+- **Avatar watches a plain `<img>`.** There are no `avatar-image` or `avatar-fallback` sub-elements: slot your own `<img>` and a `fallback` slot, and the avatar follows the image's load and error events.
+- **`ge-button-group` waits for `ge-button`** (rung 3), because its job is joining the corners of the buttons inside it.
+
 ## Licence
 
 MIT

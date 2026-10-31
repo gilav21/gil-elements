@@ -1,0 +1,15 @@
+:host {
+    --_d: var(--density-card, var(--density, 1));
+    display: flex;
+    align-items: center;
+    padding-inline: calc(1rem * var(--_d));
+}
+@media (min-width: 640px) {
+    :host {
+        padding-inline: calc(1.5rem * var(--_d));
+    }
+}
+:host([bordered]) {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}

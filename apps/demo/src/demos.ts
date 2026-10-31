@@ -19,6 +19,7 @@ export interface ApiRow {
 
 export interface Demo {
     id: string;
+    group: string;
     name: string;
     tag: string;
     description: string;
@@ -29,6 +30,7 @@ export interface Demo {
 export const demos: Demo[] = [
     {
         id: 'badge',
+        group: 'Rung 1 · Static',
         name: 'Badge',
         tag: 'ge-badge',
         description: 'A short status label. Use `label` for plain text or slot anything for full control.',
@@ -61,6 +63,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'kbd',
+        group: 'Rung 1 · Static',
         name: 'Kbd',
         tag: 'ge-kbd',
         description: 'A keyboard key, for documenting shortcuts.',
@@ -76,6 +79,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'label',
+        group: 'Rung 1 · Static',
         name: 'Label',
         tag: 'ge-label',
         description:
@@ -104,6 +108,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'separator',
+        group: 'Rung 1 · Static',
         name: 'Separator',
         tag: 'ge-separator',
         description: 'A thin line dividing content, horizontal or vertical.',
@@ -132,6 +137,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'skeleton',
+        group: 'Rung 1 · Static',
         name: 'Skeleton',
         tag: 'ge-skeleton',
         description: 'A placeholder shown while content loads. You size it with ordinary CSS.',
@@ -155,6 +161,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'spinner',
+        group: 'Rung 1 · Static',
         name: 'Spinner',
         tag: 'ge-spinner',
         description: 'A loading indicator. The built-in loader is the slot fallback, so slotting your own replaces it.',
@@ -186,6 +193,195 @@ export const demos: Demo[] = [
             { name: 'size', type: "'xs' | 'sm' | 'default' | 'lg' | 'xl' | 'page'", default: "'default'", description: 'Size preset.' },
             { name: 'custom-size', type: 'number', default: 'null', description: 'Ring only: exact px size, overrides `size`.' },
             { name: 'label', type: 'string', default: "'Loading'", description: 'Accessible name announced for the status.' },
+        ],
+    },
+    {
+        id: 'alert',
+        group: 'Rung 2 · Slots',
+        name: 'Alert',
+        tag: 'ge-alert',
+        description: 'A callout. A leading icon goes in the `icon` slot, so the text sits beside it whatever the icon is.',
+        examples: [
+            {
+                title: 'Variants',
+                note: '`destructive` is announced assertively (`role="alert"`), `default` politely (`role="status"`).',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:100%;max-width:32rem">
+  <ge-alert heading="Heads up!" description="You can add components to your app.">
+    <svg slot="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+  </ge-alert>
+  <ge-alert variant="destructive" heading="Error" description="Your session has expired. Please log in again.">
+    <svg slot="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+  </ge-alert>
+</div>`,
+            },
+            {
+                title: 'Composed',
+                note: 'Slot `ge-alert-title` and `ge-alert-description` for full control, including paragraphs.',
+                block: true,
+                html: `<ge-alert style="max-width:32rem">
+  <svg slot="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+  <ge-alert-title>Update available</ge-alert-title>
+  <ge-alert-description>
+    <p>A new version is ready.</p>
+    <p>Restart to apply it.</p>
+  </ge-alert-description>
+</ge-alert>`,
+            },
+        ],
+        api: [
+            { name: 'variant', type: "'default' | 'destructive'", default: "'default'", description: 'Colour treatment and announcement urgency.' },
+            { name: 'heading', type: 'string', default: "''", description: 'Simple-mode title. Called `heading`, not `title`, because `title` shows a browser tooltip.' },
+            { name: 'description', type: 'string', default: "''", description: 'Simple-mode text; only shown when `heading` is set.' },
+            { name: 'slot "icon"', type: 'content', default: '-', description: 'A leading icon.' },
+        ],
+    },
+    {
+        id: 'avatar',
+        group: 'Rung 2 · Slots',
+        name: 'Avatar',
+        tag: 'ge-avatar',
+        description: 'A round picture that falls back to initials until the image has loaded, or if it fails.',
+        examples: [
+            {
+                title: 'Simple mode',
+                html: `<ge-avatar src="https://github.com/shadcn.png" alt="shadcn" fallback="CN"></ge-avatar>
+<ge-avatar src="https://invalid.example/missing.png" alt="Missing" fallback="JD"></ge-avatar>
+<ge-avatar fallback="AB"></ge-avatar>`,
+            },
+            {
+                title: 'Slotted image and fallback',
+                note: 'Your own `<img>` is watched by the avatar; `slot="fallback"` replaces the text fallback.',
+                html: `<ge-avatar>
+  <img src="https://github.com/gilav21.png" alt="Gil">
+  <span slot="fallback">GL</span>
+</ge-avatar>`,
+            },
+            {
+                title: 'Loading and skeleton',
+                html: `<ge-avatar loading fallback="JD"></ge-avatar>
+<ge-avatar skeleton></ge-avatar>`,
+            },
+            {
+                title: 'Density',
+                note: 'Size follows `--density` (or `--density-avatar`).',
+                html: `<ge-avatar fallback="S" style="--density-avatar:.75"></ge-avatar>
+<ge-avatar fallback="M"></ge-avatar>
+<ge-avatar fallback="L" style="--density-avatar:1.5"></ge-avatar>`,
+            },
+        ],
+        api: [
+            { name: 'src', type: 'string', default: "''", description: 'Image URL.' },
+            { name: 'alt', type: 'string', default: "''", description: 'Alternative text for `src`.' },
+            { name: 'fallback', type: 'string', default: "''", description: 'Text shown until the image has loaded.' },
+            { name: 'loading', type: 'boolean', default: 'false', description: 'Dim with a spinner.' },
+            { name: 'skeleton', type: 'boolean', default: 'false', description: 'Circular placeholder.' },
+            { name: 'status', type: "'loading' | 'loaded' | 'error'", default: "'loading'", description: 'Read-only: state of the image.' },
+        ],
+    },
+    {
+        id: 'card',
+        group: 'Rung 2 · Slots',
+        name: 'Card',
+        tag: 'ge-card',
+        description: 'A surface for related content. Simple mode generates the header from inputs; custom mode composes the parts.',
+        examples: [
+            {
+                title: 'Simple mode',
+                block: true,
+                html: `<ge-card style="max-width:24rem" heading="Notifications" description="You have 3 unread messages." content="Push everything to your phone."></ge-card>`,
+            },
+            {
+                title: 'Composed, with an action and dividers',
+                note: 'The `action` slot lands top-end beside the title; `bordered` adds the divider and its padding.',
+                block: true,
+                html: `<ge-card style="max-width:24rem">
+  <ge-card-header bordered>
+    <ge-card-title>Team plan</ge-card-title>
+    <ge-card-description>Billed monthly</ge-card-description>
+    <button slot="action">Edit</button>
+  </ge-card-header>
+  <ge-card-content>Up to 10 members, unlimited projects.</ge-card-content>
+  <ge-card-footer bordered>
+    <ge-badge variant="secondary" label="Active"></ge-badge>
+  </ge-card-footer>
+</ge-card>`,
+            },
+            {
+                title: 'Loading and skeleton',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;max-width:24rem">
+  <ge-card loading heading="Refreshing" content="Content stays visible under the scrim."></ge-card>
+  <ge-card skeleton></ge-card>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'heading', type: 'string', default: "''", description: 'Simple-mode title; setting it generates the header.' },
+            { name: 'description', type: 'string', default: "''", description: 'Simple-mode subtitle.' },
+            { name: 'content', type: 'string', default: "''", description: 'Simple-mode body text.' },
+            { name: 'loading', type: 'boolean', default: 'false', description: 'Scrim and spinner over the content.' },
+            { name: 'skeleton', type: 'boolean', default: 'false', description: 'Replace the card with a placeholder.' },
+            { name: 'ge-card-header / ge-card-footer: bordered', type: 'boolean', default: 'false', description: 'Divider plus matching padding.' },
+            { name: 'ge-card-header: slot "action"', type: 'content', default: '-', description: 'Control placed top-end.' },
+        ],
+    },
+    {
+        id: 'empty',
+        group: 'Rung 2 · Slots',
+        name: 'Empty',
+        tag: 'ge-empty',
+        description: 'A placeholder for a view with nothing to show yet.',
+        examples: [
+            {
+                title: 'With icon and action',
+                block: true,
+                html: `<ge-empty>
+  <ge-empty-header>
+    <ge-empty-media variant="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
+    </ge-empty-media>
+    <ge-empty-title>No projects yet</ge-empty-title>
+    <ge-empty-description>You have not created any projects. <a href="#empty">Learn more</a></ge-empty-description>
+  </ge-empty-header>
+  <ge-empty-content><button>Create project</button></ge-empty-content>
+</ge-empty>`,
+            },
+        ],
+        api: [
+            { name: 'ge-empty-media: variant', type: "'default' | 'icon'", default: "'default'", description: '`icon` draws a muted tile and sizes a slotted svg to 1.5rem.' },
+        ],
+    },
+    {
+        id: 'page-header',
+        group: 'Rung 2 · Slots',
+        name: 'Page header',
+        tag: 'ge-page-header',
+        description: 'A heading with a description and actions. The heading is a real `h1`–`h6`; the actions wrap under it when there is no room.',
+        examples: [
+            {
+                title: 'Heading, description and actions',
+                block: true,
+                html: `<ge-page-header heading="Invoices" description="Manage and send invoices.">
+  <button>Export</button>
+  <button>New invoice</button>
+</ge-page-header>`,
+            },
+            {
+                title: 'With a breadcrumb and a lower heading level',
+                note: '`heading-level` changes the element, not the size, so the outline stays right.',
+                block: true,
+                html: `<ge-page-header heading="Invoice 1042" heading-level="2" description="Issued 12 March.">
+  <nav slot="breadcrumb">Home / Billing / Invoices</nav>
+  <button>Download</button>
+</ge-page-header>`,
+            },
+        ],
+        api: [
+            { name: 'heading', type: 'string', default: "''", description: 'The page title.' },
+            { name: 'description', type: 'string', default: "''", description: 'Muted text under the title.' },
+            { name: 'heading-level', type: '1 | 2 | 3 | 4 | 5 | 6', default: '1', description: 'Which heading element to render; out-of-range values are clamped.' },
+            { name: 'slot "breadcrumb"', type: 'content', default: '-', description: 'Trail above the heading.' },
         ],
     },
 ];

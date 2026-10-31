@@ -1,0 +1,33 @@
+/* Translucent scrim with a ring spinner, for cards and avatars that refresh in place. */
+.overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    background-color: color-mix(in oklab, var(--background) 60%, transparent);
+}
+.overlay output {
+    display: inline-flex;
+}
+.overlay svg {
+    display: block;
+    width: 1.25rem;
+    height: 1.25rem;
+    animation: overlay-spin 1s linear infinite;
+}
+.overlay.small svg {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+@keyframes overlay-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .overlay svg {
+        animation: none;
+    }
+}
