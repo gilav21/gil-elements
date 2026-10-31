@@ -16,6 +16,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run check
+      - run: node parity/probe.mjs
+        continue-on-error: true
       - run: node parity/run.mjs
         env:
           PARITY_DEBUG: "1"
