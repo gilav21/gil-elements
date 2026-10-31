@@ -138,7 +138,7 @@ for (const theme of ['light', 'dark']) {
                         const range = document.createRange();
                         range.selectNodeContents(node);
                         const r = range.getBoundingClientRect();
-                        const cs = getComputedStyle(node.parentElement);
+                        const cs = getComputedStyle(node.assignedSlot?.parentElement ?? node.parentElement);
                         (found[key] ??= []).push(`${node.textContent.trim().slice(0, 12)}[${cs.fontFamily}|${cs.fontWeight}|${cs.fontSize}|${cs.letterSpacing}|${cs.color}|${cs.fontKerning}|${cs.textRendering}|${cs.fontFeatureSettings}|${cs.fontVariationSettings}]@${r.x.toFixed(2)},${r.y.toFixed(2)} ${r.width.toFixed(2)}x${r.height.toFixed(2)}`);
                     }
                     if (el.shadowRoot) visit(el.shadowRoot, key);
