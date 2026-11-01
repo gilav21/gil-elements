@@ -1106,6 +1106,44 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'pagination',
+        group: 'Rung 3 · Interactive',
+        name: 'Pagination',
+        tag: 'ge-pagination',
+        description: 'Page navigation. Set total-pages and it builds previous, the numbers, ellipses and next; or compose the row yourself.',
+        examples: [
+            {
+                title: 'Quick form',
+                note: 'It announces page-change; you set current-page in response. Try the buttons.',
+                block: true,
+                html: `<ge-pagination id="pg-demo" current-page="5" total-pages="20"></ge-pagination>
+<script>document.getElementById('pg-demo').addEventListener('page-change', (e) => { e.currentTarget.currentPage = e.detail; });</script>`,
+            },
+            {
+                title: 'Composed',
+                block: true,
+                html: `<ge-pagination>
+  <ge-pagination-content>
+    <ge-pagination-item><ge-pagination-previous disabled></ge-pagination-previous></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-link active>1</ge-pagination-link></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-link>2</ge-pagination-link></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-link>3</ge-pagination-link></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-ellipsis></ge-pagination-ellipsis></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-next></ge-pagination-next></ge-pagination-item>
+  </ge-pagination-content>
+</ge-pagination>`,
+            },
+        ],
+        api: [
+            { name: 'current-page / total-pages', type: 'number', default: '0', description: 'Quick form: the page shown (from 1) and how many there are. total-pages of 0 means composed mode.' },
+            { name: 'sibling-count', type: 'number', default: '1', description: 'Page numbers kept on each side of the current one.' },
+            { name: 'page-change', type: 'event', default: '-', description: 'When the user picks another page; detail is its number. Nothing moves until you set current-page.' },
+            { name: 'previous-label / next-label / more-label / aria-label', type: 'string', default: "'Previous' / 'Next' / 'More pages' / 'pagination'", description: 'Text, since there are no locale tables here yet.' },
+            { name: 'link: active / size / disabled', type: 'boolean / string / boolean', default: "false / 'icon' / false", description: 'On ge-pagination-link. size: default, sm, lg or icon.' },
+            { name: 'previous, next: label / disabled', type: 'string / boolean', default: '-', description: 'On ge-pagination-previous and ge-pagination-next.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

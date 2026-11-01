@@ -1,0 +1,18 @@
+:host {
+    display: contents;
+}
+nav {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-inline: auto;
+}
+ul {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}

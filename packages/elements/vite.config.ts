@@ -65,6 +65,8 @@ export default defineConfig({
                 'tabs/define': 'src/tabs/define.ts',
                 'breadcrumb/index': 'src/breadcrumb/index.ts',
                 'breadcrumb/define': 'src/breadcrumb/define.ts',
+                'pagination/index': 'src/pagination/index.ts',
+                'pagination/define': 'src/pagination/define.ts',
             },
             formats: ['es'],
         },
