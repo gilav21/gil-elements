@@ -115,15 +115,27 @@ function toggle(id: string, apply: (on: boolean) => void) {
         apply(on);
     });
 }
-// The tokens match `.dark` or `[data-theme="dark"]`. Setting both, on the root and on the body, keeps the
-// theme applied when a host page that embeds this one rewrites the root element's class list.
-toggle('theme', (on) => {
+// The tokens match `.dark` or `[data-theme="dark"]`. A host page that embeds this one (an artifact viewer,
+// say) may already have put its own theme on the root, so the button follows what is actually applied
+// instead of keeping its own flag, and the theme is set on the body too in case the root's class is rewritten.
+const themeButton = document.getElementById('theme')!;
+const isDark = () => root.classList.contains('dark') || document.body.classList.contains('dark');
+function showTheme() {
+    const on = isDark();
+    themeButton.setAttribute('aria-pressed', String(on));
+    themeButton.setAttribute('variant', on ? 'default' : 'outline');
+}
+themeButton.addEventListener('click', () => {
+    const on = !isDark();
     for (const el of [root, document.body]) {
         el.classList.toggle('dark', on);
         el.dataset.theme = on ? 'dark' : 'light';
     }
     root.style.colorScheme = on ? 'dark' : 'light';
+    showTheme();
 });
+new MutationObserver(showTheme).observe(root, { attributes: true, attributeFilter: ['class'] });
+showTheme();
 toggle('rtl', (on) => root.setAttribute('dir', on ? 'rtl' : 'ltr'));
 
 const density = document.getElementById('density') as HTMLInputElement;
