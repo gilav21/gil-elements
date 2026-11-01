@@ -267,6 +267,16 @@
       "types": "./dist/toggle-group/define.d.ts",
       "development": "./src/toggle-group/define.ts",
       "default": "./dist/toggle-group/define.js"
+    },
+    "./collapsible": {
+      "types": "./dist/collapsible/index.d.ts",
+      "development": "./src/collapsible/index.ts",
+      "default": "./dist/collapsible/index.js"
+    },
+    "./collapsible/define": {
+      "types": "./dist/collapsible/define.d.ts",
+      "development": "./src/collapsible/define.ts",
+      "default": "./dist/collapsible/define.js"
     }
   },
   "scripts": {

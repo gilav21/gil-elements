@@ -57,6 +57,8 @@ export default defineConfig({
                 'number-input/define': 'src/number-input/define.ts',
                 'toggle-group/index': 'src/toggle-group/index.ts',
                 'toggle-group/define': 'src/toggle-group/define.ts',
+                'collapsible/index': 'src/collapsible/index.ts',
+                'collapsible/define': 'src/collapsible/define.ts',
             },
             formats: ['es'],
         },

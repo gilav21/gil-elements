@@ -928,6 +928,48 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'collapsible',
+        group: 'Rung 3 · Interactive',
+        name: 'Collapsible',
+        tag: 'ge-collapsible',
+        description: 'Shows or hides a panel. The panel is not rendered at all while it is closed.',
+        examples: [
+            {
+                title: 'Basic',
+                note: 'Plain content makes the trigger a button: Tab to it, then Enter or Space.',
+                block: true,
+                html: `<ge-collapsible style="width:20rem">
+  <ge-collapsible-trigger><strong>Show details</strong></ge-collapsible-trigger>
+  <ge-collapsible-content><p style="margin:.5rem 0 0">Hidden until you open it.</p></ge-collapsible-content>
+</ge-collapsible>`,
+            },
+            {
+                title: 'With your own control',
+                note: 'A ge-button inside the trigger stays the only tab stop; clicking it toggles.',
+                block: true,
+                html: `<ge-collapsible open style="width:20rem">
+  <ge-collapsible-trigger><ge-button variant="outline">Toggle</ge-button></ge-collapsible-trigger>
+  <ge-collapsible-content><p style="margin:.5rem 0 0">Open from the start because of the open attribute.</p></ge-collapsible-content>
+</ge-collapsible>`,
+            },
+            {
+                title: 'Disabled',
+                note: 'A disabled collapsible cannot be opened; hide() can still close it.',
+                block: true,
+                html: `<ge-collapsible disabled style="width:20rem">
+  <ge-collapsible-trigger>Cannot open</ge-collapsible-trigger>
+  <ge-collapsible-content>Never shown.</ge-collapsible-content>
+</ge-collapsible>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the panel is showing; set it in markup for an initially open collapsible.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks opening: toggle() and show() do nothing, hide() still closes.' },
+            { name: 'toggle() / show() / hide()', type: 'method', default: '-', description: 'show() and hide() announce even when nothing changes.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'After the state changes; detail is the new state.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

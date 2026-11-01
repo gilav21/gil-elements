@@ -1,0 +1,4 @@
+/* shadcn-angular collapsible: the host has no styling of its own. */
+:host {
+    display: block;
+}
