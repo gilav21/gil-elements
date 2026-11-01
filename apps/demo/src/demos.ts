@@ -884,6 +884,180 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'toggle-group',
+        group: 'Rung 3 · Interactive',
+        name: 'Toggle group',
+        tag: 'ge-toggle-group',
+        description: 'A row of toggle buttons that share a selection: one at a time, or any number.',
+        examples: [
+            {
+                title: 'Single',
+                note: 'Press the one that is on to clear it.',
+                html: `<ge-toggle-group aria-label="Alignment" value="center">
+  <ge-toggle-group-item value="left">Left</ge-toggle-group-item>
+  <ge-toggle-group-item value="center">Center</ge-toggle-group-item>
+  <ge-toggle-group-item value="right">Right</ge-toggle-group-item>
+</ge-toggle-group>`,
+            },
+            {
+                title: 'Multiple, outline',
+                html: `<ge-toggle-group type="multiple" variant="outline" aria-label="Text style" value="bold,italic">
+  <ge-toggle-group-item value="bold" aria-label="Bold"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" /></svg></ge-toggle-group-item>
+  <ge-toggle-group-item value="italic" aria-label="Italic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg></ge-toggle-group-item>
+  <ge-toggle-group-item value="underline">Underline</ge-toggle-group-item>
+</ge-toggle-group>`,
+            },
+            {
+                title: 'Sizes and disabled',
+                html: `<div style="display:grid;gap:1rem;justify-items:start">
+  <ge-toggle-group variant="outline" size="sm" aria-label="Small"><ge-toggle-group-item value="a">One</ge-toggle-group-item><ge-toggle-group-item value="b">Two</ge-toggle-group-item></ge-toggle-group>
+  <ge-toggle-group variant="outline" size="lg" aria-label="Large"><ge-toggle-group-item value="a">One</ge-toggle-group-item><ge-toggle-group-item value="b" disabled>Two</ge-toggle-group-item></ge-toggle-group>
+  <ge-toggle-group variant="outline" disabled aria-label="Disabled"><ge-toggle-group-item value="a">One</ge-toggle-group-item><ge-toggle-group-item value="b">Two</ge-toggle-group-item></ge-toggle-group>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'type', type: "'single' | 'multiple'", default: "'single'", description: 'How many items can be on at once.' },
+            { name: 'value', type: 'string | string[]', default: '-', description: 'Selected value(s); in the attribute a comma-separated list for multiple. Single mode gives an empty string when cleared.' },
+            { name: 'variant', type: "'default' | 'outline'", default: "'default'", description: 'Plain, or with borders and a shadow.' },
+            { name: 'size', type: "'default' | 'sm' | 'lg'", default: "'default'", description: 'Height and padding of every item.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables every item.' },
+            { name: 'options', type: 'property', default: '-', description: 'Render items from data: { value, label?, disabled? }.' },
+            { name: 'item: value / disabled / aria-label', type: 'string / boolean', default: '-', description: 'On ge-toggle-group-item. Icon-only items need an aria-label.' },
+            { name: 'change, input', type: 'event', default: '-', description: 'Fire after the user changes the selection; read value.' },
+        ],
+    },
+    {
+        id: 'collapsible',
+        group: 'Rung 3 · Interactive',
+        name: 'Collapsible',
+        tag: 'ge-collapsible',
+        description: 'Shows or hides a panel. The panel is not rendered at all while it is closed.',
+        examples: [
+            {
+                title: 'Basic',
+                note: 'Plain content makes the trigger a button: Tab to it, then Enter or Space.',
+                block: true,
+                html: `<ge-collapsible style="width:20rem">
+  <ge-collapsible-trigger><strong>Show details</strong></ge-collapsible-trigger>
+  <ge-collapsible-content><p style="margin:.5rem 0 0">Hidden until you open it.</p></ge-collapsible-content>
+</ge-collapsible>`,
+            },
+            {
+                title: 'With your own control',
+                note: 'A ge-button inside the trigger stays the only tab stop; clicking it toggles.',
+                block: true,
+                html: `<ge-collapsible open style="width:20rem">
+  <ge-collapsible-trigger><ge-button variant="outline">Toggle</ge-button></ge-collapsible-trigger>
+  <ge-collapsible-content><p style="margin:.5rem 0 0">Open from the start because of the open attribute.</p></ge-collapsible-content>
+</ge-collapsible>`,
+            },
+            {
+                title: 'Disabled',
+                note: 'A disabled collapsible cannot be opened; hide() can still close it.',
+                block: true,
+                html: `<ge-collapsible disabled style="width:20rem">
+  <ge-collapsible-trigger>Cannot open</ge-collapsible-trigger>
+  <ge-collapsible-content>Never shown.</ge-collapsible-content>
+</ge-collapsible>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the panel is showing; set it in markup for an initially open collapsible.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks opening: toggle() and show() do nothing, hide() still closes.' },
+            { name: 'toggle() / show() / hide()', type: 'method', default: '-', description: 'show() and hide() announce even when nothing changes.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'After the state changes; detail is the new state.' },
+        ],
+    },
+    {
+        id: 'accordion',
+        group: 'Rung 3 · Interactive',
+        name: 'Accordion',
+        tag: 'ge-accordion',
+        description: 'A stack of items that each open to reveal a panel. Quick form from attributes, or design the trigger and panel yourself.',
+        examples: [
+            {
+                title: 'Quick form',
+                block: true,
+                html: `<ge-accordion value="a" style="width:24rem">
+  <ge-accordion-item value="a" heading="Is it accessible?" content="Yes. Every trigger is a real button with its expanded state."></ge-accordion-item>
+  <ge-accordion-item value="b" heading="Is it styled?" content="Yes. It matches the other components."></ge-accordion-item>
+  <ge-accordion-item value="c" heading="Is it animated?" content="No, it simply shows and hides."></ge-accordion-item>
+</ge-accordion>`,
+            },
+            {
+                title: 'Custom trigger and panel',
+                note: 'Project a ge-accordion-trigger and ge-accordion-content to put anything inside.',
+                block: true,
+                html: `<ge-accordion type="multiple" value="a,b" style="width:24rem">
+  <ge-accordion-item value="a">
+    <ge-accordion-trigger>Shipping <ge-badge variant="secondary">New</ge-badge></ge-accordion-trigger>
+    <ge-accordion-content>Free over $50, two to four days.</ge-accordion-content>
+  </ge-accordion-item>
+  <ge-accordion-item value="b">
+    <ge-accordion-trigger>Returns</ge-accordion-trigger>
+    <ge-accordion-content><ge-button size="sm" variant="outline">Start a return</ge-button></ge-accordion-content>
+  </ge-accordion-item>
+</ge-accordion>`,
+            },
+            {
+                title: 'Always one open, and loading',
+                block: true,
+                html: `<ge-accordion value="a" collapsible="false" style="width:24rem">
+  <ge-accordion-item value="a" heading="Pressing me again does nothing" content="One item always stays open."></ge-accordion-item>
+  <ge-accordion-item value="b" heading="Another one" content="Opening it closes the first."></ge-accordion-item>
+  <ge-accordion-item value="c" skeleton></ge-accordion-item>
+</ge-accordion>`,
+            },
+        ],
+        api: [
+            { name: 'type', type: "'single' | 'multiple'", default: "'single'", description: 'One item open at a time, or any number.' },
+            { name: 'value', type: 'string[]', default: '[]', description: 'Values of the open items; in the attribute a comma-separated list. In single mode only the first counts.' },
+            { name: 'collapsible', type: 'boolean', default: 'true', description: 'Single mode: whether pressing the open item closes it. Write collapsible="false" to keep one open.' },
+            { name: 'change', type: 'event', default: '-', description: 'After the user opens or closes an item; read value.' },
+            { name: 'item: value / heading / content / skeleton', type: 'string / boolean', default: '-', description: 'On ge-accordion-item. heading and content are the quick form; skeleton shows a placeholder row.' },
+            { name: '--density-accordion', type: 'css', default: '1', description: 'Trigger padding multiplier; falls back to --density.' },
+        ],
+    },
+    {
+        id: 'tabs',
+        group: 'Rung 3 · Interactive',
+        name: 'Tabs',
+        tag: 'ge-tabs',
+        description: 'Tabbed panels. Only the panel of the active tab is rendered.',
+        examples: [
+            {
+                title: 'Template form',
+                block: true,
+                html: `<ge-tabs value="account" style="width:24rem">
+  <ge-tabs-list aria-label="Settings">
+    <ge-tabs-trigger value="account">Account</ge-tabs-trigger>
+    <ge-tabs-trigger value="password">Password</ge-tabs-trigger>
+    <ge-tabs-trigger value="team">Team</ge-tabs-trigger>
+  </ge-tabs-list>
+  <ge-tabs-content value="account">Make changes to your account here.</ge-tabs-content>
+  <ge-tabs-content value="password">Change your password here.</ge-tabs-content>
+  <ge-tabs-content value="team">Invite your team.</ge-tabs-content>
+</ge-tabs>`,
+            },
+            {
+                title: 'Loading',
+                note: 'A skeleton list stands in for the triggers.',
+                block: true,
+                html: `<ge-tabs style="width:24rem"><ge-tabs-list skeleton skeleton-count="3"></ge-tabs-list></ge-tabs>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string', default: "''", description: 'The active tab. With tabs set and no value, the first tab is active.' },
+            { name: 'tabs', type: 'property', default: '-', description: 'Data-driven mode: { value, label, content?, disabled? }[]. content is plain text.' },
+            { name: 'tab-change', type: 'event', default: '-', description: 'When the user picks a tab; detail is its value.' },
+            { name: 'trigger: value / disabled', type: 'string / boolean', default: '-', description: 'On ge-tabs-trigger. value names the panel it opens.' },
+            { name: 'content: value', type: 'string', default: '-', description: 'On ge-tabs-content: the tab the panel belongs to.' },
+            { name: 'list: aria-label / skeleton / skeleton-count', type: 'string / boolean / number', default: '- / false / 3', description: 'On ge-tabs-list.' },
+            { name: '--density-tabs', type: 'css', default: '1', description: 'Trigger padding multiplier; falls back to --density.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

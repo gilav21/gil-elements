@@ -257,6 +257,46 @@
       "types": "./dist/number-input/define.d.ts",
       "development": "./src/number-input/define.ts",
       "default": "./dist/number-input/define.js"
+    },
+    "./toggle-group": {
+      "types": "./dist/toggle-group/index.d.ts",
+      "development": "./src/toggle-group/index.ts",
+      "default": "./dist/toggle-group/index.js"
+    },
+    "./toggle-group/define": {
+      "types": "./dist/toggle-group/define.d.ts",
+      "development": "./src/toggle-group/define.ts",
+      "default": "./dist/toggle-group/define.js"
+    },
+    "./collapsible": {
+      "types": "./dist/collapsible/index.d.ts",
+      "development": "./src/collapsible/index.ts",
+      "default": "./dist/collapsible/index.js"
+    },
+    "./collapsible/define": {
+      "types": "./dist/collapsible/define.d.ts",
+      "development": "./src/collapsible/define.ts",
+      "default": "./dist/collapsible/define.js"
+    },
+    "./accordion": {
+      "types": "./dist/accordion/index.d.ts",
+      "development": "./src/accordion/index.ts",
+      "default": "./dist/accordion/index.js"
+    },
+    "./accordion/define": {
+      "types": "./dist/accordion/define.d.ts",
+      "development": "./src/accordion/define.ts",
+      "default": "./dist/accordion/define.js"
+    },
+    "./tabs": {
+      "types": "./dist/tabs/index.d.ts",
+      "development": "./src/tabs/index.ts",
+      "default": "./dist/tabs/index.js"
+    },
+    "./tabs/define": {
+      "types": "./dist/tabs/define.d.ts",
+      "development": "./src/tabs/define.ts",
+      "default": "./dist/tabs/define.js"
     }
   },
   "scripts": {

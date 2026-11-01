@@ -1,0 +1,12 @@
+:host {
+    display: contents;
+}
+.panel {
+    overflow: hidden;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+}
+.inner {
+    padding-bottom: 1rem;
+    padding-top: 0;
+}

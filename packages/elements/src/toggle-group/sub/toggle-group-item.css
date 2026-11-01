@@ -1,0 +1,82 @@
+/* shadcn-angular toggle-group-item: the host draws nothing; the inner <button> is the box. */
+:host {
+    --_d: var(--density-button, var(--density, 1));
+    display: contents;
+}
+button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    gap: calc(0.5rem * var(--_d));
+    height: calc(2.25rem * var(--_d));
+    min-width: 0;
+    padding: 0;
+    padding-inline: calc(0.75rem * var(--_d));
+    border: 0 solid transparent;
+    border-start-start-radius: var(--ge-join-ss, calc(var(--radius) - 2px));
+    border-start-end-radius: var(--ge-join-se, calc(var(--radius) - 2px));
+    border-end-start-radius: var(--ge-join-es, calc(var(--radius) - 2px));
+    border-end-end-radius: var(--ge-join-ee, calc(var(--radius) - 2px));
+    outline: none;
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+button[data-size="sm"] {
+    height: calc(2rem * var(--_d));
+}
+button[data-size="lg"] {
+    height: calc(2.5rem * var(--_d));
+}
+@media (hover: hover) {
+    button:hover {
+        background-color: var(--muted);
+        color: var(--muted-foreground);
+    }
+}
+button[data-state="on"] {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+}
+button:focus-visible {
+    position: relative;
+    z-index: var(--ge-join-focus-z, 10);
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+button:disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+::slotted(svg) {
+    pointer-events: none;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+}
+
+button[data-variant="outline"] {
+    border-width: 1px;
+    border-inline-start-width: var(--ge-join-border-inline-start, 1px);
+    border-color: var(--input);
+}
+button[data-variant="outline"][data-divider] {
+    border-inline-end-color: color-mix(in oklab, var(--foreground) 20%, transparent);
+}
+@media (hover: hover) {
+    button[data-variant="outline"]:hover {
+        background-color: var(--accent);
+        color: var(--accent-foreground);
+    }
+}
+button[data-variant="outline"]:focus-visible {
+    border-color: var(--ring);
+}

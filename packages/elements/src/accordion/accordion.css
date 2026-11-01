@@ -1,0 +1,7 @@
+/* shadcn-angular accordion: the host draws nothing; the wrapper fills the width. */
+:host {
+    display: contents;
+}
+.accordion {
+    width: 100%;
+}
