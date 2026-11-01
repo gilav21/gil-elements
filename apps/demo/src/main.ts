@@ -11,6 +11,7 @@ import '@gilav21/elements/empty/define';
 import '@gilav21/elements/input/define';
 import '@gilav21/elements/kbd/define';
 import '@gilav21/elements/label/define';
+import '@gilav21/elements/progress/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

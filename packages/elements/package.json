@@ -167,6 +167,16 @@
       "types": "./dist/button-group/define.d.ts",
       "development": "./src/button-group/define.ts",
       "default": "./dist/button-group/define.js"
+    },
+    "./progress": {
+      "types": "./dist/progress/index.d.ts",
+      "development": "./src/progress/index.ts",
+      "default": "./dist/progress/index.js"
+    },
+    "./progress/define": {
+      "types": "./dist/progress/define.d.ts",
+      "development": "./src/progress/define.ts",
+      "default": "./dist/progress/define.js"
     }
   },
   "scripts": {

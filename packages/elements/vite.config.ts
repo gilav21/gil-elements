@@ -37,6 +37,8 @@ export default defineConfig({
                 'checkbox/define': 'src/checkbox/define.ts',
                 'button-group/index': 'src/button-group/index.ts',
                 'button-group/define': 'src/button-group/define.ts',
+                'progress/index': 'src/progress/index.ts',
+                'progress/define': 'src/progress/define.ts',
             },
             formats: ['es'],
         },

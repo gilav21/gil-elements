@@ -563,6 +563,42 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'progress',
+        group: 'Rung 3 · Interactive',
+        name: 'Progress',
+        tag: 'ge-progress',
+        description: 'A progress bar. The fill is visual; a hidden native progress element carries the value for assistive technology.',
+        examples: [
+            {
+                title: 'Values',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:16rem">
+  <ge-progress value="0" aria-label="Empty"></ge-progress>
+  <ge-progress value="50" aria-label="Half"></ge-progress>
+  <ge-progress value="100" aria-label="Complete"></ge-progress>
+</div>`,
+            },
+            {
+                title: 'Custom max',
+                note: '30 of 40 fills 75%.',
+                block: true,
+                html: `<div style="width:16rem"><ge-progress value="30" max="40" aria-label="Tasks done"></ge-progress></div>`,
+            },
+            {
+                title: 'Localised announcement',
+                note: 'The spoken percentage follows `locale` (French spells it "45 %").',
+                block: true,
+                html: `<div style="width:16rem"><ge-progress value="45" locale="fr-FR" aria-label="Progression"></ge-progress></div>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number', default: '0', description: 'Current progress, in units of max. The fill is clamped to 0-100%.' },
+            { name: 'max', type: 'number', default: '100', description: 'Upper bound of value.' },
+            { name: 'aria-label / aria-labelledby', type: 'string', default: '-', description: 'Accessible name; labelledby takes an id from the host tree.' },
+            { name: 'locale', type: 'string', default: 'page language', description: 'BCP 47 tag for the spoken percentage.' },
+        ],
+    },
+    {
         id: 'button-group',
         group: 'Rung 3 · Interactive',
         name: 'Button group',
