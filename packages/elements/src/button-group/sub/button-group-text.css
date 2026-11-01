@@ -1,0 +1,26 @@
+:host {
+    display: contents;
+}
+.text {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-inline: 1rem;
+    border: 1px solid var(--border);
+    border-start-start-radius: var(--ge-join-ss, calc(var(--radius) - 2px));
+    border-start-end-radius: var(--ge-join-se, calc(var(--radius) - 2px));
+    border-end-start-radius: var(--ge-join-es, calc(var(--radius) - 2px));
+    border-end-end-radius: var(--ge-join-ee, calc(var(--radius) - 2px));
+    border-inline-start-width: var(--ge-join-border-inline-start, 1px);
+    border-block-start-width: var(--ge-join-border-block-start, 1px);
+    background-color: var(--muted);
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    font-weight: 500;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+::slotted(svg) {
+    pointer-events: none;
+    width: 1rem;
+    height: 1rem;
+}

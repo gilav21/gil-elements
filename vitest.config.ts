@@ -5,6 +5,8 @@ import { playwright } from '@vitest/browser-playwright';
 // style, and plain Node for server rendering, which must work without a DOM.
 export default defineConfig({
     resolve: { conditions: ['development'] },
+    // Pre-bundled up front: discovering a dependency mid-run makes Vite reload the page under a test.
+    optimizeDeps: { include: ['lit/static-html.js'] },
     test: {
         projects: [
             {
@@ -16,6 +18,9 @@ export default defineConfig({
                         enabled: true,
                         headless: true,
                         provider: playwright(),
+                        // A desktop-sized page, so the 640px and 768px breakpoints are deterministic; tests that
+                        // need a phone call page.viewport().
+                        viewport: { width: 1280, height: 800 },
                         instances: [{ browser: 'chromium' }],
                     },
                 },

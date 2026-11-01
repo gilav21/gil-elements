@@ -1,0 +1,10 @@
+:host {
+    --_d: var(--density-card, var(--density, 1));
+    display: block;
+    padding-inline: calc(1rem * var(--_d));
+}
+@media (min-width: 640px) {
+    :host {
+        padding-inline: calc(1.5rem * var(--_d));
+    }
+}

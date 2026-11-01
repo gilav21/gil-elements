@@ -77,6 +77,76 @@
       "types": "./dist/spinner/define.d.ts",
       "development": "./src/spinner/define.ts",
       "default": "./dist/spinner/define.js"
+    },
+    "./alert": {
+      "types": "./dist/alert/index.d.ts",
+      "development": "./src/alert/index.ts",
+      "default": "./dist/alert/index.js"
+    },
+    "./alert/define": {
+      "types": "./dist/alert/define.d.ts",
+      "development": "./src/alert/define.ts",
+      "default": "./dist/alert/define.js"
+    },
+    "./avatar": {
+      "types": "./dist/avatar/index.d.ts",
+      "development": "./src/avatar/index.ts",
+      "default": "./dist/avatar/index.js"
+    },
+    "./avatar/define": {
+      "types": "./dist/avatar/define.d.ts",
+      "development": "./src/avatar/define.ts",
+      "default": "./dist/avatar/define.js"
+    },
+    "./card": {
+      "types": "./dist/card/index.d.ts",
+      "development": "./src/card/index.ts",
+      "default": "./dist/card/index.js"
+    },
+    "./card/define": {
+      "types": "./dist/card/define.d.ts",
+      "development": "./src/card/define.ts",
+      "default": "./dist/card/define.js"
+    },
+    "./empty": {
+      "types": "./dist/empty/index.d.ts",
+      "development": "./src/empty/index.ts",
+      "default": "./dist/empty/index.js"
+    },
+    "./empty/define": {
+      "types": "./dist/empty/define.d.ts",
+      "development": "./src/empty/define.ts",
+      "default": "./dist/empty/define.js"
+    },
+    "./page-header": {
+      "types": "./dist/page-header/index.d.ts",
+      "development": "./src/page-header/index.ts",
+      "default": "./dist/page-header/index.js"
+    },
+    "./page-header/define": {
+      "types": "./dist/page-header/define.d.ts",
+      "development": "./src/page-header/define.ts",
+      "default": "./dist/page-header/define.js"
+    },
+    "./button": {
+      "types": "./dist/button/index.d.ts",
+      "development": "./src/button/index.ts",
+      "default": "./dist/button/index.js"
+    },
+    "./button/define": {
+      "types": "./dist/button/define.d.ts",
+      "development": "./src/button/define.ts",
+      "default": "./dist/button/define.js"
+    },
+    "./button-group": {
+      "types": "./dist/button-group/index.d.ts",
+      "development": "./src/button-group/index.ts",
+      "default": "./dist/button-group/index.js"
+    },
+    "./button-group/define": {
+      "types": "./dist/button-group/define.d.ts",
+      "development": "./src/button-group/define.ts",
+      "default": "./dist/button-group/define.js"
     }
   },
   "scripts": {

@@ -1,0 +1,13 @@
+:host {
+    display: contents;
+}
+.separator {
+    flex-shrink: 0;
+    align-self: stretch;
+    background-color: var(--border);
+    width: 1px;
+}
+:host([orientation="horizontal"]) .separator {
+    width: auto;
+    height: 1px;
+}

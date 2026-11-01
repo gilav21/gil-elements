@@ -4,6 +4,8 @@
     /* Skeleton shimmer, hard-coded in shadcn-angular; tokens here so the dark theme is plain inheritance. */
     --skeleton-shimmer-base: #f6f7f8;
     --skeleton-shimmer-highlight: #edeef1;
+    /* Share of --destructive in a destructive alert's border: half in light mode, full in dark (a number, so the colour still follows theme overrides). */
+    --destructive-border-mix: 50%;
     --density: 1;         /* spacing/size multiplier — 0.75 | 0.875 | 1.0 | 1.125 | 1.25 */
     --motion: 1;          /* animation speed multiplier — 0: none | 1: default | 1.5: expressive */
 
@@ -50,6 +52,7 @@
 .dark, [data-theme="dark"] {
     --skeleton-shimmer-base: #1e293b;
     --skeleton-shimmer-highlight: #0f172a;
+    --destructive-border-mix: 100%;
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);

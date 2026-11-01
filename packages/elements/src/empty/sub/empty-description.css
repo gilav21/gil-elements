@@ -1,0 +1,14 @@
+:host {
+    display: block;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: 1.625;
+}
+::slotted(a) {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
+::slotted(a:hover) {
+    color: var(--primary);
+}

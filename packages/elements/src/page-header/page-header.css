@@ -1,0 +1,72 @@
+/*
+ * shadcn-angular page-header: a breadcrumb row, then a heading block beside an actions row.
+ * The row wraps rather than switching on a viewport breakpoint, so a header in a narrow pane
+ * stacks when it must; below 640px it stacks regardless.
+ */
+:host {
+    display: block;
+    width: 100%;
+}
+.breadcrumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+/* The margin sits on what is slotted, so an empty breadcrumb row takes no space at all. */
+::slotted([slot="breadcrumb"]) {
+    margin-bottom: 0.5rem;
+}
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    column-gap: 1rem;
+    row-gap: 0.75rem;
+}
+.heading-block {
+    min-width: 0;
+    flex: 1 1 16rem;
+}
+.title {
+    margin: 0;
+    scroll-margin: 5rem;
+    overflow-wrap: break-word;
+    font-size: 1.5rem;
+    line-height: calc(2 / 1.5);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+.description {
+    margin: 0;
+    overflow-wrap: break-word;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+}
+.title + .description {
+    margin-top: 0.25rem;
+}
+.actions {
+    display: flex;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+@media (min-width: 640px) {
+    .title {
+        font-size: 1.875rem;
+        line-height: calc(2.25 / 1.875);
+    }
+}
+@media (max-width: 639.98px) {
+    .row {
+        flex-direction: column;
+    }
+    .heading-block {
+        width: 100%;
+        flex-basis: auto;
+    }
+}

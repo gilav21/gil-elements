@@ -80,3 +80,78 @@
     0% { background-position: -800px 0; }
     100% { background-position: 800px 0; }
 }
+
+/* shadcn-angular card.component.css and sub/*.css, the density part (selectors adapted from :host to data-slot) */
+[data-slot^="card"] {
+    --_d: var(--density-card, var(--density, 1));
+}
+@layer components {
+    [data-slot="card"]:not([data-skeleton]) {
+        gap: calc(1rem * var(--_d));
+        padding-block: calc(1rem * var(--_d));
+    }
+    [data-slot="card-header"] {
+        gap: calc(0.375rem * var(--_d));
+        padding-inline: calc(1rem * var(--_d));
+    }
+    [data-slot="card-content"],
+    [data-slot="card-footer"] {
+        padding-inline: calc(1rem * var(--_d));
+    }
+    @media (min-width: 640px) {
+        [data-slot="card"]:not([data-skeleton]) {
+            gap: calc(1.5rem * var(--_d));
+            padding-block: calc(1.5rem * var(--_d));
+        }
+        [data-slot="card-header"],
+        [data-slot="card-content"],
+        [data-slot="card-footer"] {
+            padding-inline: calc(1.5rem * var(--_d));
+        }
+    }
+}
+
+/* shadcn-angular avatar.component.css */
+[data-slot="avatar"] {
+    --_d: var(--density-avatar, var(--density, 1));
+}
+@layer components {
+    [data-slot="avatar"] {
+        height: calc(2.5rem * var(--_d));
+        width: calc(2.5rem * var(--_d));
+    }
+}
+
+/* shadcn-angular button.component.css: the host carries data-size, density drives height and padding */
+ui-button {
+    --_d: var(--density-button, var(--density, 1));
+}
+@layer components {
+    ui-button [data-slot="button"] {
+        height: calc(2.25rem * var(--_d));
+        padding-inline: calc(1rem * var(--_d));
+    }
+    ui-button[data-size="sm"] [data-slot="button"] {
+        height: calc(2rem * var(--_d));
+        padding-inline: calc(0.75rem * var(--_d));
+    }
+    ui-button[data-size="lg"] [data-slot="button"] {
+        height: calc(2.5rem * var(--_d));
+        padding-inline: calc(2rem * var(--_d));
+    }
+    ui-button[data-size="icon"] [data-slot="button"] {
+        height: calc(2.25rem * var(--_d));
+        width: calc(2.25rem * var(--_d));
+        padding: 0;
+    }
+    ui-button[data-size="icon-sm"] [data-slot="button"] {
+        height: calc(2rem * var(--_d));
+        width: calc(2rem * var(--_d));
+        padding: 0;
+    }
+    ui-button[data-size="icon-lg"] [data-slot="button"] {
+        height: calc(2.5rem * var(--_d));
+        width: calc(2.5rem * var(--_d));
+        padding: 0;
+    }
+}

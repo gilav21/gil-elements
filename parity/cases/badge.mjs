@@ -10,5 +10,9 @@ export default {
     name: 'badge',
     items: Object.entries(VARIANTS).flatMap(([variant, classes]) => [
         { id: variant, ref: `<ui-badge data-slot="badge" class="${BASE} ${classes}">Status</ui-badge>`, el: `<ge-badge variant="${variant}" label="Status"></ge-badge>` },
+        { id: `${variant}-slotted`, ref: `<ui-badge data-slot="badge" class="${BASE} ${classes}">Status</ui-badge>`, el: `<ge-badge variant="${variant}">Status</ge-badge>` },
+    ]).concat([
+        // Angular drops every variant style while skeleton is set, whatever the variant.
+        { id: 'skeleton', at: 700, ref: '<ui-badge data-slot="badge" class="inline-flex"><ui-skeleton class="rounded-md animate-pulse bg-primary/10 h-5 w-16"></ui-skeleton></ui-badge>', el: '<ge-badge skeleton variant="destructive" label="Status"></ge-badge>' },
     ]),
 };

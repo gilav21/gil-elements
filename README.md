@@ -42,6 +42,16 @@ Rules that keep this library coherent:
 - Styling hooks are CSS variables and documented `part`s. Slots are the custom-content mode, attributes the simple mode.
 - Every element ships with: browser tests, an axe check in light and dark, a server-render test, a parity check, and a size budget in `size-budget.json`.
 
+## Where Gil Elements differs from the Angular library, on purpose
+
+- **`heading`, not `title`.** On a custom element `title` is a native attribute and shows a tooltip over the whole component, so simple-mode titles (card, alert, page header) use `heading`.
+- **Named slots instead of sibling selectors.** An alert's icon goes in `slot="icon"`, a card header's control in `slot="action"`, a page header's trail in `slot="breadcrumb"`. `::slotted()` takes no combinators, so Angular's `[&>svg~*]` has no equivalent.
+- **`bordered` instead of a `border-b` class.** `ge-card-header` and `ge-card-footer` take a `bordered` attribute that adds the divider and its padding; there is no Tailwind to detect a class. The padding is 1rem, not Angular's 1.5rem, because beside the card's own 1.5rem gap the larger one looks bloated. The Angular demo shows no dividers, so this is an extra, not a parity feature.
+- **Avatar watches a plain `<img>`.** There are no `avatar-image` or `avatar-fallback` sub-elements: slot your own `<img>` and a `fallback` slot, and the avatar follows the image's load and error events.
+- **Joined buttons read CSS variables.** A `ge-button`'s box is inside its own shadow root, out of reach of `::slotted()`, so `ge-button-group` sets `--ge-join-*` custom properties on its items and the button reads them. A plain `<button>` is not joined, because a page's own styles on it would win over anything the group says from its shadow root.
+- **`ge-button` is form-associated** (`ElementInternals`): `type="submit"` and `type="reset"` act on the surrounding form. It does not contribute `name`/`value` to form data.
+- **A `ge-button` draws no box of its own** (like the Angular one, its host is `display: contents`), so margins, `slot` placement and grid or flex item properties go on a wrapper element.
+
 ## Licence
 
 MIT

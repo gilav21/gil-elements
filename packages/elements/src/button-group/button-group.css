@@ -1,0 +1,44 @@
+/*
+ * shadcn-angular button-group: items sit flush, only the outer corners stay round and
+ * neighbouring borders merge into one. A ge-button's box lives inside its own shadow root, out
+ * of reach of ::slotted, so the group publishes the join as custom properties (--ge-join-*),
+ * which inherit into that root; any element can read them to take part.
+ */
+:host {
+    display: contents;
+}
+.group {
+    display: flex;
+    width: fit-content;
+    min-width: 0;
+    align-items: stretch;
+}
+:host([orientation="vertical"]) .group {
+    flex-direction: column;
+}
+
+::slotted(*) {
+    --ge-join-focus-z: 10;
+}
+
+/* Horizontal: only the first item keeps its start corners and border, only the last its end corners. */
+:host(:not([orientation="vertical"])) ::slotted(:not(:first-child)) {
+    --ge-join-ss: 0px;
+    --ge-join-es: 0px;
+    --ge-join-border-inline-start: 0px;
+}
+:host(:not([orientation="vertical"])) ::slotted(:not(:last-child)) {
+    --ge-join-se: 0px;
+    --ge-join-ee: 0px;
+}
+
+/* Vertical: the same idea along the block axis. */
+:host([orientation="vertical"]) ::slotted(:not(:first-child)) {
+    --ge-join-ss: 0px;
+    --ge-join-se: 0px;
+    --ge-join-border-block-start: 0px;
+}
+:host([orientation="vertical"]) ::slotted(:not(:last-child)) {
+    --ge-join-es: 0px;
+    --ge-join-ee: 0px;
+}

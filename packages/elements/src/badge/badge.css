@@ -56,10 +56,9 @@
     background-color: transparent;
 }
 
-/* Loading placeholder: drops all variant styling so it cannot shift layout. */
+/* Loading placeholder: Angular drops the variant classes (colour, border, shadow) but keeps the host's density padding. */
 :host([skeleton]) {
-    padding: 0;
-    border-color: transparent;
+    border-width: 0;
     background-color: transparent;
     box-shadow: none;
 }

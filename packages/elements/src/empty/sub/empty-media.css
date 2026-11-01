@@ -1,0 +1,22 @@
+:host {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+::slotted(svg) {
+    pointer-events: none;
+    flex-shrink: 0;
+}
+:host([variant="icon"]) {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius);
+    background-color: var(--muted);
+    color: var(--foreground);
+}
+:host([variant="icon"]) ::slotted(svg) {
+    width: 1.5rem;
+    height: 1.5rem;
+}
