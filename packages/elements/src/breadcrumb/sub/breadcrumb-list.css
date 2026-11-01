@@ -1,0 +1,61 @@
+:host {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+@media (min-width: 640px) {
+    :host {
+        gap: 0.625rem;
+    }
+}
+.item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+.separator {
+    display: inline;
+}
+.separator svg,
+.chevron {
+    display: block;
+    width: 0.875rem;
+    height: 0.875rem;
+}
+:dir(rtl) .chevron {
+    transform: rotate(180deg);
+}
+a {
+    color: inherit;
+    text-decoration: inherit;
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+a:focus-visible {
+    outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+}
+@media (hover: hover) {
+    a:hover {
+        color: var(--foreground);
+    }
+}
+.page {
+    color: var(--foreground);
+    font-weight: 400;
+}
+ge-skeleton {
+    border-radius: calc(var(--radius) - 2px);
+}
+ge-skeleton.label {
+    width: 4rem;
+    height: 1rem;
+}
+ge-skeleton.dot {
+    width: 0.875rem;
+    height: 0.875rem;
+}

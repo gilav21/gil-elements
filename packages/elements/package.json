@@ -297,6 +297,16 @@
       "types": "./dist/tabs/define.d.ts",
       "development": "./src/tabs/define.ts",
       "default": "./dist/tabs/define.js"
+    },
+    "./breadcrumb": {
+      "types": "./dist/breadcrumb/index.d.ts",
+      "development": "./src/breadcrumb/index.ts",
+      "default": "./dist/breadcrumb/index.js"
+    },
+    "./breadcrumb/define": {
+      "types": "./dist/breadcrumb/define.d.ts",
+      "development": "./src/breadcrumb/define.ts",
+      "default": "./dist/breadcrumb/define.js"
     }
   },
   "scripts": {

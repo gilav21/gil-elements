@@ -1058,6 +1058,54 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'breadcrumb',
+        group: 'Rung 3 · Interactive',
+        name: 'Breadcrumb',
+        tag: 'ge-breadcrumb',
+        description: 'The trail from the root to the current page. Give the list items for the quick form, or compose the crumbs yourself.',
+        examples: [
+            {
+                title: 'Custom form',
+                block: true,
+                html: `<ge-breadcrumb>
+  <ge-breadcrumb-list>
+    <ge-breadcrumb-item><ge-breadcrumb-link href="#">Home</ge-breadcrumb-link></ge-breadcrumb-item>
+    <ge-breadcrumb-separator></ge-breadcrumb-separator>
+    <ge-breadcrumb-item><ge-breadcrumb-link href="#">Components</ge-breadcrumb-link></ge-breadcrumb-item>
+    <ge-breadcrumb-separator></ge-breadcrumb-separator>
+    <ge-breadcrumb-item><ge-breadcrumb-page>Breadcrumb</ge-breadcrumb-page></ge-breadcrumb-item>
+  </ge-breadcrumb-list>
+</ge-breadcrumb>`,
+            },
+            {
+                title: 'Ellipsis and a custom separator',
+                block: true,
+                html: `<ge-breadcrumb>
+  <ge-breadcrumb-list>
+    <ge-breadcrumb-item><ge-breadcrumb-link href="#">Home</ge-breadcrumb-link></ge-breadcrumb-item>
+    <ge-breadcrumb-separator>/</ge-breadcrumb-separator>
+    <ge-breadcrumb-item><ge-breadcrumb-ellipsis></ge-breadcrumb-ellipsis></ge-breadcrumb-item>
+    <ge-breadcrumb-separator>/</ge-breadcrumb-separator>
+    <ge-breadcrumb-item><ge-breadcrumb-page>Breadcrumb</ge-breadcrumb-page></ge-breadcrumb-item>
+  </ge-breadcrumb-list>
+</ge-breadcrumb>`,
+            },
+            {
+                title: 'Loading',
+                block: true,
+                html: `<ge-breadcrumb><ge-breadcrumb-list skeleton skeleton-count="3"></ge-breadcrumb-list></ge-breadcrumb>`,
+            },
+        ],
+        api: [
+            { name: 'aria-label', type: 'string', default: "'breadcrumb'", description: 'On ge-breadcrumb: the name of the navigation landmark.' },
+            { name: 'list: items', type: 'property', default: '-', description: 'On ge-breadcrumb-list, quick form: { label, href?, isCurrentPage? }[] with separators added for you.' },
+            { name: 'list: skeleton / skeleton-count', type: 'boolean / number', default: 'false / 3', description: 'Placeholder crumbs.' },
+            { name: 'link: href', type: 'string', default: "'#'", description: 'On ge-breadcrumb-link.' },
+            { name: 'ellipsis: label', type: 'string', default: "'More'", description: 'Screen-reader text for the dots.' },
+            { name: 'separator slot', type: 'slot', default: 'chevron', description: 'Project text or an svg to replace the chevron.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

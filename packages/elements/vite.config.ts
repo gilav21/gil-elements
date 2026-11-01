@@ -63,6 +63,8 @@ export default defineConfig({
                 'accordion/define': 'src/accordion/define.ts',
                 'tabs/index': 'src/tabs/index.ts',
                 'tabs/define': 'src/tabs/define.ts',
+                'breadcrumb/index': 'src/breadcrumb/index.ts',
+                'breadcrumb/define': 'src/breadcrumb/define.ts',
             },
             formats: ['es'],
         },

@@ -341,3 +341,14 @@ ui-tabs-trigger {
         padding-block: calc(0.25rem * var(--_d));
     }
 }
+
+/* shadcn-angular breadcrumb-ellipsis.component.css */
+ui-breadcrumb-ellipsis {
+    --_d: var(--density-button, var(--density, 1));
+}
+@layer components {
+    ui-breadcrumb-ellipsis span[role="presentation"] {
+        height: calc(2.25rem * var(--_d));
+        width: calc(2.25rem * var(--_d));
+    }
+}

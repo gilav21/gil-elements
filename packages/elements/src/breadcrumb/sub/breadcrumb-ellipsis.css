@@ -1,0 +1,26 @@
+:host {
+    --_d: var(--density-button, var(--density, 1));
+    display: contents;
+}
+.dots {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: calc(2.25rem * var(--_d));
+    height: calc(2.25rem * var(--_d));
+}
+svg {
+    width: 1rem;
+    height: 1rem;
+}
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+}
