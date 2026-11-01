@@ -167,6 +167,56 @@
       "types": "./dist/button-group/define.d.ts",
       "development": "./src/button-group/define.ts",
       "default": "./dist/button-group/define.js"
+    },
+    "./progress": {
+      "types": "./dist/progress/index.d.ts",
+      "development": "./src/progress/index.ts",
+      "default": "./dist/progress/index.js"
+    },
+    "./progress/define": {
+      "types": "./dist/progress/define.d.ts",
+      "development": "./src/progress/define.ts",
+      "default": "./dist/progress/define.js"
+    },
+    "./switch": {
+      "types": "./dist/switch/index.d.ts",
+      "development": "./src/switch/index.ts",
+      "default": "./dist/switch/index.js"
+    },
+    "./switch/define": {
+      "types": "./dist/switch/define.d.ts",
+      "development": "./src/switch/define.ts",
+      "default": "./dist/switch/define.js"
+    },
+    "./toggle": {
+      "types": "./dist/toggle/index.d.ts",
+      "development": "./src/toggle/index.ts",
+      "default": "./dist/toggle/index.js"
+    },
+    "./toggle/define": {
+      "types": "./dist/toggle/define.d.ts",
+      "development": "./src/toggle/define.ts",
+      "default": "./dist/toggle/define.js"
+    },
+    "./textarea": {
+      "types": "./dist/textarea/index.d.ts",
+      "development": "./src/textarea/index.ts",
+      "default": "./dist/textarea/index.js"
+    },
+    "./textarea/define": {
+      "types": "./dist/textarea/define.d.ts",
+      "development": "./src/textarea/define.ts",
+      "default": "./dist/textarea/define.js"
+    },
+    "./radio-group": {
+      "types": "./dist/radio-group/index.d.ts",
+      "development": "./src/radio-group/index.ts",
+      "default": "./dist/radio-group/index.js"
+    },
+    "./radio-group/define": {
+      "types": "./dist/radio-group/define.d.ts",
+      "development": "./src/radio-group/define.ts",
+      "default": "./dist/radio-group/define.js"
     }
   },
   "scripts": {

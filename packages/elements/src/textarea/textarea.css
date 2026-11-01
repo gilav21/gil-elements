@@ -1,0 +1,91 @@
+/* shadcn-angular textarea: an outline, underline or ghost multi-line field. The host draws nothing; the inner <textarea> is the box. */
+:host {
+    --_d: var(--density-input, var(--density, 1));
+    display: contents;
+}
+textarea {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0;
+    padding-inline: calc(0.75rem * var(--_d));
+    padding-block: calc(0.5rem * var(--_d));
+    min-height: calc(3rem * var(--_d));
+    border: 0 solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: transparent;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    color: inherit;
+    font: inherit;
+    font-size: 1rem;
+    line-height: calc(1.5 / 1);
+    outline: none;
+}
+@media (min-width: 640px) {
+    textarea {
+        min-height: calc(3.75rem * var(--_d));
+    }
+}
+@media (min-width: 768px) {
+    textarea {
+        font-size: 0.875rem;
+        line-height: calc(1.25 / 0.875);
+    }
+}
+textarea::placeholder {
+    color: var(--muted-foreground);
+    opacity: 1;
+}
+textarea:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* outline (default) */
+textarea {
+    border-width: 1px;
+}
+textarea:focus-visible {
+    box-shadow: 0 0 0 1px var(--ring), 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+:host([variant="underline"]) textarea {
+    border-width: 0 0 1px;
+    border-radius: 0;
+    padding-inline: 0;
+    box-shadow: none;
+    resize: none;
+}
+:host([variant="underline"]) textarea:focus-visible {
+    border-color: var(--ring);
+}
+:host([variant="ghost"]) textarea {
+    border-width: 0;
+    padding-inline: 0;
+    box-shadow: none;
+    resize: none;
+}
+
+.skeleton {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 3rem;
+    border-radius: calc(var(--radius) - 2px);
+    background-color: color-mix(in oklab, var(--primary) 10%, transparent);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@media (min-width: 640px) {
+    .skeleton {
+        min-height: 3.75rem;
+    }
+}
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .skeleton {
+        animation: none;
+    }
+}

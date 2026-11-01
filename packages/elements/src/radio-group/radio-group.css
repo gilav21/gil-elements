@@ -1,0 +1,10 @@
+/* shadcn-angular radio group: a grid with a gap of 0.5rem, flowing by row (vertical) or column (horizontal). */
+:host {
+    display: grid;
+    gap: 0.5rem;
+    grid-auto-flow: row;
+}
+:host([orientation="horizontal"]) {
+    grid-auto-flow: column;
+    justify-content: start;
+}

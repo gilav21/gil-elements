@@ -46,6 +46,21 @@ describe('ge-spinner', () => {
         expect(page.querySelector('#custom')!.querySelector('#mine')!.getBoundingClientRect().width).toBeGreaterThan(0);
     });
 
+    it('spins a slotted custom loader that only carries the ge-spin class', async () => {
+        const page = await mount('<ge-spinner><span class="ge-spin" style="font-size:1.5rem">⏳</span></ge-spinner>');
+        const loader = page.querySelector('span')!;
+        const angle = () => {
+            const [a, b] = getComputedStyle(loader).transform.slice(7, -1).split(',').map(Number);
+            return Math.atan2(b, a);
+        };
+
+        const first = angle();
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        expect(getComputedStyle(loader).animationName).toBe('ge-spin');
+        expect(angle()).not.toBeCloseTo(first, 1);
+    });
+
     it.each(['light', 'dark'])('has no axe violations in %s mode, every variant', async (mode) => {
         useTheme(mode);
         const page = await mount(['ring', 'dots', 'bars', 'pulse'].map((v) => `<ge-spinner variant="${v}"></ge-spinner>`).join(' '));

@@ -271,8 +271,8 @@ export const demos: Demo[] = [
             },
             {
                 title: 'Custom loader',
-                note: 'Anything slotted replaces the built-in spinner.',
-                html: `<ge-spinner><span style="font-size:1.5rem">⏳</span></ge-spinner>`,
+                note: 'Anything slotted replaces the built-in spinner. Add the global ge-spin class to make it rotate.',
+                html: `<ge-spinner><span class="ge-spin" style="font-size:1.5rem">⏳</span></ge-spinner>`,
             },
         ],
         api: [
@@ -560,6 +560,227 @@ export const demos: Demo[] = [
             { name: 'ripple / ripple-color', type: 'boolean / string', default: 'false / tint of the text colour', description: 'Pointer ripple on click.' },
             { name: 'label', type: 'string', default: "''", description: 'Plain-text label; slotted content wins.' },
             { name: 'aria-label, aria-expanded, aria-pressed, aria-haspopup', type: 'string', default: '-', description: 'Forwarded to the inner button, where assistive technology looks.' },
+        ],
+    },
+    {
+        id: 'progress',
+        group: 'Rung 3 · Interactive',
+        name: 'Progress',
+        tag: 'ge-progress',
+        description: 'A progress bar. The fill is visual; a hidden native progress element carries the value for assistive technology.',
+        examples: [
+            {
+                title: 'Values',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:16rem">
+  <ge-progress value="0" aria-label="Empty"></ge-progress>
+  <ge-progress value="50" aria-label="Half"></ge-progress>
+  <ge-progress value="100" aria-label="Complete"></ge-progress>
+</div>`,
+            },
+            {
+                title: 'Custom max',
+                note: '30 of 40 fills 75%.',
+                block: true,
+                html: `<div style="width:16rem"><ge-progress value="30" max="40" aria-label="Tasks done"></ge-progress></div>`,
+            },
+            {
+                title: 'Localised announcement',
+                note: 'The spoken percentage follows `locale` (French spells it "45 %").',
+                block: true,
+                html: `<div style="width:16rem"><ge-progress value="45" locale="fr-FR" aria-label="Progression"></ge-progress></div>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number', default: '0', description: 'Current progress, in units of max. The fill is clamped to 0-100%.' },
+            { name: 'max', type: 'number', default: '100', description: 'Upper bound of value.' },
+            { name: 'aria-label / aria-labelledby', type: 'string', default: '-', description: 'Accessible name; labelledby takes an id from the host tree.' },
+            { name: 'locale', type: 'string', default: 'page language', description: 'BCP 47 tag for the spoken percentage.' },
+        ],
+    },
+    {
+        id: 'switch',
+        group: 'Rung 3 · Interactive',
+        name: 'Switch',
+        tag: 'ge-switch',
+        description: 'An on/off toggle. Click, Enter and Space all toggle it, and in a form it submits like a checkbox.',
+        examples: [
+            {
+                title: 'States',
+                html: `<ge-switch aria-label="Off"></ge-switch>
+<ge-switch checked aria-label="On"></ge-switch>
+<ge-switch disabled aria-label="Disabled off"></ge-switch>
+<ge-switch disabled checked aria-label="Disabled on"></ge-switch>`,
+            },
+            {
+                title: 'With a label',
+                note: 'Click the text: it toggles the switch.',
+                html: `<ge-switch label="Airplane mode"></ge-switch>`,
+            },
+            {
+                title: 'Labelled from elsewhere',
+                note: 'A ge-label anywhere in the page names it and toggles it.',
+                html: `<div style="display:flex;align-items:center;gap:.5rem">
+  <ge-switch id="wifi"></ge-switch>
+  <ge-label for="wifi">Wi-Fi</ge-label>
+</div>`,
+            },
+            {
+                title: 'Skeleton',
+                html: `<ge-switch skeleton label="Loading"></ge-switch>`,
+            },
+        ],
+        api: [
+            { name: 'checked', type: 'boolean', default: 'false', description: 'On state; reflected, so CSS can match it.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks interaction; a disabled fieldset does the same.' },
+            { name: 'skeleton', type: 'boolean', default: 'false', description: 'Placeholder instead of the switch.' },
+            { name: 'label', type: 'string', default: '-', description: 'Text beside the switch; clicking it toggles.' },
+            { name: 'name / value', type: 'string', default: "- / 'on'", description: 'Submitted with the form while on.' },
+        ],
+    },
+    {
+        id: 'radio-group',
+        group: 'Rung 3 · Interactive',
+        name: 'Radio Group',
+        tag: 'ge-radio-group',
+        description: 'Mutually exclusive choices. One item is in the tab order and the arrow keys move and select, like a native group.',
+        examples: [
+            {
+                title: 'With labels',
+                html: `<ge-radio-group value="comfortable" aria-label="Density">
+  <ge-radio-group-item value="default" label="Default"></ge-radio-group-item>
+  <ge-radio-group-item value="comfortable" label="Comfortable"></ge-radio-group-item>
+  <ge-radio-group-item value="compact" label="Compact"></ge-radio-group-item>
+</ge-radio-group>`,
+            },
+            {
+                title: 'Horizontal, without labels',
+                html: `<ge-radio-group orientation="horizontal" value="b" aria-label="Choice">
+  <ge-radio-group-item value="a" aria-label="A"></ge-radio-group-item>
+  <ge-radio-group-item value="b" aria-label="B"></ge-radio-group-item>
+  <ge-radio-group-item value="c" aria-label="C"></ge-radio-group-item>
+</ge-radio-group>`,
+            },
+            {
+                title: 'Disabled',
+                note: 'One item disabled, then the whole group.',
+                html: `<ge-radio-group value="default" aria-label="Plan">
+  <ge-radio-group-item value="default" label="Default"></ge-radio-group-item>
+  <ge-radio-group-item value="pro" label="Pro" disabled></ge-radio-group-item>
+</ge-radio-group>
+<ge-radio-group value="a" disabled aria-label="Locked">
+  <ge-radio-group-item value="a" label="Locked on"></ge-radio-group-item>
+  <ge-radio-group-item value="b" label="Locked off"></ge-radio-group-item>
+</ge-radio-group>`,
+            },
+            {
+                title: 'From data',
+                note: 'Set options, displayWith, valueWith and disabledWith from script.',
+                html: `<ge-radio-group id="plans" value="pro" aria-label="Plans"></ge-radio-group>
+<script type="module">
+  const group = document.getElementById('plans');
+  group.options = [{ id: 'free', name: 'Free' }, { id: 'pro', name: 'Pro' }, { id: 'team', name: 'Team', locked: true }];
+  group.valueWith = (o) => o.id;
+  group.displayWith = (o) => o.name;
+  group.disabledWith = (o) => Boolean(o.locked);
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string', default: '-', description: 'Value of the selected item.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submitted with the form.' },
+            { name: 'orientation', type: "'vertical' | 'horizontal'", default: 'vertical', description: 'Layout and arrow-key axis.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables every item.' },
+            { name: 'options / displayWith / valueWith / disabledWith', type: 'property', default: '-', description: 'Render items from data.' },
+            { name: 'item: value / label / disabled / aria-label', type: 'string / boolean', default: '-', description: 'On ge-radio-group-item.' },
+        ],
+    },
+    {
+        id: 'toggle',
+        group: 'Rung 3 · Interactive',
+        name: 'Toggle',
+        tag: 'ge-toggle',
+        description: 'A button that stays pressed until it is pressed again.',
+        examples: [
+            {
+                title: 'Variants',
+                html: `<ge-toggle>Bold</ge-toggle>
+<ge-toggle pressed>Italic</ge-toggle>
+<ge-toggle variant="outline">Outline</ge-toggle>
+<ge-toggle variant="outline" pressed>Pressed</ge-toggle>`,
+            },
+            {
+                title: 'With an icon',
+                note: 'An icon-only toggle needs an aria-label.',
+                html: `<ge-toggle variant="outline" aria-label="Bold"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" /></svg></ge-toggle>
+<ge-toggle variant="outline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" /></svg> Bold</ge-toggle>`,
+            },
+            {
+                title: 'Sizes and disabled',
+                html: `<ge-toggle size="sm" variant="outline">Small</ge-toggle>
+<ge-toggle variant="outline">Default</ge-toggle>
+<ge-toggle size="lg" variant="outline">Large</ge-toggle>
+<ge-toggle disabled>Disabled</ge-toggle>`,
+            },
+        ],
+        api: [
+            { name: 'pressed', type: 'boolean', default: 'false', description: 'Pressed state; set it in markup for an initially pressed toggle.' },
+            { name: 'variant', type: "'default' | 'outline'", default: "'default'", description: 'Plain, or with a border and shadow.' },
+            { name: 'size', type: "'default' | 'sm' | 'lg'", default: "'default'", description: 'Height, padding and minimum width.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks interaction.' },
+            { name: 'aria-label', type: 'string', default: '-', description: 'Accessible name for an icon-only toggle.' },
+            { name: 'pressed-change', type: 'event', default: '-', description: 'Fires after the user toggles it; detail is the new state.' },
+        ],
+    },
+    {
+        id: 'textarea',
+        group: 'Rung 3 · Interactive',
+        name: 'Textarea',
+        tag: 'ge-textarea',
+        description: 'A multi-line text field. The native textarea lives inside, so typing, selection and resizing stay native.',
+        examples: [
+            {
+                title: 'Variants',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:20rem">
+  <ge-textarea placeholder="Outline (default)"></ge-textarea>
+  <ge-textarea variant="underline" placeholder="Underline"></ge-textarea>
+  <ge-textarea variant="ghost" placeholder="Ghost"></ge-textarea>
+</div>`,
+            },
+            {
+                title: 'Rows and value',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:20rem">
+  <ge-textarea rows="6" placeholder="Six lines"></ge-textarea>
+  <ge-textarea value="First line&#10;Second line"></ge-textarea>
+</div>`,
+            },
+            {
+                title: 'States',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:20rem">
+  <ge-textarea disabled value="Locked"></ge-textarea>
+  <ge-textarea skeleton></ge-textarea>
+</div>`,
+            },
+            {
+                title: 'Labelled',
+                note: 'A ge-label anywhere in the page names it and focuses it.',
+                block: true,
+                html: `<div style="display:grid;gap:.5rem;width:20rem">
+  <ge-label for="bio">Biography</ge-label>
+  <ge-textarea id="bio" placeholder="Tell us a little about yourself"></ge-textarea>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'value / name', type: 'string', default: "''", description: 'Current text; with a name it is submitted with the form.' },
+            { name: 'placeholder', type: 'string', default: "''", description: 'Hint shown while empty.' },
+            { name: 'rows', type: 'number', default: '3', description: 'Visible lines.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment; underline and ghost cannot be resized.' },
+            { name: 'disabled / skeleton', type: 'boolean', default: 'false', description: 'Blocks editing / shows a placeholder.' },
+            { name: 'aria-label, aria-labelledby, aria-describedby', type: 'string', default: '-', description: 'Resolved for the inner textarea, across the shadow boundary.' },
         ],
     },
     {

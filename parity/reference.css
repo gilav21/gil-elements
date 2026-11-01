@@ -167,6 +167,67 @@ ui-checkbox {
     }
 }
 
+/* shadcn-angular switch.component.css */
+ui-switch {
+    --_d: var(--density-switch, var(--density, 1));
+}
+@layer components {
+    [data-slot="switch"] {
+        height: calc(1.25rem * var(--_d));
+        width: calc(2.25rem * var(--_d));
+    }
+    [data-slot="switch"] > span {
+        height: calc(1rem * var(--_d));
+        width: calc(1rem * var(--_d));
+    }
+    [data-slot="switch"][aria-checked="true"] > span {
+        translate: calc(1rem * var(--_d)) 0;
+    }
+    [dir="rtl"] [data-slot="switch"][aria-checked="true"] > span {
+        translate: calc(-1rem * var(--_d)) 0;
+    }
+}
+
+/* shadcn-angular toggle.component.css */
+ui-toggle {
+    --_d: var(--density-button, var(--density, 1));
+}
+@layer components {
+    [data-slot="toggle"] {
+        gap: calc(0.5rem * var(--_d));
+        height: calc(2.25rem * var(--_d));
+        padding-inline: calc(0.5rem * var(--_d));
+        min-width: calc(2.25rem * var(--_d));
+    }
+    [data-slot="toggle"][data-size="sm"] {
+        height: calc(2rem * var(--_d));
+        padding-inline: calc(0.375rem * var(--_d));
+        min-width: calc(2rem * var(--_d));
+    }
+    [data-slot="toggle"][data-size="lg"] {
+        height: calc(2.5rem * var(--_d));
+        padding-inline: calc(0.625rem * var(--_d));
+        min-width: calc(2.5rem * var(--_d));
+    }
+}
+
+/* shadcn-angular textarea.component.css */
+ui-textarea {
+    --_d: var(--density-input, var(--density, 1));
+}
+@layer components {
+    [data-slot="textarea"] {
+        padding-inline: calc(0.75rem * var(--_d));
+        padding-block: calc(0.5rem * var(--_d));
+        min-height: calc(3rem * var(--_d));
+    }
+    @media (min-width: 640px) {
+        [data-slot="textarea"] {
+            min-height: calc(3.75rem * var(--_d));
+        }
+    }
+}
+
 /* shadcn-angular icon.component.css, input.component.css */
 ui-icon {
     display: inline-flex;
@@ -199,5 +260,20 @@ ui-input {
         inset-inline-start: 0;
         top: calc(1.125rem * var(--_d));
         transform: translateY(-100%);
+    }
+}
+
+/* shadcn-angular radio-group-item.component.css */
+ui-radio-group-item {
+    --_d: var(--density-radio, var(--density, 1));
+}
+@layer components {
+    [data-slot="radio-group-item"] {
+        height: calc(1rem * var(--_d));
+        width: calc(1rem * var(--_d));
+    }
+    [data-slot="radio-group-item"] span span {
+        height: calc(0.625rem * var(--_d));
+        width: calc(0.625rem * var(--_d));
     }
 }

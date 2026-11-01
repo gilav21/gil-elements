@@ -2,6 +2,7 @@ import { html, nothing, svg, unsafeCSS, type PropertyValues } from 'lit';
 import { ifDefined } from 'lit/directives/if-defined.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import { UiElement } from '@gilav21/elements-base';
+import { resolveIdRefs } from '../shared/aria-refs.js';
 import css from './input.css?inline';
 
 export type InputVariant = 'outline' | 'underline' | 'ghost';
@@ -158,19 +159,11 @@ export class GeInput extends UiElement {
         if (changed.has('ariaLabelledby') || changed.has('ariaDescribedby')) this.resolveReferences();
     }
 
-    // ID references stop at a shadow boundary, so the ids on the host become element references, which may point out to the host's own tree.
     private resolveReferences(): void {
         const input = this.inner;
         if (!input) return;
-        const root = this.getRootNode() as Document | ShadowRoot;
-        const find = (ids: string | null) =>
-            (ids ?? '')
-                .split(/\s+/)
-                .filter(Boolean)
-                .map((id) => root.getElementById(id))
-                .filter((el): el is HTMLElement => el !== null);
-        input.ariaLabelledByElements = this.ariaLabelledby ? find(this.ariaLabelledby) : null;
-        input.ariaDescribedByElements = this.ariaDescribedby ? find(this.ariaDescribedby) : null;
+        input.ariaLabelledByElements = resolveIdRefs(this, this.ariaLabelledby);
+        input.ariaDescribedByElements = resolveIdRefs(this, this.ariaDescribedby);
     }
 
     private get containerNeeded(): boolean {

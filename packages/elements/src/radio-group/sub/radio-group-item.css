@@ -1,0 +1,55 @@
+/* shadcn-angular radio group item: a 1rem circle with an inner dot when selected, and an optional label beside it. */
+:host {
+    --_d: var(--density-radio, var(--density, 1));
+    display: inline-flex;
+    flex-shrink: 0;
+    cursor: pointer;
+    outline: none;
+}
+:host([label]) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+}
+:host([aria-disabled="true"]),
+:host([aria-disabled="true"]) * {
+    cursor: not-allowed;
+}
+.box {
+    box-sizing: border-box;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: calc(1rem * var(--_d));
+    height: calc(1rem * var(--_d));
+    border: 1px solid var(--primary);
+    border-radius: 9999px;
+    background-color: var(--background);
+    color: var(--primary);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+.box[data-state="checked"] {
+    background-color: transparent;
+}
+.dot {
+    width: calc(0.625rem * var(--_d));
+    height: calc(0.625rem * var(--_d));
+    border-radius: 9999px;
+    background-color: currentColor;
+}
+:host(:focus-visible) .box {
+    box-shadow: 0 0 0 1px var(--ring), 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+.disabled .box {
+    opacity: 0.5;
+}
+.disabled .label {
+    opacity: 0.7;
+}
+.label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1;
+}
