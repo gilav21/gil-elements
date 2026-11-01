@@ -3,8 +3,6 @@ const TRACK = 'peer inline-flex shrink-0 cursor-pointer items-center rounded-ful
 const THUMB = 'pointer-events-none block rounded-full bg-background shadow-lg ring-0 transition-transform';
 const LABEL = 'text-sm font-medium leading-none cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70';
 
-// Adjusted reference (gilav21/shadcn-angular#218): Angular's fixed `translate-x-4` utility beats its density-aware rule, so the
-// thumb stops short when --density is not 1. The reference drops the utility so the intended rule applies; at density 1 both agree.
 const ref = ({ checked = false, disabled = false, label = '' } = {}) => {
     const button = `<button type="button" role="switch" aria-checked="${checked}" class="${TRACK} ${checked ? 'bg-primary' : 'bg-input'}" ${disabled ? 'disabled' : ''} data-slot="switch" id="s" aria-label="${label ? '' : 'Switch'}"><span class="${THUMB}"></span></button>`;
     const control = label ? `<div class="flex items-center gap-2">${button.replace(' aria-label=""', '')}<label for="s" class="${LABEL}"> ${label} </label></div>` : button;

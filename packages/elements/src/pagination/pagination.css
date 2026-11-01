@@ -16,3 +16,7 @@ ul {
     padding: 0;
     list-style: none;
 }
+/* Angular scales previous/next with density only in the generated form; composed ones keep a fixed size. */
+ul[data-quick] {
+    --_nav-d: var(--density-button, var(--density, 1));
+}

@@ -9,8 +9,6 @@ const button = (cls, label, open) =>
 
 const customItem = ({ label, text }, open) =>
     `<ui-accordion-item class="contents"><div class="border-b" data-slot="accordion-item"><ui-accordion-trigger class="contents">${button(TRIGGER, label, open)}</ui-accordion-trigger><ui-accordion-content class="contents">${open ? `<div class="overflow-hidden text-sm" data-state="open" data-slot="accordion-content">${BODY(text)}</div>` : ''}</ui-accordion-content></div></ui-accordion-item>`;
-// The real item template also puts `py-4` on this button, and that utility beats the density rule (shadcn-angular#221),
-// so the density-1.5 reference drops it: py-4 at density 1 is the same 1rem the rule gives.
 const quickItem = ({ label, text }, open) =>
     `<ui-accordion-item class="contents"><div class="border-b" data-slot="accordion-item">${button(TRIGGER, label, open)}${open ? `<div class="overflow-hidden text-sm" data-state="open" data-slot="accordion-content">${BODY(text)}</div>` : ''}</div></ui-accordion-item>`;
 const skeletonItem = () =>

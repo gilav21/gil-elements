@@ -1,6 +1,4 @@
 // shadcn-angular radio-group.component.html and sub/radio-group-item.component.html/.ts.
-// Adjusted reference (gilav21/shadcn-angular#219): Angular's `h-2.5 w-2.5` utilities on the dot beat its density rule, so the dot
-// never scales. The reference drops them so the intended rule applies; at density 1 both agree.
 const CIRCLE = 'aspect-square rounded-full border border-primary text-primary shadow outline-none peer-focus-visible:ring-1 peer-focus-visible:ring-ring peer-disabled:cursor-not-allowed peer-disabled:opacity-50 flex items-center justify-center';
 const INPUT = 'peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed';
 

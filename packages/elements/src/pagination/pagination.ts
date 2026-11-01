@@ -76,7 +76,7 @@ export class GePagination extends UiElement {
 
     private renderPages() {
         const current = this.currentPage;
-        return html`<ul data-slot="pagination-content">
+        return html`<ul data-slot="pagination-content" data-quick>
             <li>
                 <ge-pagination-previous label=${this.previousLabel} ?disabled=${current <= 1} @click=${() => this.goTo(current - 1)}></ge-pagination-previous>
             </li>
