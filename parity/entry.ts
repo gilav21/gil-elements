@@ -19,3 +19,4 @@ import '../packages/elements/src/toggle/define.js';
 import '../packages/elements/src/textarea/define.js';
 import '../packages/elements/src/radio-group/define.js';
 import '../packages/elements/src/aspect-ratio/define.js';
+import '../packages/elements/src/rating/define.js';

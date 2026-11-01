@@ -17,6 +17,7 @@ import '@gilav21/elements/toggle/define';
 import '@gilav21/elements/textarea/define';
 import '@gilav21/elements/radio-group/define';
 import '@gilav21/elements/aspect-ratio/define';
+import '@gilav21/elements/rating/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

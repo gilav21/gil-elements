@@ -227,6 +227,16 @@
       "types": "./dist/aspect-ratio/define.d.ts",
       "development": "./src/aspect-ratio/define.ts",
       "default": "./dist/aspect-ratio/define.js"
+    },
+    "./rating": {
+      "types": "./dist/rating/index.d.ts",
+      "development": "./src/rating/index.ts",
+      "default": "./dist/rating/index.js"
+    },
+    "./rating/define": {
+      "types": "./dist/rating/define.d.ts",
+      "development": "./src/rating/define.ts",
+      "default": "./dist/rating/define.js"
     }
   },
   "scripts": {

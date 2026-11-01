@@ -625,6 +625,48 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'rating',
+        group: 'Rung 3 · Interactive',
+        name: 'Rating',
+        tag: 'ge-rating',
+        description: 'A star rating. Hover previews, click commits, clicking the current value clears it, and a finger can slide across the row.',
+        examples: [
+            {
+                title: 'Basic',
+                html: `<ge-rating value="3"></ge-rating>
+<ge-rating value="5" max="5"></ge-rating>
+<ge-rating></ge-rating>`,
+            },
+            {
+                title: 'Half stars and sizes',
+                note: 'With `precision="0.5"` the half is chosen from where the star is hit, mirrored in right-to-left text.',
+                html: `<ge-rating value="2.5" precision="0.5" size="sm"></ge-rating>
+<ge-rating value="3.5" precision="0.5"></ge-rating>
+<ge-rating value="4.5" precision="0.5" size="lg"></ge-rating>`,
+            },
+            {
+                title: 'Read-only and disabled',
+                html: `<ge-rating value="4" readonly></ge-rating>
+<ge-rating value="4" disabled></ge-rating>`,
+            },
+            {
+                title: 'Keyboard',
+                note: 'Tab to it, then Arrow keys step, Home clears and End fills every star.',
+                html: `<ge-rating value="2" max="10" aria-label="Rating out of ten"></ge-rating>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number', default: '0', description: 'Committed rating, 0 for none.' },
+            { name: 'max', type: 'number', default: '5', description: 'Number of stars.' },
+            { name: 'precision', type: '0.5 | 1', default: '1', description: 'Whole or half stars.' },
+            { name: 'size', type: "'sm' | 'md' | 'lg'", default: "'md'", description: 'Star box of 16, 20 or 24px.' },
+            { name: 'readonly / disabled', type: 'boolean', default: 'false', description: 'Display only / blocked and dimmed.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submitted with the form.' },
+            { name: 'aria-label / rate-label', type: 'string', default: "'Rating' / 'Rate {n} out of {total}'", description: 'Group name and the template for each star name.' },
+            { name: 'rating-change', type: 'event', default: '-', description: 'Fires on a user commit; detail is the new value. Never on hover.' },
+        ],
+    },
+    {
         id: 'switch',
         group: 'Rung 3 · Interactive',
         name: 'Switch',

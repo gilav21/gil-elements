@@ -49,6 +49,8 @@ export default defineConfig({
                 'radio-group/define': 'src/radio-group/define.ts',
                 'aspect-ratio/index': 'src/aspect-ratio/index.ts',
                 'aspect-ratio/define': 'src/aspect-ratio/define.ts',
+                'rating/index': 'src/rating/index.ts',
+                'rating/define': 'src/rating/define.ts',
             },
             formats: ['es'],
         },
