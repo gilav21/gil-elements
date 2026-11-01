@@ -16,10 +16,15 @@ import '@gilav21/elements/switch/define';
 import '@gilav21/elements/toggle/define';
 import '@gilav21/elements/textarea/define';
 import '@gilav21/elements/radio-group/define';
+import '@gilav21/elements/aspect-ratio/define';
+import '@gilav21/elements/rating/define';
+import '@gilav21/elements/slider/define';
+import '@gilav21/elements/number-input/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
 import '@gilav21/elements/spinner/define';
+import type { GeSlider } from '@gilav21/elements/slider';
 import { demos, type Demo, type Example } from './demos.js';
 
 const escapeHtml = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -143,9 +148,9 @@ new MutationObserver(showTheme).observe(root, { attributes: true, attributeFilte
 showTheme();
 toggle('rtl', (on) => root.setAttribute('dir', on ? 'rtl' : 'ltr'));
 
-const density = document.getElementById('density') as HTMLInputElement;
+const density = document.getElementById('density') as GeSlider;
 const densityOut = document.getElementById('density-out')!;
 density.addEventListener('input', () => {
-    root.style.setProperty('--density', density.value);
-    densityOut.textContent = density.value;
+    root.style.setProperty('--density', String(density.value));
+    densityOut.textContent = String(density.value);
 });

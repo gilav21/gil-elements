@@ -217,6 +217,46 @@
       "types": "./dist/radio-group/define.d.ts",
       "development": "./src/radio-group/define.ts",
       "default": "./dist/radio-group/define.js"
+    },
+    "./aspect-ratio": {
+      "types": "./dist/aspect-ratio/index.d.ts",
+      "development": "./src/aspect-ratio/index.ts",
+      "default": "./dist/aspect-ratio/index.js"
+    },
+    "./aspect-ratio/define": {
+      "types": "./dist/aspect-ratio/define.d.ts",
+      "development": "./src/aspect-ratio/define.ts",
+      "default": "./dist/aspect-ratio/define.js"
+    },
+    "./rating": {
+      "types": "./dist/rating/index.d.ts",
+      "development": "./src/rating/index.ts",
+      "default": "./dist/rating/index.js"
+    },
+    "./rating/define": {
+      "types": "./dist/rating/define.d.ts",
+      "development": "./src/rating/define.ts",
+      "default": "./dist/rating/define.js"
+    },
+    "./slider": {
+      "types": "./dist/slider/index.d.ts",
+      "development": "./src/slider/index.ts",
+      "default": "./dist/slider/index.js"
+    },
+    "./slider/define": {
+      "types": "./dist/slider/define.d.ts",
+      "development": "./src/slider/define.ts",
+      "default": "./dist/slider/define.js"
+    },
+    "./number-input": {
+      "types": "./dist/number-input/index.d.ts",
+      "development": "./src/number-input/index.ts",
+      "default": "./dist/number-input/index.js"
+    },
+    "./number-input/define": {
+      "types": "./dist/number-input/define.d.ts",
+      "development": "./src/number-input/define.ts",
+      "default": "./dist/number-input/define.js"
     }
   },
   "scripts": {

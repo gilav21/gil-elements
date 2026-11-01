@@ -194,6 +194,32 @@ export const demos: Demo[] = [
         api: [{ name: 'for', type: 'string', default: '-', description: 'id of the control, looked up in the same tree as the label.' }],
     },
     {
+        id: 'aspect-ratio',
+        group: 'Rung 1 · Static',
+        name: 'Aspect Ratio',
+        tag: 'ge-aspect-ratio',
+        description: 'A box that keeps a fixed width-to-height ratio and reserves its height before content loads, so nothing shifts.',
+        examples: [
+            {
+                title: 'Ratios',
+                note: 'Square by default; 16:9 is `ratio="1.7778"`. Slotted content fills the box when it is absolutely positioned.',
+                html: `<div style="width:min(100%,14rem)">
+  <ge-aspect-ratio ratio="1.7778">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:.5rem;background:var(--muted);color:var(--muted-foreground)">16:9</div>
+  </ge-aspect-ratio>
+</div>
+<div style="width:min(100%,8rem)">
+  <ge-aspect-ratio>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:.5rem;background:var(--muted);color:var(--muted-foreground)">1:1</div>
+  </ge-aspect-ratio>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'ratio', type: 'number', default: '1', description: 'Width divided by height.' },
+        ],
+    },
+    {
         id: 'separator',
         group: 'Rung 1 · Static',
         name: 'Separator',
@@ -596,6 +622,131 @@ export const demos: Demo[] = [
             { name: 'max', type: 'number', default: '100', description: 'Upper bound of value.' },
             { name: 'aria-label / aria-labelledby', type: 'string', default: '-', description: 'Accessible name; labelledby takes an id from the host tree.' },
             { name: 'locale', type: 'string', default: 'page language', description: 'BCP 47 tag for the spoken percentage.' },
+        ],
+    },
+    {
+        id: 'rating',
+        group: 'Rung 3 · Interactive',
+        name: 'Rating',
+        tag: 'ge-rating',
+        description: 'A star rating. Hover previews, click commits, clicking the current value clears it, and a finger can slide across the row.',
+        examples: [
+            {
+                title: 'Basic',
+                html: `<ge-rating value="3"></ge-rating>
+<ge-rating value="5" max="5"></ge-rating>
+<ge-rating></ge-rating>`,
+            },
+            {
+                title: 'Half stars and sizes',
+                note: 'With `precision="0.5"` the half is chosen from where the star is hit, mirrored in right-to-left text.',
+                html: `<ge-rating value="2.5" precision="0.5" size="sm"></ge-rating>
+<ge-rating value="3.5" precision="0.5"></ge-rating>
+<ge-rating value="4.5" precision="0.5" size="lg"></ge-rating>`,
+            },
+            {
+                title: 'Read-only and disabled',
+                html: `<ge-rating value="4" readonly></ge-rating>
+<ge-rating value="4" disabled></ge-rating>`,
+            },
+            {
+                title: 'Keyboard',
+                note: 'Tab to it, then Arrow keys step, Home clears and End fills every star.',
+                html: `<ge-rating value="2" max="10" aria-label="Rating out of ten"></ge-rating>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number', default: '0', description: 'Committed rating, 0 for none.' },
+            { name: 'max', type: 'number', default: '5', description: 'Number of stars.' },
+            { name: 'precision', type: '0.5 | 1', default: '1', description: 'Whole or half stars.' },
+            { name: 'size', type: "'sm' | 'md' | 'lg'", default: "'md'", description: 'Star box of 16, 20 or 24px.' },
+            { name: 'readonly / disabled', type: 'boolean', default: 'false', description: 'Display only / blocked and dimmed.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submitted with the form.' },
+            { name: 'aria-label / rate-label', type: 'string', default: "'Rating' / 'Rate {n} out of {total}'", description: 'Group name and the template for each star name.' },
+            { name: 'rating-change', type: 'event', default: '-', description: 'Fires on a user commit; detail is the new value. Never on hover.' },
+        ],
+    },
+    {
+        id: 'slider',
+        group: 'Rung 3 · Interactive',
+        name: 'Slider',
+        tag: 'ge-slider',
+        description: 'Pick a number by dragging or pressing the track, with a mouse or a finger. The keys work too.',
+        examples: [
+            {
+                title: 'Basic',
+                html: `<ge-slider value="40" aria-label="Volume" style="max-width:20rem"></ge-slider>`,
+                block: true,
+            },
+            {
+                title: 'Range and step',
+                note: 'The value always snaps onto the grid: here 5, 7.5, 10, 12.5 or 15.',
+                html: `<ge-slider min="5" max="15" step="2.5" value="10" aria-label="Temperature" style="max-width:20rem"></ge-slider>`,
+                block: true,
+            },
+            {
+                title: 'Disabled',
+                html: `<ge-slider value="60" disabled aria-label="Locked" style="max-width:20rem"></ge-slider>`,
+                block: true,
+            },
+            {
+                title: 'Labelled from elsewhere',
+                note: 'Arrow keys step, PageUp and PageDown move ten steps, Home and End jump to the ends.',
+                html: `<div style="display:grid;gap:.5rem;max-width:20rem;width:100%">
+  <ge-label for="bright">Brightness</ge-label>
+  <ge-slider id="bright" value="70"></ge-slider>
+</div>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number', default: '0', description: 'Current value, shown snapped to the grid and clamped to the range.' },
+            { name: 'min / max / step', type: 'number', default: '0 / 100 / 1', description: 'Range and grid spacing.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks interaction and dims it.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submitted with the form.' },
+            { name: 'locale', type: 'string', default: 'page language', description: 'BCP 47 tag for the spoken value.' },
+            { name: 'aria-label / aria-labelledby', type: 'string', default: '-', description: 'Accessible name; labelledby takes an id from the host tree.' },
+            { name: 'input / change', type: 'event', default: '-', description: 'input on every change including dragging; change when the pointer is released or a key is pressed.' },
+        ],
+    },
+    {
+        id: 'number-input',
+        group: 'Rung 3 · Interactive',
+        name: 'Number Input',
+        tag: 'ge-number-input',
+        description: 'A number field with stepping. Arrow Up and Down step it, so does the mouse wheel while it has focus, and blur clamps it to the limits.',
+        examples: [
+            {
+                title: 'Basic',
+                html: `<ge-number-input value="42" aria-label="Quantity" style="max-width:12rem"></ge-number-input>`,
+                block: true,
+            },
+            {
+                title: 'Limits and step',
+                note: 'Type 99 and leave the field: it clamps to 10. Arrow keys move in steps of 2.5.',
+                html: `<ge-number-input min="0" max="10" step="2.5" value="5" aria-label="Rating" style="max-width:12rem"></ge-number-input>`,
+                block: true,
+            },
+            {
+                title: 'Variants',
+                html: `<ge-number-input variant="underline" value="3" aria-label="Underline" style="max-width:12rem"></ge-number-input>
+<ge-number-input variant="ghost" value="3" aria-label="Ghost" style="max-width:12rem"></ge-number-input>`,
+                block: true,
+            },
+            {
+                title: 'Disabled',
+                html: `<ge-number-input value="7" disabled aria-label="Locked" style="max-width:12rem"></ge-number-input>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number | null', default: 'null', description: 'Current value; empty is null, which steps from 0.' },
+            { name: 'min / max / step', type: 'number', default: '- / - / 1', description: 'Limits and step size. Blur clamps to the limits.' },
+            { name: 'placeholder', type: 'string', default: "'0'", description: 'Hint shown while empty.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks editing and dims it.' },
+            { name: 'name / locale', type: 'string', default: '-', description: 'Form field name; BCP 47 tag for the decimal separator.' },
+            { name: 'increment() / decrement()', type: 'method', default: '-', description: 'Step programmatically.' },
         ],
     },
     {

@@ -35,7 +35,10 @@ body {
     backdrop-filter: blur(8px);
 }
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-inline-start: auto; }
-.controls label { display: flex; align-items: center; gap: 0.5rem; color: var(--muted-foreground); }
+.controls .density { display: flex; align-items: center; gap: 0.5rem; color: var(--muted-foreground); }
+/* Pinned at density 1 so the control does not resize under the finger while it changes the density. */
+.controls .density-field { box-sizing: border-box; width: 8rem; padding-inline: 0.5rem; }
+.controls .density ge-slider { --density-slider: 1; }
 #menu { display: none; }
 #content { max-width: 60rem; margin: 0 auto; padding: 2rem 1.5rem 6rem; }
 section.component { margin-bottom: 4rem; }
