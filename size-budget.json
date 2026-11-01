@@ -32,6 +32,7 @@
   "chunks/skeleton.js": 620,
   "chunks/spinner.js": 1500,
   "chunks/switch.js": 1740,
+  "chunks/toggle.js": 1290,
   "empty/define.js": 210,
   "empty/index.js": 140,
   "index.js": 580,
@@ -52,5 +53,7 @@
   "spinner/define.js": 180,
   "spinner/index.js": 120,
   "switch/define.js": 150,
-  "switch/index.js": 80
+  "switch/index.js": 80,
+  "toggle/define.js": 150,
+  "toggle/index.js": 80
 }

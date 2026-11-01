@@ -1,0 +1,79 @@
+/* shadcn-angular toggle: a button that stays pressed. The host draws nothing; the inner <button> is the box. */
+:host {
+    --_d: var(--density-button, var(--density, 1));
+    display: contents;
+}
+button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    gap: calc(0.5rem * var(--_d));
+    height: calc(2.25rem * var(--_d));
+    min-width: calc(2.25rem * var(--_d));
+    padding: 0;
+    padding-inline: calc(0.5rem * var(--_d));
+    border: 0 solid transparent;
+    border-radius: calc(var(--radius) - 2px);
+    outline: none;
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (hover: hover) {
+    button:hover {
+        background-color: var(--muted);
+        color: var(--muted-foreground);
+    }
+}
+button[data-state="on"] {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+}
+button:focus-visible {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+button:disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+::slotted(svg) {
+    pointer-events: none;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+}
+
+:host([variant="outline"]) button {
+    border-width: 1px;
+    border-color: var(--input);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+@media (hover: hover) {
+    :host([variant="outline"]) button:hover {
+        background-color: var(--accent);
+        color: var(--accent-foreground);
+    }
+}
+:host([variant="outline"]) button:focus-visible {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent), 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+:host([size="sm"]) button {
+    height: calc(2rem * var(--_d));
+    min-width: calc(2rem * var(--_d));
+    padding-inline: calc(0.375rem * var(--_d));
+}
+:host([size="lg"]) button {
+    height: calc(2.5rem * var(--_d));
+    min-width: calc(2.5rem * var(--_d));
+    padding-inline: calc(0.625rem * var(--_d));
+}

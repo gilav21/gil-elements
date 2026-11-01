@@ -187,6 +187,16 @@
       "types": "./dist/switch/define.d.ts",
       "development": "./src/switch/define.ts",
       "default": "./dist/switch/define.js"
+    },
+    "./toggle": {
+      "types": "./dist/toggle/index.d.ts",
+      "development": "./src/toggle/index.ts",
+      "default": "./dist/toggle/index.js"
+    },
+    "./toggle/define": {
+      "types": "./dist/toggle/define.d.ts",
+      "development": "./src/toggle/define.ts",
+      "default": "./dist/toggle/define.js"
     }
   },
   "scripts": {

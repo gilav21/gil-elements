@@ -639,6 +639,43 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'toggle',
+        group: 'Rung 3 · Interactive',
+        name: 'Toggle',
+        tag: 'ge-toggle',
+        description: 'A button that stays pressed until it is pressed again.',
+        examples: [
+            {
+                title: 'Variants',
+                html: `<ge-toggle>Bold</ge-toggle>
+<ge-toggle pressed>Italic</ge-toggle>
+<ge-toggle variant="outline">Outline</ge-toggle>
+<ge-toggle variant="outline" pressed>Pressed</ge-toggle>`,
+            },
+            {
+                title: 'With an icon',
+                note: 'An icon-only toggle needs an aria-label.',
+                html: `<ge-toggle variant="outline" aria-label="Bold"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" /></svg></ge-toggle>
+<ge-toggle variant="outline"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" /></svg> Bold</ge-toggle>`,
+            },
+            {
+                title: 'Sizes and disabled',
+                html: `<ge-toggle size="sm" variant="outline">Small</ge-toggle>
+<ge-toggle variant="outline">Default</ge-toggle>
+<ge-toggle size="lg" variant="outline">Large</ge-toggle>
+<ge-toggle disabled>Disabled</ge-toggle>`,
+            },
+        ],
+        api: [
+            { name: 'pressed', type: 'boolean', default: 'false', description: 'Pressed state; set it in markup for an initially pressed toggle.' },
+            { name: 'variant', type: "'default' | 'outline'", default: "'default'", description: 'Plain, or with a border and shadow.' },
+            { name: 'size', type: "'default' | 'sm' | 'lg'", default: "'default'", description: 'Height, padding and minimum width.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks interaction.' },
+            { name: 'aria-label', type: 'string', default: '-', description: 'Accessible name for an icon-only toggle.' },
+            { name: 'pressed-change', type: 'event', default: '-', description: 'Fires after the user toggles it; detail is the new state.' },
+        ],
+    },
+    {
         id: 'button-group',
         group: 'Rung 3 · Interactive',
         name: 'Button group',

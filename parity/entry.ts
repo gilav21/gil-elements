@@ -15,3 +15,4 @@ import '../packages/elements/src/checkbox/define.js';
 import '../packages/elements/src/input/define.js';
 import '../packages/elements/src/progress/define.js';
 import '../packages/elements/src/switch/define.js';
+import '../packages/elements/src/toggle/define.js';

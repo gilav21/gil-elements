@@ -41,6 +41,8 @@ export default defineConfig({
                 'progress/define': 'src/progress/define.ts',
                 'switch/index': 'src/switch/index.ts',
                 'switch/define': 'src/switch/define.ts',
+                'toggle/index': 'src/toggle/index.ts',
+                'toggle/define': 'src/toggle/define.ts',
             },
             formats: ['es'],
         },
