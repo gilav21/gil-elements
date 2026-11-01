@@ -1,6 +1,8 @@
 {
   "alert/define.js": 170,
   "alert/index.js": 110,
+  "aspect-ratio/define.js": 170,
+  "aspect-ratio/index.js": 90,
   "avatar/define.js": 150,
   "avatar/index.js": 80,
   "badge/define.js": 180,
@@ -15,6 +17,7 @@
   "checkbox/index.js": 80,
   "chunks/alert-title.js": 900,
   "chunks/aria-refs.js": 200,
+  "chunks/aspect-ratio.js": 430,
   "chunks/avatar.js": 1240,
   "chunks/badge.js": 1150,
   "chunks/button-group-text.js": 920,

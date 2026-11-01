@@ -194,6 +194,32 @@ export const demos: Demo[] = [
         api: [{ name: 'for', type: 'string', default: '-', description: 'id of the control, looked up in the same tree as the label.' }],
     },
     {
+        id: 'aspect-ratio',
+        group: 'Rung 1 · Static',
+        name: 'Aspect Ratio',
+        tag: 'ge-aspect-ratio',
+        description: 'A box that keeps a fixed width-to-height ratio and reserves its height before content loads, so nothing shifts.',
+        examples: [
+            {
+                title: 'Ratios',
+                note: 'Square by default; 16:9 is `ratio="1.7778"`. Slotted content fills the box when it is absolutely positioned.',
+                html: `<div style="width:min(100%,14rem)">
+  <ge-aspect-ratio ratio="1.7778">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:.5rem;background:var(--muted);color:var(--muted-foreground)">16:9</div>
+  </ge-aspect-ratio>
+</div>
+<div style="width:min(100%,8rem)">
+  <ge-aspect-ratio>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;border-radius:.5rem;background:var(--muted);color:var(--muted-foreground)">1:1</div>
+  </ge-aspect-ratio>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'ratio', type: 'number', default: '1', description: 'Width divided by height.' },
+        ],
+    },
+    {
         id: 'separator',
         group: 'Rung 1 · Static',
         name: 'Separator',

@@ -217,6 +217,16 @@
       "types": "./dist/radio-group/define.d.ts",
       "development": "./src/radio-group/define.ts",
       "default": "./dist/radio-group/define.js"
+    },
+    "./aspect-ratio": {
+      "types": "./dist/aspect-ratio/index.d.ts",
+      "development": "./src/aspect-ratio/index.ts",
+      "default": "./dist/aspect-ratio/index.js"
+    },
+    "./aspect-ratio/define": {
+      "types": "./dist/aspect-ratio/define.d.ts",
+      "development": "./src/aspect-ratio/define.ts",
+      "default": "./dist/aspect-ratio/define.js"
     }
   },
   "scripts": {

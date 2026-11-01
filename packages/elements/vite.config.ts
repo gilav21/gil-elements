@@ -47,6 +47,8 @@ export default defineConfig({
                 'textarea/define': 'src/textarea/define.ts',
                 'radio-group/index': 'src/radio-group/index.ts',
                 'radio-group/define': 'src/radio-group/define.ts',
+                'aspect-ratio/index': 'src/aspect-ratio/index.ts',
+                'aspect-ratio/define': 'src/aspect-ratio/define.ts',
             },
             formats: ['es'],
         },

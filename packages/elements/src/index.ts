@@ -18,3 +18,4 @@ export * from './switch/index.js';
 export * from './toggle/index.js';
 export * from './textarea/index.js';
 export * from './radio-group/index.js';
+export * from './aspect-ratio/index.js';

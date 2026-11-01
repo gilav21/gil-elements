@@ -1,0 +1,7 @@
+:host {
+    display: contents;
+}
+.box {
+    position: relative;
+    width: 100%;
+}
