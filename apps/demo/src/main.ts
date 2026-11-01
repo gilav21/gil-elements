@@ -115,11 +115,11 @@ function toggle(id: string, apply: (on: boolean) => void) {
         apply(on);
     });
 }
-// The tokens match `.dark` or `[data-theme="dark"]`. A host page that embeds this one (an artifact viewer,
-// say) may already have put its own theme on the root, so the button follows what is actually applied
+// The tokens match `.dark` or `[data-theme="dark"]`. A host page that embeds this one (the artifact viewer
+// sets `data-theme="dark"` on the root) may already have put its own theme there, so the button follows what is actually applied
 // instead of keeping its own flag, and the theme is set on the body too in case the root's class is rewritten.
 const themeButton = document.getElementById('theme')!;
-const isDark = () => root.classList.contains('dark') || document.body.classList.contains('dark');
+const isDark = () => [root, document.body].some((el) => el.classList.contains('dark') || el.dataset.theme === 'dark');
 function showTheme() {
     const on = isDark();
     themeButton.setAttribute('aria-pressed', String(on));
@@ -134,7 +134,7 @@ themeButton.addEventListener('click', () => {
     root.style.colorScheme = on ? 'dark' : 'light';
     showTheme();
 });
-new MutationObserver(showTheme).observe(root, { attributes: true, attributeFilter: ['class'] });
+new MutationObserver(showTheme).observe(root, { attributes: true, attributeFilter: ['class', 'data-theme'] });
 showTheme();
 toggle('rtl', (on) => root.setAttribute('dir', on ? 'rtl' : 'ltr'));
 
