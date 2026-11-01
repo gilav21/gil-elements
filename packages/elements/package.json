@@ -277,6 +277,16 @@
       "types": "./dist/collapsible/define.d.ts",
       "development": "./src/collapsible/define.ts",
       "default": "./dist/collapsible/define.js"
+    },
+    "./accordion": {
+      "types": "./dist/accordion/index.d.ts",
+      "development": "./src/accordion/index.ts",
+      "default": "./dist/accordion/index.js"
+    },
+    "./accordion/define": {
+      "types": "./dist/accordion/define.d.ts",
+      "development": "./src/accordion/define.ts",
+      "default": "./dist/accordion/define.js"
     }
   },
   "scripts": {

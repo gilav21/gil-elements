@@ -319,3 +319,14 @@ ui-toggle-group-item {
         height: calc(2.5rem * var(--_d));
     }
 }
+
+/* shadcn-angular accordion-trigger.component.css (accordion-item.component.css carries the same rule) */
+ui-accordion-item,
+ui-accordion-trigger {
+    --_d: var(--density-accordion, var(--density, 1));
+}
+@layer components {
+    [data-slot="accordion-trigger"] {
+        padding-block: calc(1rem * var(--_d));
+    }
+}

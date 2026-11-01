@@ -59,6 +59,8 @@ export default defineConfig({
                 'toggle-group/define': 'src/toggle-group/define.ts',
                 'collapsible/index': 'src/collapsible/index.ts',
                 'collapsible/define': 'src/collapsible/define.ts',
+                'accordion/index': 'src/accordion/index.ts',
+                'accordion/define': 'src/accordion/define.ts',
             },
             formats: ['es'],
         },

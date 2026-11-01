@@ -1,4 +1,6 @@
 {
+  "accordion/define.js": 240,
+  "accordion/index.js": 130,
   "alert/define.js": 170,
   "alert/index.js": 110,
   "aspect-ratio/define.js": 170,
@@ -15,6 +17,7 @@
   "card/index.js": 140,
   "checkbox/define.js": 150,
   "checkbox/index.js": 80,
+  "chunks/accordion-trigger.js": 2200,
   "chunks/alert-title.js": 900,
   "chunks/aria-refs.js": 200,
   "chunks/aspect-ratio.js": 430,
@@ -49,7 +52,7 @@
   "collapsible/index.js": 120,
   "empty/define.js": 210,
   "empty/index.js": 140,
-  "index.js": 820,
+  "index.js": 880,
   "input/define.js": 150,
   "input/index.js": 80,
   "kbd/define.js": 180,

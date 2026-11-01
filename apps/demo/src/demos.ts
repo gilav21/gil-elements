@@ -970,6 +970,56 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'accordion',
+        group: 'Rung 3 · Interactive',
+        name: 'Accordion',
+        tag: 'ge-accordion',
+        description: 'A stack of items that each open to reveal a panel. Quick form from attributes, or design the trigger and panel yourself.',
+        examples: [
+            {
+                title: 'Quick form',
+                block: true,
+                html: `<ge-accordion value="a" style="width:24rem">
+  <ge-accordion-item value="a" heading="Is it accessible?" content="Yes. Every trigger is a real button with its expanded state."></ge-accordion-item>
+  <ge-accordion-item value="b" heading="Is it styled?" content="Yes. It matches the other components."></ge-accordion-item>
+  <ge-accordion-item value="c" heading="Is it animated?" content="No, it simply shows and hides."></ge-accordion-item>
+</ge-accordion>`,
+            },
+            {
+                title: 'Custom trigger and panel',
+                note: 'Project a ge-accordion-trigger and ge-accordion-content to put anything inside.',
+                block: true,
+                html: `<ge-accordion type="multiple" value="a,b" style="width:24rem">
+  <ge-accordion-item value="a">
+    <ge-accordion-trigger>Shipping <ge-badge variant="secondary">New</ge-badge></ge-accordion-trigger>
+    <ge-accordion-content>Free over $50, two to four days.</ge-accordion-content>
+  </ge-accordion-item>
+  <ge-accordion-item value="b">
+    <ge-accordion-trigger>Returns</ge-accordion-trigger>
+    <ge-accordion-content><ge-button size="sm" variant="outline">Start a return</ge-button></ge-accordion-content>
+  </ge-accordion-item>
+</ge-accordion>`,
+            },
+            {
+                title: 'Always one open, and loading',
+                block: true,
+                html: `<ge-accordion value="a" collapsible="false" style="width:24rem">
+  <ge-accordion-item value="a" heading="Pressing me again does nothing" content="One item always stays open."></ge-accordion-item>
+  <ge-accordion-item value="b" heading="Another one" content="Opening it closes the first."></ge-accordion-item>
+  <ge-accordion-item value="c" skeleton></ge-accordion-item>
+</ge-accordion>`,
+            },
+        ],
+        api: [
+            { name: 'type', type: "'single' | 'multiple'", default: "'single'", description: 'One item open at a time, or any number.' },
+            { name: 'value', type: 'string[]', default: '[]', description: 'Values of the open items; in the attribute a comma-separated list. In single mode only the first counts.' },
+            { name: 'collapsible', type: 'boolean', default: 'true', description: 'Single mode: whether pressing the open item closes it. Write collapsible="false" to keep one open.' },
+            { name: 'change', type: 'event', default: '-', description: 'After the user opens or closes an item; read value.' },
+            { name: 'item: value / heading / content / skeleton', type: 'string / boolean', default: '-', description: 'On ge-accordion-item. heading and content are the quick form; skeleton shows a placeholder row.' },
+            { name: '--density-accordion', type: 'css', default: '1', description: 'Trigger padding multiplier; falls back to --density.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',
