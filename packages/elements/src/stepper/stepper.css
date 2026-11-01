@@ -1,0 +1,17 @@
+:host {
+    display: block;
+}
+ol {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+ol[data-orientation="horizontal"] {
+    flex-direction: row;
+    align-items: flex-start;
+    overflow-x: auto;
+}
+ol[data-orientation="vertical"] {
+    flex-direction: column;
+}

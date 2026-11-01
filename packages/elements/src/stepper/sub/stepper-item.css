@@ -1,0 +1,25 @@
+:host {
+    display: contents;
+}
+.item {
+    display: flex;
+    flex-shrink: 0;
+}
+.item[data-orientation="horizontal"] {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+.item[data-orientation="vertical"] {
+    flex-direction: row;
+    gap: 1rem;
+}
+.connector {
+    flex: 1 1 0%;
+    height: 0.125rem;
+    margin-top: 1rem;
+    background-color: var(--border);
+}
+.connector[data-status="complete"] {
+    background-color: var(--primary);
+}

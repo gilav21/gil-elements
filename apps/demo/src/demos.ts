@@ -1144,6 +1144,70 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'stepper',
+        group: 'Rung 3 · Interactive',
+        name: 'Stepper',
+        tag: 'ge-stepper',
+        description: 'A row or column of steps. It tracks which are complete, current and pending, and each step can carry its own panel.',
+        examples: [
+            {
+                title: 'With panels',
+                note: 'Click a step to jump; the Next and Back buttons call `nextStep()` and `prevStep()`.',
+                block: true,
+                html: `<ge-stepper id="st-demo" active-step="0">
+  <ge-stepper-item value="account"><ge-stepper-trigger><ge-stepper-title>Account</ge-stepper-title><ge-stepper-description>Create your login</ge-stepper-description></ge-stepper-trigger><ge-stepper-content>Pick a username and a password.</ge-stepper-content></ge-stepper-item>
+  <ge-stepper-item value="profile"><ge-stepper-trigger><ge-stepper-title>Profile</ge-stepper-title><ge-stepper-description>Tell us about you</ge-stepper-description></ge-stepper-trigger><ge-stepper-content>Add a name and a photo.</ge-stepper-content></ge-stepper-item>
+  <ge-stepper-item value="done"><ge-stepper-trigger><ge-stepper-title>Done</ge-stepper-title></ge-stepper-trigger><ge-stepper-content>You are all set.</ge-stepper-content></ge-stepper-item>
+</ge-stepper>
+<div style="display:flex;gap:0.5rem;margin-top:1rem">
+  <ge-button variant="outline" onclick="document.getElementById('st-demo').prevStep()">Back</ge-button>
+  <ge-button onclick="document.getElementById('st-demo').nextStep()">Next</ge-button>
+</div>`,
+            },
+            {
+                title: 'Vertical',
+                block: true,
+                html: `<ge-stepper orientation="vertical" active-step="1">
+  <ge-stepper-item value="a"><ge-stepper-trigger><ge-stepper-title>Order placed</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+  <ge-stepper-item value="b"><ge-stepper-trigger><ge-stepper-title>Packed</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+  <ge-stepper-item value="c"><ge-stepper-trigger><ge-stepper-title>Shipped</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+</ge-stepper>`,
+            },
+            {
+                title: 'Linear',
+                note: 'Steps ahead are disabled; only Next moves forward.',
+                block: true,
+                html: `<ge-stepper id="st-linear" linear active-step="0">
+  <ge-stepper-item value="a"><ge-stepper-trigger><ge-stepper-title>Cart</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+  <ge-stepper-item value="b"><ge-stepper-trigger><ge-stepper-title>Address</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+  <ge-stepper-item value="c"><ge-stepper-trigger><ge-stepper-title>Payment</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+</ge-stepper>
+<ge-button style="margin-top:1rem" onclick="document.getElementById('st-linear').nextStep()">Next</ge-button>`,
+            },
+            {
+                title: 'Quick form with a guard',
+                note: 'Set `steps` and `canLeave` from script. The guard may return a promise; every step is disabled while it decides.',
+                block: true,
+                html: `<ge-stepper id="st-quick" active-step="0"></ge-stepper>
+<script>
+const s = document.getElementById('st-quick');
+s.steps = [{ value: 'a', title: 'Details', description: 'Needs a check' }, { value: 'b', title: 'Review' }, { value: 'c', title: 'Finish' }];
+s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(true), 800));
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'active-step', type: 'number', default: '0', description: 'Index of the current step; earlier ones are complete.' },
+            { name: 'orientation', type: "'horizontal' | 'vertical'", default: "'horizontal'", description: 'Row with connectors, or column.' },
+            { name: 'linear', type: 'boolean', default: 'false', description: 'Steps ahead of the current one cannot be jumped to; `nextStep()` still advances.' },
+            { name: 'steps', type: '{ value, title, description? }[]', default: '-', description: 'Property only. Quick form; leave empty to project `ge-stepper-item`s.' },
+            { name: 'canLeave', type: '(from, to) => boolean | Promise<boolean>', default: '-', description: 'Property only. Runs before every move that changes the step. A refusal, a throw or a rejection fires `step-blocked`.' },
+            { name: 'goToStep(i) / nextStep() / prevStep()', type: 'methods', default: '-', description: 'Move programmatically. `nextStep` and `prevStep` stop at the ends.' },
+            { name: 'step-change / step-blocked', type: 'event', default: '-', description: 'detail is the new index, or `{ from, to }` when the guard refused.' },
+            { name: 'guardPending', type: 'boolean', default: 'false', description: 'True while an async guard is deciding.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

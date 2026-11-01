@@ -67,6 +67,8 @@ export default defineConfig({
                 'breadcrumb/define': 'src/breadcrumb/define.ts',
                 'pagination/index': 'src/pagination/index.ts',
                 'pagination/define': 'src/pagination/define.ts',
+                'stepper/index': 'src/stepper/index.ts',
+                'stepper/define': 'src/stepper/define.ts',
             },
             formats: ['es'],
         },

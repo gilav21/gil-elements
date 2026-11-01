@@ -317,6 +317,16 @@
       "types": "./dist/pagination/define.d.ts",
       "development": "./src/pagination/define.ts",
       "default": "./dist/pagination/define.js"
+    },
+    "./stepper": {
+      "types": "./dist/stepper/index.d.ts",
+      "development": "./src/stepper/index.ts",
+      "default": "./dist/stepper/index.js"
+    },
+    "./stepper/define": {
+      "types": "./dist/stepper/define.d.ts",
+      "development": "./src/stepper/define.ts",
+      "default": "./dist/stepper/define.js"
     }
   },
   "scripts": {
