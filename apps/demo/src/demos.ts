@@ -667,6 +667,49 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'slider',
+        group: 'Rung 3 · Interactive',
+        name: 'Slider',
+        tag: 'ge-slider',
+        description: 'Pick a number by dragging or pressing the track, with a mouse or a finger. The keys work too.',
+        examples: [
+            {
+                title: 'Basic',
+                html: `<ge-slider value="40" aria-label="Volume" style="max-width:20rem"></ge-slider>`,
+                block: true,
+            },
+            {
+                title: 'Range and step',
+                note: 'The value always snaps onto the grid: here 5, 7.5, 10, 12.5 or 15.',
+                html: `<ge-slider min="5" max="15" step="2.5" value="10" aria-label="Temperature" style="max-width:20rem"></ge-slider>`,
+                block: true,
+            },
+            {
+                title: 'Disabled',
+                html: `<ge-slider value="60" disabled aria-label="Locked" style="max-width:20rem"></ge-slider>`,
+                block: true,
+            },
+            {
+                title: 'Labelled from elsewhere',
+                note: 'Arrow keys step, PageUp and PageDown move ten steps, Home and End jump to the ends.',
+                html: `<div style="display:grid;gap:.5rem;max-width:20rem;width:100%">
+  <ge-label for="bright">Brightness</ge-label>
+  <ge-slider id="bright" value="70"></ge-slider>
+</div>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number', default: '0', description: 'Current value, shown snapped to the grid and clamped to the range.' },
+            { name: 'min / max / step', type: 'number', default: '0 / 100 / 1', description: 'Range and grid spacing.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks interaction and dims it.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submitted with the form.' },
+            { name: 'locale', type: 'string', default: 'page language', description: 'BCP 47 tag for the spoken value.' },
+            { name: 'aria-label / aria-labelledby', type: 'string', default: '-', description: 'Accessible name; labelledby takes an id from the host tree.' },
+            { name: 'input / change', type: 'event', default: '-', description: 'input on every change including dragging; change when the pointer is released or a key is pressed.' },
+        ],
+    },
+    {
         id: 'switch',
         group: 'Rung 3 · Interactive',
         name: 'Switch',

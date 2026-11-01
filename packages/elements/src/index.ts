@@ -20,3 +20,4 @@ export * from './textarea/index.js';
 export * from './radio-group/index.js';
 export * from './aspect-ratio/index.js';
 export * from './rating/index.js';
+export * from './slider/index.js';

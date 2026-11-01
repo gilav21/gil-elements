@@ -51,6 +51,8 @@ export default defineConfig({
                 'aspect-ratio/define': 'src/aspect-ratio/define.ts',
                 'rating/index': 'src/rating/index.ts',
                 'rating/define': 'src/rating/define.ts',
+                'slider/index': 'src/slider/index.ts',
+                'slider/define': 'src/slider/define.ts',
             },
             formats: ['es'],
         },

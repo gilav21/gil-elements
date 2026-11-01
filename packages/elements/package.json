@@ -237,6 +237,16 @@
       "types": "./dist/rating/define.d.ts",
       "development": "./src/rating/define.ts",
       "default": "./dist/rating/define.js"
+    },
+    "./slider": {
+      "types": "./dist/slider/index.d.ts",
+      "development": "./src/slider/index.ts",
+      "default": "./dist/slider/index.js"
+    },
+    "./slider/define": {
+      "types": "./dist/slider/define.d.ts",
+      "development": "./src/slider/define.ts",
+      "default": "./dist/slider/define.js"
     }
   },
   "scripts": {
