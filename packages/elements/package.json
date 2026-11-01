@@ -287,6 +287,16 @@
       "types": "./dist/accordion/define.d.ts",
       "development": "./src/accordion/define.ts",
       "default": "./dist/accordion/define.js"
+    },
+    "./tabs": {
+      "types": "./dist/tabs/index.d.ts",
+      "development": "./src/tabs/index.ts",
+      "default": "./dist/tabs/index.js"
+    },
+    "./tabs/define": {
+      "types": "./dist/tabs/define.d.ts",
+      "development": "./src/tabs/define.ts",
+      "default": "./dist/tabs/define.js"
     }
   },
   "scripts": {

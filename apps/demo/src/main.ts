@@ -23,6 +23,7 @@ import '@gilav21/elements/number-input/define';
 import '@gilav21/elements/toggle-group/define';
 import '@gilav21/elements/collapsible/define';
 import '@gilav21/elements/accordion/define';
+import '@gilav21/elements/tabs/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

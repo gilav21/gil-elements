@@ -25,3 +25,4 @@ import '../packages/elements/src/number-input/define.js';
 import '../packages/elements/src/toggle-group/define.js';
 import '../packages/elements/src/collapsible/define.js';
 import '../packages/elements/src/accordion/define.js';
+import '../packages/elements/src/tabs/define.js';

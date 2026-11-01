@@ -1,0 +1,7 @@
+/* shadcn-angular tabs: the host draws nothing; the wrapper fills the width. */
+:host {
+    display: contents;
+}
+.tabs {
+    width: 100%;
+}

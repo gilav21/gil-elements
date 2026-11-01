@@ -1020,6 +1020,44 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'tabs',
+        group: 'Rung 3 · Interactive',
+        name: 'Tabs',
+        tag: 'ge-tabs',
+        description: 'Tabbed panels. Only the panel of the active tab is rendered.',
+        examples: [
+            {
+                title: 'Template form',
+                block: true,
+                html: `<ge-tabs value="account" style="width:24rem">
+  <ge-tabs-list aria-label="Settings">
+    <ge-tabs-trigger value="account">Account</ge-tabs-trigger>
+    <ge-tabs-trigger value="password">Password</ge-tabs-trigger>
+    <ge-tabs-trigger value="team">Team</ge-tabs-trigger>
+  </ge-tabs-list>
+  <ge-tabs-content value="account">Make changes to your account here.</ge-tabs-content>
+  <ge-tabs-content value="password">Change your password here.</ge-tabs-content>
+  <ge-tabs-content value="team">Invite your team.</ge-tabs-content>
+</ge-tabs>`,
+            },
+            {
+                title: 'Loading',
+                note: 'A skeleton list stands in for the triggers.',
+                block: true,
+                html: `<ge-tabs style="width:24rem"><ge-tabs-list skeleton skeleton-count="3"></ge-tabs-list></ge-tabs>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string', default: "''", description: 'The active tab. With tabs set and no value, the first tab is active.' },
+            { name: 'tabs', type: 'property', default: '-', description: 'Data-driven mode: { value, label, content?, disabled? }[]. content is plain text.' },
+            { name: 'tab-change', type: 'event', default: '-', description: 'When the user picks a tab; detail is its value.' },
+            { name: 'trigger: value / disabled', type: 'string / boolean', default: '-', description: 'On ge-tabs-trigger. value names the panel it opens.' },
+            { name: 'content: value', type: 'string', default: '-', description: 'On ge-tabs-content: the tab the panel belongs to.' },
+            { name: 'list: aria-label / skeleton / skeleton-count', type: 'string / boolean / number', default: '- / false / 3', description: 'On ge-tabs-list.' },
+            { name: '--density-tabs', type: 'css', default: '1', description: 'Trigger padding multiplier; falls back to --density.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

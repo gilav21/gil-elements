@@ -25,3 +25,4 @@ export * from './number-input/index.js';
 export * from './toggle-group/index.js';
 export * from './collapsible/index.js';
 export * from './accordion/index.js';
+export * from './tabs/index.js';

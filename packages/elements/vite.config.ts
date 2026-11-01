@@ -61,6 +61,8 @@ export default defineConfig({
                 'collapsible/define': 'src/collapsible/define.ts',
                 'accordion/index': 'src/accordion/index.ts',
                 'accordion/define': 'src/accordion/define.ts',
+                'tabs/index': 'src/tabs/index.ts',
+                'tabs/define': 'src/tabs/define.ts',
             },
             formats: ['es'],
         },

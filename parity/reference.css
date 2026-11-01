@@ -330,3 +330,14 @@ ui-accordion-trigger {
         padding-block: calc(1rem * var(--_d));
     }
 }
+
+/* shadcn-angular tabs-trigger.component.css */
+ui-tabs-trigger {
+    --_d: var(--density-tabs, var(--density, 1));
+}
+@layer components {
+    [data-slot="tabs-trigger"] {
+        padding-inline: calc(0.75rem * var(--_d));
+        padding-block: calc(0.25rem * var(--_d));
+    }
+}
