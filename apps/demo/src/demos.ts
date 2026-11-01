@@ -710,6 +710,46 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'number-input',
+        group: 'Rung 3 · Interactive',
+        name: 'Number Input',
+        tag: 'ge-number-input',
+        description: 'A number field with stepping. Arrow Up and Down step it, so does the mouse wheel while it has focus, and blur clamps it to the limits.',
+        examples: [
+            {
+                title: 'Basic',
+                html: `<ge-number-input value="42" aria-label="Quantity" style="max-width:12rem"></ge-number-input>`,
+                block: true,
+            },
+            {
+                title: 'Limits and step',
+                note: 'Type 99 and leave the field: it clamps to 10. Arrow keys move in steps of 2.5.',
+                html: `<ge-number-input min="0" max="10" step="2.5" value="5" aria-label="Rating" style="max-width:12rem"></ge-number-input>`,
+                block: true,
+            },
+            {
+                title: 'Variants',
+                html: `<ge-number-input variant="underline" value="3" aria-label="Underline" style="max-width:12rem"></ge-number-input>
+<ge-number-input variant="ghost" value="3" aria-label="Ghost" style="max-width:12rem"></ge-number-input>`,
+                block: true,
+            },
+            {
+                title: 'Disabled',
+                html: `<ge-number-input value="7" disabled aria-label="Locked" style="max-width:12rem"></ge-number-input>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number | null', default: 'null', description: 'Current value; empty is null, which steps from 0.' },
+            { name: 'min / max / step', type: 'number', default: '- / - / 1', description: 'Limits and step size. Blur clamps to the limits.' },
+            { name: 'placeholder', type: 'string', default: "'0'", description: 'Hint shown while empty.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks editing and dims it.' },
+            { name: 'name / locale', type: 'string', default: '-', description: 'Form field name; BCP 47 tag for the decimal separator.' },
+            { name: 'increment() / decrement()', type: 'method', default: '-', description: 'Step programmatically.' },
+        ],
+    },
+    {
         id: 'switch',
         group: 'Rung 3 · Interactive',
         name: 'Switch',

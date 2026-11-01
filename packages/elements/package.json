@@ -247,6 +247,16 @@
       "types": "./dist/slider/define.d.ts",
       "development": "./src/slider/define.ts",
       "default": "./dist/slider/define.js"
+    },
+    "./number-input": {
+      "types": "./dist/number-input/index.d.ts",
+      "development": "./src/number-input/index.ts",
+      "default": "./dist/number-input/index.js"
+    },
+    "./number-input/define": {
+      "types": "./dist/number-input/define.d.ts",
+      "development": "./src/number-input/define.ts",
+      "default": "./dist/number-input/define.js"
     }
   },
   "scripts": {

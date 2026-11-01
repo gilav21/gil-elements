@@ -21,3 +21,4 @@ export * from './radio-group/index.js';
 export * from './aspect-ratio/index.js';
 export * from './rating/index.js';
 export * from './slider/index.js';
+export * from './number-input/index.js';

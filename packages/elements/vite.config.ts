@@ -53,6 +53,8 @@ export default defineConfig({
                 'rating/define': 'src/rating/define.ts',
                 'slider/index': 'src/slider/index.ts',
                 'slider/define': 'src/slider/define.ts',
+                'number-input/index': 'src/number-input/index.ts',
+                'number-input/define': 'src/number-input/define.ts',
             },
             formats: ['es'],
         },
