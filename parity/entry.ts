@@ -29,3 +29,4 @@ import '../packages/elements/src/tabs/define.js';
 import '../packages/elements/src/breadcrumb/define.js';
 import '../packages/elements/src/pagination/define.js';
 import '../packages/elements/src/stepper/define.js';
+import '../packages/elements/src/timeline/define.js';

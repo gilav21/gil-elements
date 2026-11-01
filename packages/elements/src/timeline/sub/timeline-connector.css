@@ -1,0 +1,10 @@
+:host {
+    display: contents;
+}
+div {
+    position: absolute;
+    top: 1.5rem;
+    width: 0.125rem;
+    height: calc(100% - 24px);
+    background-color: var(--border);
+}

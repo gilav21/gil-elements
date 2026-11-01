@@ -69,6 +69,8 @@ export default defineConfig({
                 'pagination/define': 'src/pagination/define.ts',
                 'stepper/index': 'src/stepper/index.ts',
                 'stepper/define': 'src/stepper/define.ts',
+                'timeline/index': 'src/timeline/index.ts',
+                'timeline/define': 'src/timeline/define.ts',
             },
             formats: ['es'],
         },

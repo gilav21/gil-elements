@@ -1,0 +1,9 @@
+:host {
+    display: contents;
+}
+h4 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1;
+}

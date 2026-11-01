@@ -1208,6 +1208,65 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
         ],
     },
     {
+        id: 'timeline',
+        group: 'Rung 3 · Interactive',
+        name: 'Timeline',
+        tag: 'ge-timeline',
+        description: 'Events in order. Give each item a heading, description and time, or slot the dot, line and text yourself.',
+        examples: [
+            {
+                title: 'Simple mode',
+                block: true,
+                html: `<ge-timeline>
+  <ge-timeline-item heading="Version 2.0 released" description="Major update with new features." time="January 2024" variant="success"></ge-timeline-item>
+  <ge-timeline-item heading="Beta started" description="Invited the first testers." time="November 2023" variant="filled"></ge-timeline-item>
+  <ge-timeline-item heading="Build failed" time="October 2023" variant="error"></ge-timeline-item>
+  <ge-timeline-item heading="Kickoff" time="September 2023"></ge-timeline-item>
+</ge-timeline>`,
+            },
+            {
+                title: 'Dot variants',
+                block: true,
+                html: `<ge-timeline>
+  <ge-timeline-item heading="default"></ge-timeline-item>
+  <ge-timeline-item heading="filled" variant="filled"></ge-timeline-item>
+  <ge-timeline-item heading="outline" variant="outline"></ge-timeline-item>
+  <ge-timeline-item heading="success" variant="success"></ge-timeline-item>
+  <ge-timeline-item heading="error" variant="error"></ge-timeline-item>
+  <ge-timeline-item heading="warning" variant="warning" hide-connector></ge-timeline-item>
+</ge-timeline>`,
+            },
+            {
+                title: 'Custom mode',
+                note: 'Slot a header and content to take over. An icon in the dot works too.',
+                block: true,
+                html: `<ge-timeline>
+  <ge-timeline-item>
+    <ge-timeline-header>
+      <ge-timeline-dot variant="filled"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></ge-timeline-dot>
+      <ge-timeline-connector></ge-timeline-connector>
+    </ge-timeline-header>
+    <ge-timeline-content>
+      <ge-timeline-title>Deployed</ge-timeline-title>
+      <ge-timeline-description>Rolled out to every region.</ge-timeline-description>
+      <ge-timeline-time>Today</ge-timeline-time>
+    </ge-timeline-content>
+  </ge-timeline-item>
+  <ge-timeline-item>
+    <ge-timeline-header><ge-timeline-dot variant="outline"></ge-timeline-dot></ge-timeline-header>
+    <ge-timeline-content><ge-timeline-title>Queued</ge-timeline-title></ge-timeline-content>
+  </ge-timeline-item>
+</ge-timeline>`,
+            },
+        ],
+        api: [
+            { name: 'orientation', type: "'vertical' | 'horizontal'", default: "'vertical'", description: 'Direction the items are laid out.' },
+            { name: 'item: heading / description / time', type: 'string', default: "''", description: 'Simple mode text. `heading` rather than `title`, which would show a browser tooltip.' },
+            { name: 'item: variant', type: "'default' | 'filled' | 'outline' | 'success' | 'error' | 'warning'", default: "'default'", description: 'Colour of the dot in simple mode. Also an attribute of `ge-timeline-dot`.' },
+            { name: 'item: hide-connector', type: 'boolean', default: 'false', description: 'Simple mode: no line under the dot.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

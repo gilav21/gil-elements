@@ -1,0 +1,41 @@
+:host {
+    display: contents;
+}
+div {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 2px solid var(--border);
+    border-radius: 9999px;
+    background-color: var(--background);
+}
+div[data-variant="filled"] {
+    border-color: var(--primary);
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+}
+div[data-variant="outline"] {
+    border-color: var(--primary);
+}
+/* The palette has no success or warning roles, so these are fixed colours like the Angular dots. */
+div[data-variant="success"] {
+    border-color: oklch(0.723 0.219 149.579);
+    background-color: oklch(0.723 0.219 149.579);
+    color: #fff;
+}
+div[data-variant="error"] {
+    border-color: var(--destructive);
+    background-color: var(--destructive);
+    color: var(--destructive-foreground);
+}
+div[data-variant="warning"] {
+    border-color: oklch(0.795 0.184 86.047);
+    background-color: oklch(0.795 0.184 86.047);
+    color: #fff;
+}
