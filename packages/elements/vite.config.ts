@@ -43,6 +43,8 @@ export default defineConfig({
                 'switch/define': 'src/switch/define.ts',
                 'toggle/index': 'src/toggle/index.ts',
                 'toggle/define': 'src/toggle/define.ts',
+                'textarea/index': 'src/textarea/index.ts',
+                'textarea/define': 'src/textarea/define.ts',
             },
             formats: ['es'],
         },

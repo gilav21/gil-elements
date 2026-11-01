@@ -676,6 +676,57 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'textarea',
+        group: 'Rung 3 · Interactive',
+        name: 'Textarea',
+        tag: 'ge-textarea',
+        description: 'A multi-line text field. The native textarea lives inside, so typing, selection and resizing stay native.',
+        examples: [
+            {
+                title: 'Variants',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:20rem">
+  <ge-textarea placeholder="Outline (default)"></ge-textarea>
+  <ge-textarea variant="underline" placeholder="Underline"></ge-textarea>
+  <ge-textarea variant="ghost" placeholder="Ghost"></ge-textarea>
+</div>`,
+            },
+            {
+                title: 'Rows and value',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:20rem">
+  <ge-textarea rows="6" placeholder="Six lines"></ge-textarea>
+  <ge-textarea value="First line&#10;Second line"></ge-textarea>
+</div>`,
+            },
+            {
+                title: 'States',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:20rem">
+  <ge-textarea disabled value="Locked"></ge-textarea>
+  <ge-textarea skeleton></ge-textarea>
+</div>`,
+            },
+            {
+                title: 'Labelled',
+                note: 'A ge-label anywhere in the page names it and focuses it.',
+                block: true,
+                html: `<div style="display:grid;gap:.5rem;width:20rem">
+  <ge-label for="bio">Biography</ge-label>
+  <ge-textarea id="bio" placeholder="Tell us a little about yourself"></ge-textarea>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'value / name', type: 'string', default: "''", description: 'Current text; with a name it is submitted with the form.' },
+            { name: 'placeholder', type: 'string', default: "''", description: 'Hint shown while empty.' },
+            { name: 'rows', type: 'number', default: '3', description: 'Visible lines.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment; underline and ghost cannot be resized.' },
+            { name: 'disabled / skeleton', type: 'boolean', default: 'false', description: 'Blocks editing / shows a placeholder.' },
+            { name: 'aria-label, aria-labelledby, aria-describedby', type: 'string', default: '-', description: 'Resolved for the inner textarea, across the shadow boundary.' },
+        ],
+    },
+    {
         id: 'button-group',
         group: 'Rung 3 · Interactive',
         name: 'Button group',

@@ -32,10 +32,11 @@
   "chunks/skeleton.js": 620,
   "chunks/spinner.js": 1500,
   "chunks/switch.js": 1740,
+  "chunks/textarea.js": 1730,
   "chunks/toggle.js": 1290,
   "empty/define.js": 210,
   "empty/index.js": 140,
-  "index.js": 580,
+  "index.js": 700,
   "input/define.js": 150,
   "input/index.js": 80,
   "kbd/define.js": 180,
@@ -54,6 +55,8 @@
   "spinner/index.js": 120,
   "switch/define.js": 150,
   "switch/index.js": 80,
+  "textarea/define.js": 150,
+  "textarea/index.js": 80,
   "toggle/define.js": 150,
   "toggle/index.js": 80
 }

@@ -16,3 +16,4 @@ export * from './spinner/index.js';
 export * from './progress/index.js';
 export * from './switch/index.js';
 export * from './toggle/index.js';
+export * from './textarea/index.js';

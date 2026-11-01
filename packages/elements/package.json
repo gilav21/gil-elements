@@ -197,6 +197,16 @@
       "types": "./dist/toggle/define.d.ts",
       "development": "./src/toggle/define.ts",
       "default": "./dist/toggle/define.js"
+    },
+    "./textarea": {
+      "types": "./dist/textarea/index.d.ts",
+      "development": "./src/textarea/index.ts",
+      "default": "./dist/textarea/index.js"
+    },
+    "./textarea/define": {
+      "types": "./dist/textarea/define.d.ts",
+      "development": "./src/textarea/define.ts",
+      "default": "./dist/textarea/define.js"
     }
   },
   "scripts": {
