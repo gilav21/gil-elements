@@ -1182,7 +1182,7 @@ export const demos: Demo[] = [
   <ge-stepper-item value="b"><ge-stepper-trigger><ge-stepper-title>Address</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
   <ge-stepper-item value="c"><ge-stepper-trigger><ge-stepper-title>Payment</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
 </ge-stepper>
-<ge-button style="margin-top:1rem" onclick="document.getElementById('st-linear').nextStep()">Next</ge-button>`,
+<div style="margin-top:1rem"><ge-button onclick="document.getElementById('st-linear').nextStep()">Next</ge-button></div>`,
             },
             {
                 title: 'Quick form with a guard',
