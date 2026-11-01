@@ -1267,6 +1267,69 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
         ],
     },
     {
+        id: 'dialog',
+        group: 'Rung 4 · Overlays',
+        name: 'Dialog',
+        tag: 'ge-dialog',
+        description: 'A modal box over the page. Wrap a trigger and a content in `ge-dialog`; it locks page scroll, keeps focus inside, and closes on Escape, the overlay or the close button.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: '`heading` and `description` generate the header. Focus returns to the button when it closes.',
+                block: true,
+                html: `<ge-dialog>
+  <ge-dialog-trigger><ge-button variant="outline">Edit profile</ge-button></ge-dialog-trigger>
+  <ge-dialog-content heading="Edit profile" description="Make changes to your profile here.">
+    <ge-input aria-label="Name" placeholder="Your name"></ge-input>
+    <ge-dialog-footer>
+      <ge-button id="dlg-save">Save changes</ge-button>
+    </ge-dialog-footer>
+  </ge-dialog-content>
+</ge-dialog>
+<script>document.getElementById('dlg-save').addEventListener('click', (e) => e.target.closest('ge-dialog').hide());</script>`,
+            },
+            {
+                title: 'Custom mode',
+                note: 'Slot a header, title, description and footer for full control.',
+                block: true,
+                html: `<ge-dialog>
+  <ge-dialog-trigger><ge-button variant="destructive">Delete project</ge-button></ge-dialog-trigger>
+  <ge-dialog-content>
+    <ge-dialog-header>
+      <ge-dialog-title>Delete this project?</ge-dialog-title>
+      <ge-dialog-description>All its files are removed. This cannot be undone.</ge-dialog-description>
+    </ge-dialog-header>
+    <ge-dialog-footer>
+      <ge-button variant="outline" onclick="this.closest('ge-dialog').hide()">Cancel</ge-button>
+      <ge-button variant="destructive" onclick="this.closest('ge-dialog').hide()">Delete</ge-button>
+    </ge-dialog-footer>
+  </ge-dialog-content>
+</ge-dialog>`,
+            },
+            {
+                title: 'Nested',
+                note: 'Escape closes the inner dialog first.',
+                block: true,
+                html: `<ge-dialog>
+  <ge-dialog-trigger><ge-button variant="outline">Open outer</ge-button></ge-dialog-trigger>
+  <ge-dialog-content heading="Outer" description="Open another one from here.">
+    <ge-dialog>
+      <ge-dialog-trigger><ge-button>Open inner</ge-button></ge-dialog-trigger>
+      <ge-dialog-content heading="Inner" description="Press Escape to close only this one."></ge-dialog-content>
+    </ge-dialog>
+  </ge-dialog-content>
+</ge-dialog>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the dialog is showing. `show()`, `hide()` and `toggle()` also work.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'When the user opens or closes it; detail is the new state. Setting `open` yourself does not fire it.' },
+            { name: 'content: heading / description', type: 'string', default: "''", description: 'Simple mode header. `heading` rather than `title`, which would show a browser tooltip.' },
+            { name: 'content: close-label', type: 'string', default: "'Close'", description: 'Accessible name of the overlay and close button (no locale tables yet).' },
+            { name: '--density-dialog', type: 'css', default: '--density', description: 'Spacing multiplier for padding and gaps.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

@@ -71,6 +71,8 @@ export default defineConfig({
                 'stepper/define': 'src/stepper/define.ts',
                 'timeline/index': 'src/timeline/index.ts',
                 'timeline/define': 'src/timeline/define.ts',
+                'dialog/index': 'src/dialog/index.ts',
+                'dialog/define': 'src/dialog/define.ts',
             },
             formats: ['es'],
         },

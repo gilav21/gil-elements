@@ -337,6 +337,16 @@
       "types": "./dist/timeline/define.d.ts",
       "development": "./src/timeline/define.ts",
       "default": "./dist/timeline/define.js"
+    },
+    "./dialog": {
+      "types": "./dist/dialog/index.d.ts",
+      "development": "./src/dialog/index.ts",
+      "default": "./dist/dialog/index.js"
+    },
+    "./dialog/define": {
+      "types": "./dist/dialog/define.d.ts",
+      "development": "./src/dialog/define.ts",
+      "default": "./dist/dialog/define.js"
     }
   },
   "scripts": {

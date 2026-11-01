@@ -413,3 +413,28 @@ ui-pagination {
         padding-bottom: 2rem;
     }
 }
+
+/* shadcn-angular dialog-content.component.css, dialog-header.component.css, dialog-footer.component.css */
+ui-dialog-content,
+ui-dialog-header,
+ui-dialog-footer {
+    --_d: var(--density-dialog, var(--density, 1));
+}
+@layer components {
+    [data-slot="dialog-content"] {
+        gap: calc(0.75rem * var(--_d));
+        padding: calc(1rem * var(--_d));
+    }
+    [data-slot="dialog-header"] {
+        gap: calc(0.375rem * var(--_d));
+    }
+    [data-slot="dialog-footer"] {
+        gap: calc(0.5rem * var(--_d));
+    }
+    @media (min-width: 640px) {
+        [data-slot="dialog-content"] {
+            gap: calc(1rem * var(--_d));
+            padding: calc(1.5rem * var(--_d));
+        }
+    }
+}
