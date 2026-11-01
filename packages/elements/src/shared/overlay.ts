@@ -176,3 +176,30 @@ export function trapTab(event: KeyboardEvent, container: ParentNode, panel: HTML
         last.focus();
     }
 }
+
+/**
+ * Focus handling every modal shares: remember where focus was, move it into the panel on open, hold it there
+ * (Tab wraps), and give it back on close.
+ */
+export class ModalFocus {
+    private returnTo?: HTMLElement;
+
+    async enter(panel: HTMLElement): Promise<void> {
+        const previous = deepActive();
+        this.returnTo = previous instanceof HTMLElement ? previous : undefined;
+        // Elements the panel generated have not rendered their controls yet; there is nothing to focus until they have.
+        const pending = [...panel.querySelectorAll<HTMLElement & { updateComplete?: Promise<boolean> }>('*')].map((el) => el.updateComplete);
+        await Promise.all(pending);
+        if (panel.isConnected) focusFirst(panel, panel);
+    }
+
+    leave(): void {
+        this.returnTo?.focus();
+        this.returnTo = undefined;
+    }
+
+    readonly trap = (event: KeyboardEvent): void => {
+        const panel = event.currentTarget as HTMLElement;
+        trapTab(event, panel, panel);
+    };
+}

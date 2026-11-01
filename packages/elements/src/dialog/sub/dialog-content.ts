@@ -1,7 +1,7 @@
 import { html, nothing, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
 import { findParent } from '../../shared/compound.js';
-import { deepActive, focusFirst, trapTab } from '../../shared/overlay.js';
+import { ModalFocus } from '../../shared/overlay.js';
 import { DIALOG_REGISTER, type DialogHost } from '../dialog.js';
 import css from './dialog-content.css?inline';
 
@@ -37,7 +37,7 @@ export class GeDialogContent extends UiElement {
     declare closeLabel: string;
     declare slottedTitle: string;
     private dialog?: DialogHost;
-    private returnTo?: HTMLElement;
+    private readonly modal = new ModalFocus();
     private wasOpen = false;
 
     constructor() {
@@ -64,20 +64,9 @@ export class GeDialogContent extends UiElement {
         const open = this.dialog?.open ?? false;
         if (open === this.wasOpen) return;
         this.wasOpen = open;
-        if (open) this.enter();
-        else this.leave();
-    }
-
-    private enter(): void {
-        const previous = deepActive();
-        this.returnTo = previous instanceof HTMLElement ? previous : undefined;
         const panel = this.shadowRoot?.querySelector<HTMLElement>('.panel');
-        if (panel) focusFirst(panel, panel);
-    }
-
-    private leave(): void {
-        this.returnTo?.focus();
-        this.returnTo = undefined;
+        if (open && panel) this.modal.enter(panel);
+        else if (!open) this.modal.leave();
     }
 
     protected override render() {
@@ -93,7 +82,7 @@ export class GeDialogContent extends UiElement {
                 aria-label=${label || nothing}
                 data-slot="dialog-content"
                 tabindex="-1"
-                @keydown=${this.onKeydown}
+                @keydown=${this.modal.trap}
             >
                 ${this.heading ? this.generatedHeader() : nothing}
                 <slot @slotchange=${this.onSlotChange}></slot>
@@ -113,11 +102,6 @@ export class GeDialogContent extends UiElement {
     }
 
     private readonly close = () => this.dialog?.hide();
-
-    private readonly onKeydown = (event: KeyboardEvent) => {
-        const panel = event.currentTarget as HTMLElement;
-        trapTab(event, panel, panel);
-    };
 
     private readonly onSlotChange = () => {
         this.slottedTitle = this.querySelector('ge-dialog-title')?.textContent?.trim() ?? '';

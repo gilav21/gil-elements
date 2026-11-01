@@ -1330,6 +1330,48 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
         ],
     },
     {
+        id: 'alert-dialog',
+        group: 'Rung 4 · Overlays',
+        name: 'Alert Dialog',
+        tag: 'ge-alert-dialog',
+        description: 'A modal that asks for a decision. Unlike a dialog it has no close button and the overlay does not dismiss it; Escape and the two choices do.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: '`heading` and `description` generate the header; the footer gets Cancel and Continue. Listen for `action-click`.',
+                block: true,
+                html: `<ge-alert-dialog>
+  <ge-alert-dialog-trigger><ge-button variant="destructive">Delete account</ge-button></ge-alert-dialog-trigger>
+  <ge-alert-dialog-content heading="Are you absolutely sure?" description="This action cannot be undone. It permanently deletes your account." action-text="Delete" cancel-text="Keep it"></ge-alert-dialog-content>
+</ge-alert-dialog>`,
+            },
+            {
+                title: 'Custom mode',
+                block: true,
+                html: `<ge-alert-dialog>
+  <ge-alert-dialog-trigger><ge-button variant="outline">Discard draft</ge-button></ge-alert-dialog-trigger>
+  <ge-alert-dialog-content>
+    <ge-alert-dialog-header>
+      <ge-alert-dialog-title>Discard this draft?</ge-alert-dialog-title>
+      <ge-alert-dialog-description>You will lose the text you wrote.</ge-alert-dialog-description>
+    </ge-alert-dialog-header>
+    <ge-alert-dialog-footer>
+      <ge-alert-dialog-cancel>Stay</ge-alert-dialog-cancel>
+      <ge-alert-dialog-action>Discard</ge-alert-dialog-action>
+    </ge-alert-dialog-footer>
+  </ge-alert-dialog-content>
+</ge-alert-dialog>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether it is showing. `show()`, `hide()` and `toggle()` also work.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'When the user opens or closes it; detail is the new state.' },
+            { name: 'content: heading / description', type: 'string', default: "''", description: 'Simple mode header; setting `heading` also generates the footer.' },
+            { name: 'content: action-text / cancel-text', type: 'string', default: "'Continue' / 'Cancel'", description: 'Labels of the generated buttons.' },
+            { name: 'content: action-click / cancel-click', type: 'event', default: '-', description: 'The generated button was clicked; the dialog closes too. Slotted `ge-alert-dialog-action` and `-cancel` close it as well: listen to `click` on them.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

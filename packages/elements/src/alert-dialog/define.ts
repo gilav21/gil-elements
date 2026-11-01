@@ -1,0 +1,21 @@
+import { defineElement } from '@gilav21/elements-base';
+import { GeAlertDialog } from './alert-dialog.js';
+import { GeAlertDialogAction } from './sub/alert-dialog-action.js';
+import { GeAlertDialogCancel } from './sub/alert-dialog-cancel.js';
+import { GeAlertDialogContent } from './sub/alert-dialog-content.js';
+import { GeAlertDialogDescription } from './sub/alert-dialog-description.js';
+import { GeAlertDialogFooter } from './sub/alert-dialog-footer.js';
+import { GeAlertDialogHeader } from './sub/alert-dialog-header.js';
+import { GeAlertDialogTitle } from './sub/alert-dialog-title.js';
+import { GeAlertDialogTrigger } from './sub/alert-dialog-trigger.js';
+
+defineElement('alert-dialog', GeAlertDialog);
+defineElement('alert-dialog-trigger', GeAlertDialogTrigger);
+defineElement('alert-dialog-content', GeAlertDialogContent);
+defineElement('alert-dialog-header', GeAlertDialogHeader);
+defineElement('alert-dialog-title', GeAlertDialogTitle);
+defineElement('alert-dialog-description', GeAlertDialogDescription);
+defineElement('alert-dialog-footer', GeAlertDialogFooter);
+defineElement('alert-dialog-cancel', GeAlertDialogCancel);
+defineElement('alert-dialog-action', GeAlertDialogAction);
+export { GeAlertDialog, GeAlertDialogAction, GeAlertDialogCancel, GeAlertDialogContent, GeAlertDialogDescription, GeAlertDialogFooter, GeAlertDialogHeader, GeAlertDialogTitle, GeAlertDialogTrigger };

@@ -438,3 +438,17 @@ ui-dialog-footer {
         }
     }
 }
+
+/* shadcn-angular alert-dialog-action.component.css and alert-dialog-cancel.component.css */
+ui-alert-dialog-action,
+ui-alert-dialog-cancel {
+    --_d: var(--density-button, var(--density, 1));
+}
+@layer components {
+    [data-slot="alert-dialog-action"],
+    [data-slot="alert-dialog-cancel"] {
+        height: calc(2.25rem * var(--_d));
+        padding-inline: calc(1rem * var(--_d));
+        padding-block: calc(0.5rem * var(--_d));
+    }
+}

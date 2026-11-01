@@ -73,6 +73,8 @@ export default defineConfig({
                 'timeline/define': 'src/timeline/define.ts',
                 'dialog/index': 'src/dialog/index.ts',
                 'dialog/define': 'src/dialog/define.ts',
+                'alert-dialog/index': 'src/alert-dialog/index.ts',
+                'alert-dialog/define': 'src/alert-dialog/define.ts',
             },
             formats: ['es'],
         },

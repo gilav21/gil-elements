@@ -31,3 +31,4 @@ import '../packages/elements/src/pagination/define.js';
 import '../packages/elements/src/stepper/define.js';
 import '../packages/elements/src/timeline/define.js';
 import '../packages/elements/src/dialog/define.js';
+import '../packages/elements/src/alert-dialog/define.js';
