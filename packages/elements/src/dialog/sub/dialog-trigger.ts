@@ -22,7 +22,7 @@ export class GeDialogTrigger extends UiElement {
     };
 
     declare ownsControl: boolean;
-    private dialog?: DialogHost;
+    protected dialog?: DialogHost;
 
     constructor() {
         super();
@@ -46,20 +46,25 @@ export class GeDialogTrigger extends UiElement {
             data-slot="dialog-trigger"
             role=${owns ? 'button' : nothing}
             tabindex=${owns ? '0' : nothing}
-            @click=${this.toggle}
+            @click=${this.onClick}
             @keydown=${this.onKeydown}
             ><slot @slotchange=${this.onSlotChange}></slot
         ></span>`;
     }
 
-    private readonly toggle = () => this.dialog?.toggle();
+    /** What a click or Enter / Space does: toggle the dialog. Subclasses change the verb. */
+    protected activate(): void {
+        this.dialog?.toggle();
+    }
 
     private readonly onKeydown = (event: KeyboardEvent) => {
         // Only when this wrapper is the button: a projected control turns Enter and Space into its own click.
         if (!this.ownsControl || (event.key !== 'Enter' && event.key !== ' ')) return;
         event.preventDefault();
-        this.dialog?.toggle();
+        this.activate();
     };
+
+    private readonly onClick = () => this.activate();
 
     private readonly onSlotChange = (event: Event) => {
         const slot = event.target as HTMLSlotElement;

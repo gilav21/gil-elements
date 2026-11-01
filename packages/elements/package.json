@@ -357,6 +357,16 @@
       "types": "./dist/alert-dialog/define.d.ts",
       "development": "./src/alert-dialog/define.ts",
       "default": "./dist/alert-dialog/define.js"
+    },
+    "./sheet": {
+      "types": "./dist/sheet/index.d.ts",
+      "development": "./src/sheet/index.ts",
+      "default": "./dist/sheet/index.js"
+    },
+    "./sheet/define": {
+      "types": "./dist/sheet/define.d.ts",
+      "development": "./src/sheet/define.ts",
+      "default": "./dist/sheet/define.js"
     }
   },
   "scripts": {

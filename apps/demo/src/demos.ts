@@ -1372,6 +1372,61 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
         ],
     },
     {
+        id: 'sheet',
+        group: 'Rung 4 · Overlays',
+        name: 'Sheet',
+        tag: 'ge-sheet',
+        description: 'A panel that slides in from an edge. Same behaviour as the dialog: scroll lock, focus kept inside, closes on Escape, the overlay or the close button.',
+        examples: [
+            {
+                title: 'Sides',
+                note: 'Left and right follow the text direction: flip RTL in the toolbar and try again.',
+                html: `<ge-sheet>
+  <ge-sheet-trigger><ge-button variant="outline">Right</ge-button></ge-sheet-trigger>
+  <ge-sheet-content heading="Edit profile" description="Make changes to your profile here.">
+    <ge-input aria-label="Name" placeholder="Your name"></ge-input>
+  </ge-sheet-content>
+</ge-sheet>
+<ge-sheet>
+  <ge-sheet-trigger><ge-button variant="outline">Left</ge-button></ge-sheet-trigger>
+  <ge-sheet-content side="left" heading="Navigation" description="Where do you want to go?"></ge-sheet-content>
+</ge-sheet>
+<ge-sheet>
+  <ge-sheet-trigger><ge-button variant="outline">Top</ge-button></ge-sheet-trigger>
+  <ge-sheet-content side="top" heading="Announcement" description="A banner that slides from the top."></ge-sheet-content>
+</ge-sheet>
+<ge-sheet>
+  <ge-sheet-trigger><ge-button variant="outline">Bottom</ge-button></ge-sheet-trigger>
+  <ge-sheet-content side="bottom" heading="Share" description="Pick where to send it."></ge-sheet-content>
+</ge-sheet>`,
+            },
+            {
+                title: 'Custom mode with a close button of your own',
+                block: true,
+                html: `<ge-sheet>
+  <ge-sheet-trigger><ge-button>Open filters</ge-button></ge-sheet-trigger>
+  <ge-sheet-content>
+    <ge-sheet-header>
+      <ge-sheet-title>Filters</ge-sheet-title>
+      <ge-sheet-description>Narrow the list down.</ge-sheet-description>
+    </ge-sheet-header>
+    <ge-sheet-footer>
+      <ge-sheet-close><ge-button variant="outline">Reset</ge-button></ge-sheet-close>
+      <ge-sheet-close><ge-button>Apply</ge-button></ge-sheet-close>
+    </ge-sheet-footer>
+  </ge-sheet-content>
+</ge-sheet>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether it is showing. `show()`, `hide()` and `toggle()` also work.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'When the user opens or closes it; detail is the new state.' },
+            { name: 'content: side', type: "'top' | 'bottom' | 'left' | 'right'", default: "'right'", description: 'Edge it slides from. Left and right follow the text direction.' },
+            { name: 'content: heading / description / close-label', type: 'string', default: "'' / '' / 'Close'", description: 'Simple mode header and the close button name.' },
+            { name: 'ge-sheet-close', type: 'element', default: '-', description: 'Closes the sheet when clicked; wrap a button of your own.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

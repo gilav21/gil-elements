@@ -30,6 +30,7 @@ import '@gilav21/elements/stepper/define';
 import '@gilav21/elements/timeline/define';
 import '@gilav21/elements/dialog/define';
 import '@gilav21/elements/alert-dialog/define';
+import '@gilav21/elements/sheet/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
