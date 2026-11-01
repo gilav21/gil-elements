@@ -41,10 +41,11 @@
   "chunks/spinner.js": 1500,
   "chunks/switch.js": 1740,
   "chunks/textarea.js": 1730,
+  "chunks/toggle-group-item.js": 2600,
   "chunks/toggle.js": 1290,
   "empty/define.js": 210,
   "empty/index.js": 140,
-  "index.js": 700,
+  "index.js": 760,
   "input/define.js": 150,
   "input/index.js": 80,
   "kbd/define.js": 180,
@@ -73,6 +74,8 @@
   "switch/index.js": 80,
   "textarea/define.js": 150,
   "textarea/index.js": 80,
+  "toggle-group/define.js": 180,
+  "toggle-group/index.js": 100,
   "toggle/define.js": 150,
   "toggle/index.js": 80
 }

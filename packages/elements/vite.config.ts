@@ -55,6 +55,8 @@ export default defineConfig({
                 'slider/define': 'src/slider/define.ts',
                 'number-input/index': 'src/number-input/index.ts',
                 'number-input/define': 'src/number-input/define.ts',
+                'toggle-group/index': 'src/toggle-group/index.ts',
+                'toggle-group/define': 'src/toggle-group/define.ts',
             },
             formats: ['es'],
         },

@@ -1,0 +1,41 @@
+/* shadcn-angular toggle group: items sit flush in a row, only the outer corners stay round. */
+:host {
+    display: contents;
+}
+.group {
+    display: flex;
+    align-items: center;
+    width: fit-content;
+    min-width: 0;
+    border-radius: calc(var(--radius) - 2px);
+}
+.group.outline {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+::slotted(*) {
+    --ge-join-focus-z: 10;
+}
+::slotted(:not(:first-child)) {
+    --ge-join-ss: 0px;
+    --ge-join-es: 0px;
+    --ge-join-border-inline-start: 0px;
+}
+::slotted(:not(:last-child)) {
+    --ge-join-se: 0px;
+    --ge-join-ee: 0px;
+}
+
+/* Data-driven items live in this shadow root, where ::slotted cannot reach them. */
+ge-toggle-group-item {
+    --ge-join-focus-z: 10;
+}
+ge-toggle-group-item:not(:first-of-type) {
+    --ge-join-ss: 0px;
+    --ge-join-es: 0px;
+    --ge-join-border-inline-start: 0px;
+}
+ge-toggle-group-item:not(:last-of-type) {
+    --ge-join-se: 0px;
+    --ge-join-ee: 0px;
+}

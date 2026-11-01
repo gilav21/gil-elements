@@ -257,6 +257,16 @@
       "types": "./dist/number-input/define.d.ts",
       "development": "./src/number-input/define.ts",
       "default": "./dist/number-input/define.js"
+    },
+    "./toggle-group": {
+      "types": "./dist/toggle-group/index.d.ts",
+      "development": "./src/toggle-group/index.ts",
+      "default": "./dist/toggle-group/index.js"
+    },
+    "./toggle-group/define": {
+      "types": "./dist/toggle-group/define.d.ts",
+      "development": "./src/toggle-group/define.ts",
+      "default": "./dist/toggle-group/define.js"
     }
   },
   "scripts": {

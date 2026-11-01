@@ -884,6 +884,50 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'toggle-group',
+        group: 'Rung 3 · Interactive',
+        name: 'Toggle group',
+        tag: 'ge-toggle-group',
+        description: 'A row of toggle buttons that share a selection: one at a time, or any number.',
+        examples: [
+            {
+                title: 'Single',
+                note: 'Press the one that is on to clear it.',
+                html: `<ge-toggle-group aria-label="Alignment" value="center">
+  <ge-toggle-group-item value="left">Left</ge-toggle-group-item>
+  <ge-toggle-group-item value="center">Center</ge-toggle-group-item>
+  <ge-toggle-group-item value="right">Right</ge-toggle-group-item>
+</ge-toggle-group>`,
+            },
+            {
+                title: 'Multiple, outline',
+                html: `<ge-toggle-group type="multiple" variant="outline" aria-label="Text style" value="bold,italic">
+  <ge-toggle-group-item value="bold" aria-label="Bold"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" /></svg></ge-toggle-group-item>
+  <ge-toggle-group-item value="italic" aria-label="Italic"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" x2="10" y1="4" y2="4"/><line x1="14" x2="5" y1="20" y2="20"/><line x1="15" x2="9" y1="4" y2="20"/></svg></ge-toggle-group-item>
+  <ge-toggle-group-item value="underline">Underline</ge-toggle-group-item>
+</ge-toggle-group>`,
+            },
+            {
+                title: 'Sizes and disabled',
+                html: `<div style="display:grid;gap:1rem;justify-items:start">
+  <ge-toggle-group variant="outline" size="sm" aria-label="Small"><ge-toggle-group-item value="a">One</ge-toggle-group-item><ge-toggle-group-item value="b">Two</ge-toggle-group-item></ge-toggle-group>
+  <ge-toggle-group variant="outline" size="lg" aria-label="Large"><ge-toggle-group-item value="a">One</ge-toggle-group-item><ge-toggle-group-item value="b" disabled>Two</ge-toggle-group-item></ge-toggle-group>
+  <ge-toggle-group variant="outline" disabled aria-label="Disabled"><ge-toggle-group-item value="a">One</ge-toggle-group-item><ge-toggle-group-item value="b">Two</ge-toggle-group-item></ge-toggle-group>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'type', type: "'single' | 'multiple'", default: "'single'", description: 'How many items can be on at once.' },
+            { name: 'value', type: 'string | string[]', default: '-', description: 'Selected value(s); in the attribute a comma-separated list for multiple. Single mode gives an empty string when cleared.' },
+            { name: 'variant', type: "'default' | 'outline'", default: "'default'", description: 'Plain, or with borders and a shadow.' },
+            { name: 'size', type: "'default' | 'sm' | 'lg'", default: "'default'", description: 'Height and padding of every item.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables every item.' },
+            { name: 'options', type: 'property', default: '-', description: 'Render items from data: { value, label?, disabled? }.' },
+            { name: 'item: value / disabled / aria-label', type: 'string / boolean', default: '-', description: 'On ge-toggle-group-item. Icon-only items need an aria-label.' },
+            { name: 'change, input', type: 'event', default: '-', description: 'Fire after the user changes the selection; read value.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',
