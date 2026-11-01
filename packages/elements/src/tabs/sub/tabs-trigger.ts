@@ -58,10 +58,17 @@ export class GeTabsTrigger extends UiElement {
             tabindex=${active ? '0' : '-1'}
             ?disabled=${this.disabled}
             @click=${this.select}
+            @keydown=${this.onKeydown}
         >
             <slot></slot>
         </button>`;
     }
 
     private readonly select = () => this.tabs?.select(this.value);
+
+    private readonly onKeydown = (event: KeyboardEvent) => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        this.tabs?.move(this.value, event.key);
+    };
 }

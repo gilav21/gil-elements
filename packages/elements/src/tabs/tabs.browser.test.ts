@@ -99,6 +99,49 @@ describe('ge-tabs', () => {
         expect(tabs(page).value).toBe('team');
     });
 
+    it('moves focus and the active tab with Left and Right, wraps at the ends, skips a disabled tab, and Home and End jump to the ends', async () => {
+        const page = await mount(`
+            <ge-tabs value="account">
+                <ge-tabs-list>
+                    <ge-tabs-trigger value="account">Account</ge-tabs-trigger>
+                    <ge-tabs-trigger value="password" disabled>Password</ge-tabs-trigger>
+                    <ge-tabs-trigger value="team">Team</ge-tabs-trigger>
+                    <ge-tabs-trigger value="billing">Billing</ge-tabs-trigger>
+                </ge-tabs-list>
+            </ge-tabs>`);
+        await settle(page);
+        const picks: string[] = [];
+        tabs(page).addEventListener('tab-change', (event) => picks.push((event as CustomEvent<string>).detail));
+        const [account, , team, billing] = triggers(page);
+        account.focus();
+
+        await userEvent.keyboard('{ArrowRight}');
+        expect([document.activeElement, tabs(page).value]).toEqual([team, 'team']);
+        await userEvent.keyboard('{End}');
+        expect([document.activeElement, tabs(page).value]).toEqual([billing, 'billing']);
+        await userEvent.keyboard('{ArrowRight}');
+        expect([document.activeElement, tabs(page).value]).toEqual([account, 'account']);
+        await userEvent.keyboard('{ArrowLeft}');
+        expect(tabs(page).value).toBe('billing');
+        await userEvent.keyboard('{Home}');
+        const down = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true, composed: true });
+        button(account).dispatchEvent(down);
+        expect(down.defaultPrevented).toBe(false);
+
+        expect([document.activeElement, tabs(page).value, picks]).toEqual([account, 'account', ['team', 'billing', 'account', 'billing', 'account']]);
+    });
+
+    it('swaps Left and Right in right-to-left text', async () => {
+        const page = await mount(`<div dir="rtl">${CUSTOM('value="account"')}</div>`);
+        await settle(page);
+        const [account, password] = triggers(page);
+        account.focus();
+
+        await userEvent.keyboard('{ArrowLeft}');
+
+        expect([document.activeElement, tabs(page).value]).toEqual([password, 'password']);
+    });
+
     it('exposes a named tab list, tabs with their selected state, and a panel named after its tab', async () => {
         const page = await mount(CUSTOM('value="password"'));
         await settle(page);

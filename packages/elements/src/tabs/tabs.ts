@@ -1,7 +1,8 @@
 import { html, nothing, unsafeCSS, type PropertyValues } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 import { UiElement } from '@gilav21/elements-base';
-import { adoptChildren } from '../shared/compound.js';
+import { adoptChildren, byDocumentOrder } from '../shared/compound.js';
+import type { GeTabsTrigger } from './sub/tabs-trigger.js';
 import css from './tabs.css?inline';
 
 export const TABS_REGISTER = 'ge-tabs-register';
@@ -22,6 +23,7 @@ export type TabsPart = HTMLElement & { requestUpdate(): void };
 export interface TabsHost {
     readonly value: string;
     labelOf(value: string): string;
+    move(from: string, key: string): void;
     select(value: string): void;
     register(part: TabsPart): void;
     unregister(part: TabsPart): void;
@@ -32,7 +34,7 @@ export interface TabsHost {
  * `tabs` and let it build them. Only the panel of the active tab is rendered.
  *
  * @slot - A `ge-tabs-list` and `ge-tabs-content`s.
- * @fires tab-change - When the user picks a tab; `detail` is its value.
+ * @fires tab-change - When the user picks a tab, by click or by Left, Right, Home and End on a focused tab; `detail` is its value.
  * @attr {string} value - The active tab. With `tabs` set and no value, the first tab is active.
  */
 export class GeTabs extends UiElement implements TabsHost {
@@ -70,6 +72,26 @@ export class GeTabs extends UiElement implements TabsHost {
             if (part.getAttribute('value') === value && part.localName === 'ge-tabs-trigger') return part.textContent?.trim() ?? '';
         }
         return '';
+    }
+
+    /**
+     * Arrow keys, Home and End: focus the neighbouring enabled tab and make it the active one (the WAI-ARIA
+     * tabs pattern with automatic activation). Left and Right swap in right-to-left text; ends wrap.
+     */
+    move(from: string, key: string): void {
+        const enabled = [...this.parts]
+            .filter((part): part is GeTabsTrigger => part.localName === 'ge-tabs-trigger' && !(part as GeTabsTrigger).disabled)
+            .sort(byDocumentOrder);
+        const index = enabled.findIndex((trigger) => trigger.value === from);
+        const rtl = getComputedStyle(this).direction === 'rtl';
+        const step = { ArrowRight: rtl ? -1 : 1, ArrowLeft: rtl ? 1 : -1 }[key];
+        let target: GeTabsTrigger | undefined;
+        if (key === 'Home') target = enabled[0];
+        else if (key === 'End') target = enabled.at(-1);
+        else if (step !== undefined && index >= 0) target = enabled[(index + step + enabled.length) % enabled.length];
+        if (!target) return;
+        target.focus();
+        this.select(target.value);
     }
 
     /** Make `value` the active tab and announce it. */
