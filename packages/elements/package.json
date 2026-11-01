@@ -337,6 +337,36 @@
       "types": "./dist/timeline/define.d.ts",
       "development": "./src/timeline/define.ts",
       "default": "./dist/timeline/define.js"
+    },
+    "./dialog": {
+      "types": "./dist/dialog/index.d.ts",
+      "development": "./src/dialog/index.ts",
+      "default": "./dist/dialog/index.js"
+    },
+    "./dialog/define": {
+      "types": "./dist/dialog/define.d.ts",
+      "development": "./src/dialog/define.ts",
+      "default": "./dist/dialog/define.js"
+    },
+    "./alert-dialog": {
+      "types": "./dist/alert-dialog/index.d.ts",
+      "development": "./src/alert-dialog/index.ts",
+      "default": "./dist/alert-dialog/index.js"
+    },
+    "./alert-dialog/define": {
+      "types": "./dist/alert-dialog/define.d.ts",
+      "development": "./src/alert-dialog/define.ts",
+      "default": "./dist/alert-dialog/define.js"
+    },
+    "./sheet": {
+      "types": "./dist/sheet/index.d.ts",
+      "development": "./src/sheet/index.ts",
+      "default": "./dist/sheet/index.js"
+    },
+    "./sheet/define": {
+      "types": "./dist/sheet/define.d.ts",
+      "development": "./src/sheet/define.ts",
+      "default": "./dist/sheet/define.js"
     }
   },
   "scripts": {

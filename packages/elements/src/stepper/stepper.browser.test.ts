@@ -148,20 +148,37 @@ describe('ge-stepper', () => {
         });
     });
 
-    it('lays out a vertical stepper as a column and a horizontal one as a row with connectors', async () => {
-        const page = await mount(FORM.replace('<ge-stepper ', '<ge-stepper orientation="vertical" '));
-        await settle(page);
-        const box = (i: Element) => i.shadowRoot!.querySelector('.item')!.getBoundingClientRect();
-        const tops = [...page.querySelectorAll('ge-stepper-item')].map((i) => box(i).top);
-        expect(tops[1]).toBeGreaterThan(tops[0]!);
-        expect(page.querySelectorAll('ge-stepper-item')[0]!.shadowRoot!.querySelector('.connector')).toBeNull();
+    it('joins steps with a connector that leaves 8px on both sides, in both orientations', async () => {
+        const gap = (page: Element, from: 'left' | 'top') => {
+            const items = [...page.querySelectorAll('ge-stepper-item')];
+            const root = (i: Element) => i.shadowRoot!;
+            const item = (i: Element) => root(i).querySelector('.item')!.getBoundingClientRect();
+            const connector = root(items[0]!).querySelector('.connector')!.getBoundingClientRect();
+            const [start, end] = from === 'left' ? (['right', 'left'] as const) : (['bottom', 'top'] as const);
+            return {
+                before: connector[from] - item(items[0]!)[start],
+                after: item(items[1]!)[end] - connector[start],
+                connector,
+                last: root(items[2]!).querySelector('.connector'),
+                items,
+            };
+        };
 
         const row = await mount(FORM);
         await settle(row);
-        const lefts = [...row.querySelectorAll('ge-stepper-item')].map((i) => box(i).left);
-        expect(lefts[1]).toBeGreaterThan(lefts[0]!);
-        expect(row.querySelectorAll('ge-stepper-item')[0]!.shadowRoot!.querySelector('.connector')).not.toBeNull();
-        expect(row.querySelectorAll('ge-stepper-item')[2]!.shadowRoot!.querySelector('.connector')).toBeNull();
+        const h = gap(row, 'left');
+        expect(h.before).toBeCloseTo(8, 0);
+        expect(h.after).toBeCloseTo(8, 0);
+        expect(h.last).toBeNull();
+
+        const col = await mount(FORM.replace('<ge-stepper ', '<ge-stepper orientation="vertical" '));
+        await settle(col);
+        const v = gap(col, 'top');
+        expect(v.connector.width).toBeCloseTo(2, 0);
+        expect(v.connector.height).toBeCloseTo(32, 0);
+        expect(v.before).toBeCloseTo(8, 0);
+        expect(v.after).toBeCloseTo(8, 0);
+        expect(v.last).toBeNull();
     });
 
     it('moves by keyboard: Tab to a trigger and Enter activates it', async () => {

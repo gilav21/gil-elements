@@ -1182,7 +1182,7 @@ export const demos: Demo[] = [
   <ge-stepper-item value="b"><ge-stepper-trigger><ge-stepper-title>Address</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
   <ge-stepper-item value="c"><ge-stepper-trigger><ge-stepper-title>Payment</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
 </ge-stepper>
-<ge-button style="margin-top:1rem" onclick="document.getElementById('st-linear').nextStep()">Next</ge-button>`,
+<div style="margin-top:1rem"><ge-button onclick="document.getElementById('st-linear').nextStep()">Next</ge-button></div>`,
             },
             {
                 title: 'Quick form with a guard',
@@ -1264,6 +1264,166 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
             { name: 'item: heading / description / time', type: 'string', default: "''", description: 'Simple mode text. `heading` rather than `title`, which would show a browser tooltip.' },
             { name: 'item: variant', type: "'default' | 'filled' | 'outline' | 'success' | 'error' | 'warning'", default: "'default'", description: 'Colour of the dot in simple mode. Also an attribute of `ge-timeline-dot`.' },
             { name: 'item: hide-connector', type: 'boolean', default: 'false', description: 'Simple mode: no line under the dot.' },
+        ],
+    },
+    {
+        id: 'dialog',
+        group: 'Rung 4 · Overlays',
+        name: 'Dialog',
+        tag: 'ge-dialog',
+        description: 'A modal box over the page. Wrap a trigger and a content in `ge-dialog`; it locks page scroll, keeps focus inside, and closes on Escape, the overlay or the close button.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: '`heading` and `description` generate the header. Focus returns to the button when it closes.',
+                block: true,
+                html: `<ge-dialog>
+  <ge-dialog-trigger><ge-button variant="outline">Edit profile</ge-button></ge-dialog-trigger>
+  <ge-dialog-content heading="Edit profile" description="Make changes to your profile here.">
+    <ge-input aria-label="Name" placeholder="Your name"></ge-input>
+    <ge-dialog-footer>
+      <ge-button id="dlg-save">Save changes</ge-button>
+    </ge-dialog-footer>
+  </ge-dialog-content>
+</ge-dialog>
+<script>document.getElementById('dlg-save').addEventListener('click', (e) => e.target.closest('ge-dialog').hide());</script>`,
+            },
+            {
+                title: 'Custom mode',
+                note: 'Slot a header, title, description and footer for full control.',
+                block: true,
+                html: `<ge-dialog>
+  <ge-dialog-trigger><ge-button variant="destructive">Delete project</ge-button></ge-dialog-trigger>
+  <ge-dialog-content>
+    <ge-dialog-header>
+      <ge-dialog-title>Delete this project?</ge-dialog-title>
+      <ge-dialog-description>All its files are removed. This cannot be undone.</ge-dialog-description>
+    </ge-dialog-header>
+    <ge-dialog-footer>
+      <ge-button variant="outline" onclick="this.closest('ge-dialog').hide()">Cancel</ge-button>
+      <ge-button variant="destructive" onclick="this.closest('ge-dialog').hide()">Delete</ge-button>
+    </ge-dialog-footer>
+  </ge-dialog-content>
+</ge-dialog>`,
+            },
+            {
+                title: 'Nested',
+                note: 'Escape closes the inner dialog first.',
+                block: true,
+                html: `<ge-dialog>
+  <ge-dialog-trigger><ge-button variant="outline">Open outer</ge-button></ge-dialog-trigger>
+  <ge-dialog-content heading="Outer" description="Open another one from here.">
+    <ge-dialog>
+      <ge-dialog-trigger><ge-button>Open inner</ge-button></ge-dialog-trigger>
+      <ge-dialog-content heading="Inner" description="Press Escape to close only this one."></ge-dialog-content>
+    </ge-dialog>
+  </ge-dialog-content>
+</ge-dialog>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the dialog is showing. `show()`, `hide()` and `toggle()` also work.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'When the user opens or closes it; detail is the new state. Setting `open` yourself does not fire it.' },
+            { name: 'content: heading / description', type: 'string', default: "''", description: 'Simple mode header. `heading` rather than `title`, which would show a browser tooltip.' },
+            { name: 'content: close-label', type: 'string', default: "'Close'", description: 'Accessible name of the overlay and close button (no locale tables yet).' },
+            { name: '--density-dialog', type: 'css', default: '--density', description: 'Spacing multiplier for padding and gaps.' },
+        ],
+    },
+    {
+        id: 'alert-dialog',
+        group: 'Rung 4 · Overlays',
+        name: 'Alert Dialog',
+        tag: 'ge-alert-dialog',
+        description: 'A modal that asks for a decision. Unlike a dialog it has no close button and the overlay does not dismiss it; Escape and the two choices do.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: '`heading` and `description` generate the header; the footer gets Cancel and Continue. Listen for `action-click`.',
+                block: true,
+                html: `<ge-alert-dialog>
+  <ge-alert-dialog-trigger><ge-button variant="destructive">Delete account</ge-button></ge-alert-dialog-trigger>
+  <ge-alert-dialog-content heading="Are you absolutely sure?" description="This action cannot be undone. It permanently deletes your account." action-text="Delete" cancel-text="Keep it"></ge-alert-dialog-content>
+</ge-alert-dialog>`,
+            },
+            {
+                title: 'Custom mode',
+                block: true,
+                html: `<ge-alert-dialog>
+  <ge-alert-dialog-trigger><ge-button variant="outline">Discard draft</ge-button></ge-alert-dialog-trigger>
+  <ge-alert-dialog-content>
+    <ge-alert-dialog-header>
+      <ge-alert-dialog-title>Discard this draft?</ge-alert-dialog-title>
+      <ge-alert-dialog-description>You will lose the text you wrote.</ge-alert-dialog-description>
+    </ge-alert-dialog-header>
+    <ge-alert-dialog-footer>
+      <ge-alert-dialog-cancel>Stay</ge-alert-dialog-cancel>
+      <ge-alert-dialog-action>Discard</ge-alert-dialog-action>
+    </ge-alert-dialog-footer>
+  </ge-alert-dialog-content>
+</ge-alert-dialog>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether it is showing. `show()`, `hide()` and `toggle()` also work.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'When the user opens or closes it; detail is the new state.' },
+            { name: 'content: heading / description', type: 'string', default: "''", description: 'Simple mode header; setting `heading` also generates the footer.' },
+            { name: 'content: action-text / cancel-text', type: 'string', default: "'Continue' / 'Cancel'", description: 'Labels of the generated buttons.' },
+            { name: 'content: action-click / cancel-click', type: 'event', default: '-', description: 'The generated button was clicked; the dialog closes too. Slotted `ge-alert-dialog-action` and `-cancel` close it as well: listen to `click` on them.' },
+        ],
+    },
+    {
+        id: 'sheet',
+        group: 'Rung 4 · Overlays',
+        name: 'Sheet',
+        tag: 'ge-sheet',
+        description: 'A panel that slides in from an edge. Same behaviour as the dialog: scroll lock, focus kept inside, closes on Escape, the overlay or the close button.',
+        examples: [
+            {
+                title: 'Sides',
+                note: 'Left and right follow the text direction: flip RTL in the toolbar and try again.',
+                html: `<ge-sheet>
+  <ge-sheet-trigger><ge-button variant="outline">Right</ge-button></ge-sheet-trigger>
+  <ge-sheet-content heading="Edit profile" description="Make changes to your profile here.">
+    <ge-input aria-label="Name" placeholder="Your name"></ge-input>
+  </ge-sheet-content>
+</ge-sheet>
+<ge-sheet>
+  <ge-sheet-trigger><ge-button variant="outline">Left</ge-button></ge-sheet-trigger>
+  <ge-sheet-content side="left" heading="Navigation" description="Where do you want to go?"></ge-sheet-content>
+</ge-sheet>
+<ge-sheet>
+  <ge-sheet-trigger><ge-button variant="outline">Top</ge-button></ge-sheet-trigger>
+  <ge-sheet-content side="top" heading="Announcement" description="A banner that slides from the top."></ge-sheet-content>
+</ge-sheet>
+<ge-sheet>
+  <ge-sheet-trigger><ge-button variant="outline">Bottom</ge-button></ge-sheet-trigger>
+  <ge-sheet-content side="bottom" heading="Share" description="Pick where to send it."></ge-sheet-content>
+</ge-sheet>`,
+            },
+            {
+                title: 'Custom mode with a close button of your own',
+                block: true,
+                html: `<ge-sheet>
+  <ge-sheet-trigger><ge-button>Open filters</ge-button></ge-sheet-trigger>
+  <ge-sheet-content>
+    <ge-sheet-header>
+      <ge-sheet-title>Filters</ge-sheet-title>
+      <ge-sheet-description>Narrow the list down.</ge-sheet-description>
+    </ge-sheet-header>
+    <ge-sheet-footer>
+      <ge-sheet-close><ge-button variant="outline">Reset</ge-button></ge-sheet-close>
+      <ge-sheet-close><ge-button>Apply</ge-button></ge-sheet-close>
+    </ge-sheet-footer>
+  </ge-sheet-content>
+</ge-sheet>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether it is showing. `show()`, `hide()` and `toggle()` also work.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'When the user opens or closes it; detail is the new state.' },
+            { name: 'content: side', type: "'top' | 'bottom' | 'left' | 'right'", default: "'right'", description: 'Edge it slides from. Left and right follow the text direction.' },
+            { name: 'content: heading / description / close-label', type: 'string', default: "'' / '' / 'Close'", description: 'Simple mode header and the close button name.' },
+            { name: 'ge-sheet-close', type: 'element', default: '-', description: 'Closes the sheet when clicked; wrap a button of your own.' },
         ],
     },
     {
