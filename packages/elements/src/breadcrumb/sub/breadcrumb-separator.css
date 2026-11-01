@@ -1,0 +1,12 @@
+:host {
+    display: inline;
+}
+::slotted(svg),
+svg {
+    display: block;
+    width: 0.875rem;
+    height: 0.875rem;
+}
+:dir(rtl) svg {
+    transform: rotate(180deg);
+}

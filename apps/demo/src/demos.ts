@@ -1058,6 +1058,215 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'breadcrumb',
+        group: 'Rung 3 · Interactive',
+        name: 'Breadcrumb',
+        tag: 'ge-breadcrumb',
+        description: 'The trail from the root to the current page. Give the list items for the quick form, or compose the crumbs yourself.',
+        examples: [
+            {
+                title: 'Custom form',
+                block: true,
+                html: `<ge-breadcrumb>
+  <ge-breadcrumb-list>
+    <ge-breadcrumb-item><ge-breadcrumb-link href="#">Home</ge-breadcrumb-link></ge-breadcrumb-item>
+    <ge-breadcrumb-separator></ge-breadcrumb-separator>
+    <ge-breadcrumb-item><ge-breadcrumb-link href="#">Components</ge-breadcrumb-link></ge-breadcrumb-item>
+    <ge-breadcrumb-separator></ge-breadcrumb-separator>
+    <ge-breadcrumb-item><ge-breadcrumb-page>Breadcrumb</ge-breadcrumb-page></ge-breadcrumb-item>
+  </ge-breadcrumb-list>
+</ge-breadcrumb>`,
+            },
+            {
+                title: 'Ellipsis and a custom separator',
+                block: true,
+                html: `<ge-breadcrumb>
+  <ge-breadcrumb-list>
+    <ge-breadcrumb-item><ge-breadcrumb-link href="#">Home</ge-breadcrumb-link></ge-breadcrumb-item>
+    <ge-breadcrumb-separator>/</ge-breadcrumb-separator>
+    <ge-breadcrumb-item><ge-breadcrumb-ellipsis></ge-breadcrumb-ellipsis></ge-breadcrumb-item>
+    <ge-breadcrumb-separator>/</ge-breadcrumb-separator>
+    <ge-breadcrumb-item><ge-breadcrumb-page>Breadcrumb</ge-breadcrumb-page></ge-breadcrumb-item>
+  </ge-breadcrumb-list>
+</ge-breadcrumb>`,
+            },
+            {
+                title: 'Loading',
+                block: true,
+                html: `<ge-breadcrumb><ge-breadcrumb-list skeleton skeleton-count="3"></ge-breadcrumb-list></ge-breadcrumb>`,
+            },
+        ],
+        api: [
+            { name: 'aria-label', type: 'string', default: "'breadcrumb'", description: 'On ge-breadcrumb: the name of the navigation landmark.' },
+            { name: 'list: items', type: 'property', default: '-', description: 'On ge-breadcrumb-list, quick form: { label, href?, isCurrentPage? }[] with separators added for you.' },
+            { name: 'list: skeleton / skeleton-count', type: 'boolean / number', default: 'false / 3', description: 'Placeholder crumbs.' },
+            { name: 'link: href', type: 'string', default: "'#'", description: 'On ge-breadcrumb-link.' },
+            { name: 'ellipsis: label', type: 'string', default: "'More'", description: 'Screen-reader text for the dots.' },
+            { name: 'separator slot', type: 'slot', default: 'chevron', description: 'Project text or an svg to replace the chevron.' },
+        ],
+    },
+    {
+        id: 'pagination',
+        group: 'Rung 3 · Interactive',
+        name: 'Pagination',
+        tag: 'ge-pagination',
+        description: 'Page navigation. Set total-pages and it builds previous, the numbers, ellipses and next; or compose the row yourself.',
+        examples: [
+            {
+                title: 'Quick form',
+                note: 'It announces page-change; you set current-page in response. Try the buttons.',
+                block: true,
+                html: `<ge-pagination id="pg-demo" current-page="5" total-pages="20"></ge-pagination>
+<script>document.getElementById('pg-demo').addEventListener('page-change', (e) => { e.currentTarget.currentPage = e.detail; });</script>`,
+            },
+            {
+                title: 'Composed',
+                block: true,
+                html: `<ge-pagination>
+  <ge-pagination-content>
+    <ge-pagination-item><ge-pagination-previous disabled></ge-pagination-previous></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-link active>1</ge-pagination-link></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-link>2</ge-pagination-link></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-link>3</ge-pagination-link></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-ellipsis></ge-pagination-ellipsis></ge-pagination-item>
+    <ge-pagination-item><ge-pagination-next></ge-pagination-next></ge-pagination-item>
+  </ge-pagination-content>
+</ge-pagination>`,
+            },
+        ],
+        api: [
+            { name: 'current-page / total-pages', type: 'number', default: '0', description: 'Quick form: the page shown (from 1) and how many there are. total-pages of 0 means composed mode.' },
+            { name: 'sibling-count', type: 'number', default: '1', description: 'Page numbers kept on each side of the current one.' },
+            { name: 'page-change', type: 'event', default: '-', description: 'When the user picks another page; detail is its number. Nothing moves until you set current-page.' },
+            { name: 'previous-label / next-label / more-label / aria-label', type: 'string', default: "'Previous' / 'Next' / 'More pages' / 'pagination'", description: 'Text, since there are no locale tables here yet.' },
+            { name: 'link: active / size / disabled', type: 'boolean / string / boolean', default: "false / 'icon' / false", description: 'On ge-pagination-link. size: default, sm, lg or icon.' },
+            { name: 'previous, next: label / disabled', type: 'string / boolean', default: '-', description: 'On ge-pagination-previous and ge-pagination-next.' },
+        ],
+    },
+    {
+        id: 'stepper',
+        group: 'Rung 3 · Interactive',
+        name: 'Stepper',
+        tag: 'ge-stepper',
+        description: 'A row or column of steps. It tracks which are complete, current and pending, and each step can carry its own panel.',
+        examples: [
+            {
+                title: 'With panels',
+                note: 'Click a step to jump; the Next and Back buttons call `nextStep()` and `prevStep()`.',
+                block: true,
+                html: `<ge-stepper id="st-demo" active-step="0">
+  <ge-stepper-item value="account"><ge-stepper-trigger><ge-stepper-title>Account</ge-stepper-title><ge-stepper-description>Create your login</ge-stepper-description></ge-stepper-trigger><ge-stepper-content>Pick a username and a password.</ge-stepper-content></ge-stepper-item>
+  <ge-stepper-item value="profile"><ge-stepper-trigger><ge-stepper-title>Profile</ge-stepper-title><ge-stepper-description>Tell us about you</ge-stepper-description></ge-stepper-trigger><ge-stepper-content>Add a name and a photo.</ge-stepper-content></ge-stepper-item>
+  <ge-stepper-item value="done"><ge-stepper-trigger><ge-stepper-title>Done</ge-stepper-title></ge-stepper-trigger><ge-stepper-content>You are all set.</ge-stepper-content></ge-stepper-item>
+</ge-stepper>
+<div style="display:flex;gap:0.5rem;margin-top:1rem">
+  <ge-button variant="outline" onclick="document.getElementById('st-demo').prevStep()">Back</ge-button>
+  <ge-button onclick="document.getElementById('st-demo').nextStep()">Next</ge-button>
+</div>`,
+            },
+            {
+                title: 'Vertical',
+                block: true,
+                html: `<ge-stepper orientation="vertical" active-step="1">
+  <ge-stepper-item value="a"><ge-stepper-trigger><ge-stepper-title>Order placed</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+  <ge-stepper-item value="b"><ge-stepper-trigger><ge-stepper-title>Packed</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+  <ge-stepper-item value="c"><ge-stepper-trigger><ge-stepper-title>Shipped</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+</ge-stepper>`,
+            },
+            {
+                title: 'Linear',
+                note: 'Steps ahead are disabled; only Next moves forward.',
+                block: true,
+                html: `<ge-stepper id="st-linear" linear active-step="0">
+  <ge-stepper-item value="a"><ge-stepper-trigger><ge-stepper-title>Cart</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+  <ge-stepper-item value="b"><ge-stepper-trigger><ge-stepper-title>Address</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+  <ge-stepper-item value="c"><ge-stepper-trigger><ge-stepper-title>Payment</ge-stepper-title></ge-stepper-trigger></ge-stepper-item>
+</ge-stepper>
+<ge-button style="margin-top:1rem" onclick="document.getElementById('st-linear').nextStep()">Next</ge-button>`,
+            },
+            {
+                title: 'Quick form with a guard',
+                note: 'Set `steps` and `canLeave` from script. The guard may return a promise; every step is disabled while it decides.',
+                block: true,
+                html: `<ge-stepper id="st-quick" active-step="0"></ge-stepper>
+<script>
+const s = document.getElementById('st-quick');
+s.steps = [{ value: 'a', title: 'Details', description: 'Needs a check' }, { value: 'b', title: 'Review' }, { value: 'c', title: 'Finish' }];
+s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(true), 800));
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'active-step', type: 'number', default: '0', description: 'Index of the current step; earlier ones are complete.' },
+            { name: 'orientation', type: "'horizontal' | 'vertical'", default: "'horizontal'", description: 'Row with connectors, or column.' },
+            { name: 'linear', type: 'boolean', default: 'false', description: 'Steps ahead of the current one cannot be jumped to; `nextStep()` still advances.' },
+            { name: 'steps', type: '{ value, title, description? }[]', default: '-', description: 'Property only. Quick form; leave empty to project `ge-stepper-item`s.' },
+            { name: 'canLeave', type: '(from, to) => boolean | Promise<boolean>', default: '-', description: 'Property only. Runs before every move that changes the step. A refusal, a throw or a rejection fires `step-blocked`.' },
+            { name: 'goToStep(i) / nextStep() / prevStep()', type: 'methods', default: '-', description: 'Move programmatically. `nextStep` and `prevStep` stop at the ends.' },
+            { name: 'step-change / step-blocked', type: 'event', default: '-', description: 'detail is the new index, or `{ from, to }` when the guard refused.' },
+            { name: 'guardPending', type: 'boolean', default: 'false', description: 'True while an async guard is deciding.' },
+        ],
+    },
+    {
+        id: 'timeline',
+        group: 'Rung 3 · Interactive',
+        name: 'Timeline',
+        tag: 'ge-timeline',
+        description: 'Events in order. Give each item a heading, description and time, or slot the dot, line and text yourself.',
+        examples: [
+            {
+                title: 'Simple mode',
+                block: true,
+                html: `<ge-timeline>
+  <ge-timeline-item heading="Version 2.0 released" description="Major update with new features." time="January 2024" variant="success"></ge-timeline-item>
+  <ge-timeline-item heading="Beta started" description="Invited the first testers." time="November 2023" variant="filled"></ge-timeline-item>
+  <ge-timeline-item heading="Build failed" time="October 2023" variant="error"></ge-timeline-item>
+  <ge-timeline-item heading="Kickoff" time="September 2023"></ge-timeline-item>
+</ge-timeline>`,
+            },
+            {
+                title: 'Dot variants',
+                block: true,
+                html: `<ge-timeline>
+  <ge-timeline-item heading="default"></ge-timeline-item>
+  <ge-timeline-item heading="filled" variant="filled"></ge-timeline-item>
+  <ge-timeline-item heading="outline" variant="outline"></ge-timeline-item>
+  <ge-timeline-item heading="success" variant="success"></ge-timeline-item>
+  <ge-timeline-item heading="error" variant="error"></ge-timeline-item>
+  <ge-timeline-item heading="warning" variant="warning" hide-connector></ge-timeline-item>
+</ge-timeline>`,
+            },
+            {
+                title: 'Custom mode',
+                note: 'Slot a header and content to take over. An icon in the dot works too.',
+                block: true,
+                html: `<ge-timeline>
+  <ge-timeline-item>
+    <ge-timeline-header>
+      <ge-timeline-dot variant="filled"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></ge-timeline-dot>
+      <ge-timeline-connector></ge-timeline-connector>
+    </ge-timeline-header>
+    <ge-timeline-content>
+      <ge-timeline-title>Deployed</ge-timeline-title>
+      <ge-timeline-description>Rolled out to every region.</ge-timeline-description>
+      <ge-timeline-time>Today</ge-timeline-time>
+    </ge-timeline-content>
+  </ge-timeline-item>
+  <ge-timeline-item>
+    <ge-timeline-header><ge-timeline-dot variant="outline"></ge-timeline-dot></ge-timeline-header>
+    <ge-timeline-content><ge-timeline-title>Queued</ge-timeline-title></ge-timeline-content>
+  </ge-timeline-item>
+</ge-timeline>`,
+            },
+        ],
+        api: [
+            { name: 'orientation', type: "'vertical' | 'horizontal'", default: "'vertical'", description: 'Direction the items are laid out.' },
+            { name: 'item: heading / description / time', type: 'string', default: "''", description: 'Simple mode text. `heading` rather than `title`, which would show a browser tooltip.' },
+            { name: 'item: variant', type: "'default' | 'filled' | 'outline' | 'success' | 'error' | 'warning'", default: "'default'", description: 'Colour of the dot in simple mode. Also an attribute of `ge-timeline-dot`.' },
+            { name: 'item: hide-connector', type: 'boolean', default: 'false', description: 'Simple mode: no line under the dot.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

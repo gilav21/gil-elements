@@ -1,0 +1,21 @@
+import { defineElement } from '@gilav21/elements-base';
+import { GeTimeline } from './timeline.js';
+import { GeTimelineConnector } from './sub/timeline-connector.js';
+import { GeTimelineContent } from './sub/timeline-content.js';
+import { GeTimelineDescription } from './sub/timeline-description.js';
+import { GeTimelineDot } from './sub/timeline-dot.js';
+import { GeTimelineHeader } from './sub/timeline-header.js';
+import { GeTimelineItem } from './sub/timeline-item.js';
+import { GeTimelineTime } from './sub/timeline-time.js';
+import { GeTimelineTitle } from './sub/timeline-title.js';
+
+defineElement('timeline', GeTimeline);
+defineElement('timeline-item', GeTimelineItem);
+defineElement('timeline-header', GeTimelineHeader);
+defineElement('timeline-dot', GeTimelineDot);
+defineElement('timeline-connector', GeTimelineConnector);
+defineElement('timeline-content', GeTimelineContent);
+defineElement('timeline-title', GeTimelineTitle);
+defineElement('timeline-description', GeTimelineDescription);
+defineElement('timeline-time', GeTimelineTime);
+export { GeTimeline, GeTimelineConnector, GeTimelineContent, GeTimelineDescription, GeTimelineDot, GeTimelineHeader, GeTimelineItem, GeTimelineTime, GeTimelineTitle };

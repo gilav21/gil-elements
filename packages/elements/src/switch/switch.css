@@ -1,6 +1,9 @@
 /* shadcn-angular switch: a 2.25rem x 1.25rem pill with a 1rem thumb, and an optional label beside it. */
 :host {
     --_d: var(--density-switch, var(--density, 1));
+    /* Whole-pixel track height: the thumb is the track minus its 2px borders, so a fractional height would split the leftover half pixel unevenly. */
+    --_h: round(calc(1.25rem * var(--_d)), 1px);
+    --_w: calc(2.25rem * var(--_d));
     display: inline-flex;
     flex-shrink: 0;
     cursor: pointer;
@@ -21,8 +24,8 @@
     flex-shrink: 0;
     align-items: center;
     box-sizing: border-box;
-    width: calc(2.25rem * var(--_d));
-    height: calc(1.25rem * var(--_d));
+    width: var(--_w);
+    height: var(--_h);
     border: 2px solid transparent;
     border-radius: 9999px;
     background-color: var(--input);
@@ -35,18 +38,18 @@
 .thumb {
     pointer-events: none;
     display: block;
-    width: calc(1rem * var(--_d));
-    height: calc(1rem * var(--_d));
+    width: calc(var(--_h) - 4px);
+    height: calc(var(--_h) - 4px);
     border-radius: 9999px;
     background-color: var(--background);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     transition: translate 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .track[data-state="checked"] .thumb {
-    translate: calc(1rem * var(--_d)) 0;
+    translate: calc(var(--_w) - var(--_h)) 0;
 }
 :host(:dir(rtl)) .track[data-state="checked"] .thumb {
-    translate: calc(-1rem * var(--_d)) 0;
+    translate: calc(var(--_h) - var(--_w)) 0;
 }
 :host(:focus-visible) .track {
     box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring), 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);

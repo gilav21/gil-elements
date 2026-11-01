@@ -1,0 +1,13 @@
+:host {
+    display: block;
+}
+.timeline {
+    position: relative;
+    display: flex;
+}
+.timeline[data-orientation="vertical"] {
+    flex-direction: column;
+}
+.timeline[data-orientation="horizontal"] {
+    flex-direction: row;
+}

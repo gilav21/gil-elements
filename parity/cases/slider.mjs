@@ -1,6 +1,4 @@
 // shadcn-angular slider.component.html and .ts (classes, percentage).
-// Adjusted reference (gilav21/shadcn-angular#220): Angular's thumb also has `peer-disabled:opacity-50` inside a root that is already
-// `opacity-50`, so a disabled thumb is dimmed twice. The reference drops the thumb's own rule so the slider dims once.
 const ROOT = 'relative flex w-full touch-none select-none items-center';
 const THUMB = 'absolute block rounded-full border border-primary/50 bg-background shadow transition-colors peer-focus-visible:outline-none peer-focus-visible:ring-1 peer-focus-visible:ring-ring cursor-grab active:cursor-grabbing';
 

@@ -170,21 +170,23 @@ ui-checkbox {
 /* shadcn-angular switch.component.css */
 ui-switch {
     --_d: var(--density-switch, var(--density, 1));
+    --_h: round(calc(1.25rem * var(--_d)), 1px);
+    --_w: calc(2.25rem * var(--_d));
 }
 @layer components {
     [data-slot="switch"] {
-        height: calc(1.25rem * var(--_d));
-        width: calc(2.25rem * var(--_d));
+        height: var(--_h);
+        width: var(--_w);
     }
     [data-slot="switch"] > span {
-        height: calc(1rem * var(--_d));
-        width: calc(1rem * var(--_d));
+        height: calc(var(--_h) - 4px);
+        width: calc(var(--_h) - 4px);
     }
     [data-slot="switch"][aria-checked="true"] > span {
-        translate: calc(1rem * var(--_d)) 0;
+        translate: calc(var(--_w) - var(--_h)) 0;
     }
     [dir="rtl"] [data-slot="switch"][aria-checked="true"] > span {
-        translate: calc(-1rem * var(--_d)) 0;
+        translate: calc(var(--_h) - var(--_w)) 0;
     }
 }
 
@@ -339,5 +341,75 @@ ui-tabs-trigger {
     [data-slot="tabs-trigger"] {
         padding-inline: calc(0.75rem * var(--_d));
         padding-block: calc(0.25rem * var(--_d));
+    }
+}
+
+/* shadcn-angular breadcrumb-ellipsis.component.css */
+ui-breadcrumb-ellipsis {
+    --_d: var(--density-button, var(--density, 1));
+}
+@layer components {
+    ui-breadcrumb-ellipsis span[role="presentation"] {
+        height: calc(2.25rem * var(--_d));
+        width: calc(2.25rem * var(--_d));
+    }
+}
+
+/* shadcn-angular pagination-link.component.css */
+ui-pagination-link {
+    --_d: var(--density-button, var(--density, 1));
+}
+@layer components {
+    [data-slot="pagination-link"][data-size="default"] {
+        height: calc(2.25rem * var(--_d));
+        padding-inline: calc(1rem * var(--_d));
+        padding-block: calc(0.5rem * var(--_d));
+    }
+    [data-slot="pagination-link"][data-size="sm"] {
+        height: calc(2rem * var(--_d));
+        padding-inline: calc(0.75rem * var(--_d));
+    }
+    [data-slot="pagination-link"][data-size="lg"] {
+        height: calc(2.5rem * var(--_d));
+        padding-inline: calc(2rem * var(--_d));
+    }
+    [data-slot="pagination-link"][data-size="icon"] {
+        height: calc(2.25rem * var(--_d));
+        width: calc(2.25rem * var(--_d));
+    }
+}
+
+/* shadcn-angular tabs.component.css (simple mode puts the trigger buttons straight under ui-tabs) */
+ui-tabs {
+    --_d: var(--density-tabs, var(--density, 1));
+}
+@layer components {
+    ui-tabs [data-slot="tabs-trigger"] {
+        padding-inline: calc(0.75rem * var(--_d));
+        padding-block: calc(0.25rem * var(--_d));
+    }
+}
+
+/* shadcn-angular pagination.component.css (simple mode) */
+ui-pagination {
+    --_d: var(--density-button, var(--density, 1));
+}
+@layer components {
+    ui-pagination [data-slot="pagination-previous"][data-size],
+    ui-pagination [data-slot="pagination-next"][data-size] {
+        height: calc(2.25rem * var(--_d));
+        padding-inline: calc(1rem * var(--_d));
+        padding-block: calc(0.5rem * var(--_d));
+    }
+    ui-pagination [data-slot="pagination-link"][data-size="icon"] {
+        height: calc(2.25rem * var(--_d));
+        width: calc(2.25rem * var(--_d));
+    }
+}
+
+/* shadcn-angular timeline-item.component.css: spacing keyed on the host's position, in the component layer */
+@layer components {
+    ui-timeline-item:not(:last-child) [data-slot="timeline-item"] {
+        padding-bottom: 2rem;
     }
 }

@@ -297,6 +297,46 @@
       "types": "./dist/tabs/define.d.ts",
       "development": "./src/tabs/define.ts",
       "default": "./dist/tabs/define.js"
+    },
+    "./breadcrumb": {
+      "types": "./dist/breadcrumb/index.d.ts",
+      "development": "./src/breadcrumb/index.ts",
+      "default": "./dist/breadcrumb/index.js"
+    },
+    "./breadcrumb/define": {
+      "types": "./dist/breadcrumb/define.d.ts",
+      "development": "./src/breadcrumb/define.ts",
+      "default": "./dist/breadcrumb/define.js"
+    },
+    "./pagination": {
+      "types": "./dist/pagination/index.d.ts",
+      "development": "./src/pagination/index.ts",
+      "default": "./dist/pagination/index.js"
+    },
+    "./pagination/define": {
+      "types": "./dist/pagination/define.d.ts",
+      "development": "./src/pagination/define.ts",
+      "default": "./dist/pagination/define.js"
+    },
+    "./stepper": {
+      "types": "./dist/stepper/index.d.ts",
+      "development": "./src/stepper/index.ts",
+      "default": "./dist/stepper/index.js"
+    },
+    "./stepper/define": {
+      "types": "./dist/stepper/define.d.ts",
+      "development": "./src/stepper/define.ts",
+      "default": "./dist/stepper/define.js"
+    },
+    "./timeline": {
+      "types": "./dist/timeline/index.d.ts",
+      "development": "./src/timeline/index.ts",
+      "default": "./dist/timeline/index.js"
+    },
+    "./timeline/define": {
+      "types": "./dist/timeline/define.d.ts",
+      "development": "./src/timeline/define.ts",
+      "default": "./dist/timeline/define.js"
     }
   },
   "scripts": {

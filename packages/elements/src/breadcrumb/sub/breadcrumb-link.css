@@ -1,0 +1,16 @@
+:host {
+    display: contents;
+}
+a {
+    color: inherit;
+    text-decoration: inherit;
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+a:focus-visible {
+    outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
+}
+@media (hover: hover) {
+    a:hover {
+        color: var(--foreground);
+    }
+}

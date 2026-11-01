@@ -26,3 +26,7 @@ export * from './toggle-group/index.js';
 export * from './collapsible/index.js';
 export * from './accordion/index.js';
 export * from './tabs/index.js';
+export * from './breadcrumb/index.js';
+export * from './pagination/index.js';
+export * from './stepper/index.js';
+export * from './timeline/index.js';

@@ -24,6 +24,10 @@ import '@gilav21/elements/toggle-group/define';
 import '@gilav21/elements/collapsible/define';
 import '@gilav21/elements/accordion/define';
 import '@gilav21/elements/tabs/define';
+import '@gilav21/elements/breadcrumb/define';
+import '@gilav21/elements/pagination/define';
+import '@gilav21/elements/stepper/define';
+import '@gilav21/elements/timeline/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
@@ -46,7 +50,15 @@ function renderExample(ex: Example): HTMLElement {
     const wrap = el('div', { class: 'example' });
     wrap.append(el('h3', {}, ex.title));
     if (ex.note) wrap.append(el('p', { class: 'note' }, prose(ex.note)));
-    wrap.append(el('div', { class: ex.block ? 'preview block' : 'preview' }, ex.html));
+    const preview = el('div', { class: ex.block ? 'preview block' : 'preview' }, ex.html);
+    // Scripts set through innerHTML never run, so each is swapped for a fresh copy that does.
+    for (const dead of preview.querySelectorAll('script')) {
+        const live = document.createElement('script');
+        live.type = dead.type;
+        live.textContent = dead.textContent;
+        dead.replaceWith(live);
+    }
+    wrap.append(preview);
     const code = el('div', { class: 'code' }, `<pre><code>${escapeHtml(ex.html)}</code></pre>`);
     const copy = document.createElement('ge-button');
     copy.setAttribute('variant', 'outline');

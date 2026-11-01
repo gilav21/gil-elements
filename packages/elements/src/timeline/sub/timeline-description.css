@@ -1,0 +1,9 @@
+:host {
+    display: contents;
+}
+p {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    color: var(--muted-foreground);
+}
