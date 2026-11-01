@@ -6,7 +6,7 @@ import { playwright } from '@vitest/browser-playwright';
 export default defineConfig({
     resolve: { conditions: ['development'] },
     // Pre-bundled up front: discovering a dependency mid-run makes Vite reload the page under a test.
-    optimizeDeps: { include: ['lit/static-html.js'] },
+    optimizeDeps: { include: ['lit/static-html.js', 'lit/directives/if-defined.js', 'lit/directives/ref.js'] },
     test: {
         projects: [
             {

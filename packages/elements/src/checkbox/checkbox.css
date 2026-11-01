@@ -1,0 +1,79 @@
+/* shadcn-angular checkbox: a 1rem box with a check or dash, and an optional label beside it. */
+:host {
+    --_d: var(--density-checkbox, var(--density, 1));
+    display: inline-flex;
+    flex-shrink: 0;
+    cursor: pointer;
+    outline: none;
+}
+:host([label]) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+}
+:host([disabled]),
+:host([disabled]) * {
+    cursor: not-allowed;
+}
+.box {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: calc(1rem * var(--_d));
+    height: calc(1rem * var(--_d));
+    border: 1px solid var(--primary);
+    border-radius: calc(var(--radius) - 4px);
+    background-color: var(--background);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+.box[data-state="checked"],
+.box[data-state="indeterminate"] {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+}
+.box svg {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+:host(:focus-visible) .box {
+    box-shadow: 0 0 0 1px var(--ring), 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+:host([disabled]) .box,
+:host([disabled]) .label {
+    opacity: 0.5;
+}
+.label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1;
+}
+:host([disabled]) .label {
+    opacity: 0.7;
+}
+.skeleton {
+    display: block;
+    border-radius: calc(var(--radius) - 4px);
+    background-color: color-mix(in oklab, var(--primary) 10%, transparent);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.box-skeleton {
+    width: 1rem;
+    height: 1rem;
+}
+.label-skeleton {
+    width: 5rem;
+    height: 1rem;
+    border-radius: calc(var(--radius) - 2px);
+}
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .skeleton {
+        animation: none;
+    }
+}

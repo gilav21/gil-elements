@@ -155,3 +155,49 @@ ui-button {
         padding: 0;
     }
 }
+
+/* shadcn-angular checkbox.component.css, the density part */
+ui-checkbox {
+    --_d: var(--density-checkbox, var(--density, 1));
+}
+@layer components {
+    [data-slot="checkbox"] {
+        height: calc(1rem * var(--_d));
+        width: calc(1rem * var(--_d));
+    }
+}
+
+/* shadcn-angular icon.component.css, input.component.css */
+ui-icon {
+    display: inline-flex;
+}
+ui-input {
+    --_d: var(--density-input, var(--density, 1));
+}
+@layer components {
+    [data-slot="input"] {
+        height: calc(2.25rem * var(--_d));
+        padding-inline: calc(0.75rem * var(--_d));
+        padding-block: calc(0.25rem * var(--_d));
+    }
+    [data-slot="input-container"] {
+        height: calc(2.25rem * var(--_d));
+    }
+    [data-slot="input-floating"] {
+        padding-top: calc(1.5rem * var(--_d));
+    }
+    [data-slot="input-floating"] > label {
+        inset-inline-start: calc(0.75rem * var(--_d));
+        top: calc(2.625rem * var(--_d));
+        transform: translateY(-50%);
+    }
+    [data-slot="input-floating"][data-variant="underline"] > label,
+    [data-slot="input-floating"][data-variant="ghost"] > label {
+        inset-inline-start: 0;
+    }
+    [data-slot="input-floating"] > label[data-active] {
+        inset-inline-start: 0;
+        top: calc(1.125rem * var(--_d));
+        transform: translateY(-100%);
+    }
+}

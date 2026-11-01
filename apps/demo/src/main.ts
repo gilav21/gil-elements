@@ -6,7 +6,9 @@ import '@gilav21/elements/badge/define';
 import '@gilav21/elements/button/define';
 import '@gilav21/elements/button-group/define';
 import '@gilav21/elements/card/define';
+import '@gilav21/elements/checkbox/define';
 import '@gilav21/elements/empty/define';
+import '@gilav21/elements/input/define';
 import '@gilav21/elements/kbd/define';
 import '@gilav21/elements/label/define';
 import '@gilav21/elements/page-header/define';
@@ -113,7 +115,27 @@ function toggle(id: string, apply: (on: boolean) => void) {
         apply(on);
     });
 }
-toggle('theme', (on) => root.classList.toggle('dark', on));
+// The tokens match `.dark` or `[data-theme="dark"]`. A host page that embeds this one (the artifact viewer
+// sets `data-theme="dark"` on the root) may already have put its own theme there, so the button follows what is actually applied
+// instead of keeping its own flag, and the theme is set on the body too in case the root's class is rewritten.
+const themeButton = document.getElementById('theme')!;
+const isDark = () => [root, document.body].some((el) => el.classList.contains('dark') || el.dataset.theme === 'dark');
+function showTheme() {
+    const on = isDark();
+    themeButton.setAttribute('aria-pressed', String(on));
+    themeButton.setAttribute('variant', on ? 'default' : 'outline');
+}
+themeButton.addEventListener('click', () => {
+    const on = !isDark();
+    for (const el of [root, document.body]) {
+        el.classList.toggle('dark', on);
+        el.dataset.theme = on ? 'dark' : 'light';
+    }
+    root.style.colorScheme = on ? 'dark' : 'light';
+    showTheme();
+});
+new MutationObserver(showTheme).observe(root, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+showTheme();
 toggle('rtl', (on) => root.setAttribute('dir', on ? 'rtl' : 'ltr'));
 
 const density = document.getElementById('density') as HTMLInputElement;
