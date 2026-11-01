@@ -142,6 +142,8 @@ export class GeRating extends UiElement {
     /** Re-picking the current value is the clear gesture. */
     private pick(next: number): void {
         this.commit(this.value === next ? 0 : next);
+        // Keys are handled on the range input only; a clicked star keeps focus otherwise and the arrows would do nothing.
+        this.shadowRoot?.querySelector<HTMLInputElement>('.range')?.focus({ preventScroll: true });
     }
 
     private starAt(event: Event): { star: Element; index: number } | undefined {

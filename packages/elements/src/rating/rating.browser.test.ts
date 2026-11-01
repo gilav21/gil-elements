@@ -100,6 +100,17 @@ describe('ge-rating', () => {
         expect(b.value).toBe(0.5);
     });
 
+    it('keeps the arrow keys working after a star was clicked with the pointer', async () => {
+        const page = await mount('<ge-rating max="5"></ge-rating>');
+        const rating = first(page);
+
+        stars(rating)[1]!.click();
+        await userEvent.keyboard('{ArrowRight}{ArrowRight}');
+        expect(rating.value).toBe(4);
+        await userEvent.keyboard('{End}');
+        expect(rating.value).toBe(5);
+    });
+
     it('ignores pointer, touch and keys while readonly, disabled or in a disabled fieldset', async () => {
         const page = await mount(`
             <ge-rating id="ro" readonly value="3"></ge-rating>
