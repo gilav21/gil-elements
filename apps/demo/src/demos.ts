@@ -271,8 +271,8 @@ export const demos: Demo[] = [
             },
             {
                 title: 'Custom loader',
-                note: 'Anything slotted replaces the built-in spinner.',
-                html: `<ge-spinner><span style="font-size:1.5rem">⏳</span></ge-spinner>`,
+                note: 'Anything slotted replaces the built-in spinner. Add the global ge-spin class to make it rotate.',
+                html: `<ge-spinner><span class="ge-spin" style="font-size:1.5rem">⏳</span></ge-spinner>`,
             },
         ],
         api: [

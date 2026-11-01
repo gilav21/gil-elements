@@ -89,3 +89,20 @@
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.439 0 0);
 }
+
+/* Global on purpose: keyframes inside a shadow root are invisible to slotted light-DOM content, so a custom
+   loader in <ge-spinner> uses this class instead of defining its own animation (like Tailwind's animate-spin). */
+@keyframes ge-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+.ge-spin {
+    display: inline-block;
+    animation: ge-spin 1s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ge-spin {
+        animation: none;
+    }
+}
