@@ -639,6 +639,63 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'radio-group',
+        group: 'Rung 3 · Interactive',
+        name: 'Radio Group',
+        tag: 'ge-radio-group',
+        description: 'Mutually exclusive choices. One item is in the tab order and the arrow keys move and select, like a native group.',
+        examples: [
+            {
+                title: 'With labels',
+                html: `<ge-radio-group value="comfortable" aria-label="Density">
+  <ge-radio-group-item value="default" label="Default"></ge-radio-group-item>
+  <ge-radio-group-item value="comfortable" label="Comfortable"></ge-radio-group-item>
+  <ge-radio-group-item value="compact" label="Compact"></ge-radio-group-item>
+</ge-radio-group>`,
+            },
+            {
+                title: 'Horizontal, without labels',
+                html: `<ge-radio-group orientation="horizontal" value="b" aria-label="Choice">
+  <ge-radio-group-item value="a" aria-label="A"></ge-radio-group-item>
+  <ge-radio-group-item value="b" aria-label="B"></ge-radio-group-item>
+  <ge-radio-group-item value="c" aria-label="C"></ge-radio-group-item>
+</ge-radio-group>`,
+            },
+            {
+                title: 'Disabled',
+                note: 'One item disabled, then the whole group.',
+                html: `<ge-radio-group value="default" aria-label="Plan">
+  <ge-radio-group-item value="default" label="Default"></ge-radio-group-item>
+  <ge-radio-group-item value="pro" label="Pro" disabled></ge-radio-group-item>
+</ge-radio-group>
+<ge-radio-group value="a" disabled aria-label="Locked">
+  <ge-radio-group-item value="a" label="Locked on"></ge-radio-group-item>
+  <ge-radio-group-item value="b" label="Locked off"></ge-radio-group-item>
+</ge-radio-group>`,
+            },
+            {
+                title: 'From data',
+                note: 'Set options, displayWith, valueWith and disabledWith from script.',
+                html: `<ge-radio-group id="plans" value="pro" aria-label="Plans"></ge-radio-group>
+<script type="module">
+  const group = document.getElementById('plans');
+  group.options = [{ id: 'free', name: 'Free' }, { id: 'pro', name: 'Pro' }, { id: 'team', name: 'Team', locked: true }];
+  group.valueWith = (o) => o.id;
+  group.displayWith = (o) => o.name;
+  group.disabledWith = (o) => Boolean(o.locked);
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string', default: '-', description: 'Value of the selected item.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submitted with the form.' },
+            { name: 'orientation', type: "'vertical' | 'horizontal'", default: 'vertical', description: 'Layout and arrow-key axis.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables every item.' },
+            { name: 'options / displayWith / valueWith / disabledWith', type: 'property', default: '-', description: 'Render items from data.' },
+            { name: 'item: value / label / disabled / aria-label', type: 'string / boolean', default: '-', description: 'On ge-radio-group-item.' },
+        ],
+    },
+    {
         id: 'toggle',
         group: 'Rung 3 · Interactive',
         name: 'Toggle',

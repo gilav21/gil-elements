@@ -207,6 +207,16 @@
       "types": "./dist/textarea/define.d.ts",
       "development": "./src/textarea/define.ts",
       "default": "./dist/textarea/define.js"
+    },
+    "./radio-group": {
+      "types": "./dist/radio-group/index.d.ts",
+      "development": "./src/radio-group/index.ts",
+      "default": "./dist/radio-group/index.js"
+    },
+    "./radio-group/define": {
+      "types": "./dist/radio-group/define.d.ts",
+      "development": "./src/radio-group/define.ts",
+      "default": "./dist/radio-group/define.js"
     }
   },
   "scripts": {

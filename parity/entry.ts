@@ -17,3 +17,4 @@ import '../packages/elements/src/progress/define.js';
 import '../packages/elements/src/switch/define.js';
 import '../packages/elements/src/toggle/define.js';
 import '../packages/elements/src/textarea/define.js';
+import '../packages/elements/src/radio-group/define.js';

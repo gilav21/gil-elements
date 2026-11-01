@@ -45,6 +45,8 @@ export default defineConfig({
                 'toggle/define': 'src/toggle/define.ts',
                 'textarea/index': 'src/textarea/index.ts',
                 'textarea/define': 'src/textarea/define.ts',
+                'radio-group/index': 'src/radio-group/index.ts',
+                'radio-group/define': 'src/radio-group/define.ts',
             },
             formats: ['es'],
         },
