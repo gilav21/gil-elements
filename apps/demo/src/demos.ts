@@ -599,6 +599,46 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'switch',
+        group: 'Rung 3 · Interactive',
+        name: 'Switch',
+        tag: 'ge-switch',
+        description: 'An on/off toggle. Click, Enter and Space all toggle it, and in a form it submits like a checkbox.',
+        examples: [
+            {
+                title: 'States',
+                html: `<ge-switch aria-label="Off"></ge-switch>
+<ge-switch checked aria-label="On"></ge-switch>
+<ge-switch disabled aria-label="Disabled off"></ge-switch>
+<ge-switch disabled checked aria-label="Disabled on"></ge-switch>`,
+            },
+            {
+                title: 'With a label',
+                note: 'Click the text: it toggles the switch.',
+                html: `<ge-switch label="Airplane mode"></ge-switch>`,
+            },
+            {
+                title: 'Labelled from elsewhere',
+                note: 'A ge-label anywhere in the page names it and toggles it.',
+                html: `<div style="display:flex;align-items:center;gap:.5rem">
+  <ge-switch id="wifi"></ge-switch>
+  <ge-label for="wifi">Wi-Fi</ge-label>
+</div>`,
+            },
+            {
+                title: 'Skeleton',
+                html: `<ge-switch skeleton label="Loading"></ge-switch>`,
+            },
+        ],
+        api: [
+            { name: 'checked', type: 'boolean', default: 'false', description: 'On state; reflected, so CSS can match it.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks interaction; a disabled fieldset does the same.' },
+            { name: 'skeleton', type: 'boolean', default: 'false', description: 'Placeholder instead of the switch.' },
+            { name: 'label', type: 'string', default: '-', description: 'Text beside the switch; clicking it toggles.' },
+            { name: 'name / value', type: 'string', default: "- / 'on'", description: 'Submitted with the form while on.' },
+        ],
+    },
+    {
         id: 'button-group',
         group: 'Rung 3 · Interactive',
         name: 'Button group',

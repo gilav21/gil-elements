@@ -14,3 +14,4 @@ export * from './separator/index.js';
 export * from './skeleton/index.js';
 export * from './spinner/index.js';
 export * from './progress/index.js';
+export * from './switch/index.js';

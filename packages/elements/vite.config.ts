@@ -39,6 +39,8 @@ export default defineConfig({
                 'button-group/define': 'src/button-group/define.ts',
                 'progress/index': 'src/progress/index.ts',
                 'progress/define': 'src/progress/define.ts',
+                'switch/index': 'src/switch/index.ts',
+                'switch/define': 'src/switch/define.ts',
             },
             formats: ['es'],
         },

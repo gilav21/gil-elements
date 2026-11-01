@@ -14,3 +14,4 @@ import '../packages/elements/src/button-group/define.js';
 import '../packages/elements/src/checkbox/define.js';
 import '../packages/elements/src/input/define.js';
 import '../packages/elements/src/progress/define.js';
+import '../packages/elements/src/switch/define.js';

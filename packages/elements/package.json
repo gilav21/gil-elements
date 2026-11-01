@@ -177,6 +177,16 @@
       "types": "./dist/progress/define.d.ts",
       "development": "./src/progress/define.ts",
       "default": "./dist/progress/define.js"
+    },
+    "./switch": {
+      "types": "./dist/switch/index.d.ts",
+      "development": "./src/switch/index.ts",
+      "default": "./dist/switch/index.js"
+    },
+    "./switch/define": {
+      "types": "./dist/switch/define.d.ts",
+      "development": "./src/switch/define.ts",
+      "default": "./dist/switch/define.js"
     }
   },
   "scripts": {

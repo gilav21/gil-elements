@@ -1,0 +1,89 @@
+/* shadcn-angular switch: a 2.25rem x 1.25rem pill with a 1rem thumb, and an optional label beside it. */
+:host {
+    --_d: var(--density-switch, var(--density, 1));
+    display: inline-flex;
+    flex-shrink: 0;
+    cursor: pointer;
+    outline: none;
+}
+:host([label]) {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: fit-content;
+}
+:host([disabled]),
+:host([disabled]) * {
+    cursor: not-allowed;
+}
+.track {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    box-sizing: border-box;
+    width: calc(2.25rem * var(--_d));
+    height: calc(1.25rem * var(--_d));
+    border: 2px solid transparent;
+    border-radius: 9999px;
+    background-color: var(--input);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.track[data-state="checked"] {
+    background-color: var(--primary);
+}
+.thumb {
+    pointer-events: none;
+    display: block;
+    width: calc(1rem * var(--_d));
+    height: calc(1rem * var(--_d));
+    border-radius: 9999px;
+    background-color: var(--background);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    transition: translate 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.track[data-state="checked"] .thumb {
+    translate: calc(1rem * var(--_d)) 0;
+}
+:host(:dir(rtl)) .track[data-state="checked"] .thumb {
+    translate: calc(-1rem * var(--_d)) 0;
+}
+:host(:focus-visible) .track {
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring), 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+:host([disabled]) .track {
+    opacity: 0.5;
+}
+:host([disabled]) .label {
+    opacity: 0.7;
+}
+.label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1;
+}
+.skeleton {
+    display: block;
+    background-color: color-mix(in oklab, var(--primary) 10%, transparent);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+.track-skeleton {
+    width: 2.25rem;
+    height: 1.25rem;
+    border-radius: 9999px;
+}
+.label-skeleton {
+    width: 5rem;
+    height: 1rem;
+    border-radius: calc(var(--radius) - 2px);
+}
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .skeleton {
+        animation: none;
+    }
+}
