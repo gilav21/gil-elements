@@ -387,6 +387,16 @@
       "types": "./dist/tooltip/define.d.ts",
       "development": "./src/tooltip/define.ts",
       "default": "./dist/tooltip/define.js"
+    },
+    "./hover-card": {
+      "types": "./dist/hover-card/index.d.ts",
+      "development": "./src/hover-card/index.ts",
+      "default": "./dist/hover-card/index.js"
+    },
+    "./hover-card/define": {
+      "types": "./dist/hover-card/define.d.ts",
+      "development": "./src/hover-card/define.ts",
+      "default": "./dist/hover-card/define.js"
     }
   },
   "scripts": {

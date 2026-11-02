@@ -1627,4 +1627,53 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
             { name: 'open', type: 'boolean', default: 'false', description: 'Whether the bubble is showing. `show()` and `hide()` also work.' },
         ],
     },
+    {
+        id: 'hover-card',
+        group: 'Rung 4 · Overlays',
+        name: 'Hover card',
+        tag: 'ge-hover-card',
+        description: 'A preview card that opens when the pointer rests on a trigger or the trigger takes focus. Moving onto the card keeps it open. On a touch screen a tap opens it and a tap elsewhere closes it.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: '`heading` and `description` generate the card text.',
+                html: `<ge-hover-card>
+  <ge-hover-card-trigger><ge-button variant="link">@gilav21</ge-button></ge-hover-card-trigger>
+  <ge-hover-card-content heading="@gilav21" description="Maintains shadcn-angular and the web components port."></ge-hover-card-content>
+</ge-hover-card>`,
+            },
+            {
+                title: 'Custom body',
+                note: 'Slot anything; content you slot after a `heading` is shown below it.',
+                html: `<ge-hover-card>
+  <ge-hover-card-trigger><ge-button variant="link">Release notes</ge-button></ge-hover-card-trigger>
+  <ge-hover-card-content>
+    <div style="display:grid;gap:0.5rem">
+      <div style="display:flex;align-items:center;gap:0.5rem"><ge-badge>v2.0</ge-badge><strong style="font-size:0.875rem">Major update</strong></div>
+      <p style="margin:0;font-size:0.875rem;color:var(--muted-foreground)">New components, faster builds and a refreshed theme.</p>
+    </div>
+  </ge-hover-card-content>
+</ge-hover-card>`,
+            },
+            {
+                title: 'Side and alignment',
+                note: 'It flips to the other side and nudges sideways when it would leave its clipping box.',
+                html: `<ge-hover-card>
+  <ge-hover-card-trigger><ge-button variant="outline">Above, start</ge-button></ge-hover-card-trigger>
+  <ge-hover-card-content side="top" align="start" heading="Above" description="Aligned to the trigger's start edge."></ge-hover-card-content>
+</ge-hover-card>
+<ge-hover-card>
+  <ge-hover-card-trigger><ge-button variant="outline">Below, end</ge-button></ge-hover-card-trigger>
+  <ge-hover-card-content align="end" heading="Below" description="Aligned to the trigger's end edge."></ge-hover-card-content>
+</ge-hover-card>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the card is showing. Hover, focus and touch drive it; `toggle()` opens or closes at once.' },
+            { name: 'content: side', type: "'top' | 'bottom'", default: "'bottom'", description: 'Preferred side. Flips to the other when there is no room.' },
+            { name: 'content: align', type: "'start' | 'center' | 'end'", default: "'center'", description: 'Alignment against the trigger. Start and end follow text direction.' },
+            { name: 'content: heading / description', type: 'string', default: "''", description: 'Simple mode text. `heading` rather than `title`, which would show a browser tooltip.' },
+            { name: '--density-popover', type: 'css', default: '--density', description: 'Spacing multiplier for the card padding.' },
+        ],
+    },
 ];

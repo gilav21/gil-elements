@@ -81,6 +81,8 @@ export default defineConfig({
                 'popover/define': 'src/popover/define.ts',
                 'tooltip/index': 'src/tooltip/index.ts',
                 'tooltip/define': 'src/tooltip/define.ts',
+                'hover-card/index': 'src/hover-card/index.ts',
+                'hover-card/define': 'src/hover-card/define.ts',
             },
             formats: ['es'],
         },

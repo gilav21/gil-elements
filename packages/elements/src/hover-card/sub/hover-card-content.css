@@ -1,0 +1,54 @@
+:host {
+    --_d: var(--density-popover, var(--density, 1));
+    display: contents;
+    /* `align="center"` is also the legacy HTML alignment attribute, which browsers turn into text-align: center on any element. */
+    text-align: inherit;
+}
+.panel {
+    position: absolute;
+    z-index: 50;
+    box-sizing: border-box;
+    width: 16rem;
+    max-width: calc(100vw - 16px);
+    padding: calc(1rem * var(--_d));
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    outline: none;
+}
+.panel[data-side="top"] {
+    bottom: 100%;
+    margin-bottom: 0.5rem;
+}
+.panel[data-side="bottom"] {
+    top: 100%;
+    margin-top: 0.5rem;
+}
+.panel[data-align="start"] {
+    inset-inline-start: 0;
+}
+.panel[data-align="center"] {
+    left: 50%;
+    translate: -50% 0;
+}
+.panel[data-align="end"] {
+    inset-inline-end: 0;
+}
+.simple {
+    display: grid;
+    gap: 0.25rem;
+}
+.simple h4,
+.simple p {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+.simple h4 {
+    font-weight: 600;
+}
+.simple p {
+    color: var(--muted-foreground);
+}
