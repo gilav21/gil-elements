@@ -367,6 +367,36 @@
       "types": "./dist/sheet/define.d.ts",
       "development": "./src/sheet/define.ts",
       "default": "./dist/sheet/define.js"
+    },
+    "./popover": {
+      "types": "./dist/popover/index.d.ts",
+      "development": "./src/popover/index.ts",
+      "default": "./dist/popover/index.js"
+    },
+    "./popover/define": {
+      "types": "./dist/popover/define.d.ts",
+      "development": "./src/popover/define.ts",
+      "default": "./dist/popover/define.js"
+    },
+    "./tooltip": {
+      "types": "./dist/tooltip/index.d.ts",
+      "development": "./src/tooltip/index.ts",
+      "default": "./dist/tooltip/index.js"
+    },
+    "./tooltip/define": {
+      "types": "./dist/tooltip/define.d.ts",
+      "development": "./src/tooltip/define.ts",
+      "default": "./dist/tooltip/define.js"
+    },
+    "./hover-card": {
+      "types": "./dist/hover-card/index.d.ts",
+      "development": "./src/hover-card/index.ts",
+      "default": "./dist/hover-card/index.js"
+    },
+    "./hover-card/define": {
+      "types": "./dist/hover-card/define.d.ts",
+      "development": "./src/hover-card/define.ts",
+      "default": "./dist/hover-card/define.js"
     }
   },
   "scripts": {

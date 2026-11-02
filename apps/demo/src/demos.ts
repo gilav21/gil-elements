@@ -1515,4 +1515,165 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
             { name: 'ge-button-group-separator: orientation', type: "'horizontal' | 'vertical'", default: "'vertical'", description: 'Direction of the line.' },
         ],
     },
+    {
+        id: 'popover',
+        group: 'Rung 4 · Overlays',
+        name: 'Popover',
+        tag: 'ge-popover',
+        description: 'A panel anchored to a trigger. It does not lock the page or trap focus; a click outside or Escape closes it, and focus goes back to the trigger.',
+        examples: [
+            {
+                title: 'Simple',
+                note: 'Style the panel through its `panel` part, e.g. a wider box.',
+                html: `<style>#pop-dims::part(panel) { width: 20rem; }</style>
+<ge-popover>
+  <ge-popover-trigger><ge-button variant="outline">Open popover</ge-button></ge-popover-trigger>
+  <ge-popover-content id="pop-dims">
+    <div style="display:grid;gap:1rem">
+      <div style="display:grid;gap:0.5rem">
+        <h4 style="margin:0;font-weight:500;line-height:1">Dimensions</h4>
+        <p style="margin:0;font-size:0.875rem;color:var(--muted-foreground)">Set the dimensions for the layer.</p>
+      </div>
+      <ge-input aria-label="Width" value="100%"></ge-input>
+      <div style="display:flex;justify-content:flex-end">
+        <ge-popover-close><ge-button size="sm">Close</ge-button></ge-popover-close>
+      </div>
+    </div>
+  </ge-popover-content>
+</ge-popover>`,
+            },
+            {
+                title: 'Sides and alignment',
+                note: '`side` is a preference: `top` and `bottom` flip when there is no room, and a panel near an edge is nudged back inside.',
+                html: `<ge-popover>
+  <ge-popover-trigger><ge-button variant="outline">Top, start</ge-button></ge-popover-trigger>
+  <ge-popover-content side="top" align="start">Opens above, aligned to the trigger's start.</ge-popover-content>
+</ge-popover>
+<ge-popover>
+  <ge-popover-trigger><ge-button variant="outline">Right</ge-button></ge-popover-trigger>
+  <ge-popover-content side="right">Opens beside the trigger.</ge-popover-content>
+</ge-popover>
+<ge-popover>
+  <ge-popover-trigger><ge-button variant="outline">Left, 12px away</ge-button></ge-popover-trigger>
+  <ge-popover-content side="left" side-offset="12">Opens to the left, with a wider gap.</ge-popover-content>
+</ge-popover>`,
+            },
+            {
+                title: 'Top layer',
+                note: '`strategy="fixed"` promotes the panel to the browser top layer, so an `overflow: hidden` ancestor cannot clip it.',
+                html: `<div style="overflow:hidden;height:3.5rem;padding:0.5rem;border:1px dashed var(--border);border-radius:var(--radius)">
+  <ge-popover>
+    <ge-popover-trigger><ge-button variant="outline">Escapes the box</ge-button></ge-popover-trigger>
+    <ge-popover-content strategy="fixed">Not clipped by the dashed box around it.</ge-popover-content>
+  </ge-popover>
+</div>`,
+            },
+            {
+                title: 'Plain-text trigger',
+                note: 'Content that is not a control becomes a button: Tab to it and press Enter or Space.',
+                html: `<ge-popover>
+  <ge-popover-trigger><span style="text-decoration:underline;cursor:pointer">What is this?</span></ge-popover-trigger>
+  <ge-popover-content>It opens and closes like any popover.</ge-popover-content>
+</ge-popover>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the popover is showing. `show()`, `hide()` and `toggle()` also work.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'When the user opens or closes it; detail is the new state. Setting `open` yourself does not fire it.' },
+            { name: 'close-on-scroll', type: 'boolean', default: 'false', description: 'Closes when anything outside the popover scrolls.' },
+            { name: 'content: side', type: "'top' | 'right' | 'bottom' | 'left'", default: "'bottom'", description: 'Preferred edge of the trigger.' },
+            { name: 'content: align', type: "'start' | 'center' | 'end'", default: "'center'", description: 'Alignment along that edge.' },
+            { name: 'content: side-offset', type: 'number', default: '4', description: 'Gap in pixels between trigger and panel.' },
+            { name: 'content: no-collisions', type: 'boolean', default: 'false', description: 'Pins the panel to `side` and `align` and accepts clipping.' },
+            { name: 'content: no-restore-focus', type: 'boolean', default: 'false', description: 'Does not return focus to the trigger on close.' },
+            { name: 'content: strategy', type: "'absolute' | 'fixed'", default: "'absolute'", description: '`fixed` renders in the browser top layer.' },
+            { name: '--density-popover', type: 'css', default: '--density', description: 'Spacing multiplier for the panel padding.' },
+        ],
+    },
+    {
+        id: 'tooltip',
+        group: 'Rung 4 · Overlays',
+        name: 'Tooltip',
+        tag: 'ge-tooltip',
+        description: 'A short label beside a trigger. It opens on hover after a short dwell, at once on keyboard focus, and on a tap on touch screens. It does not flip near a viewport edge.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: 'Set `content` and wrap the trigger. Tab to the button to see it open with the keyboard.',
+                html: `<ge-tooltip content="Add to library">
+  <ge-tooltip-trigger><ge-button variant="outline">Hover me</ge-button></ge-tooltip-trigger>
+</ge-tooltip>`,
+            },
+            {
+                title: 'Sides',
+                html: `<ge-tooltip content="On top" side="top"><ge-tooltip-trigger><ge-button variant="outline">Top</ge-button></ge-tooltip-trigger></ge-tooltip>
+<ge-tooltip content="On the right" side="right"><ge-tooltip-trigger><ge-button variant="outline">Right</ge-button></ge-tooltip-trigger></ge-tooltip>
+<ge-tooltip content="Underneath" side="bottom"><ge-tooltip-trigger><ge-button variant="outline">Bottom</ge-button></ge-tooltip-trigger></ge-tooltip>
+<ge-tooltip content="On the left" side="left"><ge-tooltip-trigger><ge-button variant="outline">Left</ge-button></ge-tooltip-trigger></ge-tooltip>`,
+            },
+            {
+                title: 'Custom mode and a longer dwell',
+                note: 'Slot a `ge-tooltip-content` for markup in the bubble; `delay-duration` is the hover dwell in milliseconds.',
+                html: `<ge-tooltip delay-duration="600">
+  <ge-tooltip-trigger><ge-button variant="outline">Slow to open</ge-button></ge-tooltip-trigger>
+  <ge-tooltip-content><strong>Save</strong> <kbd>Ctrl</kbd> + <kbd>S</kbd></ge-tooltip-content>
+</ge-tooltip>`,
+            },
+        ],
+        api: [
+            { name: 'content', type: 'string', default: "''", description: 'Simple mode text. A `ge-tooltip-content` is generated for you.' },
+            { name: 'side', type: "'top' | 'right' | 'bottom' | 'left'", default: "'top'", description: 'Side of the trigger the bubble sits on, 8px away.' },
+            { name: 'delay-duration', type: 'number', default: '200', description: 'Hover dwell in milliseconds. Focus and touch open it at once.' },
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the bubble is showing. `show()` and `hide()` also work.' },
+        ],
+    },
+    {
+        id: 'hover-card',
+        group: 'Rung 4 · Overlays',
+        name: 'Hover card',
+        tag: 'ge-hover-card',
+        description: 'A preview card that opens when the pointer rests on a trigger or the trigger takes focus. Moving onto the card keeps it open. On a touch screen a tap opens it and a tap elsewhere closes it.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: '`heading` and `description` generate the card text.',
+                html: `<ge-hover-card>
+  <ge-hover-card-trigger><ge-button variant="link">@gilav21</ge-button></ge-hover-card-trigger>
+  <ge-hover-card-content heading="@gilav21" description="Maintains shadcn-angular and the web components port."></ge-hover-card-content>
+</ge-hover-card>`,
+            },
+            {
+                title: 'Custom body',
+                note: 'Slot anything; content you slot after a `heading` is shown below it.',
+                html: `<ge-hover-card>
+  <ge-hover-card-trigger><ge-button variant="link">Release notes</ge-button></ge-hover-card-trigger>
+  <ge-hover-card-content>
+    <div style="display:grid;gap:0.5rem">
+      <div style="display:flex;align-items:center;gap:0.5rem"><ge-badge>v2.0</ge-badge><strong style="font-size:0.875rem">Major update</strong></div>
+      <p style="margin:0;font-size:0.875rem;color:var(--muted-foreground)">New components, faster builds and a refreshed theme.</p>
+    </div>
+  </ge-hover-card-content>
+</ge-hover-card>`,
+            },
+            {
+                title: 'Side and alignment',
+                note: 'It flips to the other side and nudges sideways when it would leave its clipping box.',
+                html: `<ge-hover-card>
+  <ge-hover-card-trigger><ge-button variant="outline">Above, start</ge-button></ge-hover-card-trigger>
+  <ge-hover-card-content side="top" align="start" heading="Above" description="Aligned to the trigger's start edge."></ge-hover-card-content>
+</ge-hover-card>
+<ge-hover-card>
+  <ge-hover-card-trigger><ge-button variant="outline">Below, end</ge-button></ge-hover-card-trigger>
+  <ge-hover-card-content align="end" heading="Below" description="Aligned to the trigger's end edge."></ge-hover-card-content>
+</ge-hover-card>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the card is showing. Hover, focus and touch drive it; `toggle()` opens or closes at once.' },
+            { name: 'content: side', type: "'top' | 'bottom'", default: "'bottom'", description: 'Preferred side. Flips to the other when there is no room.' },
+            { name: 'content: align', type: "'start' | 'center' | 'end'", default: "'center'", description: 'Alignment against the trigger. Start and end follow text direction.' },
+            { name: 'content: heading / description', type: 'string', default: "''", description: 'Simple mode text. `heading` rather than `title`, which would show a browser tooltip.' },
+            { name: '--density-popover', type: 'css', default: '--density', description: 'Spacing multiplier for the card padding.' },
+        ],
+    },
 ];
