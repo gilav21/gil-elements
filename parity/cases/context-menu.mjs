@@ -27,16 +27,18 @@ const BODY = (open, dir) =>
         rSub(open, rItem('Save page') + rItem('Print', { shortcut: '⌘P' }), dir),
         rItem('Delete', { destructive: true }),
     ].join('');
+// A fixed width keeps the flyout's position a whole number of pixels. Content-sized, its position follows the font's fractional
+// text widths, and the top-layer flyout then paints its text on whole pixels where the reference's in-flow box does not.
 const AREA = 'width:360px;height:300px;position:relative;border:1px dashed var(--border)';
 // `overflow-auto` would clip the absolutely placed flyout, which Angular portals out of the panel.
 const ref = (x, y, { open = false, dir = 'ltr', closed = false } = {}) =>
-    `<div style="${AREA}" dir="${dir}"><ui-context-menu class="contents" data-slot="context-menu"><ui-context-menu-trigger class="contents"><span class="contents" data-slot="context-menu-trigger">Right click here</span></ui-context-menu-trigger><ui-context-menu-content class="contents">${closed ? '' : `<div class="absolute ${PANEL}" style="left:${x}px;top:${y}px" role="menu" tabindex="-1" data-state="open" data-slot="context-menu-content">${BODY(open, dir)}</div>`}</ui-context-menu-content></ui-context-menu></div>`;
+    `<div style="${AREA}" dir="${dir}"><ui-context-menu class="contents" data-slot="context-menu"><ui-context-menu-trigger class="contents"><span class="contents" data-slot="context-menu-trigger">Right click here</span></ui-context-menu-trigger><ui-context-menu-content class="contents">${closed ? '' : `<div class="absolute w-56 ${PANEL}" style="left:${x}px;top:${y}px" role="menu" tabindex="-1" data-state="open" data-slot="context-menu-content">${BODY(open, dir)}</div>`}</ui-context-menu-content></ui-context-menu></div>`;
 
 const eItem = (text, attrs = '') => `<ge-context-menu-item ${attrs}>${text}</ge-context-menu-item>`;
 const eBody = (hover) =>
     `<ge-context-menu-label inset>Actions</ge-context-menu-label><ge-context-menu-item>Back<ge-context-menu-shortcut>⌘[</ge-context-menu-shortcut></ge-context-menu-item>${eItem('Forward', 'disabled')}${eItem('Reload', 'inset shortcut="⌘R"')}<ge-context-menu-separator></ge-context-menu-separator><ge-context-menu-sub><ge-context-menu-sub-trigger${hover ? ' data-hover-on-show' : ''}>More tools</ge-context-menu-sub-trigger><ge-context-menu-sub-content>${eItem('Save page')}${eItem('Print', 'shortcut="⌘P"')}</ge-context-menu-sub-content></ge-context-menu-sub>${eItem('Delete', 'variant="destructive"')}`;
 const el = (hover = false, dir = 'ltr') =>
-    `<div style="${AREA}" dir="${dir}"><ge-context-menu><ge-context-menu-trigger>Right click here</ge-context-menu-trigger><ge-context-menu-content>${eBody(hover)}</ge-context-menu-content></ge-context-menu></div>`;
+    `<div style="${AREA}" dir="${dir}"><ge-context-menu><ge-context-menu-trigger>Right click here</ge-context-menu-trigger><ge-context-menu-content style="width:14rem">${eBody(hover)}</ge-context-menu-content></ge-context-menu></div>`;
 
 const at = (x, y) => `${x},${y}`;
 const items = [
