@@ -17,7 +17,8 @@ const el = (side, align, inner = '', attrs = elSimple('@gilav21', 'Maintains sha
 const elCustom = '<p style="margin:0;font-size:0.875rem;line-height:1.25rem">Anything you like goes here, in any markup.</p>';
 
 // overflow:hidden makes the wrapper the clipping box, so collision handling does not depend on where the harness page puts the case.
-const W = (extra = '') => `width:560px;height:240px;padding:120px 0 0 240px;box-sizing:content-box;overflow:hidden;${extra}`;
+// It is narrower than the 700px harness viewport, which is a clipping box too.
+const W = (extra = '') => `width:400px;height:240px;padding:120px 0 0 240px;box-sizing:content-box;overflow:hidden;${extra}`;
 const items = [
     ...['top', 'bottom'].flatMap((side) => ['start', 'center', 'end'].map((align) => ({ id: `${side}-${align}`, wrap: W(), ref: ref(side, align), el: el(side, align) }))),
     { id: 'heading-only', wrap: W(), ref: ref('bottom', 'center', simple('@gilav21')), el: el('bottom', 'center', '', elSimple('@gilav21')) },
@@ -28,4 +29,4 @@ const items = [
     { id: 'rtl-end', wrap: W('padding-left:0;padding-right:240px;'), ref: `<div dir="rtl">${ref('top', 'end')}</div>`, el: `<div dir="rtl">${el('top', 'end')}</div>` },
     { id: 'closed', wrap: W(), ref: ref('bottom', 'center').replace(/<ui-hover-card-content.*<\/ui-hover-card-content>/, ''), el: el('bottom', 'center').replace('<ge-hover-card open>', '<ge-hover-card>') },
 ];
-export default { name: 'hover-card', items };
+export default { name: 'hover-card', isolated: true, items };
