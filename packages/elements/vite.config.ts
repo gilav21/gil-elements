@@ -83,6 +83,8 @@ export default defineConfig({
                 'tooltip/define': 'src/tooltip/define.ts',
                 'hover-card/index': 'src/hover-card/index.ts',
                 'hover-card/define': 'src/hover-card/define.ts',
+                'dropdown-menu/index': 'src/dropdown-menu/index.ts',
+                'dropdown-menu/define': 'src/dropdown-menu/define.ts',
             },
             formats: ['es'],
         },

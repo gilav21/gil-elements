@@ -1676,4 +1676,107 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
             { name: '--density-popover', type: 'css', default: '--density', description: 'Spacing multiplier for the card padding.' },
         ],
     },
+    {
+        id: 'dropdown-menu',
+        group: 'Rung 4 · Overlays',
+        name: 'Dropdown menu',
+        tag: 'ge-dropdown-menu',
+        description: 'A menu of actions opened from a button. Up and Down move through the items, Right (Left in right-to-left text) opens a submenu, Escape closes the innermost menu and a click outside closes it. Build it from parts, or hand it `items` data.',
+        examples: [
+            {
+                title: 'Simple mode (data-driven)',
+                note: 'Set `items` and the menu builds its own content, nested submenus included. Each row can carry a `click` callback.',
+                html: `<ge-dropdown-menu id="dm-data">
+  <ge-dropdown-menu-trigger><ge-button variant="outline">Open menu (data)</ge-button></ge-dropdown-menu-trigger>
+</ge-dropdown-menu>
+<script>
+document.getElementById('dm-data').items = [
+  { label: 'My Account', type: 'label' },
+  { type: 'separator' },
+  { label: 'Profile', shortcut: '⇧⌘P' },
+  { label: 'Billing', shortcut: '⌘B' },
+  { label: 'Settings', shortcut: '⌘S' },
+  { label: 'Keyboard shortcuts', shortcut: '⌘K' },
+  { type: 'separator' },
+  { label: 'Team', type: 'label' },
+  { label: 'Invite users', type: 'sub', children: [
+    { label: 'Email', shortcut: '⌘E' },
+    { label: 'Message', shortcut: '⌘M' },
+    { type: 'separator' },
+    { label: 'More', type: 'sub', children: [{ label: 'Discord' }, { label: 'Slack' }] },
+  ] },
+  { type: 'separator' },
+  { label: 'GitHub' },
+  { label: 'Support' },
+  { label: 'API' },
+  { type: 'separator' },
+  { label: 'Log out', shortcut: '⇧⌘Q' },
+];
+</script>`,
+            },
+            {
+                title: 'Complex mode (template-driven)',
+                note: 'Compose the parts yourself for full control. A key press on an item is a real click, so one `click` listener serves pointer and keyboard.',
+                html: `<ge-dropdown-menu>
+  <ge-dropdown-menu-trigger><ge-button variant="outline">Open menu (template)</ge-button></ge-dropdown-menu-trigger>
+  <ge-dropdown-menu-content style="width:14rem">
+    <ge-dropdown-menu-label>My Account</ge-dropdown-menu-label>
+    <ge-dropdown-menu-separator></ge-dropdown-menu-separator>
+    <ge-dropdown-menu-item shortcut="⇧⌘P">Profile</ge-dropdown-menu-item>
+    <ge-dropdown-menu-item shortcut="⌘B">Billing</ge-dropdown-menu-item>
+    <ge-dropdown-menu-item shortcut="⌘S">Settings</ge-dropdown-menu-item>
+    <ge-dropdown-menu-item shortcut="⌘K">Keyboard shortcuts</ge-dropdown-menu-item>
+    <ge-dropdown-menu-separator></ge-dropdown-menu-separator>
+    <ge-dropdown-menu-item>Team</ge-dropdown-menu-item>
+    <ge-dropdown-menu-sub>
+      <ge-dropdown-menu-sub-trigger>Invite users</ge-dropdown-menu-sub-trigger>
+      <ge-dropdown-menu-sub-content>
+        <ge-dropdown-menu-item>Email</ge-dropdown-menu-item>
+        <ge-dropdown-menu-item>Message</ge-dropdown-menu-item>
+        <ge-dropdown-menu-separator></ge-dropdown-menu-separator>
+        <ge-dropdown-menu-item>More...</ge-dropdown-menu-item>
+      </ge-dropdown-menu-sub-content>
+    </ge-dropdown-menu-sub>
+    <ge-dropdown-menu-item shortcut="⌘+T">New Team</ge-dropdown-menu-item>
+    <ge-dropdown-menu-separator></ge-dropdown-menu-separator>
+    <ge-dropdown-menu-item>GitHub</ge-dropdown-menu-item>
+    <ge-dropdown-menu-item>Support</ge-dropdown-menu-item>
+    <ge-dropdown-menu-item disabled>API</ge-dropdown-menu-item>
+    <ge-dropdown-menu-separator></ge-dropdown-menu-separator>
+    <ge-dropdown-menu-item shortcut="⇧⌘Q">Log out</ge-dropdown-menu-item>
+  </ge-dropdown-menu-content>
+</ge-dropdown-menu>`,
+            },
+            {
+                title: 'Disabled submenu branch',
+                note: 'The dimmed branch refuses to open: hover, click and Enter or the forward arrow all do nothing.',
+                html: `<ge-dropdown-menu>
+  <ge-dropdown-menu-trigger><ge-button variant="outline">Open menu (disabled branch)</ge-button></ge-dropdown-menu-trigger>
+  <ge-dropdown-menu-content style="width:14rem">
+    <ge-dropdown-menu-label>Team</ge-dropdown-menu-label>
+    <ge-dropdown-menu-separator></ge-dropdown-menu-separator>
+    <ge-dropdown-menu-item>Settings</ge-dropdown-menu-item>
+    <ge-dropdown-menu-sub>
+      <ge-dropdown-menu-sub-trigger disabled>Invite users</ge-dropdown-menu-sub-trigger>
+      <ge-dropdown-menu-sub-content>
+        <ge-dropdown-menu-item>Email</ge-dropdown-menu-item>
+        <ge-dropdown-menu-item>Message</ge-dropdown-menu-item>
+      </ge-dropdown-menu-sub-content>
+    </ge-dropdown-menu-sub>
+    <ge-dropdown-menu-item>New Team</ge-dropdown-menu-item>
+  </ge-dropdown-menu-content>
+</ge-dropdown-menu>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the menu is showing. `open-change` fires for changes the user makes, not for ones you set.' },
+            { name: 'items', type: 'DropdownItem[]', default: '[]', description: 'Builds the content from descriptors: `label`, `shortcut`, `disabled`, `inset`, `type` (`item`, `separator`, `label`, `sub`), `children` and a `click` callback. Use it or projected content, not both.' },
+            { name: 'content: align', type: "'start' | 'center' | 'end'", default: "'start'", description: 'Which edge lines up with the trigger. Start and end follow text direction. There is no collision handling.' },
+            { name: 'item: disabled', type: 'boolean', default: 'false', description: 'Dims the row, blocks every activation and removes it from the arrow-key ring.' },
+            { name: 'item: inset', type: 'boolean', default: 'false', description: 'Indents the label to line up with rows that carry an icon.' },
+            { name: 'item: shortcut', type: 'string', default: "''", description: 'Right-aligned hint such as `⌘K`. Decorative: it binds no key.' },
+            { name: 'sub-trigger: disabled / inset', type: 'boolean', default: 'false', description: 'As for an item; a disabled branch never opens.' },
+            { name: '--density-menu', type: 'css', default: '--density', description: 'Spacing multiplier for the item padding.' },
+        ],
+    },
 ];

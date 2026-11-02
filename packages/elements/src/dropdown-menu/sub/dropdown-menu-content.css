@@ -1,0 +1,31 @@
+:host {
+    position: absolute;
+    top: 100%;
+    z-index: 50;
+    box-sizing: border-box;
+    min-width: 8rem;
+    max-width: calc(100vw - 2rem);
+    margin-top: 0.25rem;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    outline: none;
+    /* `align="center"` is also the legacy HTML alignment attribute, which browsers turn into text-align: center on any element. */
+    text-align: start;
+}
+:host(:not([data-state="open"])) {
+    display: none;
+}
+:host([align="start"]) {
+    inset-inline-start: 0;
+}
+:host([align="center"]) {
+    left: 50%;
+    translate: -50% 0;
+}
+:host([align="end"]) {
+    inset-inline-end: 0;
+}
