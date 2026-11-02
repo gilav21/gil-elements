@@ -1515,4 +1515,79 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
             { name: 'ge-button-group-separator: orientation', type: "'horizontal' | 'vertical'", default: "'vertical'", description: 'Direction of the line.' },
         ],
     },
+    {
+        id: 'popover',
+        group: 'Rung 4 · Overlays',
+        name: 'Popover',
+        tag: 'ge-popover',
+        description: 'A panel anchored to a trigger. It does not lock the page or trap focus; a click outside or Escape closes it, and focus goes back to the trigger.',
+        examples: [
+            {
+                title: 'Simple',
+                note: 'Style the panel through its `panel` part, e.g. a wider box.',
+                html: `<style>#pop-dims::part(panel) { width: 20rem; }</style>
+<ge-popover>
+  <ge-popover-trigger><ge-button variant="outline">Open popover</ge-button></ge-popover-trigger>
+  <ge-popover-content id="pop-dims">
+    <div style="display:grid;gap:1rem">
+      <div style="display:grid;gap:0.5rem">
+        <h4 style="margin:0;font-weight:500;line-height:1">Dimensions</h4>
+        <p style="margin:0;font-size:0.875rem;color:var(--muted-foreground)">Set the dimensions for the layer.</p>
+      </div>
+      <ge-input aria-label="Width" value="100%"></ge-input>
+      <div style="display:flex;justify-content:flex-end">
+        <ge-popover-close><ge-button size="sm">Close</ge-button></ge-popover-close>
+      </div>
+    </div>
+  </ge-popover-content>
+</ge-popover>`,
+            },
+            {
+                title: 'Sides and alignment',
+                note: '`side` is a preference: `top` and `bottom` flip when there is no room, and a panel near an edge is nudged back inside.',
+                html: `<ge-popover>
+  <ge-popover-trigger><ge-button variant="outline">Top, start</ge-button></ge-popover-trigger>
+  <ge-popover-content side="top" align="start">Opens above, aligned to the trigger's start.</ge-popover-content>
+</ge-popover>
+<ge-popover>
+  <ge-popover-trigger><ge-button variant="outline">Right</ge-button></ge-popover-trigger>
+  <ge-popover-content side="right">Opens beside the trigger.</ge-popover-content>
+</ge-popover>
+<ge-popover>
+  <ge-popover-trigger><ge-button variant="outline">Left, 12px away</ge-button></ge-popover-trigger>
+  <ge-popover-content side="left" side-offset="12">Opens to the left, with a wider gap.</ge-popover-content>
+</ge-popover>`,
+            },
+            {
+                title: 'Top layer',
+                note: '`strategy="fixed"` promotes the panel to the browser top layer, so an `overflow: hidden` ancestor cannot clip it.',
+                html: `<div style="overflow:hidden;height:3.5rem;padding:0.5rem;border:1px dashed var(--border);border-radius:var(--radius)">
+  <ge-popover>
+    <ge-popover-trigger><ge-button variant="outline">Escapes the box</ge-button></ge-popover-trigger>
+    <ge-popover-content strategy="fixed">Not clipped by the dashed box around it.</ge-popover-content>
+  </ge-popover>
+</div>`,
+            },
+            {
+                title: 'Plain-text trigger',
+                note: 'Content that is not a control becomes a button: Tab to it and press Enter or Space.',
+                html: `<ge-popover>
+  <ge-popover-trigger><span style="text-decoration:underline;cursor:pointer">What is this?</span></ge-popover-trigger>
+  <ge-popover-content>It opens and closes like any popover.</ge-popover-content>
+</ge-popover>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the popover is showing. `show()`, `hide()` and `toggle()` also work.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'When the user opens or closes it; detail is the new state. Setting `open` yourself does not fire it.' },
+            { name: 'close-on-scroll', type: 'boolean', default: 'false', description: 'Closes when anything outside the popover scrolls.' },
+            { name: 'content: side', type: "'top' | 'right' | 'bottom' | 'left'", default: "'bottom'", description: 'Preferred edge of the trigger.' },
+            { name: 'content: align', type: "'start' | 'center' | 'end'", default: "'center'", description: 'Alignment along that edge.' },
+            { name: 'content: side-offset', type: 'number', default: '4', description: 'Gap in pixels between trigger and panel.' },
+            { name: 'content: no-collisions', type: 'boolean', default: 'false', description: 'Pins the panel to `side` and `align` and accepts clipping.' },
+            { name: 'content: no-restore-focus', type: 'boolean', default: 'false', description: 'Does not return focus to the trigger on close.' },
+            { name: 'content: strategy', type: "'absolute' | 'fixed'", default: "'absolute'", description: '`fixed` renders in the browser top layer.' },
+            { name: '--density-popover', type: 'css', default: '--density', description: 'Spacing multiplier for the panel padding.' },
+        ],
+    },
 ];

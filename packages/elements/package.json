@@ -367,6 +367,16 @@
       "types": "./dist/sheet/define.d.ts",
       "development": "./src/sheet/define.ts",
       "default": "./dist/sheet/define.js"
+    },
+    "./popover": {
+      "types": "./dist/popover/index.d.ts",
+      "development": "./src/popover/index.ts",
+      "default": "./dist/popover/index.js"
+    },
+    "./popover/define": {
+      "types": "./dist/popover/define.d.ts",
+      "development": "./src/popover/define.ts",
+      "default": "./dist/popover/define.js"
     }
   },
   "scripts": {

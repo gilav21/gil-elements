@@ -77,6 +77,8 @@ export default defineConfig({
                 'alert-dialog/define': 'src/alert-dialog/define.ts',
                 'sheet/index': 'src/sheet/index.ts',
                 'sheet/define': 'src/sheet/define.ts',
+                'popover/index': 'src/popover/index.ts',
+                'popover/define': 'src/popover/define.ts',
             },
             formats: ['es'],
         },
