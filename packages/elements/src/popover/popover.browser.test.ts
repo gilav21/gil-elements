@@ -120,6 +120,17 @@ describe('ge-popover', () => {
         close(p.bottom, t.top - 4);
     });
 
+    it('still sees the screen edge when a tall page clips sideways, as the demo page does with overflow-x: clip on body', async () => {
+        document.body.style.overflowX = 'clip';
+        try {
+            const low = await mount(MARKUP('', 'padding:720px 300px 0;height:3000px'));
+            await open(low);
+            expect(panel(low)!.dataset.side).toBe('top');
+        } finally {
+            document.body.style.overflowX = '';
+        }
+    });
+
     it('stays on its preferred side when neither side has room for it', async () => {
         await viewport.viewport(1280, 150);
         const page = await mount(MARKUP('', 'padding:40px 300px 0'));

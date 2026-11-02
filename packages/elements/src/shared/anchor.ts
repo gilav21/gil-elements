@@ -20,14 +20,25 @@ function flatParent(node: Element): Element | null {
 
 const CLIPS = /^(hidden|auto|scroll|clip)$/;
 
-/** The box that clips `element`: the nearest ancestor with overflow other than visible, else the viewport. */
+function intersect(a: DOMRect, b: DOMRect): DOMRect {
+    const left = Math.max(a.left, b.left);
+    const top = Math.max(a.top, b.top);
+    return new DOMRect(left, top, Math.max(0, Math.min(a.right, b.right) - left), Math.max(0, Math.min(a.bottom, b.bottom) - top));
+}
+
+/**
+ * The part of the screen where `element` can actually be seen: the viewport narrowed by every ancestor that clips
+ * its overflow. The viewport is always part of it, because a clipping ancestor can be far larger than the screen
+ * (a page whose `body` has `overflow-x: clip` is as tall as the whole page).
+ */
 export function clippingRect(element: Element): DOMRect {
     const view = element.ownerDocument.defaultView;
+    let visible = new DOMRect(0, 0, view?.innerWidth ?? 0, view?.innerHeight ?? 0);
     for (let parent = flatParent(element); parent && parent !== element.ownerDocument.documentElement; parent = flatParent(parent)) {
         const style = view?.getComputedStyle(parent);
-        if (style && (CLIPS.test(style.overflowX) || CLIPS.test(style.overflowY))) return parent.getBoundingClientRect();
+        if (style && (CLIPS.test(style.overflowX) || CLIPS.test(style.overflowY))) visible = intersect(visible, parent.getBoundingClientRect());
     }
-    return new DOMRect(0, 0, view?.innerWidth ?? 0, view?.innerHeight ?? 0);
+    return visible;
 }
 
 /** How far to move a panel along x so it ends up inside `bounds`, with {@link EDGE_GAP} to spare. */
