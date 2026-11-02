@@ -1,0 +1,12 @@
+:host {
+    --_d: var(--density-menu, var(--density, 1));
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    height: calc(2.5rem * var(--_d));
+    gap: calc(0.25rem * var(--_d));
+    padding: calc(0.25rem * var(--_d));
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--background);
+}

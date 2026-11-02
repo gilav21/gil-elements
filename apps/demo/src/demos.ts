@@ -1804,9 +1804,9 @@ document.getElementById('dm-data').items = [
 </ge-context-menu>`,
             },
             {
-                title: 'Destructive row and manual opening',
-                note: '`variant="destructive"` paints a row in the destructive colour. Without a trigger, call `show(x, y)` from your own listener, for example to open the menu from a button.',
-                html: `<ge-context-menu id="cm-manual">
+                title: 'Attach a menu to any element',
+                note: '`variant="destructive"` paints a row in the destructive colour. Put the menu anywhere and name it with `for` on a `ge-context-menu-trigger` that wraps the area; several areas can share one menu.',
+                html: `<ge-context-menu id="cm-shared">
   <ge-context-menu-content style="width:14rem">
     <ge-context-menu-item>Edit<ge-context-menu-shortcut>⌘E</ge-context-menu-shortcut></ge-context-menu-item>
     <ge-context-menu-item>Copy<ge-context-menu-shortcut>⌘C</ge-context-menu-shortcut></ge-context-menu-item>
@@ -1815,7 +1815,20 @@ document.getElementById('dm-data').items = [
     <ge-context-menu-item variant="destructive">Delete<ge-context-menu-shortcut>⌘⌫</ge-context-menu-shortcut></ge-context-menu-item>
   </ge-context-menu-content>
 </ge-context-menu>
-<div id="cm-area" style="display:flex;height:150px;width:100%;max-width:400px;align-items:center;justify-content:center;border:2px dashed var(--border);border-radius:var(--radius);background:var(--muted);color:var(--muted-foreground);font-size:0.875rem">Right click this area</div>
+<ge-context-menu-trigger for="cm-shared">
+  <div style="display:flex;height:150px;width:100%;max-width:400px;align-items:center;justify-content:center;border:2px dashed var(--border);border-radius:var(--radius);background:var(--muted);color:var(--muted-foreground);font-size:0.875rem">Right click this area</div>
+</ge-context-menu-trigger>`,
+            },
+            {
+                title: 'Manual opening',
+                note: 'Without a trigger, call `show(x, y)` from your own listener, for example to open the menu from a button.',
+                html: `<ge-context-menu id="cm-manual">
+  <ge-context-menu-content style="width:14rem">
+    <ge-context-menu-item>Edit</ge-context-menu-item>
+    <ge-context-menu-item>Copy</ge-context-menu-item>
+  </ge-context-menu-content>
+</ge-context-menu>
+<div id="cm-area" style="display:flex;height:100px;width:100%;max-width:400px;align-items:center;justify-content:center;border:1px dashed var(--border);border-radius:var(--radius);font-size:0.875rem">Right click (your own listener)</div>
 <script>
 document.getElementById('cm-area').addEventListener('contextmenu', (e) => {
   e.preventDefault();
@@ -1868,9 +1881,112 @@ document.getElementById('cm-data').items = [
             { name: 'open', type: 'boolean', default: 'false', description: 'Whether the menu is showing. Read it; open the menu with `show(x, y)`.' },
             { name: 'show(x, y, data?)', type: 'method', default: '-', description: 'Opens with its top-left corner at viewport coordinates, shifted to stay 8px inside the viewport. `data` is kept on the element for your handlers.' },
             { name: 'close()', type: 'method', default: '-', description: 'Closes the menu and any open submenu.' },
+            { name: 'trigger: for', type: 'string', default: "''", description: 'The id of the `ge-context-menu` to open, for a menu that is not around the trigger. Without it the trigger opens the menu it sits in.' },
             { name: 'items', type: 'ContextMenuItem[]', default: '[]', description: 'Builds the content from descriptors: `label`, `shortcut`, `disabled`, `inset`, `type`, `children` and a `click` callback.' },
             { name: 'item: variant', type: "'default' | 'destructive'", default: "'default'", description: 'Destructive paints the row in the destructive colour.' },
             { name: 'item / sub-trigger / label: inset', type: 'boolean', default: 'false', description: 'Indents the text to line up with rows that carry an icon.' },
+        ],
+    },
+    {
+        id: 'menubar',
+        group: 'Rung 4 · Overlays',
+        name: 'Menubar',
+        tag: 'ge-menubar',
+        description: 'A bar of menus like a desktop app. One menu is open at a time; once one is open, hovering another trigger or pressing Left or Right switches to it. Down or Enter opens a menu into its first item, Up and Down walk the items, and Escape closes and returns to the trigger.',
+        examples: [
+            {
+                title: 'Basic',
+                note: 'Each `ge-menubar-menu` holds a trigger and its content. Rows take `shortcut`, `inset` and `disabled`, or a `ge-menubar-shortcut` child; submenus nest as many levels as you need.',
+                html: `<ge-menubar>
+  <ge-menubar-menu>
+    <ge-menubar-trigger>File</ge-menubar-trigger>
+    <ge-menubar-content>
+      <ge-menubar-item>New tab<ge-menubar-shortcut>⌘T</ge-menubar-shortcut></ge-menubar-item>
+      <ge-menubar-item>New window<ge-menubar-shortcut>⌘N</ge-menubar-shortcut></ge-menubar-item>
+      <ge-menubar-item disabled>New incognito window</ge-menubar-item>
+      <ge-menubar-separator></ge-menubar-separator>
+      <ge-menubar-sub>
+        <ge-menubar-sub-trigger>Share</ge-menubar-sub-trigger>
+        <ge-menubar-sub-content>
+          <ge-menubar-sub>
+            <ge-menubar-sub-trigger>Email link</ge-menubar-sub-trigger>
+            <ge-menubar-sub-content>
+              <ge-menubar-item>Personal</ge-menubar-item>
+              <ge-menubar-item>Work</ge-menubar-item>
+            </ge-menubar-sub-content>
+          </ge-menubar-sub>
+          <ge-menubar-item>Messages</ge-menubar-item>
+          <ge-menubar-item>Notes</ge-menubar-item>
+        </ge-menubar-sub-content>
+      </ge-menubar-sub>
+      <ge-menubar-separator></ge-menubar-separator>
+      <ge-menubar-item>Print<ge-menubar-shortcut>⌘P</ge-menubar-shortcut></ge-menubar-item>
+    </ge-menubar-content>
+  </ge-menubar-menu>
+  <ge-menubar-menu>
+    <ge-menubar-trigger>Edit</ge-menubar-trigger>
+    <ge-menubar-content>
+      <ge-menubar-item>Undo<ge-menubar-shortcut>⌘Z</ge-menubar-shortcut></ge-menubar-item>
+      <ge-menubar-item>Redo<ge-menubar-shortcut>⇧⌘Z</ge-menubar-shortcut></ge-menubar-item>
+      <ge-menubar-separator></ge-menubar-separator>
+      <ge-menubar-item>Cut<ge-menubar-shortcut>⌘X</ge-menubar-shortcut></ge-menubar-item>
+      <ge-menubar-item>Copy<ge-menubar-shortcut>⌘C</ge-menubar-shortcut></ge-menubar-item>
+      <ge-menubar-item>Paste<ge-menubar-shortcut>⌘V</ge-menubar-shortcut></ge-menubar-item>
+      <ge-menubar-separator></ge-menubar-separator>
+      <ge-menubar-item>Select all<ge-menubar-shortcut>⌘A</ge-menubar-shortcut></ge-menubar-item>
+    </ge-menubar-content>
+  </ge-menubar-menu>
+  <ge-menubar-menu>
+    <ge-menubar-trigger>View</ge-menubar-trigger>
+    <ge-menubar-content>
+      <ge-menubar-item inset shortcut="⌘R">Reload</ge-menubar-item>
+      <ge-menubar-item inset disabled shortcut="⇧⌘R">Force reload</ge-menubar-item>
+      <ge-menubar-separator></ge-menubar-separator>
+      <ge-menubar-item inset>Toggle fullscreen</ge-menubar-item>
+      <ge-menubar-separator></ge-menubar-separator>
+      <ge-menubar-item inset>Hide sidebar</ge-menubar-item>
+    </ge-menubar-content>
+  </ge-menubar-menu>
+</ge-menubar>`,
+            },
+            {
+                title: 'Disabled branch and disabled first item',
+                note: 'A dimmed submenu branch never opens, and a disabled first row is skipped: Down from the trigger lands on the first enabled row, and the arrow keys wrap around.',
+                html: `<ge-menubar>
+  <ge-menubar-menu>
+    <ge-menubar-trigger>Export</ge-menubar-trigger>
+    <ge-menubar-content>
+      <ge-menubar-item>PDF</ge-menubar-item>
+      <ge-menubar-item>Image</ge-menubar-item>
+      <ge-menubar-separator></ge-menubar-separator>
+      <ge-menubar-sub>
+        <ge-menubar-sub-trigger disabled>Cloud</ge-menubar-sub-trigger>
+        <ge-menubar-sub-content>
+          <ge-menubar-item>Drive</ge-menubar-item>
+          <ge-menubar-item>Dropbox</ge-menubar-item>
+        </ge-menubar-sub-content>
+      </ge-menubar-sub>
+    </ge-menubar-content>
+  </ge-menubar-menu>
+  <ge-menubar-menu>
+    <ge-menubar-trigger>History</ge-menubar-trigger>
+    <ge-menubar-content>
+      <ge-menubar-item disabled>Restore session</ge-menubar-item>
+      <ge-menubar-item>Recently closed</ge-menubar-item>
+      <ge-menubar-separator></ge-menubar-separator>
+      <ge-menubar-item>Clear history</ge-menubar-item>
+    </ge-menubar-content>
+  </ge-menubar-menu>
+</ge-menubar>`,
+            },
+        ],
+        api: [
+            { name: 'menu: open', type: 'boolean', default: 'false', description: 'Read-only: whether this menu is the open one. Open it with `show()`, close with `hide()`, or `toggle()`.' },
+            { name: 'item: disabled', type: 'boolean', default: 'false', description: 'Dims the row, blocks every activation and removes it from the arrow-key ring.' },
+            { name: 'item: inset', type: 'boolean', default: 'false', description: 'Indents the label to line up with rows that carry an icon.' },
+            { name: 'item: shortcut', type: 'string', default: "''", description: 'Right-aligned hint such as `⌘K`. Decorative: it binds no key.' },
+            { name: 'sub-trigger: disabled / inset', type: 'boolean', default: 'false', description: 'As for an item; a disabled branch never opens.' },
+            { name: '--density-menu', type: 'css', default: '--density', description: 'Spacing multiplier for the bar, triggers and rows.' },
         ],
     },
 ];

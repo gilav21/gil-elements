@@ -417,6 +417,16 @@
       "types": "./dist/context-menu/define.d.ts",
       "development": "./src/context-menu/define.ts",
       "default": "./dist/context-menu/define.js"
+    },
+    "./menubar": {
+      "types": "./dist/menubar/index.d.ts",
+      "development": "./src/menubar/index.ts",
+      "default": "./dist/menubar/index.js"
+    },
+    "./menubar/define": {
+      "types": "./dist/menubar/define.d.ts",
+      "development": "./src/menubar/define.ts",
+      "default": "./dist/menubar/define.js"
     }
   },
   "scripts": {

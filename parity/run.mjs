@@ -101,6 +101,9 @@ for (const theme of ['light', 'dark']) {
                 const tags = [...new Set([...document.querySelectorAll('*')].map((e) => e.localName).filter((n) => n.startsWith('ge-')))];
                 await Promise.race([Promise.all(tags.map((t) => customElements.whenDefined(t))), timeout]);
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+                // `data-click` marks a menubar trigger the reference shows opened; opened through the menu, since a click would close the bars of the other cases as an outside click.
+                for (const target of document.querySelectorAll('[data-click]')) target.closest('ge-menubar-menu').show();
+                await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
                 // `data-hover` marks an element the reference shows hovered (a submenu that hover opened).
                 for (const target of document.querySelectorAll('[data-hover]')) target.dispatchEvent(new MouseEvent('mouseenter'));
                 // Panels measure themselves in the first animation frame after they open, so the page must be at the top by then.

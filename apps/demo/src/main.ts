@@ -36,6 +36,7 @@ import '@gilav21/elements/tooltip/define';
 import '@gilav21/elements/hover-card/define';
 import '@gilav21/elements/dropdown-menu/define';
 import '@gilav21/elements/context-menu/define';
+import '@gilav21/elements/menubar/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
