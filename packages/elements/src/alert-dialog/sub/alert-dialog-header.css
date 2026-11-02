@@ -1,0 +1,16 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+@media (min-width: 640px) {
+    :host {
+        text-align: left;
+    }
+}
+:host(:dir(rtl)) {
+    text-align: right;
+}
+::slotted(:not(:last-child)) {
+    margin-block-end: 0.5rem;
+}

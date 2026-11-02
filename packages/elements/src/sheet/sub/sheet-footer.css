@@ -1,0 +1,13 @@
+:host {
+    display: flex;
+    flex-direction: column-reverse;
+}
+@media (min-width: 640px) {
+    :host {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+    :host(:dir(ltr)) ::slotted(:not(:last-child)) {
+        margin-inline-end: 0.5rem;
+    }
+}

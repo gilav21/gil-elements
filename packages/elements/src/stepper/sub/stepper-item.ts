@@ -17,7 +17,7 @@ export interface StepperItemHost {
 
 /**
  * One step. Holds a `ge-stepper-trigger` and, optionally, a `ge-stepper-content` that shows while this step is
- * current. Between horizontal steps it draws the connecting line itself.
+ * current. Between steps it draws the connecting line itself.
  *
  * @slot - A `ge-stepper-trigger`, a `ge-stepper-separator` and a `ge-stepper-content`.
  * @attr {string} value - Identifies the step. Required.
@@ -76,8 +76,6 @@ export class GeStepperItem extends UiElement implements StepperItemHost {
     protected override render() {
         const orientation = this.stepper?.orientation ?? 'horizontal';
         const last = this.index === (this.stepper?.count() ?? 1) - 1;
-        return html`<div class="item" data-slot="stepper-item" data-status=${this.status} data-orientation=${orientation}><slot></slot></div>${!last && orientation === 'horizontal'
-            ? html`<div class="connector" data-status=${this.status}></div>`
-            : nothing}`;
+        return html`<div class="item" data-slot="stepper-item" data-status=${this.status} data-orientation=${orientation}><slot></slot></div>${last ? nothing : html`<div class="connector" data-orientation=${orientation} data-status=${this.status}></div>`}`;
     }
 }

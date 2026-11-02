@@ -17,8 +17,15 @@
 .connector {
     flex: 1 1 0%;
     height: 0.125rem;
-    margin-top: 1rem;
+    margin: 1rem 0.5rem 0;
     background-color: var(--border);
+    transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.connector[data-orientation="vertical"] {
+    flex: none;
+    width: 0.125rem;
+    height: 2rem;
+    margin: 0.5rem 0 0.5rem 1rem;
 }
 .connector[data-status="complete"] {
     background-color: var(--primary);

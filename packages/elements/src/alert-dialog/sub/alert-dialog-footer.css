@@ -1,0 +1,11 @@
+:host {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 10px;
+}
+@media (min-width: 640px) {
+    :host {
+        flex-direction: row;
+        justify-content: flex-end;
+    }
+}
