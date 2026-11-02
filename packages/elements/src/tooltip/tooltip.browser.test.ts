@@ -31,37 +31,49 @@ const near = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThan(1);
 afterEach(() => vi.restoreAllMocks());
 
 describe('ge-tooltip', () => {
-    it('opens after the hover dwell, not before, and closes when the pointer leaves', async () => {
-        const page = await mount(SIMPLE());
-        await userEvent.hover(page.querySelector('#b')!);
-        await wait(100);
-        await settle(page);
-        expect(bubble(page)).toBeNull();
+    describe('hover timing', () => {
+        // Fake timers make every window exact; the pointer is two synthetic events on the wrapper it would cross.
+        const base = (page: HTMLElement) => page.querySelector('ge-tooltip-trigger')!.shadowRoot!.querySelector('[part="base"]')!;
+        const enter = (page: HTMLElement) => base(page).dispatchEvent(new MouseEvent('mouseenter'));
+        const leave = (page: HTMLElement) => base(page).dispatchEvent(new MouseEvent('mouseleave'));
+        afterEach(() => vi.useRealTimers());
 
-        await wait(200);
-        await settle(page);
-        expect(bubble(page)).not.toBeNull();
-        expect(tooltip(page).open).toBe(true);
-        expect(tooltip(page).shadowRoot!.querySelector('ge-tooltip-content')!.textContent).toBe('Add to library');
+        it('opens after the hover dwell, not before, and closes when the pointer leaves', async () => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            const page = await mount(SIMPLE());
+            enter(page);
+            vi.advanceTimersByTime(199);
+            await settle(page);
+            expect(bubble(page)).toBeNull();
 
-        await userEvent.unhover(page.querySelector('#b')!);
-        await settle(page);
-        expect(tooltip(page).open).toBe(false);
-        expect(bubble(page)).toBeNull();
-    });
+            vi.advanceTimersByTime(1);
+            await settle(page);
+            expect(bubble(page)).not.toBeNull();
+            expect(tooltip(page).open).toBe(true);
+            expect(tooltip(page).shadowRoot!.querySelector('ge-tooltip-content')!.textContent).toBe('Add to library');
 
-    it('a pointer that leaves before the dwell ends never opens it, and delay-duration changes the dwell', async () => {
-        const page = await mount(SIMPLE('delay-duration="50"'));
-        await userEvent.hover(page.querySelector('#b')!);
-        await wait(120);
-        expect(tooltip(page).open).toBe(true);
+            leave(page);
+            await settle(page);
+            expect(tooltip(page).open).toBe(false);
+            expect(bubble(page)).toBeNull();
+        });
 
-        const quick = await mount(SIMPLE());
-        await userEvent.hover(quick.querySelector('#b')!);
-        await wait(50);
-        await userEvent.unhover(quick.querySelector('#b')!);
-        await wait(300);
-        expect(tooltip(quick).open).toBe(false);
+        it('a pointer that leaves before the dwell ends never opens it, and delay-duration changes the dwell', async () => {
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            const page = await mount(SIMPLE('delay-duration="50"'));
+            enter(page);
+            vi.advanceTimersByTime(49);
+            expect(tooltip(page).open).toBe(false);
+            vi.advanceTimersByTime(1);
+            expect(tooltip(page).open).toBe(true);
+
+            const quick = await mount(SIMPLE());
+            enter(quick);
+            vi.advanceTimersByTime(50);
+            leave(quick);
+            vi.advanceTimersByTime(1000);
+            expect(tooltip(quick).open).toBe(false);
+        });
     });
 
     it('opens at once for keyboard focus on the projected control, and closes on blur', async () => {

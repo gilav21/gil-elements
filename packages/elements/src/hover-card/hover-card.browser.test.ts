@@ -1,6 +1,6 @@
 import axe from 'axe-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { page as viewport, userEvent } from 'vitest/browser';
+import { page as viewport } from 'vitest/browser';
 import '@gilav21/elements-base/tokens.css';
 import '../button/define.js';
 import './define.js';
@@ -30,50 +30,61 @@ const near = (a: number, b: number) => expect(Math.abs(a - b)).toBeLessThan(1);
 afterEach(() => vi.restoreAllMocks());
 
 describe('ge-hover-card', () => {
-    it('opens after the hover dwell, stays open while the pointer is on the card, and closes after a grace period', async () => {
-        const page = await mount(MARKUP());
-        await userEvent.hover(page.querySelector('#t')!);
-        await wait(100);
-        expect(card(page).open).toBe(false);
-        await wait(200);
-        await settle(page);
-        expect(card(page).open).toBe(true);
-        expect(panel(page)!.querySelector('h4')!.textContent).toBe('@gilav21');
+    describe('timing', () => {
+        // Fake timers make every window exact; the pointer is two synthetic events on the element it would cross.
+        const enter = (el: Element) => el.dispatchEvent(new MouseEvent('mouseenter'));
+        const leave = (el: Element) => el.dispatchEvent(new MouseEvent('mouseleave'));
+        const fake = () => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+        afterEach(() => vi.useRealTimers());
 
-        await userEvent.unhover(page.querySelector('#t')!);
-        await userEvent.hover(panel(page)!);
-        await wait(450);
-        expect(card(page).open).toBe(true);
+        it('opens after the hover dwell, stays open while the pointer is on the card, and closes after a grace period', async () => {
+            fake();
+            const page = await mount(MARKUP());
+            enter(base(page));
+            vi.advanceTimersByTime(199);
+            expect(card(page).open).toBe(false);
+            vi.advanceTimersByTime(1);
+            await settle(page);
+            expect(card(page).open).toBe(true);
+            expect(panel(page)!.querySelector('h4')!.textContent).toBe('@gilav21');
 
-        await userEvent.unhover(panel(page)!);
-        await wait(150);
-        expect(card(page).open).toBe(true);
-        await wait(250);
-        await settle(page);
-        expect(card(page).open).toBe(false);
-        expect(panel(page)).toBeNull();
-    });
+            leave(base(page));
+            enter(panel(page)!);
+            vi.advanceTimersByTime(1000);
+            expect(card(page).open).toBe(true);
 
-    it('a pointer that leaves before the dwell ends never opens it', async () => {
-        const page = await mount(MARKUP());
-        await userEvent.hover(page.querySelector('#t')!);
-        await wait(50);
-        await userEvent.unhover(page.querySelector('#t')!);
-        // Past the dwell but before the close delay would have hidden it again: a cancelled open must not have fired.
-        await wait(230);
-        expect(card(page).open).toBe(false);
-    });
+            leave(panel(page)!);
+            vi.advanceTimersByTime(299);
+            expect(card(page).open).toBe(true);
+            vi.advanceTimersByTime(1);
+            await settle(page);
+            expect(card(page).open).toBe(false);
+            expect(panel(page)).toBeNull();
+        });
 
-    it('coming back to the trigger during the close grace period keeps it open', async () => {
-        const page = await mount(MARKUP());
-        await userEvent.hover(page.querySelector('#t')!);
-        await wait(300);
-        await userEvent.unhover(page.querySelector('#t')!);
-        await wait(200);
-        await userEvent.hover(page.querySelector('#t')!);
-        // Past the original close time but before a re-armed open would land: only a cancelled close keeps it up.
-        await wait(150);
-        expect(card(page).open).toBe(true);
+        it('a pointer that leaves before the dwell ends never opens it', async () => {
+            fake();
+            const page = await mount(MARKUP());
+            enter(base(page));
+            vi.advanceTimersByTime(50);
+            leave(base(page));
+            // Past the dwell but before the close delay would hide it again: a cancelled open must not have fired.
+            vi.advanceTimersByTime(200);
+            expect(card(page).open).toBe(false);
+        });
+
+        it('coming back to the trigger during the close grace period keeps it open', async () => {
+            fake();
+            const page = await mount(MARKUP());
+            enter(base(page));
+            vi.advanceTimersByTime(200);
+            leave(base(page));
+            vi.advanceTimersByTime(200);
+            enter(base(page));
+            // Past the original close time but before a re-armed open would land: only a cancelled close keeps it up.
+            vi.advanceTimersByTime(150);
+            expect(card(page).open).toBe(true);
+        });
     });
 
     it('opens when the trigger wrapper takes keyboard focus and closes when it loses it', async () => {
