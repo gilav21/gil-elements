@@ -377,6 +377,16 @@
       "types": "./dist/popover/define.d.ts",
       "development": "./src/popover/define.ts",
       "default": "./dist/popover/define.js"
+    },
+    "./tooltip": {
+      "types": "./dist/tooltip/index.d.ts",
+      "development": "./src/tooltip/index.ts",
+      "default": "./dist/tooltip/index.js"
+    },
+    "./tooltip/define": {
+      "types": "./dist/tooltip/define.d.ts",
+      "development": "./src/tooltip/define.ts",
+      "default": "./dist/tooltip/define.js"
     }
   },
   "scripts": {

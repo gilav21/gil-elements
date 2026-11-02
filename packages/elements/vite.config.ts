@@ -79,6 +79,8 @@ export default defineConfig({
                 'sheet/define': 'src/sheet/define.ts',
                 'popover/index': 'src/popover/index.ts',
                 'popover/define': 'src/popover/define.ts',
+                'tooltip/index': 'src/tooltip/index.ts',
+                'tooltip/define': 'src/tooltip/define.ts',
             },
             formats: ['es'],
         },

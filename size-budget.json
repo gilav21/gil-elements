@@ -63,6 +63,8 @@
   "chunks/timeline-title.js": 1650,
   "chunks/toggle-group-item.js": 2600,
   "chunks/toggle.js": 1290,
+  "chunks/tooltip-trigger.js": 1550,
+  "chunks/touch.js": 150,
   "collapsible/define.js": 210,
   "collapsible/index.js": 120,
   "dialog/define.js": 290,
@@ -113,5 +115,7 @@
   "toggle-group/define.js": 180,
   "toggle-group/index.js": 100,
   "toggle/define.js": 150,
-  "toggle/index.js": 80
+  "toggle/index.js": 80,
+  "tooltip/define.js": 200,
+  "tooltip/index.js": 160
 }

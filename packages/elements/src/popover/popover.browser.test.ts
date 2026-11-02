@@ -203,7 +203,7 @@ describe('ge-popover', () => {
 
     it('is accessible in both themes, and shrinks to the viewport on a phone', async () => {
         for (const dark of [false, true]) {
-            useTheme(dark);
+            useTheme(dark ? 'dark' : 'light');
             const page = await mount(MARKUP());
             await open(page);
             const results = await axe.run(page, { rules: { 'color-contrast': { enabled: false } } });

@@ -1590,4 +1590,41 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
             { name: '--density-popover', type: 'css', default: '--density', description: 'Spacing multiplier for the panel padding.' },
         ],
     },
+    {
+        id: 'tooltip',
+        group: 'Rung 4 · Overlays',
+        name: 'Tooltip',
+        tag: 'ge-tooltip',
+        description: 'A short label beside a trigger. It opens on hover after a short dwell, at once on keyboard focus, and on a tap on touch screens. It does not flip near a viewport edge.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: 'Set `content` and wrap the trigger. Tab to the button to see it open with the keyboard.',
+                html: `<ge-tooltip content="Add to library">
+  <ge-tooltip-trigger><ge-button variant="outline">Hover me</ge-button></ge-tooltip-trigger>
+</ge-tooltip>`,
+            },
+            {
+                title: 'Sides',
+                html: `<ge-tooltip content="On top" side="top"><ge-tooltip-trigger><ge-button variant="outline">Top</ge-button></ge-tooltip-trigger></ge-tooltip>
+<ge-tooltip content="On the right" side="right"><ge-tooltip-trigger><ge-button variant="outline">Right</ge-button></ge-tooltip-trigger></ge-tooltip>
+<ge-tooltip content="Underneath" side="bottom"><ge-tooltip-trigger><ge-button variant="outline">Bottom</ge-button></ge-tooltip-trigger></ge-tooltip>
+<ge-tooltip content="On the left" side="left"><ge-tooltip-trigger><ge-button variant="outline">Left</ge-button></ge-tooltip-trigger></ge-tooltip>`,
+            },
+            {
+                title: 'Custom mode and a longer dwell',
+                note: 'Slot a `ge-tooltip-content` for markup in the bubble; `delay-duration` is the hover dwell in milliseconds.',
+                html: `<ge-tooltip delay-duration="600">
+  <ge-tooltip-trigger><ge-button variant="outline">Slow to open</ge-button></ge-tooltip-trigger>
+  <ge-tooltip-content><strong>Save</strong> <kbd>Ctrl</kbd> + <kbd>S</kbd></ge-tooltip-content>
+</ge-tooltip>`,
+            },
+        ],
+        api: [
+            { name: 'content', type: 'string', default: "''", description: 'Simple mode text. A `ge-tooltip-content` is generated for you.' },
+            { name: 'side', type: "'top' | 'right' | 'bottom' | 'left'", default: "'top'", description: 'Side of the trigger the bubble sits on, 8px away.' },
+            { name: 'delay-duration', type: 'number', default: '200', description: 'Hover dwell in milliseconds. Focus and touch open it at once.' },
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the bubble is showing. `show()` and `hide()` also work.' },
+        ],
+    },
 ];

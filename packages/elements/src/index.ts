@@ -34,3 +34,4 @@ export * from './dialog/index.js';
 export * from './alert-dialog/index.js';
 export * from './sheet/index.js';
 export * from './popover/index.js';
+export * from './tooltip/index.js';
