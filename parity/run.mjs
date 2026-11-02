@@ -36,8 +36,8 @@ const bundle = readFileSync(`${out}/bundle/elements.js`, 'utf8');
 
 const rows = (cases_, side) =>
     cases_
-        .flatMap((c) => c.items.map((i) => ({ key: `${c.name}/${i.id}`, html: i[side], wrap: i.wrap ?? '', at: i.at, focus: i.focus?.[side] })))
-        .map((i) => `<div data-case="${i.key}" ${i.at ? `data-at="${i.at}"` : ''} ${i.focus ? `data-focus="${i.focus}"` : ''} style="padding:12px;${i.wrap}">${i.html}</div>`)
+        .flatMap((c) => c.items.map((i) => ({ key: `${c.name}/${i.id}`, html: i[side], wrap: i.wrap ?? '', at: i.at, focus: i.focus?.[side], show: side === 'el' ? i.show : undefined })))
+        .map((i) => `<div data-case="${i.key}" ${i.at ? `data-at="${i.at}"` : ''} ${i.focus ? `data-focus="${i.focus}"` : ''} ${i.show ? `data-show="${i.show}"` : ''} style="padding:12px;${i.wrap}">${i.html}</div>`)
         .join('\n');
 const shell = (theme, body, extraCss) =>
     `<!doctype html><html class="${theme}"><head><style>${tokens}${extraCss}
@@ -182,7 +182,27 @@ for (const theme of ['light', 'dark']) {
                 // Focus starts the ring and floating-label transitions; the reference page has nothing left to animate.
                 await page.waitForTimeout(400);
             }
+            // A context menu opens at the pointer, in the top layer at viewport coordinates, so it is opened at an offset
+            // inside the case once the case has been scrolled to the top of the viewport.
+            const show = await handle.getAttribute('data-show');
+            if (show) {
+                await handle.evaluate((c) => c.scrollIntoView({ block: 'start', behavior: 'instant' }));
+                // The scroll event arrives a frame later, and a context menu closes on scroll.
+                await page.waitForTimeout(200);
+                await handle.evaluate((c, at) => {
+                    const rect = c.firstElementChild.getBoundingClientRect();
+                    const [dx, dy] = at.split(',').map(Number);
+                    // Offsets are from the padding edge, where an absolutely placed reference box measures them.
+                    c.querySelector('ge-context-menu').show(rect.left + c.firstElementChild.clientLeft + dx, rect.top + c.firstElementChild.clientTop + dy);
+                }, show);
+                await page.waitForTimeout(300);
+                await handle.evaluate((c) => {
+                    for (const target of c.querySelectorAll('[data-hover-on-show]')) target.dispatchEvent(new MouseEvent('mouseenter'));
+                });
+                await page.waitForTimeout(400);
+            }
             shots[side].set(key, await handle.screenshot({ animations: 'allow' }));
+            if (show) await handle.evaluate((c) => c.querySelector('ge-context-menu').close());
         }
         await page.close();
     }

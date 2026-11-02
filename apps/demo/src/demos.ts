@@ -1779,4 +1779,98 @@ document.getElementById('dm-data').items = [
             { name: '--density-menu', type: 'css', default: '--density', description: 'Spacing multiplier for the item padding.' },
         ],
     },
+    {
+        id: 'context-menu',
+        group: 'Rung 4 · Overlays',
+        name: 'Context menu',
+        tag: 'ge-context-menu',
+        description: 'A menu that opens at the pointer on right-click, or on a long press on a touch screen. It sits in the top layer, stays 8px inside the viewport, and closes on a click outside, a scroll, Tab or Escape. Up, Down, Home and End move through the items.',
+        examples: [
+            {
+                title: 'Basic',
+                note: 'Wrap the area that answers a right-click in `ge-context-menu-trigger`. A `ge-context-menu-shortcut` puts hint text at the far end of a row.',
+                html: `<ge-context-menu>
+  <ge-context-menu-trigger>
+    <div style="display:flex;height:150px;width:300px;align-items:center;justify-content:center;border:1px dashed var(--border);border-radius:calc(var(--radius) - 2px);font-size:0.875rem">Right click here</div>
+  </ge-context-menu-trigger>
+  <ge-context-menu-content>
+    <ge-context-menu-item>Back<ge-context-menu-shortcut>⌘[</ge-context-menu-shortcut></ge-context-menu-item>
+    <ge-context-menu-item>Forward<ge-context-menu-shortcut>⌘]</ge-context-menu-shortcut></ge-context-menu-item>
+    <ge-context-menu-item>Reload<ge-context-menu-shortcut>⌘R</ge-context-menu-shortcut></ge-context-menu-item>
+    <ge-context-menu-separator></ge-context-menu-separator>
+    <ge-context-menu-item>Save as...<ge-context-menu-shortcut>⇧⌘S</ge-context-menu-shortcut></ge-context-menu-item>
+    <ge-context-menu-item>Print</ge-context-menu-item>
+  </ge-context-menu-content>
+</ge-context-menu>`,
+            },
+            {
+                title: 'Destructive row and manual opening',
+                note: '`variant="destructive"` paints a row in the destructive colour. Without a trigger, call `show(x, y)` from your own listener, for example to open the menu from a button.',
+                html: `<ge-context-menu id="cm-manual">
+  <ge-context-menu-content style="width:14rem">
+    <ge-context-menu-item>Edit<ge-context-menu-shortcut>⌘E</ge-context-menu-shortcut></ge-context-menu-item>
+    <ge-context-menu-item>Copy<ge-context-menu-shortcut>⌘C</ge-context-menu-shortcut></ge-context-menu-item>
+    <ge-context-menu-item>Share</ge-context-menu-item>
+    <ge-context-menu-separator></ge-context-menu-separator>
+    <ge-context-menu-item variant="destructive">Delete<ge-context-menu-shortcut>⌘⌫</ge-context-menu-shortcut></ge-context-menu-item>
+  </ge-context-menu-content>
+</ge-context-menu>
+<div id="cm-area" style="display:flex;height:150px;width:100%;max-width:400px;align-items:center;justify-content:center;border:2px dashed var(--border);border-radius:var(--radius);background:var(--muted);color:var(--muted-foreground);font-size:0.875rem">Right click this area</div>
+<script>
+document.getElementById('cm-area').addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  document.getElementById('cm-manual').show(e.clientX, e.clientY);
+});
+</script>`,
+            },
+            {
+                title: 'Disabled submenu branch',
+                note: 'The dimmed branch refuses to open: hover and Enter or the forward arrow do nothing.',
+                html: `<ge-context-menu>
+  <ge-context-menu-trigger>
+    <div style="display:flex;height:150px;width:100%;max-width:300px;align-items:center;justify-content:center;border:1px dashed var(--border);border-radius:calc(var(--radius) - 2px);padding:1rem;text-align:center;font-size:0.875rem">Right click for a menu with a disabled branch</div>
+  </ge-context-menu-trigger>
+  <ge-context-menu-content style="width:14rem">
+    <ge-context-menu-item>Edit<ge-context-menu-shortcut>⌘E</ge-context-menu-shortcut></ge-context-menu-item>
+    <ge-context-menu-item>Copy<ge-context-menu-shortcut>⌘C</ge-context-menu-shortcut></ge-context-menu-item>
+    <ge-context-menu-sub>
+      <ge-context-menu-sub-trigger disabled>Send to</ge-context-menu-sub-trigger>
+      <ge-context-menu-sub-content>
+        <ge-context-menu-item>Phone</ge-context-menu-item>
+        <ge-context-menu-item>Tablet</ge-context-menu-item>
+      </ge-context-menu-sub-content>
+    </ge-context-menu-sub>
+    <ge-context-menu-separator></ge-context-menu-separator>
+    <ge-context-menu-item variant="destructive">Delete</ge-context-menu-item>
+  </ge-context-menu-content>
+</ge-context-menu>`,
+            },
+            {
+                title: 'Data-driven',
+                note: 'Set `items` and the menu builds its own content, submenus included. Open it with `show(x, y)`.',
+                html: `<ge-context-menu id="cm-data">
+  <ge-context-menu-trigger>
+    <div style="display:flex;height:100px;width:300px;align-items:center;justify-content:center;border:1px dashed var(--border);border-radius:calc(var(--radius) - 2px);font-size:0.875rem">Right click (data-driven)</div>
+  </ge-context-menu-trigger>
+</ge-context-menu>
+<script>
+document.getElementById('cm-data').items = [
+  { label: 'Actions', type: 'label' },
+  { label: 'Copy', shortcut: '⌘C' },
+  { label: 'Paste', shortcut: '⌘V', disabled: true },
+  { type: 'separator' },
+  { label: 'Share', type: 'sub', children: [{ label: 'Email' }, { label: 'Message' }] },
+];
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the menu is showing. Read it; open the menu with `show(x, y)`.' },
+            { name: 'show(x, y, data?)', type: 'method', default: '-', description: 'Opens with its top-left corner at viewport coordinates, shifted to stay 8px inside the viewport. `data` is kept on the element for your handlers.' },
+            { name: 'close()', type: 'method', default: '-', description: 'Closes the menu and any open submenu.' },
+            { name: 'items', type: 'ContextMenuItem[]', default: '[]', description: 'Builds the content from descriptors: `label`, `shortcut`, `disabled`, `inset`, `type`, `children` and a `click` callback.' },
+            { name: 'item: variant', type: "'default' | 'destructive'", default: "'default'", description: 'Destructive paints the row in the destructive colour.' },
+            { name: 'item / sub-trigger / label: inset', type: 'boolean', default: 'false', description: 'Indents the text to line up with rows that carry an icon.' },
+        ],
+    },
 ];

@@ -52,7 +52,7 @@ export class GeDropdownMenuContent extends UiElement {
     }
 
     private readonly onKeydown = (event: KeyboardEvent) => {
-        arrowNavigation(event, this, true);
+        arrowNavigation(event, this, { trapTab: true });
     };
 
     protected override updated(): void {
