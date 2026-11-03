@@ -2399,4 +2399,232 @@ box.innerHTML = '<h4 style="margin:0 0 1rem;font-size:0.875rem;font-weight:500;l
             { name: 'scrollToBottom()', type: 'method', default: '-', description: 'Jumps to the end after layout; safe right after appending content. Also refreshes the thumbs.' },
         ],
     },
+    {
+        id: 'stat-card',
+        group: 'Rung 2 · Slots',
+        name: 'Stat card',
+        tag: 'ge-stat-card',
+        description: 'A KPI tile: a label, a headline value, an optional delta badge and an optional projected sparkline. The host draws nothing, so the card inside is the real grid item; style it through `::part(card)`.',
+        examples: [
+            {
+                title: 'Trends',
+                note: '`up` and `down` mean favourable and unfavourable, not the sign of the number: a falling churn rate is `up`. Values and deltas are shown as given, so format them first.',
+                html: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:1rem;width:100%">
+  <ge-stat-card label="Total revenue" value="$45,231.89" delta="+20.1%" trend="up"></ge-stat-card>
+  <ge-stat-card label="Churn rate" value="2.4%" delta="-0.6%" trend="up"></ge-stat-card>
+  <ge-stat-card label="Refunds" value="$1,204.00" delta="+18%" trend="down"></ge-stat-card>
+  <ge-stat-card label="Active sessions" value="573" delta="+0.4%"></ge-stat-card>
+</div>`,
+                block: true,
+            },
+            {
+                title: 'Without the arrow, without a delta, with a sparkline',
+                note: '`hide-trend-icon` keeps the colour but drops the glyph. With no delta and nothing slotted, the card shows only the header. Slotted content lands under the delta.',
+                html: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:1rem;width:100%">
+  <ge-stat-card label="Signups" value="1,240" delta="+12%" trend="up" hide-trend-icon></ge-stat-card>
+  <ge-stat-card label="Open tickets" value="38"></ge-stat-card>
+  <ge-stat-card label="Active users" value="2,350" delta="+5.2%" trend="up">
+    <svg viewBox="0 0 100 24" preserveAspectRatio="none" style="display:block;width:100%;height:2.5rem;margin-top:0.5rem" aria-hidden="true"><polyline fill="none" stroke="var(--primary)" stroke-width="2" points="0,20 12,16 25,18 37,10 50,12 62,6 75,9 88,3 100,5"/></svg>
+  </ge-stat-card>
+</div>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'label', type: 'string', default: "''", description: 'Metric name, muted above the value. Truncates instead of wrapping.' },
+            { name: 'value', type: 'string', default: "''", description: 'The headline figure, shown as given. Truncates instead of wrapping.' },
+            { name: 'delta', type: 'string', default: "''", description: 'Change since the previous period, e.g. `+20.1%`. Empty means no badge.' },
+            { name: 'trend', type: "'up' | 'down' | 'neutral'", default: "'neutral'", description: 'Direction of the change: badge colour and arrow.' },
+            { name: 'hide-trend-icon', type: 'boolean', default: 'false', description: 'Keep the trend colour without the arrow.' },
+            { name: 'card', type: 'part', default: '-', description: 'The card surface.' },
+        ],
+    },
+    {
+        id: 'result',
+        group: 'Rung 2 · Slots',
+        name: 'Result',
+        tag: 'ge-result',
+        description: 'A centred outcome panel shown after an operation completes. It announces politely and never takes focus, whatever the status. Projected content lands in the actions row; a `ge-result-detail` goes above it.',
+        examples: [
+            {
+                title: 'Statuses',
+                note: 'The status picks the glyph and its colour, never how loudly the panel is announced.',
+                html: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr));gap:1rem;width:100%">
+  <ge-result status="success" heading="Payment received" description="We emailed your receipt.">
+    <ge-button size="sm">Back to dashboard</ge-button>
+  </ge-result>
+  <ge-result status="error" heading="Upload failed" description="The file could not be saved."></ge-result>
+  <ge-result status="warning" heading="Check your details" description="Some fields need attention."></ge-result>
+  <ge-result status="info" heading="Scheduled" description="Your export starts at 02:00 UTC."></ge-result>
+</div>`,
+                block: true,
+            },
+            {
+                title: 'With detail and actions',
+                note: '`ge-result-detail` is drawn above the actions and is kept out of the live announcement.',
+                html: `<ge-result status="error" heading="Upload failed" description="The server rejected the file.">
+  <ge-result-detail>Error 413: the file is larger than the 10 MB limit.</ge-result-detail>
+  <ge-button size="sm">Try again</ge-button>
+  <ge-button size="sm" variant="outline">Contact support</ge-button>
+</ge-result>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'status', type: "'success' | 'error' | 'warning' | 'info'", default: "'info'", description: 'Outcome: the glyph and its colour.' },
+            { name: 'heading', type: 'string', default: "''", description: 'Headline. Hidden when empty.' },
+            { name: 'description', type: 'string', default: "''", description: 'Supporting line under the headline. Hidden when empty.' },
+            { name: 'detail', type: 'slot', default: '-', description: '`ge-result-detail` assigns itself here; it has no attributes.' },
+            { name: 'panel', type: 'part', default: '-', description: 'The `<output>` box.' },
+        ],
+    },
+    {
+        id: 'data-list',
+        group: 'Rung 2 · Slots',
+        name: 'Data list',
+        tag: 'ge-data-list',
+        description: 'Label and value pairs as a real `<dl>`. Set the `items` property for plain text, or write `ge-data-list-item` children when a value needs markup. Both can be mixed; data rows come first.',
+        examples: [
+            {
+                title: 'From data',
+                note: '`items` is a property (an array of `{ label, value }`), set from script.',
+                html: `<ge-data-list id="dl-data" style="width:100%;max-width:28rem"></ge-data-list>
+<script>
+document.getElementById('dl-data').items = [
+  { label: 'Name', value: 'Ada Lovelace' },
+  { label: 'Email', value: 'ada@example.com' },
+  { label: 'Address', value: '12 St James Square, London, SW1Y 4JH' },
+];
+</script>`,
+                block: true,
+            },
+            {
+                title: 'Horizontal with custom values',
+                note: '`horizontal` puts labels in a column beside the values from 640px up. Slotted values can be anything.',
+                html: `<ge-data-list orientation="horizontal" style="width:100%;max-width:36rem">
+  <ge-data-list-item label="Plan"><ge-badge label="Pro"></ge-badge></ge-data-list-item>
+  <ge-data-list-item label="Email"><a href="mailto:ada@example.com">ada@example.com</a></ge-data-list-item>
+  <ge-data-list-item label="Status"><span style="color:var(--status-success)">Active</span></ge-data-list-item>
+</ge-data-list>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'items', type: 'DataListEntry[]', default: '[]', description: 'Property only. Rows of `{ label, value }`, both shown as text.' },
+            { name: 'orientation', type: "'vertical' | 'horizontal'", default: "'vertical'", description: '`horizontal` puts labels beside values from 640px up and stacks them below that.' },
+            { name: 'item: label', type: 'string', default: "''", description: 'The term of a `ge-data-list-item`; its content is the value.' },
+            { name: 'list / label / value', type: 'part', default: '-', description: 'The `<dl>`, a `<dt>` and a `<dd>`.' },
+        ],
+    },
+    {
+        id: 'input-group',
+        group: 'Rung 3 · Interactive',
+        name: 'Input group',
+        tag: 'ge-input-group',
+        description: 'One bordered row that holds a text field and its addons (an icon, a unit, a button) under a single border and focus ring. The ring shows while the field has focus, not when an addon button does.',
+        examples: [
+            {
+                title: 'Addons',
+                note: '`ge-input-group-text` is muted text. A bare `<svg>` in an addon is 1rem. Put an `align="inline-end"` addon after the field.',
+                html: `<div style="display:flex;flex-direction:column;gap:0.75rem;width:100%;max-width:24rem">
+  <ge-input-group>
+    <ge-input-group-addon><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></ge-input-group-addon>
+    <ge-input-group-input placeholder="Search" aria-label="Search"></ge-input-group-input>
+  </ge-input-group>
+  <ge-input-group>
+    <ge-input-group-addon><ge-input-group-text>https://</ge-input-group-text></ge-input-group-addon>
+    <ge-input-group-input placeholder="example.com" aria-label="Website"></ge-input-group-input>
+    <ge-input-group-addon align="inline-end"><ge-input-group-text>.com</ge-input-group-text></ge-input-group-addon>
+  </ge-input-group>
+</div>`,
+                block: true,
+            },
+            {
+                title: 'Variants and disabled',
+                html: `<div style="display:flex;flex-direction:column;gap:0.75rem;width:100%;max-width:24rem">
+  <ge-input-group variant="underline"><ge-input-group-addon><ge-input-group-text>$</ge-input-group-text></ge-input-group-addon><ge-input-group-input placeholder="0.00" aria-label="Amount, underline"></ge-input-group-input></ge-input-group>
+  <ge-input-group variant="ghost"><ge-input-group-addon><ge-input-group-text>$</ge-input-group-text></ge-input-group-addon><ge-input-group-input placeholder="0.00" aria-label="Amount, ghost"></ge-input-group-input></ge-input-group>
+  <ge-input-group disabled><ge-input-group-addon><ge-input-group-text>$</ge-input-group-text></ge-input-group-addon><ge-input-group-input value="12.50" aria-label="Amount, disabled"></ge-input-group-input></ge-input-group>
+</div>`,
+                block: true,
+            },
+            {
+                title: 'With a button',
+                html: `<ge-input-group style="max-width:24rem">
+  <ge-input-group-input placeholder="you@example.com" type="email" name="email" aria-label="Email"></ge-input-group-input>
+  <ge-input-group-addon align="inline-end"><ge-button size="sm" variant="ghost" label="Subscribe"></ge-button></ge-input-group-addon>
+</ge-input-group>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment of the row.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables the field and dims the row.' },
+            { name: 'addon: align', type: "'inline-start' | 'inline-end'", default: "'inline-start'", description: 'Which end of the row the addon sits at, which sets its padding.' },
+            { name: 'input: name / value / type / placeholder / disabled / inputmode', type: 'attributes', default: '-', description: 'As on `ge-input`. The field is form-associated and resets with its form.' },
+            { name: 'input: aria-label / aria-labelledby / aria-describedby', type: 'string', default: '-', description: 'Forwarded to the inner input.' },
+            { name: 'input, change', type: 'event', default: '-', description: 'From the field; `change` is re-fired on the host.' },
+            { name: '--density-input', type: 'css', default: '--density', description: 'Spacing multiplier for height and padding.' },
+        ],
+    },
+    {
+        id: 'field',
+        group: 'Rung 3 · Interactive',
+        name: 'Field',
+        tag: 'ge-field',
+        description: 'A form field: a label, a control and helper text laid out together. Set the label\'s `for` to the control\'s `id`. The field keeps the ids of its descriptions and errors as `describedBy`, for the control\'s `aria-describedby`.',
+        examples: [
+            {
+                title: 'Description and error',
+                note: 'The error is a polite alert, so it is announced when it appears. Clicking the label focuses the control.',
+                html: `<div style="display:flex;flex-direction:column;gap:1.5rem;width:100%;max-width:24rem">
+  <ge-field>
+    <ge-field-label for="f-email">Email</ge-field-label>
+    <ge-input id="f-email" type="email" placeholder="you@example.com" aria-describedby="f-hint"></ge-input>
+    <ge-field-description id="f-hint">We will never share your email.</ge-field-description>
+  </ge-field>
+  <ge-field>
+    <ge-field-label for="f-name">Name</ge-field-label>
+    <ge-input id="f-name" value="A" aria-describedby="f-err"></ge-input>
+    <ge-field-error id="f-err">Enter at least two characters.</ge-field-error>
+  </ge-field>
+</div>`,
+                block: true,
+            },
+            {
+                title: 'Horizontal',
+                note: 'For a checkbox or switch with its label beside it.',
+                html: `<ge-field orientation="horizontal">
+  <ge-switch id="f-news" aria-label="Newsletter"></ge-switch>
+  <ge-field-label for="f-news">Send me the newsletter</ge-field-label>
+</ge-field>`,
+            },
+            {
+                title: 'Set, group and separator',
+                note: '`ge-field-set` is a semantic group named by its legend; `ge-field-group` only spaces fields.',
+                html: `<ge-field-set style="width:100%;max-width:24rem">
+  <ge-field-legend>Contact</ge-field-legend>
+  <ge-field-group>
+    <ge-field>
+      <ge-field-label for="f-a">Email</ge-field-label>
+      <ge-input id="f-a" placeholder="you@example.com"></ge-input>
+    </ge-field>
+    <ge-field-separator></ge-field-separator>
+    <ge-field>
+      <ge-field-label for="f-b">Phone</ge-field-label>
+      <ge-input id="f-b" placeholder="+44 …"></ge-input>
+    </ge-field>
+  </ge-field-group>
+</ge-field-set>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'orientation', type: "'vertical' | 'horizontal'", default: "'vertical'", description: '`horizontal` is a centred row, for a checkbox or switch beside its label.' },
+            { name: 'describedBy', type: 'string | null', default: '-', description: 'Property. Ids of the descriptions and errors inside, in document order.' },
+            { name: 'described-by-change', type: 'event', default: '-', description: 'Fires when a description or error is added or removed.' },
+            { name: 'label: for', type: 'string', default: "''", description: 'Id of the control; it is named by the label, and clicking the label focuses it.' },
+            { name: 'description / error: id', type: 'string', default: 'generated', description: 'Element id; generated when empty.' },
+        ],
+    },
 ];

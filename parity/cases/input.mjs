@@ -14,7 +14,7 @@ const RING = '<output class="inline-flex" aria-label="Loading" data-slot="spinne
 
 const attrs = ({ type = 'text', placeholder = '', value = '', disabled = false }) =>
     `type="${type}" placeholder="${placeholder}" ${value ? `value="${value}"` : ''} ${disabled ? 'disabled' : ''}`;
-const refPlain = (variant, p) => `<ui-input class="contents"><input class="${BASE} ${VARIANT[variant]}" ${attrs(p)} data-slot="input"></ui-input>`;
+export const refPlain = (variant, p) => `<ui-input class="contents"><input class="${BASE} ${VARIANT[variant]}" ${attrs(p)} data-slot="input"></ui-input>`;
 const refContainer = (p, { prefix, suffix, clearable, loading }) =>
     `<ui-input class="contents"><div class="${CONTAINER}${p.disabled ? ` ${DISABLED_CONTAINER}` : ''}" data-slot="input-container">` +
     (prefix ? `<span class="${AFFIX} ps-3 pe-1">${prefix}</span>` : '') +

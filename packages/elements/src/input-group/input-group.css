@@ -1,0 +1,45 @@
+/* shadcn-angular input-group: one bordered row that holds a field and its addons, so they share a single focus ring. */
+:host {
+    --_d: var(--density-input, var(--density, 1));
+    display: contents;
+}
+fieldset {
+    position: relative;
+    display: flex;
+    box-sizing: border-box;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    height: calc(2.25rem * var(--_d));
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    outline: none;
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+fieldset[data-focus] {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+:host([variant="underline"]) fieldset {
+    border-width: 0 0 1px;
+    border-radius: 0;
+    box-shadow: none;
+}
+:host([variant="underline"]) fieldset[data-focus] {
+    border-color: var(--ring);
+    box-shadow: none;
+}
+:host([variant="ghost"]) fieldset {
+    border: none;
+    box-shadow: none;
+}
+:host([variant="ghost"]) fieldset[data-focus] {
+    box-shadow: none;
+}
+:host([disabled]) fieldset {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
