@@ -53,3 +53,5 @@ import '../packages/elements/src/field/define.js';
 import '../packages/elements/src/calendar/define.js';
 import '../packages/elements/src/date-picker/define.js';
 import '../packages/elements/src/autocomplete/define.js';
+import '../packages/elements/src/drawer/define.js';
+import '../packages/elements/src/chip-list/define.js';

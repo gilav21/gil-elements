@@ -21,6 +21,8 @@
     --status-warning: oklch(0.666 0.179 58.318);
     --status-info: oklch(0.546 0.245 262.881);
     /* Autocomplete match highlight: Tailwind yellow-200, hard-coded in shadcn-angular (yellow-800 with yellow-100 text in dark mode). */
+    /* Chip remove button hover: black/10 in light mode, white/10 in dark. */
+    --chip-remove-hover: rgb(0 0 0 / 0.1);
     --highlight: oklch(0.945 0.129 101.54);
     --highlight-foreground: currentColor;
     --density: 1;         /* spacing/size multiplier — 0.75 | 0.875 | 1.0 | 1.125 | 1.25 */
@@ -76,6 +78,7 @@
     --status-success: oklch(0.723 0.219 149.579);
     --status-warning: oklch(0.769 0.188 70.08);
     --status-info: oklch(0.623 0.214 259.815);
+    --chip-remove-hover: rgb(255 255 255 / 0.1);
     --highlight: oklch(0.476 0.114 61.907);
     --highlight-foreground: oklch(0.973 0.071 103.193);
     --banner-warning-foreground: oklch(0.924 0.12 95.746);

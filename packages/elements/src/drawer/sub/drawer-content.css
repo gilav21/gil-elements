@@ -1,0 +1,68 @@
+:host {
+    display: contents;
+}
+.root {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+}
+.overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgb(0 0 0 / 0.5);
+}
+.panel {
+    position: fixed;
+    z-index: 50;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    background-color: var(--background);
+    outline: none;
+}
+.panel[data-direction="top"] {
+    inset-inline: 0;
+    top: 0;
+    max-height: 80vh;
+    border-bottom: 1px solid var(--border);
+    border-end-start-radius: var(--radius);
+    border-end-end-radius: var(--radius);
+}
+.panel[data-direction="bottom"] {
+    inset-inline: 0;
+    bottom: 0;
+    max-height: 80vh;
+    border-top: 1px solid var(--border);
+    border-start-start-radius: var(--radius);
+    border-start-end-radius: var(--radius);
+}
+.panel[data-direction="left"],
+.panel[data-direction="right"] {
+    inset-block: 0;
+    width: 75%;
+    height: 100%;
+}
+@media (min-width: 640px) {
+    .panel[data-direction="left"],
+    .panel[data-direction="right"] {
+        max-width: 24rem;
+    }
+}
+.panel[data-direction="left"] {
+    inset-inline-start: 0;
+    border-inline-end: 1px solid var(--border);
+}
+.panel[data-direction="right"] {
+    inset-inline-end: 0;
+    border-inline-start: 1px solid var(--border);
+}
+.handle {
+    flex-shrink: 0;
+    width: 100px;
+    height: 0.5rem;
+    margin-inline: auto;
+    margin-top: 1rem;
+    border-radius: 9999px;
+    background-color: var(--muted);
+}

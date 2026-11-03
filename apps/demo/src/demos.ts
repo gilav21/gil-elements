@@ -488,6 +488,80 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'chip-list',
+        group: 'Rung 3 · Interactive',
+        name: 'Chip List',
+        tag: 'ge-chip-list',
+        description: 'A text field that turns what you type into removable chips. Enter commits, Backspace in an empty field removes the last chip.',
+        examples: [
+            {
+                title: 'Variants',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:24rem;max-width:100%">
+  <ge-chip-list></ge-chip-list>
+  <ge-chip-list variant="underline"></ge-chip-list>
+  <ge-chip-list variant="ghost"></ge-chip-list>
+  <ge-chip-list badge-variant="secondary"></ge-chip-list>
+</div>
+<script>
+document.querySelectorAll('ge-chip-list').forEach((c) => (c.value = ['Angular', 'React', 'Vue']));
+</script>`,
+            },
+            {
+                title: 'Max rows',
+                note: 'The box stops growing at two rows and scrolls; the field stays in view as you add.',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:24rem;max-width:100%">
+  <ge-chip-list max-rows="2" placeholder="Add a fruit..."></ge-chip-list>
+</div>
+<script>
+document.querySelector('ge-chip-list[max-rows]').value = ['Apple', 'Banana', 'Cherry', 'Mango', 'Orange', 'Papaya', 'Pear', 'Plum', 'Quince', 'Grape'];
+</script>`,
+            },
+            {
+                title: 'Sizes and colours',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:24rem;max-width:100%">
+  <ge-chip-list size="sm"></ge-chip-list>
+  <ge-chip-list size="md"></ge-chip-list>
+  <ge-chip-list size="lg" id="chip-colours"></ge-chip-list>
+</div>
+<script>
+document.querySelectorAll('ge-chip-list').forEach((c) => (c.value = ['Angular', 'React']));
+document.getElementById('chip-colours').chipColors = { Angular: '#fde68a', React: '#1e3a8a' };
+</script>`,
+            },
+            {
+                title: 'Separator keys and disabled',
+                note: '`separatorKeys` adds keys that commit, such as a comma. Disabled drops the remove buttons.',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:24rem;max-width:100%">
+  <ge-chip-list id="chip-sep" placeholder="Type, then comma or space"></ge-chip-list>
+  <ge-chip-list disabled></ge-chip-list>
+</div>
+<script>
+document.getElementById('chip-sep').separatorKeys = [',', ' '];
+document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string[]', default: '[]', description: 'Property only. The chips, in order; setting it fires no event.' },
+            { name: 'placeholder', type: 'string', default: "'Add item...'", description: 'Text in the field and its accessible name. Hides once there is a chip.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Bordered box, single rule, or no chrome.' },
+            { name: 'badge-variant', type: "'default' | 'secondary' | 'destructive' | 'outline'", default: "'default'", description: 'Badge variant of every chip.' },
+            { name: 'size', type: "'sm' | 'md' | 'lg'", default: "'md'", description: 'Chip size; the box and the max-rows cap scale with it.' },
+            { name: 'max-rows', type: 'number', default: '0', description: 'Caps the box at this many rows and scrolls. 0 means no cap.' },
+            { name: 'allow-duplicates', type: 'boolean', default: 'false', description: 'Keep a repeated text as a second chip.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables the field and removes the remove buttons.' },
+            { name: 'name', type: 'string', default: "''", description: 'Form field name; each chip submits as its own entry.' },
+            { name: 'chipColors', type: 'Record<string, string>', default: '{}', description: 'Property only. Background colour per chip text; the text turns black or white, whichever reads better.' },
+            { name: 'separatorKeys', type: 'string[]', default: '[]', description: 'Property only. Extra `KeyboardEvent.key` values that commit the text. Enter always does.' },
+            { name: 'addChip(text)', type: 'method', default: '-', description: 'Append a chip programmatically; trimmed, blanks and rejected duplicates are ignored.' },
+            { name: 'chip-added / chip-removed / value-change', type: 'event', default: '-', description: 'detail is the chip text, or the full list for `value-change`.' },
+        ],
+    },
+    {
         id: 'page-header',
         group: 'Rung 2 · Slots',
         name: 'Page header',
@@ -1424,6 +1498,67 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
             { name: 'content: side', type: "'top' | 'bottom' | 'left' | 'right'", default: "'right'", description: 'Edge it slides from. Left and right follow the text direction.' },
             { name: 'content: heading / description / close-label', type: 'string', default: "'' / '' / 'Close'", description: 'Simple mode header and the close button name.' },
             { name: 'ge-sheet-close', type: 'element', default: '-', description: 'Closes the sheet when clicked; wrap a button of your own.' },
+        ],
+    },
+    {
+        id: 'drawer',
+        group: 'Rung 4 · Overlays',
+        name: 'Drawer',
+        tag: 'ge-drawer',
+        description: 'A modal panel that slides in from an edge, with a drag handle on top and bottom. Same behaviour as the dialog; unlike the sheet it has no close button, so give it a ge-drawer-close of your own.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: '`heading` and `description` generate the header.',
+                block: true,
+                html: `<ge-drawer>
+  <ge-drawer-trigger><ge-button variant="outline">Open drawer</ge-button></ge-drawer-trigger>
+  <ge-drawer-content heading="Move goal" description="Set your daily activity goal.">
+    <div style="padding:1rem"><p>Pick a number of steps that feels reachable.</p></div>
+  </ge-drawer-content>
+</ge-drawer>`,
+            },
+            {
+                title: 'Custom mode',
+                block: true,
+                html: `<ge-drawer>
+  <ge-drawer-trigger><ge-button variant="outline">Open with actions</ge-button></ge-drawer-trigger>
+  <ge-drawer-content>
+    <ge-drawer-header>
+      <ge-drawer-title>Are you sure?</ge-drawer-title>
+      <ge-drawer-description>This action cannot be undone.</ge-drawer-description>
+    </ge-drawer-header>
+    <div style="padding:1rem"><p>Anything you want can go here.</p></div>
+    <ge-drawer-footer>
+      <ge-button>Save</ge-button>
+      <ge-drawer-close><ge-button variant="outline">Cancel</ge-button></ge-drawer-close>
+    </ge-drawer-footer>
+  </ge-drawer-content>
+</ge-drawer>`,
+            },
+            {
+                title: 'Directions',
+                note: 'Left and right follow the text direction: flip RTL in the toolbar and try again.',
+                html: `<ge-drawer direction="top">
+  <ge-drawer-trigger><ge-button variant="outline">Top</ge-button></ge-drawer-trigger>
+  <ge-drawer-content heading="From the top" description="The handle sits at the bottom edge."></ge-drawer-content>
+</ge-drawer>
+<ge-drawer direction="left">
+  <ge-drawer-trigger><ge-button variant="outline">Left</ge-button></ge-drawer-trigger>
+  <ge-drawer-content heading="From the left" description="Three quarters of the width, up to 24rem."></ge-drawer-content>
+</ge-drawer>
+<ge-drawer direction="right">
+  <ge-drawer-trigger><ge-button variant="outline">Right</ge-button></ge-drawer-trigger>
+  <ge-drawer-content heading="From the right" description="Same, mirrored."></ge-drawer-content>
+</ge-drawer>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether it is showing. `show()`, `hide()` and `toggle()` also work.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'When the user opens or closes it; detail is the new state.' },
+            { name: 'direction', type: "'top' | 'bottom' | 'left' | 'right'", default: "'bottom'", description: 'Edge it slides from. The drag handle shows for top and bottom only.' },
+            { name: 'content: heading / description', type: 'string', default: "''", description: 'Simple mode header.' },
+            { name: 'ge-drawer-close', type: 'element', default: '-', description: 'Closes the drawer when clicked; wrap a button of your own.' },
         ],
     },
     {

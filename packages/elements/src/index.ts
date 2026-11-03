@@ -53,3 +53,5 @@ export * from './field/index.js';
 export * from './calendar/index.js';
 export * from './date-picker/index.js';
 export * from './autocomplete/index.js';
+export * from './drawer/index.js';
+export * from './chip-list/index.js';

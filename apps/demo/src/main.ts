@@ -51,6 +51,8 @@ import '@gilav21/elements/field/define';
 import '@gilav21/elements/calendar/define';
 import '@gilav21/elements/date-picker/define';
 import '@gilav21/elements/autocomplete/define';
+import '@gilav21/elements/drawer/define';
+import '@gilav21/elements/chip-list/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

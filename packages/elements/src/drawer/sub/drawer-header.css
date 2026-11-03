@@ -1,0 +1,15 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 1rem;
+    text-align: center;
+}
+@media (min-width: 640px) {
+    :host(:dir(ltr)) {
+        text-align: left;
+    }
+    :host(:dir(rtl)) {
+        text-align: right;
+    }
+}

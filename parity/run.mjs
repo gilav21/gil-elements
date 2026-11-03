@@ -134,6 +134,11 @@ for (const theme of ['light', 'dark']) {
                 }
                 // `data-value` is the JSON selection of an autocomplete (an option, or an array with `multiple`).
                 for (const target of document.querySelectorAll('ge-autocomplete[data-value]')) target.value = JSON.parse(target.dataset.value);
+                // `data-chips` and `data-colors` are the JSON chips and per-chip colours of a chip list.
+                for (const target of document.querySelectorAll('ge-chip-list[data-chips]')) {
+                    target.value = JSON.parse(target.dataset.chips);
+                    if (target.dataset.colors) target.chipColors = JSON.parse(target.dataset.colors);
+                }
                 // `data-highlight` marks the command row the reference shows highlighted; `data-search` is the query the field holds.
                 for (const row of document.querySelectorAll('[data-highlight]')) row.closest('ge-command').setActive(row);
                 // `data-options` is the JSON list of a select built from `options`; `data-disabled-options` lists the entries that are disabled.

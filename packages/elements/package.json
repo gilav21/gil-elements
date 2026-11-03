@@ -567,6 +567,26 @@
       "types": "./dist/autocomplete/define.d.ts",
       "development": "./src/autocomplete/define.ts",
       "default": "./dist/autocomplete/define.js"
+    },
+    "./drawer": {
+      "types": "./dist/drawer/index.d.ts",
+      "development": "./src/drawer/index.ts",
+      "default": "./dist/drawer/index.js"
+    },
+    "./drawer/define": {
+      "types": "./dist/drawer/define.d.ts",
+      "development": "./src/drawer/define.ts",
+      "default": "./dist/drawer/define.js"
+    },
+    "./chip-list": {
+      "types": "./dist/chip-list/index.d.ts",
+      "development": "./src/chip-list/index.ts",
+      "default": "./dist/chip-list/index.js"
+    },
+    "./chip-list/define": {
+      "types": "./dist/chip-list/define.d.ts",
+      "development": "./src/chip-list/define.ts",
+      "default": "./dist/chip-list/define.js"
     }
   },
   "scripts": {
