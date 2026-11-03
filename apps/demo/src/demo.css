@@ -13,11 +13,12 @@ body {
 .shell { display: flex; min-height: 100vh; }
 .sidebar {
     position: sticky; top: 0; align-self: flex-start;
-    width: 16rem; height: 100vh; overflow-y: auto; flex-shrink: 0;
-    padding: 1rem;
+    width: 16rem; height: 100vh; overflow: hidden; flex-shrink: 0;
     border-inline-end: 1px solid var(--border);
     background: var(--sidebar, var(--background));
 }
+.sidebar-scroll { height: 100%; }
+.sidebar-inner { padding: 1rem; }
 .brand { display: flex; flex-direction: column; margin-bottom: 1.25rem; color: inherit; text-decoration: none; }
 .brand strong { font-size: 1.05rem; }
 .brand span { color: var(--muted-foreground); font-size: 0.75rem; }
@@ -58,7 +59,7 @@ section.component > p.lede { margin: 0 0 1.5rem; color: var(--muted-foreground);
     border: 1px solid var(--border); border-top: 0; border-radius: 0 0 var(--radius) var(--radius);
     background: var(--muted);
 }
-.code pre { margin: 0; padding: 0.9rem 1rem; overflow-x: auto; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; text-align: left; }
+.code pre { margin: 0; padding: 0.9rem 1rem; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; text-align: left; }
 .code .copy { position: absolute; top: 0.4rem; inset-inline-end: 0.4rem; }
 table.api { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
 table.api th, table.api td { text-align: start; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
@@ -85,5 +86,5 @@ code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr
     .controls { margin-inline-start: 0; width: 100%; }
 }
 
-.table-scroll { overflow-x: auto; }
-table.api { min-width: 32rem; }
+.table-scroll { display: block; }
+table.api { min-width: 32rem; margin-bottom: 0.75rem; }
