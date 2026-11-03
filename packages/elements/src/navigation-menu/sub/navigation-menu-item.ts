@@ -62,7 +62,8 @@ export class GeNavigationMenuItem extends UiElement implements NavigationMenuIte
     };
 
     private readonly onLeave = () => {
-        if (!isTouchDevice()) this.menu?.scheduleClose();
+        // A panel the keyboard is working in stays open when the pointer drifts away.
+        if (!isTouchDevice() && !this.matches(':focus-within')) this.menu?.scheduleClose();
     };
 
     protected override updated(): void {
