@@ -40,6 +40,9 @@ import '@gilav21/elements/menubar/define';
 import '@gilav21/elements/select/define';
 import '@gilav21/elements/navigation-menu/define';
 import '@gilav21/elements/command/define';
+import '@gilav21/elements/banner/define';
+import '@gilav21/elements/native-select/define';
+import '@gilav21/elements/scroll-area/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
@@ -71,7 +74,7 @@ function renderExample(ex: Example): HTMLElement {
         dead.replaceWith(live);
     }
     wrap.append(preview);
-    const code = el('div', { class: 'code' }, `<pre><code>${escapeHtml(ex.html)}</code></pre>`);
+    const code = el('div', { class: 'code' }, `<ge-scroll-area orientation="horizontal"><pre><code>${escapeHtml(ex.html)}</code></pre></ge-scroll-area>`);
     const copy = document.createElement('ge-button');
     copy.setAttribute('variant', 'outline');
     copy.setAttribute('size', 'sm');
@@ -99,7 +102,7 @@ function renderApi(demo: Demo): HTMLElement {
     return el(
         'div',
         {},
-        `<h4 class="api-title">API</h4><div class="table-scroll"><table class="api"><thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>${rows}</tbody></table></div>`,
+        `<h4 class="api-title">API</h4><ge-scroll-area class="table-scroll" orientation="horizontal"><table class="api"><thead><tr><th>Name</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>${rows}</tbody></table></ge-scroll-area>`,
     );
 }
 

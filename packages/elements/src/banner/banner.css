@@ -1,0 +1,63 @@
+/* shadcn-angular banner: a full-width bar with a bottom border; the content is capped to the viewport width. */
+:host {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--muted);
+    color: var(--foreground);
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+}
+@media (min-width: 640px) {
+    :host {
+        padding-inline: 1.5rem;
+    }
+}
+:host([hidden]) {
+    display: none;
+}
+:host([variant="warning"]) {
+    border-color: color-mix(in oklab, var(--banner-warning) 40%, transparent);
+    background-color: color-mix(in oklab, var(--banner-warning) 10%, transparent);
+    color: var(--banner-warning-foreground);
+}
+:host([variant="success"]) {
+    border-color: color-mix(in oklab, var(--banner-success) 40%, transparent);
+    background-color: color-mix(in oklab, var(--banner-success) 10%, transparent);
+    color: var(--banner-success-foreground);
+}
+:host([variant="destructive"]) {
+    border-color: color-mix(in oklab, var(--destructive) 40%, transparent);
+    background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+    color: var(--destructive);
+}
+.row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+    max-width: calc(100vw - 2rem);
+    margin-inline: auto;
+    column-gap: 0.75rem;
+    row-gap: 0.5rem;
+}
+.message {
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow-wrap: break-word;
+}
+.dismiss::part(base) {
+    flex-shrink: 0;
+    margin-inline-end: -0.5rem;
+}
+.dismiss svg {
+    width: 1rem;
+    height: 1rem;
+}
+@media (pointer: coarse) {
+    .dismiss::part(base) {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+}
