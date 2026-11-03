@@ -104,6 +104,11 @@ for (const theme of ['light', 'dark']) {
                 // `data-click` marks a menubar trigger the reference shows opened; opened through the menu, since a click would close the bars of the other cases as an outside click.
                 for (const target of document.querySelectorAll('[data-click]')) target.closest('ge-menubar-menu').show();
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+                // `data-items` is the JSON `items` of a data-driven data list.
+                for (const list of document.querySelectorAll('ge-data-list[data-items]')) {
+                    list.items = JSON.parse(list.dataset.items);
+                    await list.updateComplete;
+                }
                 // `data-items` is the JSON `items` of a data-driven navigation menu; `data-open-index` opens that entry's trigger.
                 for (const menu of document.querySelectorAll('ge-navigation-menu[data-items]')) {
                     menu.items = JSON.parse(menu.dataset.items);

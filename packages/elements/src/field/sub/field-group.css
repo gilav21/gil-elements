@@ -1,0 +1,7 @@
+:host {
+    display: contents;
+}
+.group {
+    display: grid;
+    gap: 1rem;
+}

@@ -487,6 +487,56 @@
       "types": "./dist/scroll-area/define.d.ts",
       "development": "./src/scroll-area/define.ts",
       "default": "./dist/scroll-area/define.js"
+    },
+    "./stat-card": {
+      "types": "./dist/stat-card/index.d.ts",
+      "development": "./src/stat-card/index.ts",
+      "default": "./dist/stat-card/index.js"
+    },
+    "./stat-card/define": {
+      "types": "./dist/stat-card/define.d.ts",
+      "development": "./src/stat-card/define.ts",
+      "default": "./dist/stat-card/define.js"
+    },
+    "./result": {
+      "types": "./dist/result/index.d.ts",
+      "development": "./src/result/index.ts",
+      "default": "./dist/result/index.js"
+    },
+    "./result/define": {
+      "types": "./dist/result/define.d.ts",
+      "development": "./src/result/define.ts",
+      "default": "./dist/result/define.js"
+    },
+    "./data-list": {
+      "types": "./dist/data-list/index.d.ts",
+      "development": "./src/data-list/index.ts",
+      "default": "./dist/data-list/index.js"
+    },
+    "./data-list/define": {
+      "types": "./dist/data-list/define.d.ts",
+      "development": "./src/data-list/define.ts",
+      "default": "./dist/data-list/define.js"
+    },
+    "./input-group": {
+      "types": "./dist/input-group/index.d.ts",
+      "development": "./src/input-group/index.ts",
+      "default": "./dist/input-group/index.js"
+    },
+    "./input-group/define": {
+      "types": "./dist/input-group/define.d.ts",
+      "development": "./src/input-group/define.ts",
+      "default": "./dist/input-group/define.js"
+    },
+    "./field": {
+      "types": "./dist/field/index.d.ts",
+      "development": "./src/field/index.ts",
+      "default": "./dist/field/index.js"
+    },
+    "./field/define": {
+      "types": "./dist/field/define.d.ts",
+      "development": "./src/field/define.ts",
+      "default": "./dist/field/define.js"
     }
   },
   "scripts": {

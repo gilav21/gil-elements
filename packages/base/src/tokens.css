@@ -16,6 +16,10 @@
     --banner-warning-foreground: oklch(0.414 0.112 45.904);
     --banner-success: oklch(0.723 0.219 149.579);
     --banner-success-foreground: oklch(0.393 0.095 152.535);
+    /* Result icon colours: Tailwind green, amber and blue 600 (500 in dark mode), hard-coded in shadcn-angular. Errors use --destructive. */
+    --status-success: oklch(0.627 0.194 149.214);
+    --status-warning: oklch(0.666 0.179 58.318);
+    --status-info: oklch(0.546 0.245 262.881);
     --density: 1;         /* spacing/size multiplier — 0.75 | 0.875 | 1.0 | 1.125 | 1.25 */
     --motion: 1;          /* animation speed multiplier — 0: none | 1: default | 1.5: expressive */
 
@@ -66,6 +70,9 @@
     --input-surface-mix: 30%;
     --select-surface-mix: 50%;
     --select-hover-mix: 70%;
+    --status-success: oklch(0.723 0.219 149.579);
+    --status-warning: oklch(0.769 0.188 70.08);
+    --status-info: oklch(0.623 0.214 259.815);
     --banner-warning-foreground: oklch(0.924 0.12 95.746);
     --banner-success-foreground: oklch(0.925 0.084 155.995);
     --background: oklch(0.145 0 0);

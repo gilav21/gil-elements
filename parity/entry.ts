@@ -45,3 +45,8 @@ import '../packages/elements/src/command/define.js';
 import '../packages/elements/src/banner/define.js';
 import '../packages/elements/src/native-select/define.js';
 import '../packages/elements/src/scroll-area/define.js';
+import '../packages/elements/src/stat-card/define.js';
+import '../packages/elements/src/result/define.js';
+import '../packages/elements/src/data-list/define.js';
+import '../packages/elements/src/input-group/define.js';
+import '../packages/elements/src/field/define.js';

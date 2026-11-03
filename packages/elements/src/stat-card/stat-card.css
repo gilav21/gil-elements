@@ -1,0 +1,23 @@
+/* The host draws nothing, so `ge-card` stays the real grid item wherever the tile is dropped. */
+:host {
+    display: contents;
+}
+ge-card-description,
+ge-card-title {
+    min-width: 0;
+    /* Clip only the horizontal axis: `overflow: hidden` would shave descenders off the leading-none title. */
+    overflow-x: clip;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+ge-card-content[hidden] {
+    display: none;
+}
+ge-badge[data-trend] {
+    gap: 0.25rem;
+}
+.trend {
+    width: 0.75rem;
+    height: 0.75rem;
+    flex-shrink: 0;
+}
