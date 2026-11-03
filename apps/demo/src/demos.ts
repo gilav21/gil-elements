@@ -2110,7 +2110,7 @@ document.getElementById('sel-data').options = ['Apple', 'Banana', 'Blueberry', '
   .nm-desc { margin: 0; font-size: 0.875rem; line-height: 1.375; color: var(--muted-foreground); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
   .nm-grid { display: grid; gap: 0.75rem; padding: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .nm-docs::part(base) { display: inline-flex; align-items: center; justify-content: center; width: max-content; height: 2.5rem; padding: 0.5rem 1rem; background: var(--background); font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; }
-  .nm-docs::part(base):hover { background: var(--accent); color: var(--accent-foreground); }
+  .nm-docs::part(base):hover, .nm-docs::part(base):focus { background: var(--accent); color: var(--accent-foreground); }
 </style>
 <ge-navigation-menu>
   <ge-navigation-menu-list>
