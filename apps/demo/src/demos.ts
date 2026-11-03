@@ -2100,7 +2100,7 @@ document.getElementById('sel-data').options = ['Apple', 'Banana', 'Blueberry', '
         group: 'Rung 4 · Overlays',
         name: 'Navigation menu',
         tag: 'ge-navigation-menu',
-        description: 'A row of links where some open a dropdown. Hover opens an item and leaving closes it after a short grace period; a click or tap toggles it, which is how touch opens it. As in the Angular version there is no Escape handling, and following a link does not close the panel.',
+        description: 'A row of links where some open a dropdown. Hover opens an item and leaving closes it after a short grace period; a click or tap toggles it, which is how touch opens it. Following a link does not close the panel. From the keyboard, Tab goes through the entries and into an open panel; Left and Right (and Home and End) move along the bar, Down opens a panel onto its first link, the arrows walk its links and Escape closes it back onto the trigger.',
         examples: [
             {
                 title: 'Basic',

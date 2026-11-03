@@ -208,4 +208,85 @@ describe('ge-navigation-menu', () => {
         const results = await axe.run(page, { rules: { 'color-contrast': { enabled: false } } });
         expect(results.violations.map((v) => v.id)).toEqual([]);
     });
+
+    const key = async (page: HTMLElement, k: string) => {
+        await userEvent.keyboard(k);
+        await settle(page);
+        await new Promise((r) => setTimeout(r, 10));
+    };
+    const at = () => deepActive(document);
+
+    it('walks the bar with the left and right arrows, wrapping, carrying an open panel along, and mirrored in RTL', async () => {
+        const page = await mount(MARKUP());
+        button(page, 'learn-trigger').focus();
+        await key(page, '{ArrowRight}');
+        expect(at()).toBe(button(page, 'comp-trigger'));
+        await key(page, '{ArrowRight}');
+        expect(at()).toBe(el(page, 'docs-link').shadowRoot!.querySelector('a'));
+        await key(page, '{ArrowRight}');
+        expect(at()).toBe(button(page, 'learn-trigger'));
+        await key(page, '{ArrowLeft}');
+        expect(at()).toBe(el(page, 'docs-link').shadowRoot!.querySelector('a'));
+        await key(page, '{Home}');
+        expect(at()).toBe(button(page, 'learn-trigger'));
+        await key(page, '{End}');
+        expect(at()).toBe(el(page, 'docs-link').shadowRoot!.querySelector('a'));
+
+        button(page, 'learn-trigger').focus();
+        await key(page, '{ArrowDown}');
+        expect(visible(el(page, 'learn-panel'))).toBe(true);
+        button(page, 'learn-trigger').focus();
+        await key(page, '{ArrowRight}');
+        expect(visible(el(page, 'learn-panel'))).toBe(false);
+        expect(visible(el(page, 'comp-panel'))).toBe(true);
+        expect(at()).toBe(button(page, 'comp-trigger'));
+
+        const rtl = await mount(MARKUP('direction:rtl'));
+        button(rtl, 'learn-trigger').focus();
+        await key(rtl, '{ArrowLeft}');
+        expect(at()).toBe(button(rtl, 'comp-trigger'));
+    });
+
+    it('opens a panel with Down onto its first link, walks the links with the arrows, and Escape closes it back onto the trigger', async () => {
+        const page = await mount(MARKUP());
+        const link = (id: string) => el(page, id).shadowRoot!.querySelector('a');
+        button(page, 'learn-trigger').focus();
+        await key(page, '{ArrowDown}');
+        expect(visible(el(page, 'learn-panel'))).toBe(true);
+        expect(at()).toBe(link('intro'));
+        await key(page, '{ArrowDown}');
+        expect(at()).toBe(link('install'));
+        await key(page, '{ArrowDown}');
+        expect(at()).toBe(link('intro'));
+        await key(page, '{ArrowUp}');
+        expect(at()).toBe(link('install'));
+        await key(page, '{Home}');
+        expect(at()).toBe(link('intro'));
+
+        await key(page, '{Escape}');
+        expect(visible(el(page, 'learn-panel'))).toBe(false);
+        expect(at()).toBe(button(page, 'learn-trigger'));
+    });
+
+    it('closes the panel when Tab leaves its item, and keeps it open under a pointer that drifts away while the keyboard is in it', async () => {
+        const page = await mount(MARKUP());
+        button(page, 'learn-trigger').focus();
+        await key(page, '{Enter}');
+        expect(visible(el(page, 'learn-panel'))).toBe(true);
+        await key(page, '{Tab}');
+        await key(page, '{Tab}');
+        await key(page, '{Tab}');
+        expect(at()).toBe(button(page, 'comp-trigger'));
+        expect(visible(el(page, 'learn-panel'))).toBe(false);
+
+        button(page, 'learn-trigger').focus();
+        await key(page, '{ArrowDown}');
+        leave('learn', page);
+        await new Promise((r) => setTimeout(r, 250));
+        expect(visible(el(page, 'learn-panel'))).toBe(true);
+
+        el(page, 'outside').focus();
+        await settle(page);
+        expect(visible(el(page, 'learn-panel'))).toBe(false);
+    });
 });
