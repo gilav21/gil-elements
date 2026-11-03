@@ -14,6 +14,9 @@ export default defineConfig({
                 test: {
                     name: 'browser',
                     include: ['packages/**/*.browser.test.ts'],
+                    // Keyboard tests press keys into whichever frame holds focus, and every test file runs in its own frame:
+                    // run side by side, one file's focus() steals the other's Enter.
+                    fileParallelism: false,
                     browser: {
                         enabled: true,
                         headless: true,

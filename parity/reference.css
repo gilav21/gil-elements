@@ -587,3 +587,42 @@ ui-alert-dialog-cancel {
         padding-block: calc(0.25rem * var(--_d));
     }
 }
+
+/* shadcn-angular calendar.component.css: the density the host hands to the buttons it contains, and the blank cells */
+ui-calendar {
+    --_d: var(--density-picker, var(--density, 1));
+    --density-button: var(--_d);
+    --density-select: var(--_d);
+}
+@layer components {
+    [data-slot="calendar-filler"] {
+        height: calc(2.25rem * var(--_d));
+        width: calc(2.25rem * var(--_d));
+    }
+}
+
+/* shadcn-angular date-picker.component.css and sub/date-range-picker.component.css (:host moved onto the wrapper) */
+[data-slot="date-picker"],
+[data-slot="date-range-picker"] {
+    --_d: var(--density-picker, var(--density, 1));
+}
+@layer components {
+    [data-slot="date-picker"] > button,
+    [data-slot="date-range-picker"] > button {
+        height: calc(2.5rem * var(--_d));
+        padding-inline: calc(1rem * var(--_d));
+        padding-block: calc(0.5rem * var(--_d));
+    }
+}
+
+/* shadcn-angular autocomplete.component.css (:host moved onto the element) */
+ui-autocomplete {
+    --_d: var(--density-select, var(--density, 1));
+}
+@layer components {
+    [data-slot="autocomplete-container"] {
+        min-height: calc(2.5rem * var(--_d));
+        padding-inline: calc(0.75rem * var(--_d));
+        padding-block: calc(0.5rem * var(--_d));
+    }
+}

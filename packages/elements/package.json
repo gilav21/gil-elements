@@ -537,6 +537,36 @@
       "types": "./dist/field/define.d.ts",
       "development": "./src/field/define.ts",
       "default": "./dist/field/define.js"
+    },
+    "./calendar": {
+      "types": "./dist/calendar/index.d.ts",
+      "development": "./src/calendar/index.ts",
+      "default": "./dist/calendar/index.js"
+    },
+    "./calendar/define": {
+      "types": "./dist/calendar/define.d.ts",
+      "development": "./src/calendar/define.ts",
+      "default": "./dist/calendar/define.js"
+    },
+    "./date-picker": {
+      "types": "./dist/date-picker/index.d.ts",
+      "development": "./src/date-picker/index.ts",
+      "default": "./dist/date-picker/index.js"
+    },
+    "./date-picker/define": {
+      "types": "./dist/date-picker/define.d.ts",
+      "development": "./src/date-picker/define.ts",
+      "default": "./dist/date-picker/define.js"
+    },
+    "./autocomplete": {
+      "types": "./dist/autocomplete/index.d.ts",
+      "development": "./src/autocomplete/index.ts",
+      "default": "./dist/autocomplete/index.js"
+    },
+    "./autocomplete/define": {
+      "types": "./dist/autocomplete/define.d.ts",
+      "development": "./src/autocomplete/define.ts",
+      "default": "./dist/autocomplete/define.js"
     }
   },
   "scripts": {

@@ -2627,4 +2627,218 @@ document.getElementById('dl-data').items = [
             { name: 'description / error: id', type: 'string', default: 'generated', description: 'Element id; generated when empty.' },
         ],
     },
+    {
+        id: 'calendar',
+        group: 'Rung 3 · Interactive',
+        name: 'Calendar',
+        tag: 'ge-calendar',
+        description: 'A month grid. `mode` picks what a click selects: one day, a range or several days. Optional month and year selects and time fields; `locale` names the days and months and sets the direction. Fires `selected-change`.',
+        examples: [
+            {
+                title: 'Modes',
+                html: `<ge-calendar mode="single" style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"></ge-calendar>
+<ge-calendar mode="range" style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"></ge-calendar>
+<ge-calendar mode="multi" style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px); box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"></ge-calendar>`,
+            },
+            {
+                title: 'Month and year selects',
+                html: `<ge-calendar mode="single" show-month-select show-year-select style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)"></ge-calendar>`,
+            },
+            {
+                title: 'With time',
+                note: 'The time is applied to the picked date. `time-mode="range"` shows a start and an end time, which makes sense for a range.',
+                html: `<ge-calendar mode="single" show-time-select style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)"></ge-calendar>
+<ge-calendar mode="single" show-time-select time-mode="range" style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)"></ge-calendar>
+<ge-calendar mode="range" show-time-select time-mode="range" style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)"></ge-calendar>`,
+            },
+            {
+                title: 'Week starts on Monday, with a date',
+                html: `<ge-calendar mode="single" week-starts-on="1" selected="2024-01-01" style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)"></ge-calendar>`,
+            },
+            {
+                title: 'Read the selection',
+                html: `<div style="display: flex; flex-direction: column; gap: 0.5rem">
+  <ge-calendar id="cal-live" mode="single" show-time-select style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)"></ge-calendar>
+  <code id="cal-out" style="font-size: 0.875rem">Selected: none</code>
+</div>
+<script>
+const cal = document.getElementById('cal-live');
+cal.addEventListener('selected-change', (e) => {
+  document.getElementById('cal-out').textContent = 'Selected: ' + (e.detail ? e.detail.toLocaleString() : 'none');
+});
+</script>`,
+            },
+            {
+                title: 'Locales',
+                note: 'The same dictionaries as the Angular library. Without a `locale` the calendar follows the page `lang`, then English.',
+                html: `<ge-calendar locale="en" show-month-select show-year-select style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)"></ge-calendar>
+<ge-calendar locale="he" show-month-select show-year-select show-time-select time-mode="range" style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)"></ge-calendar>
+<ge-calendar locale="ja" show-month-select show-year-select style="border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)"></ge-calendar>`,
+            },
+        ],
+        api: [
+            { name: 'mode', type: "'single' | 'range' | 'multi'", default: "'single'", description: 'What a click selects, and the shape of `selected`: a `Date`, `{ start, end }` or `Date[]`.' },
+            { name: 'selected', type: 'Date | DateRange | Date[] | null', default: 'null', description: 'The selection. The attribute accepts one date (`2024-01-01`); ranges and lists are property-only.' },
+            { name: 'selectedTimeRange', type: '{ start, end }', default: "{ start: '', end: '' }", description: 'Property. The start and end times as `HH:mm`, with `time-mode="range"`.' },
+            { name: 'show-month-select', type: 'boolean', default: 'false', description: 'A month dropdown in the header.' },
+            { name: 'show-year-select', type: 'boolean', default: 'false', description: 'A year dropdown in the header.' },
+            { name: 'show-time-select', type: 'boolean', default: 'false', description: 'Time fields under the grid.' },
+            { name: 'time-mode', type: "'single' | 'range'", default: "'single'", description: 'One time field, or a start and an end.' },
+            { name: 'week-starts-on', type: 'number', default: '0', description: 'The first day of the week: 0 is Sunday, 1 is Monday.' },
+            { name: 'locale', type: 'string | CalendarLocale', default: "''", description: 'A locale id (`en`, `he`, `ar`, `de`, `fr`, `es`, `ja`, `zh`, `ru`, `pt`) or a dictionary. Empty follows the page `lang`.' },
+            { name: 'selected-change', type: 'event', default: '-', description: 'After the user changes the selection; `detail` is the new `selected`.' },
+            { name: 'time-range-change', type: 'event', default: '-', description: 'After the user changes a time; `detail` is `{ start, end }`.' },
+            { name: '--density-picker', type: 'css', default: '--density', description: 'Spacing multiplier.' },
+        ],
+    },
+    {
+        id: 'date-picker',
+        group: 'Rung 4 · Overlays',
+        name: 'Date picker',
+        tag: 'ge-date-picker',
+        description: 'A button that shows the picked date and opens a `ge-calendar` in a popover. `ge-date-range-picker` picks a start and an end. Picking closes the panel, unless `show-time` is on. Form-associated: a `name` submits `YYYY-MM-DD`.',
+        examples: [
+            {
+                title: 'Date, date and time, range',
+                html: `<div style="display: flex; flex-wrap: wrap; gap: 2rem">
+  <ge-date-picker placeholder="Pick a date"></ge-date-picker>
+  <ge-date-picker show-time placeholder="Pick a date and time"></ge-date-picker>
+  <ge-date-range-picker placeholder="Select a date range"></ge-date-range-picker>
+</div>`,
+            },
+            {
+                title: 'Hebrew, right to left',
+                html: `<div dir="rtl"><ge-date-picker show-time locale="he" placeholder="בחר תאריך"></ge-date-picker></div>`,
+            },
+            {
+                title: 'Clear and read the value',
+                html: `<div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start">
+  <ge-date-picker id="dp-live" placeholder="Pick a date"></ge-date-picker>
+  <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem">
+    <ge-button id="dp-clear" variant="outline" size="sm">Clear</ge-button>
+    <code id="dp-out" style="font-size: 0.875rem">Value: none</code>
+  </div>
+</div>
+<script>
+const dp = document.getElementById('dp-live');
+const out = document.getElementById('dp-out');
+dp.addEventListener('date-change', (e) => { out.textContent = 'Value: ' + e.detail.toDateString(); });
+document.getElementById('dp-clear').addEventListener('click', () => { dp.date = null; out.textContent = 'Value: none'; });
+</script>`,
+            },
+            {
+                title: 'Inside an overflow-hidden card',
+                note: 'The panel is promoted to the top layer, so the card does not clip it.',
+                html: `<div style="width: 100%; max-width: 320px; overflow: hidden; border: 1px solid var(--border); border-radius: calc(var(--radius) + 4px); padding: 1rem">
+  <ge-date-picker placeholder="Pick a date"></ge-date-picker>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'date', type: 'Date | null', default: 'null', description: '`ge-date-picker`. The picked date; the attribute takes `YYYY-MM-DD`.' },
+            { name: 'range / timeRange', type: '{ start, end }', default: 'empty', description: '`ge-date-range-picker`. Properties for the picked days and times.' },
+            { name: 'placeholder', type: 'string', default: "'Pick a date'", description: 'Muted text while nothing is picked.' },
+            { name: 'show-time', type: 'boolean', default: 'false', description: 'Adds a time field and keeps the panel open after a pick.' },
+            { name: 'locale', type: 'string', default: "'en'", description: 'BCP 47 tag for the calendar and the label format.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables the button.' },
+            { name: 'name', type: 'string', default: "''", description: 'Form field name. Submits `YYYY-MM-DD` (`YYYY-MM-DDTHH:mm` with `show-time`); the range submits `start/end`.' },
+            { name: 'date-change / range-change', type: 'event', default: '-', description: 'After the user picks; `detail` is the `Date` or `{ start, end }`.' },
+            { name: 'time-range-change', type: 'event', default: '-', description: 'Range picker: after a time changes.' },
+            { name: 'show() / hide() / toggle()', type: 'method', default: '-', description: 'Open or close the panel.' },
+            { name: '--density-picker', type: 'css', default: '--density', description: 'Spacing multiplier for the button.' },
+        ],
+    },
+    {
+        id: 'autocomplete',
+        group: 'Rung 4 · Overlays',
+        name: 'Autocomplete',
+        tag: 'ge-autocomplete',
+        description: 'A text box that suggests `options` as you type, filtering them and highlighting the match. One pick, or `multiple` chips. Options can be objects: give `displayWith` and `value-attribute`. Fires `value-change` and `search-change` (debounced with `debounce-time`, for server search).',
+        examples: [
+            {
+                title: 'Single and multiple',
+                html: `<div style="display: grid; gap: 2rem; max-width: 24rem">
+  <div style="display: grid; gap: 0.5rem">
+    <p style="margin: 0; font-size: 0.875rem; font-weight: 500">Single selection</p>
+    <ge-autocomplete id="ac-single" placeholder="Select framework..."></ge-autocomplete>
+    <p id="ac-single-out" style="margin: 0; font-size: 0.875rem; color: var(--muted-foreground)">Selected: null</p>
+  </div>
+  <div style="display: grid; gap: 0.5rem">
+    <p style="margin: 0; font-size: 0.875rem; font-weight: 500">Multiple selection</p>
+    <ge-autocomplete id="ac-multi" multiple placeholder="Select frameworks..."></ge-autocomplete>
+    <p id="ac-multi-out" style="margin: 0; font-size: 0.875rem; color: var(--muted-foreground)">Selected: Next.js, Angular</p>
+  </div>
+</div>
+<script>
+const frameworks = [
+  { value: 'next.js', label: 'Next.js' }, { value: 'sveltekit', label: 'SvelteKit' },
+  { value: 'nuxt.js', label: 'Nuxt.js' }, { value: 'remix', label: 'Remix' },
+  { value: 'astro', label: 'Astro' }, { value: 'angular', label: 'Angular' },
+  { value: 'vue', label: 'Vue' }, { value: 'react', label: 'React' },
+];
+for (const id of ['ac-single', 'ac-multi']) {
+  const ac = document.getElementById(id);
+  ac.options = frameworks;
+  ac.displayWith = (option) => option.label;
+  ac.valueAttribute = 'value';
+}
+document.getElementById('ac-multi').value = [frameworks[0], frameworks[5]];
+document.getElementById('ac-single').addEventListener('value-change', (e) => {
+  document.getElementById('ac-single-out').textContent = 'Selected: ' + JSON.stringify(e.detail);
+});
+document.getElementById('ac-multi').addEventListener('value-change', (e) => {
+  document.getElementById('ac-multi-out').textContent = 'Selected: ' + e.detail.map((o) => o.label).join(', ');
+});
+</script>`,
+            },
+            {
+                title: 'Disabled',
+                html: `<div style="max-width: 24rem"><ge-autocomplete disabled placeholder="Disabled"></ge-autocomplete></div>`,
+            },
+            {
+                title: 'Search on the server',
+                note: '`no-filter` keeps whatever `options` holds visible, and `debounce-time` waits for a pause in typing before `search-change` fires. Here a timer stands in for the request.',
+                html: `<div style="display: grid; gap: 0.5rem; max-width: 24rem">
+  <ge-autocomplete id="ac-remote" no-filter debounce-time="300" placeholder="Search countries..."></ge-autocomplete>
+  <p id="ac-remote-out" style="margin: 0; font-size: 0.875rem; color: var(--muted-foreground)">Requests: 0</p>
+</div>
+<script>
+const countries = ['Argentina', 'Australia', 'Austria', 'Belgium', 'Brazil', 'Canada', 'Chile', 'Denmark', 'Egypt', 'Finland', 'France', 'Germany', 'Greece', 'Ireland', 'Israel', 'Italy', 'Japan', 'Kenya', 'Mexico', 'Norway', 'Peru', 'Poland', 'Portugal', 'Spain', 'Sweden', 'Turkey'];
+const remote = document.getElementById('ac-remote');
+let requests = 0;
+remote.options = [];
+remote.addEventListener('search-change', (e) => {
+  requests += 1;
+  document.getElementById('ac-remote-out').textContent = 'Requests: ' + requests;
+  setTimeout(() => { remote.options = countries.filter((c) => c.toLowerCase().includes(e.detail.toLowerCase())).slice(0, 6); }, 200);
+});
+</script>`,
+            },
+            {
+                title: 'Inside a clipped box',
+                note: 'The list is promoted to the top layer, so the box around the input does not cut it off.',
+                html: `<div style="max-width: 24rem; height: 7rem; overflow: hidden; border: 1px solid var(--border); border-radius: calc(var(--radius) + 2px); padding: 1rem; background: var(--card)">
+  <ge-autocomplete id="ac-clip" placeholder="Select framework..."></ge-autocomplete>
+</div>
+<script>document.getElementById('ac-clip').options = ['Next.js', 'SvelteKit', 'Nuxt.js', 'Remix', 'Astro', 'Angular', 'Vue', 'React'];</script>`,
+            },
+        ],
+        api: [
+            { name: 'options', type: 'unknown[]', default: '[]', description: 'Property. The candidates; every one is rendered and hidden by the filter.' },
+            { name: 'displayWith', type: '(option) => string', default: 'String', description: 'Property. The text shown for an option and matched against what is typed.' },
+            { name: 'value-attribute', type: 'string', default: "''", description: 'The property that identifies an option, such as `id`. Without it options are compared by reference.' },
+            { name: 'value', type: 'unknown', default: 'null', description: 'Property. The selection: an option or `null`, or an array with `multiple`. Setting it does not fire `value-change`.' },
+            { name: 'multiple', type: 'boolean', default: 'false', description: 'Chips: picks toggle, the list stays open, Backspace in an empty box removes the last chip.' },
+            { name: 'placeholder', type: 'string', default: "'Select...'", description: 'Hint text; the default follows `locale`.' },
+            { name: 'no-filter', type: 'boolean', default: 'false', description: 'Do not hide options that do not contain the text; for server-side search.' },
+            { name: 'debounce-time', type: 'number', default: '0', description: 'Milliseconds of quiet typing before `search-change` fires.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables the box.' },
+            { name: 'name', type: 'string', default: "''", description: 'Form field name; submits `value-attribute` of each pick, or its label.' },
+            { name: 'locale', type: 'string', default: "''", description: 'A locale id for the placeholder, the empty message and the direction. Empty follows the page `lang`.' },
+            { name: 'value-change', type: 'event', default: '-', description: 'After the user picks or removes; `detail` is the option (or `null`), or the array with `multiple`.' },
+            { name: 'search-change', type: 'event', default: '-', description: 'As the user types; `detail` is the text.' },
+            { name: 'show() / hide()', type: 'method', default: '-', description: 'Open or close the list.' },
+            { name: '--density-select', type: 'css', default: '--density', description: 'Spacing multiplier for the box.' },
+        ],
+    },
 ];

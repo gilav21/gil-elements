@@ -104,6 +104,23 @@ for (const theme of ['light', 'dark']) {
                 // `data-click` marks a menubar trigger the reference shows opened; opened through the menu, since a click would close the bars of the other cases as an outside click.
                 for (const target of document.querySelectorAll('[data-click]')) target.closest('ge-menubar-menu').show();
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+                // `data-date` and `data-range` set the value of a date picker and a range picker the way a script would.
+                for (const picker of document.querySelectorAll('ge-date-picker[data-date]')) {
+                    picker.date = new Date(picker.dataset.date);
+                    await picker.updateComplete;
+                }
+                for (const picker of document.querySelectorAll('ge-date-range-picker[data-range]')) {
+                    const raw = JSON.parse(picker.dataset.range);
+                    picker.range = { start: raw.start ? new Date(raw.start + 'T00:00') : null, end: raw.end ? new Date(raw.end + 'T00:00') : null };
+                    await picker.updateComplete;
+                }
+                // `data-selected` is the JSON `selected` of a calendar; ISO strings become local dates, the way the markup attribute would.
+                for (const cal of document.querySelectorAll('ge-calendar[data-selected]')) {
+                    const local = (v) => (typeof v === 'string' ? (v.length === 10 ? new Date(v + 'T00:00') : new Date(v)) : v);
+                    const raw = JSON.parse(cal.dataset.selected);
+                    cal.selected = Array.isArray(raw) ? raw.map(local) : { start: local(raw.start), end: local(raw.end) };
+                    await cal.updateComplete;
+                }
                 // `data-items` is the JSON `items` of a data-driven data list.
                 for (const list of document.querySelectorAll('ge-data-list[data-items]')) {
                     list.items = JSON.parse(list.dataset.items);
@@ -115,6 +132,8 @@ for (const theme of ['light', 'dark']) {
                     await menu.updateComplete;
                     if (menu.dataset.openIndex) menu.shadowRoot.querySelectorAll('ge-navigation-menu-trigger')[Number(menu.dataset.openIndex)].shadowRoot.querySelector('button').click();
                 }
+                // `data-value` is the JSON selection of an autocomplete (an option, or an array with `multiple`).
+                for (const target of document.querySelectorAll('ge-autocomplete[data-value]')) target.value = JSON.parse(target.dataset.value);
                 // `data-highlight` marks the command row the reference shows highlighted; `data-search` is the query the field holds.
                 for (const row of document.querySelectorAll('[data-highlight]')) row.closest('ge-command').setActive(row);
                 // `data-options` is the JSON list of a select built from `options`; `data-disabled-options` lists the entries that are disabled.

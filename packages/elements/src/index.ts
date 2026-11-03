@@ -50,3 +50,6 @@ export * from './result/index.js';
 export * from './data-list/index.js';
 export * from './input-group/index.js';
 export * from './field/index.js';
+export * from './calendar/index.js';
+export * from './date-picker/index.js';
+export * from './autocomplete/index.js';
