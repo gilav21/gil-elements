@@ -1,7 +1,7 @@
 import { html, svg, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
 import { adoptChildren, findParent } from './compound.js';
-import { activateAsClick, blockDisabledActivation, isRtl } from './menu.js';
+import { activateAsClick, arrowNavigation, blockDisabledActivation, isRtl, ownItems } from './menu.js';
 import { isTouchDevice } from './touch.js';
 import subTriggerCss from './menu-sub-trigger.css?inline';
 
@@ -43,6 +43,12 @@ export class GeMenuSub extends UiElement implements MenuSubHost {
     declare open: boolean;
     private readonly parts = new Set<MenuSubPart>();
     private timer?: ReturnType<typeof setTimeout>;
+    private root?: MenuRootHost;
+    /**
+     * The event the menu around this submenu answers. Set it and the submenu closes itself whenever that menu
+     * closes, so reopening the menu never shows a submenu left open.
+     */
+    protected readonly rootEvent?: string;
 
     constructor() {
         super();
@@ -50,9 +56,16 @@ export class GeMenuSub extends UiElement implements MenuSubHost {
         adoptChildren<MenuSubHost, MenuSubPart>(this, MENU_SUB_REGISTER, (part) => this.register(part));
     }
 
+    override connectedCallback(): void {
+        super.connectedCallback();
+        if (this.rootEvent) this.root = findParent<MenuRootHost, GeMenuSub>(this, this.rootEvent);
+    }
+
     override disconnectedCallback(): void {
         super.disconnectedCallback();
         clearTimeout(this.timer);
+        this.root?.unregister(this);
+        this.root = undefined;
     }
 
     register(part: MenuSubPart): void {
@@ -91,12 +104,19 @@ export class GeMenuSub extends UiElement implements MenuSubHost {
     }
 
     protected override updated(): void {
+        if (this.root && !this.root.open && this.open) this.closeNow();
         for (const part of this.parts) part.requestUpdate();
     }
 
     protected override render() {
         return html`<slot></slot>`;
     }
+}
+
+/** What a submenu needs to know about the menu around it. */
+export interface MenuRootHost {
+    readonly open: boolean;
+    unregister(part: MenuSubPart): void;
 }
 
 const CHEVRON = svg`<path d="m9 18 6-6-6-6" />`;
@@ -177,6 +197,8 @@ export abstract class GeMenuSubTrigger extends UiElement {
         const forward = isRtl(this) ? 'ArrowLeft' : 'ArrowRight';
         if (event.key !== forward && event.key !== 'Enter') return;
         event.preventDefault();
+        // The forward arrow is this row's; a menubar would otherwise also read it as "next menu".
+        event.stopPropagation();
         this.sub?.enter();
         this.sub?.focusContent();
     };
@@ -263,5 +285,74 @@ export abstract class GeMenuItem<Root> extends UiElement {
 
     protected override render() {
         return html`<slot></slot>${this.shortcut ? html`<span class="shortcut" part="shortcut">${this.shortcut}</span>` : ''}`;
+    }
+}
+
+/**
+ * The submenu panel (`role="menu"`). Up and Down move through its own items; Escape, and the back arrow (Left, or
+ * Right in right-to-left text), close it and return focus to its trigger without closing the parent menu. A menu
+ * brings its own styles.
+ *
+ * @slot - Items, labels, separators and further submenus.
+ */
+export abstract class GeMenuSubContent extends UiElement {
+    protected abstract readonly slotName: string;
+    private sub?: MenuSubHost;
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        this.setAttribute('role', 'menu');
+        this.tabIndex = -1;
+        this.dataset.slot = this.slotName;
+        this.sub = findParent<MenuSubHost, GeMenuSubContent>(this, MENU_SUB_REGISTER);
+        this.sub?.register(this);
+        this.addEventListener('mouseenter', this.onEnter);
+        this.addEventListener('mouseleave', this.onLeave);
+        this.addEventListener('keydown', this.onKeydown);
+    }
+
+    override disconnectedCallback(): void {
+        super.disconnectedCallback();
+        this.sub?.unregister(this);
+        this.sub = undefined;
+        this.removeEventListener('mouseenter', this.onEnter);
+        this.removeEventListener('mouseleave', this.onLeave);
+        this.removeEventListener('keydown', this.onKeydown);
+    }
+
+    /** Moves focus to the first enabled item. */
+    focusFirst(): void {
+        ownItems(this)[0]?.focus();
+    }
+
+    // On touch the trigger's tap owns the state.
+    private readonly onEnter = () => {
+        if (!isTouchDevice()) this.sub?.enter();
+    };
+
+    private readonly onLeave = () => {
+        if (!isTouchDevice()) this.sub?.leave();
+    };
+
+    private readonly onKeydown = (event: KeyboardEvent) => {
+        // Every key stops here, so the root menu neither moves its own focus nor closes on this Escape.
+        event.stopPropagation();
+        const back = isRtl(this) ? 'ArrowRight' : 'ArrowLeft';
+        if (event.key === back || event.key === 'Escape') {
+            event.preventDefault();
+            this.sub?.leave();
+            this.sub?.focusTrigger();
+            return;
+        }
+        arrowNavigation(event, this);
+    };
+
+    protected override updated(): void {
+        if (this.sub?.open) this.dataset.state = 'open';
+        else delete this.dataset.state;
+    }
+
+    protected override render() {
+        return html`<slot></slot>`;
     }
 }

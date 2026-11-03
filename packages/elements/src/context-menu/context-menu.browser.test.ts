@@ -379,4 +379,37 @@ describe('ge-context-menu items', () => {
         await settle(page);
         expect(picked).toEqual(['Copy', 'Email']);
     });
+
+    it('opens a menu elsewhere on the page for every area that names it with `for`, and leaves the browser menu alone for an unknown id', async () => {
+        const page = await mount(`<div style="padding:20px">
+<ge-context-menu id="shared"><ge-context-menu-content><ge-context-menu-item id="one">One</ge-context-menu-item></ge-context-menu-content></ge-context-menu>
+<ge-context-menu-trigger for="shared"><p id="a" style="width:200px;height:60px">A</p></ge-context-menu-trigger>
+<ge-context-menu-trigger for="shared"><p id="b" style="width:200px;height:60px">B</p></ge-context-menu-trigger>
+<ge-context-menu-trigger for="missing"><p id="c" style="width:200px;height:60px">C</p></ge-context-menu-trigger>
+</div>`);
+        const send = async (id: string) => {
+            const target = el(page, id);
+            const rect = target.getBoundingClientRect();
+            const event = new MouseEvent('contextmenu', { bubbles: true, composed: true, cancelable: true, clientX: rect.left + 30, clientY: rect.top + 20 });
+            target.dispatchEvent(event);
+            await settle(page);
+            return { event, rect };
+        };
+        const shared = menu(page);
+        const first = await send('a');
+        expect(first.event.defaultPrevented).toBe(true);
+        expect(shared.open).toBe(true);
+        near(el(page, 'one').getBoundingClientRect().left, first.rect.left + 30 + 5);
+
+        shared.close();
+        await settle(page);
+        const second = await send('b');
+        expect(shared.open).toBe(true);
+        near(el(page, 'one').getBoundingClientRect().top, second.rect.top + 20 + 5);
+
+        shared.close();
+        await settle(page);
+        expect((await send('c')).event.defaultPrevented).toBe(false);
+        expect(shared.open).toBe(false);
+    });
 });

@@ -1,0 +1,30 @@
+:host {
+    position: absolute;
+    top: 0;
+    inset-inline-start: 100%;
+    z-index: 50;
+    box-sizing: border-box;
+    min-width: 8rem;
+    max-width: calc(100vw - 2rem);
+    margin-inline-start: 0.125rem;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    outline: none;
+}
+/* On a phone there is no room beside the row, so the panel drops below it. */
+@media (width < 40rem) {
+    :host {
+        inset-inline-start: auto;
+        left: 0;
+        top: 100%;
+        margin-inline-start: 0;
+        margin-top: 0.125rem;
+    }
+}
+:host(:not([data-state="open"])) {
+    display: none;
+}

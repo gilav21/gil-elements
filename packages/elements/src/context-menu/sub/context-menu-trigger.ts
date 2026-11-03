@@ -8,18 +8,39 @@ import { CONTEXT_MENU_REGISTER, type ContextMenuHost } from '../context-menu.js'
  * The area that answers a right-click (or a long press on touch) by opening the menu at the pointer. It draws no box
  * of its own: size and style the content you put inside it.
  *
+ * By default it opens the `ge-context-menu` it sits in. Set `for` to the id of a `ge-context-menu` elsewhere on the
+ * page to attach that menu to whatever you wrap, and several areas can share one menu.
+ *
  * @slot - The area.
+ * @attr {string} for - The id of the `ge-context-menu` to open, for a menu that is not around this element.
  */
 export class GeContextMenuTrigger extends UiElement {
     static override styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
 
-    private menu?: ContextMenuHost;
+    static override properties = {
+        forMenu: { attribute: 'for' },
+    };
+
+    declare forMenu: string;
+    private parent?: ContextMenuHost;
     private stopLongPress?: () => void;
+
+    constructor() {
+        super();
+        this.forMenu = '';
+    }
+
+    /** The menu to open: the one named by `for`, else the one this element sits in. */
+    private get menu(): ContextMenuHost | undefined {
+        if (!this.forMenu) return this.parent;
+        const target = (this.getRootNode() as Document | ShadowRoot).getElementById(this.forMenu);
+        return target && 'show' in target ? (target as ContextMenuHost) : undefined;
+    }
 
     override connectedCallback(): void {
         super.connectedCallback();
         this.dataset.slot = 'context-menu-trigger';
-        this.menu = findParent<ContextMenuHost, GeContextMenuTrigger>(this, CONTEXT_MENU_REGISTER);
+        this.parent = findParent<ContextMenuHost, GeContextMenuTrigger>(this, CONTEXT_MENU_REGISTER);
         this.addEventListener('contextmenu', this.onContextMenu);
         this.stopLongPress = onLongPress(this, (event) => {
             event.preventDefault();
@@ -32,12 +53,14 @@ export class GeContextMenuTrigger extends UiElement {
         super.disconnectedCallback();
         this.removeEventListener('contextmenu', this.onContextMenu);
         this.stopLongPress?.();
-        this.menu = undefined;
+        this.parent = undefined;
     }
 
     private readonly onContextMenu = (event: MouseEvent) => {
+        const menu = this.menu;
+        if (!menu) return;
         event.preventDefault();
-        this.menu?.show(event.clientX, event.clientY);
+        menu.show(event.clientX, event.clientY);
     };
 
     protected override render() {

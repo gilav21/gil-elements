@@ -38,3 +38,4 @@ export * from './tooltip/index.js';
 export * from './hover-card/index.js';
 export * from './dropdown-menu/index.js';
 export * from './context-menu/index.js';
+export * from './menubar/index.js';

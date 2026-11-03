@@ -87,6 +87,8 @@ export default defineConfig({
                 'dropdown-menu/define': 'src/dropdown-menu/define.ts',
                 'context-menu/index': 'src/context-menu/index.ts',
                 'context-menu/define': 'src/context-menu/define.ts',
+                'menubar/index': 'src/menubar/index.ts',
+                'menubar/define': 'src/menubar/define.ts',
             },
             formats: ['es'],
         },
