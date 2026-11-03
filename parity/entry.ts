@@ -50,3 +50,6 @@ import '../packages/elements/src/result/define.js';
 import '../packages/elements/src/data-list/define.js';
 import '../packages/elements/src/input-group/define.js';
 import '../packages/elements/src/field/define.js';
+import '../packages/elements/src/calendar/define.js';
+import '../packages/elements/src/date-picker/define.js';
+import '../packages/elements/src/autocomplete/define.js';
