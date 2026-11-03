@@ -135,7 +135,9 @@ export class GeSelectContent extends UiElement {
         } else if ((event.key === 'Enter' || event.key === ' ') && current >= 0) {
             event.preventDefault();
             rows[current]?.click();
-        } else if (event.key === 'Tab' && dataDriven) {
+        } else if (event.key === 'Tab') {
+            // The list is not part of the page's tab order: Tab closes it and focus goes back to the trigger.
+            event.preventDefault();
             this.select?.hide();
         }
     };
