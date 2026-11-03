@@ -124,6 +124,24 @@ describe('ge-select (projected)', () => {
         expect(visible(panel(page))).toBe(false);
     });
 
+    it('closes on Tab from a row and puts focus back on the trigger instead of leaving for the page', async () => {
+        const page = await mount(MARKUP());
+        await openByClick(page);
+        await press(page, '{ArrowDown}');
+        expect(select(page).open).toBe(true);
+        expect(panel(page).contains(active())).toBe(true);
+
+        const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true, composed: true });
+        active().dispatchEvent(tab);
+        await settle(page);
+
+        expect(tab.defaultPrevented).toBe(true);
+        expect(select(page).open).toBe(false);
+        await new Promise((r) => setTimeout(r, 20));
+        expect(active()).toBe(button(page));
+        expect(active()).not.toBe(el(page, 'outside'));
+    });
+
     it('ignores a disabled row and a disabled select, and closes from outside', async () => {
         const page = await mount(MARKUP());
         await settle(page);
