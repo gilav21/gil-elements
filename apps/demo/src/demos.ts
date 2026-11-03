@@ -2095,4 +2095,167 @@ document.getElementById('sel-data').options = ['Apple', 'Banana', 'Blueberry', '
             { name: '--density-select', type: 'css', default: '--density', description: 'Spacing multiplier for the trigger and rows.' },
         ],
     },
+    {
+        id: 'navigation-menu',
+        group: 'Rung 4 · Overlays',
+        name: 'Navigation menu',
+        tag: 'ge-navigation-menu',
+        description: 'A row of links where some open a dropdown. Hover opens an item and leaving closes it after a short grace period; a click or tap toggles it, which is how touch opens it. As in the Angular version there is no Escape handling, and following a link does not close the panel.',
+        examples: [
+            {
+                title: 'Basic',
+                note: 'A trigger and its content, or a lone link. Give the content a width with `style` on `ge-navigation-menu-content`; the host of a link takes part in grid layouts, so `grid-column` works on it, and `::part(base)` styles the row itself.',
+                html: `<style>
+  .nm-title { font-size: 0.875rem; font-weight: 500; line-height: 1; }
+  .nm-desc { margin: 0; font-size: 0.875rem; line-height: 1.375; color: var(--muted-foreground); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  .nm-grid { display: grid; gap: 0.75rem; padding: 1rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .nm-docs::part(base) { display: inline-flex; align-items: center; justify-content: center; width: max-content; height: 2.5rem; padding: 0.5rem 1rem; background: var(--background); font-size: 0.875rem; font-weight: 500; line-height: 1.25rem; }
+  .nm-docs::part(base):hover { background: var(--accent); color: var(--accent-foreground); }
+</style>
+<ge-navigation-menu>
+  <ge-navigation-menu-list>
+    <ge-navigation-menu-item>
+      <ge-navigation-menu-trigger>Getting started</ge-navigation-menu-trigger>
+      <ge-navigation-menu-content style="width: min(400px, calc(100vw - 2rem))">
+        <div class="nm-grid">
+          <ge-navigation-menu-link href="#" style="grid-column: span 2">
+            <div class="nm-title">Introduction</div>
+            <p class="nm-desc">Re-usable components built with Tailwind CSS.</p>
+          </ge-navigation-menu-link>
+          <ge-navigation-menu-link href="#">
+            <div class="nm-title">Installation</div>
+            <p class="nm-desc">How to install dependencies and structure your app.</p>
+          </ge-navigation-menu-link>
+          <ge-navigation-menu-link href="#">
+            <div class="nm-title">Typography</div>
+            <p class="nm-desc">Styles for headings, paragraphs, lists and more.</p>
+          </ge-navigation-menu-link>
+        </div>
+      </ge-navigation-menu-content>
+    </ge-navigation-menu-item>
+    <ge-navigation-menu-item>
+      <ge-navigation-menu-trigger>Components</ge-navigation-menu-trigger>
+      <ge-navigation-menu-content style="width: min(500px, calc(100vw - 2rem))">
+        <div class="nm-grid">
+          <ge-navigation-menu-link href="#">
+            <div class="nm-title">Alert dialog</div>
+            <p class="nm-desc">A modal dialog that interrupts the user with important content.</p>
+          </ge-navigation-menu-link>
+          <ge-navigation-menu-link href="#">
+            <div class="nm-title">Hover card</div>
+            <p class="nm-desc">For sighted users to preview content behind a link.</p>
+          </ge-navigation-menu-link>
+          <ge-navigation-menu-link href="#">
+            <div class="nm-title">Progress</div>
+            <p class="nm-desc">Displays an indicator showing the completion progress of a task.</p>
+          </ge-navigation-menu-link>
+          <ge-navigation-menu-link href="#">
+            <div class="nm-title">Tooltip</div>
+            <p class="nm-desc">A popup that displays information related to an element.</p>
+          </ge-navigation-menu-link>
+        </div>
+      </ge-navigation-menu-content>
+    </ge-navigation-menu-item>
+    <ge-navigation-menu-item>
+      <ge-navigation-menu-link class="nm-docs" href="#">Documentation</ge-navigation-menu-link>
+    </ge-navigation-menu-item>
+  </ge-navigation-menu-list>
+</ge-navigation-menu>`,
+            },
+            {
+                title: 'Simple mode (data-driven)',
+                note: 'Set `items`: an entry with `children` becomes a trigger with a two-column dropdown of titled links, an entry without becomes a plain link.',
+                html: `<ge-navigation-menu id="nm-data"></ge-navigation-menu>
+<script>
+document.getElementById('nm-data').items = [
+  { label: 'Home', href: '#' },
+  { label: 'Guides', children: [
+    { title: 'Introduction', description: 'Re-usable components built with Tailwind CSS.', href: '#' },
+    { title: 'Installation', description: 'How to install dependencies and structure your app.', href: '#' },
+  ] },
+  { label: 'Docs', href: '#' },
+];
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'items', type: 'NavigationMenuEntry[]', default: '[]', description: 'Builds the list for you: `{ label, href?, children?: { title, description?, href }[] }`. A projected `ge-navigation-menu-list` wins.' },
+            { name: 'link: href', type: 'string', default: "'#'", description: 'Where the link goes. A plain anchor: no router integration, and it does not close the dropdown.' },
+            { name: 'link: active', type: 'boolean', default: 'false', description: 'Tints the row as the current one. Visual only; it sets no `aria-current`.' },
+            { name: '--density-menu', type: 'css', default: '--density', description: 'Spacing multiplier for triggers, links and panels.' },
+        ],
+    },
+    {
+        id: 'command',
+        group: 'Rung 4 · Overlays',
+        name: 'Command',
+        tag: 'ge-command',
+        description: 'A searchable palette: type to filter the rows, arrow keys move the highlight, Enter selects. Groups and separators are plain children, and `ge-command-dialog` wraps one in a dialog opened with Mod+K. Rows fire `select-item`; set `source` for async results and `recent-key` to remember picks.',
+        examples: [
+            {
+                title: 'Palette',
+                note: 'A group hides itself when none of its rows match; the separator stays, as in the Angular version.',
+                html: `<ge-command style="max-width: 28rem; border: 1px solid var(--border); box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)">
+  <ge-command-input placeholder="Type a command"></ge-command-input>
+  <ge-command-list>
+    <ge-command-empty>No results.</ge-command-empty>
+    <ge-command-group heading="Suggestions">
+      <ge-command-item value="calendar">Calendar</ge-command-item>
+      <ge-command-item value="search-emoji">Search emoji</ge-command-item>
+      <ge-command-item value="launch" disabled>Launch</ge-command-item>
+    </ge-command-group>
+    <ge-command-separator></ge-command-separator>
+    <ge-command-group heading="Settings">
+      <ge-command-item value="profile">Profile <ge-command-shortcut>⌘P</ge-command-shortcut></ge-command-item>
+      <ge-command-item value="mail">Mail <ge-command-shortcut>⌘B</ge-command-shortcut></ge-command-item>
+      <ge-command-item value="settings">Settings <ge-command-shortcut>⌘S</ge-command-shortcut></ge-command-item>
+    </ge-command-group>
+  </ge-command-list>
+</ge-command>`,
+            },
+            {
+                title: 'Dialog',
+                note: 'Press Ctrl+K (⌘K on a Mac) or use the button. Add `no-shortcut` to turn the key off.',
+                html: `<div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start">
+  <ge-button variant="outline" id="cmd-open" style="width: 15rem">Show command dialog</ge-button>
+  <p style="margin: 0; font-size: 0.875rem; color: var(--muted-foreground)">Or press <ge-kbd>⌘</ge-kbd> <ge-kbd>K</ge-kbd></p>
+</div>
+<ge-command-dialog id="cmd-dialog">
+  <ge-command>
+    <ge-command-input placeholder="Type a command"></ge-command-input>
+    <ge-command-list>
+      <ge-command-empty>No results.</ge-command-empty>
+      <ge-command-group heading="Suggestions">
+        <ge-command-item value="calendar">Calendar</ge-command-item>
+        <ge-command-item value="search-emoji">Search emoji</ge-command-item>
+        <ge-command-item value="launch">Launch</ge-command-item>
+      </ge-command-group>
+      <ge-command-separator></ge-command-separator>
+      <ge-command-group heading="Settings">
+        <ge-command-item value="profile">Profile <ge-command-shortcut>⌘P</ge-command-shortcut></ge-command-item>
+        <ge-command-item value="mail">Mail <ge-command-shortcut>⌘B</ge-command-shortcut></ge-command-item>
+      </ge-command-group>
+    </ge-command-list>
+  </ge-command>
+</ge-command-dialog>
+<script>
+document.getElementById('cmd-open').addEventListener('click', () => { document.getElementById('cmd-dialog').open = true; });
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'search', type: 'string', default: "''", description: 'The query. Typing in `ge-command-input` sets it.' },
+            { name: 'no-filter', type: 'boolean', default: 'false', description: 'Skip the built-in filter, for results you already filtered.' },
+            { name: 'source', type: 'CommandSource', default: 'undefined', description: 'Async results: `(query, signal) => Promise<CommandResult[]>`, debounced and aborted when the query changes.' },
+            { name: 'debounce', type: 'number', default: '200', description: 'Milliseconds to wait before calling `source`.' },
+            { name: 'recent-key', type: 'string', default: "''", description: 'Remember picked values in localStorage under this key and list them first.' },
+            { name: 'recent-limit', type: 'number', default: '5', description: 'How many recents to keep.' },
+            { name: 'item: value', type: 'string', default: "''", description: 'What the row matches against and reports in `select-item`.' },
+            { name: 'item: disabled', type: 'boolean', default: 'false', description: 'Dimmed and cannot be selected; the arrow keys still reach it, as in the Angular version.' },
+            { name: 'group: heading', type: 'string', default: "''", description: 'The group label.' },
+            { name: 'dialog: shortcut', type: 'string', default: "'Mod+K'", description: 'The key that toggles the dialog; Mod is ⌘ on a Mac and Ctrl elsewhere.' },
+            { name: 'dialog: no-shortcut', type: 'boolean', default: 'false', description: 'Turn the key off.' },
+            { name: '--density-menu', type: 'css', default: '--density', description: 'Spacing multiplier for rows and group headings.' },
+        ],
+    },
 ];

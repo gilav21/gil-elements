@@ -437,6 +437,26 @@
       "types": "./dist/select/define.d.ts",
       "development": "./src/select/define.ts",
       "default": "./dist/select/define.js"
+    },
+    "./navigation-menu": {
+      "types": "./dist/navigation-menu/index.d.ts",
+      "development": "./src/navigation-menu/index.ts",
+      "default": "./dist/navigation-menu/index.js"
+    },
+    "./navigation-menu/define": {
+      "types": "./dist/navigation-menu/define.d.ts",
+      "development": "./src/navigation-menu/define.ts",
+      "default": "./dist/navigation-menu/define.js"
+    },
+    "./command": {
+      "types": "./dist/command/index.d.ts",
+      "development": "./src/command/index.ts",
+      "default": "./dist/command/index.js"
+    },
+    "./command/define": {
+      "types": "./dist/command/define.d.ts",
+      "development": "./src/command/define.ts",
+      "default": "./dist/command/define.js"
     }
   },
   "scripts": {

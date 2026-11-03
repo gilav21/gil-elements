@@ -1,0 +1,49 @@
+:host {
+    --_d: var(--density-menu, var(--density, 1));
+    display: contents;
+}
+.base {
+    box-sizing: border-box;
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: max-content;
+    height: calc(2.5rem * var(--_d));
+    padding-inline: calc(1rem * var(--_d));
+    padding-block: calc(0.5rem * var(--_d));
+    border: 0;
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--background);
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    outline: none;
+    cursor: pointer;
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.base:hover,
+.base:focus {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+}
+.base[data-state="open"] {
+    background-color: color-mix(in oklab, var(--accent) 50%, transparent);
+}
+.base[data-state="open"]:hover,
+.base[data-state="open"]:focus {
+    background-color: var(--accent);
+}
+.chevron {
+    position: relative;
+    top: 1px;
+    margin-left: 0.25rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+[data-state="open"] .chevron {
+    transform: rotate(180deg);
+}

@@ -1,0 +1,21 @@
+import { defineElement } from '@gilav21/elements-base';
+import '../dialog/define.js';
+import { GeCommand } from './command.js';
+import { GeCommandDialog } from './sub/command-dialog.js';
+import { GeCommandEmpty } from './sub/command-empty.js';
+import { GeCommandGroup } from './sub/command-group.js';
+import { GeCommandInput } from './sub/command-input.js';
+import { GeCommandItem } from './sub/command-item.js';
+import { GeCommandList } from './sub/command-list.js';
+import { GeCommandSeparator } from './sub/command-separator.js';
+import { GeCommandShortcut } from './sub/command-shortcut.js';
+
+defineElement('command', GeCommand);
+defineElement('command-input', GeCommandInput);
+defineElement('command-list', GeCommandList);
+defineElement('command-empty', GeCommandEmpty);
+defineElement('command-group', GeCommandGroup);
+defineElement('command-item', GeCommandItem);
+defineElement('command-separator', GeCommandSeparator);
+defineElement('command-shortcut', GeCommandShortcut);
+defineElement('command-dialog', GeCommandDialog);
