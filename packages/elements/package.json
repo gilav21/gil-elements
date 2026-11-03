@@ -427,6 +427,16 @@
       "types": "./dist/menubar/define.d.ts",
       "development": "./src/menubar/define.ts",
       "default": "./dist/menubar/define.js"
+    },
+    "./select": {
+      "types": "./dist/select/index.d.ts",
+      "development": "./src/select/index.ts",
+      "default": "./dist/select/index.js"
+    },
+    "./select/define": {
+      "types": "./dist/select/define.d.ts",
+      "development": "./src/select/define.ts",
+      "default": "./dist/select/define.js"
     }
   },
   "scripts": {

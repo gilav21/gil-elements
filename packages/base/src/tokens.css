@@ -8,6 +8,9 @@
     --destructive-border-mix: 50%;
     /* Share of --input in an outline field's background: none in light mode, 30% in dark (a number, so the colour still follows theme overrides). */
     --input-surface-mix: 0%;
+    /* Share of --input in a select trigger's resting and hovered background: none in light mode, 50% and 70% in dark. */
+    --select-surface-mix: 0%;
+    --select-hover-mix: 0%;
     --density: 1;         /* spacing/size multiplier — 0.75 | 0.875 | 1.0 | 1.125 | 1.25 */
     --motion: 1;          /* animation speed multiplier — 0: none | 1: default | 1.5: expressive */
 
@@ -56,6 +59,8 @@
     --skeleton-shimmer-highlight: #0f172a;
     --destructive-border-mix: 100%;
     --input-surface-mix: 30%;
+    --select-surface-mix: 50%;
+    --select-hover-mix: 70%;
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);

@@ -89,6 +89,8 @@ export default defineConfig({
                 'context-menu/define': 'src/context-menu/define.ts',
                 'menubar/index': 'src/menubar/index.ts',
                 'menubar/define': 'src/menubar/define.ts',
+                'select/index': 'src/select/index.ts',
+                'select/define': 'src/select/define.ts',
             },
             formats: ['es'],
         },

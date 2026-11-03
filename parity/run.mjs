@@ -104,6 +104,17 @@ for (const theme of ['light', 'dark']) {
                 // `data-click` marks a menubar trigger the reference shows opened; opened through the menu, since a click would close the bars of the other cases as an outside click.
                 for (const target of document.querySelectorAll('[data-click]')) target.closest('ge-menubar-menu').show();
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+                // `data-options` is the JSON list of a select built from `options`; `data-disabled-options` lists the entries that are disabled.
+                for (const target of document.querySelectorAll('[data-options]')) {
+                    target.options = JSON.parse(target.dataset.options);
+                    const off = JSON.parse(target.dataset.disabledOptions ?? '[]');
+                    target.disabledWith = (option) => off.includes(option);
+                }
+                await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+                for (const target of document.querySelectorAll('ge-select[data-options][data-open]')) target.show();
+                // `data-open` marks a select the reference shows open.
+                for (const target of document.querySelectorAll('[data-open]:not([data-options])')) target.closest('ge-select').show();
+                await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
                 // `data-hover` marks an element the reference shows hovered (a submenu that hover opened).
                 for (const target of document.querySelectorAll('[data-hover]')) target.dispatchEvent(new MouseEvent('mouseenter'));
                 // Panels measure themselves in the first animation frame after they open, so the page must be at the top by then.
