@@ -3,7 +3,7 @@ import { UiElement } from '@gilav21/elements-base';
 import { findParent } from '../../shared/compound.js';
 import { arrowNavigation, isRtl, ownItems } from '../../shared/menu.js';
 import { isTouchDevice } from '../../shared/touch.js';
-import { DROPDOWN_SUB_REGISTER, type DropdownSubHost } from './dropdown-menu-sub.js';
+import { MENU_SUB_REGISTER, type MenuSubHost } from '../../shared/menu-parts.js';
 import css from './dropdown-menu-sub-content.css?inline';
 
 /**
@@ -15,14 +15,14 @@ import css from './dropdown-menu-sub-content.css?inline';
 export class GeDropdownMenuSubContent extends UiElement {
     static override styles = [UiElement.styles, unsafeCSS(css)];
 
-    private sub?: DropdownSubHost;
+    private sub?: MenuSubHost;
 
     override connectedCallback(): void {
         super.connectedCallback();
         this.setAttribute('role', 'menu');
         this.tabIndex = -1;
         this.dataset.slot = 'dropdown-menu-sub-content';
-        this.sub = findParent<DropdownSubHost, GeDropdownMenuSubContent>(this, DROPDOWN_SUB_REGISTER);
+        this.sub = findParent<MenuSubHost, GeDropdownMenuSubContent>(this, MENU_SUB_REGISTER);
         this.sub?.register(this);
         this.addEventListener('mouseenter', this.onEnter);
         this.addEventListener('mouseleave', this.onLeave);
@@ -62,7 +62,7 @@ export class GeDropdownMenuSubContent extends UiElement {
             this.sub?.focusTrigger();
             return;
         }
-        arrowNavigation(event, this, false);
+        arrowNavigation(event, this);
     };
 
     protected override updated(): void {

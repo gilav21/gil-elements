@@ -85,6 +85,8 @@ export default defineConfig({
                 'hover-card/define': 'src/hover-card/define.ts',
                 'dropdown-menu/index': 'src/dropdown-menu/index.ts',
                 'dropdown-menu/define': 'src/dropdown-menu/define.ts',
+                'context-menu/index': 'src/context-menu/index.ts',
+                'context-menu/define': 'src/context-menu/define.ts',
             },
             formats: ['es'],
         },

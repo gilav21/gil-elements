@@ -27,18 +27,34 @@ export function focusStep(menu: HTMLElement, from: EventTarget | null, step: 1 |
     items[next]?.focus();
 }
 
-/**
- * Up and Down move through the ring. With `trapTab` Tab and Shift+Tab do too, so a root menu cannot be tabbed out
- * of; close it to tab onwards. Returns whether the key was handled.
- */
-export function arrowNavigation(event: KeyboardEvent, menu: HTMLElement, trapTab: boolean): boolean {
-    let step: 1 | -1;
-    if (event.key === 'ArrowDown' || (trapTab && event.key === 'Tab' && !event.shiftKey)) step = 1;
-    else if (event.key === 'ArrowUp' || (trapTab && event.key === 'Tab' && event.shiftKey)) step = -1;
-    else return false;
-    event.preventDefault();
-    focusStep(menu, event.target, step);
-    return true;
+export interface NavigationOptions {
+    /** Tab and Shift+Tab move through the ring too, so the menu cannot be tabbed out of. */
+    trapTab?: boolean;
+    /** Home and End jump to the first and last item. */
+    edges?: boolean;
+}
+
+/** Up and Down move through the ring, wrapping. Returns whether the key was handled. */
+export function arrowNavigation(event: KeyboardEvent, menu: HTMLElement, { trapTab = false, edges = false }: NavigationOptions = {}): boolean {
+    const items = ownItems(menu);
+    const step = stepFor(event, trapTab);
+    if (step) {
+        event.preventDefault();
+        focusStep(menu, event.target, step);
+        return true;
+    }
+    if (edges && (event.key === 'Home' || event.key === 'End')) {
+        event.preventDefault();
+        (event.key === 'Home' ? items[0] : items.at(-1))?.focus();
+        return true;
+    }
+    return false;
+}
+
+function stepFor(event: KeyboardEvent, trapTab: boolean): 1 | -1 | 0 {
+    if (event.key === 'ArrowDown' || (trapTab && event.key === 'Tab' && !event.shiftKey)) return 1;
+    if (event.key === 'ArrowUp' || (trapTab && event.key === 'Tab' && event.shiftKey)) return -1;
+    return 0;
 }
 
 /**

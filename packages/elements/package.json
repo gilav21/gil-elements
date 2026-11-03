@@ -407,6 +407,16 @@
       "types": "./dist/dropdown-menu/define.d.ts",
       "development": "./src/dropdown-menu/define.ts",
       "default": "./dist/dropdown-menu/define.js"
+    },
+    "./context-menu": {
+      "types": "./dist/context-menu/index.d.ts",
+      "development": "./src/context-menu/index.ts",
+      "default": "./dist/context-menu/index.js"
+    },
+    "./context-menu/define": {
+      "types": "./dist/context-menu/define.d.ts",
+      "development": "./src/context-menu/define.ts",
+      "default": "./dist/context-menu/define.js"
     }
   },
   "scripts": {
