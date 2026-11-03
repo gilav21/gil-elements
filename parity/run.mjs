@@ -104,6 +104,14 @@ for (const theme of ['light', 'dark']) {
                 // `data-click` marks a menubar trigger the reference shows opened; opened through the menu, since a click would close the bars of the other cases as an outside click.
                 for (const target of document.querySelectorAll('[data-click]')) target.closest('ge-menubar-menu').show();
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+                // `data-items` is the JSON `items` of a data-driven navigation menu; `data-open-index` opens that entry's trigger.
+                for (const menu of document.querySelectorAll('ge-navigation-menu[data-items]')) {
+                    menu.items = JSON.parse(menu.dataset.items);
+                    await menu.updateComplete;
+                    if (menu.dataset.openIndex) menu.shadowRoot.querySelectorAll('ge-navigation-menu-trigger')[Number(menu.dataset.openIndex)].shadowRoot.querySelector('button').click();
+                }
+                // `data-highlight` marks the command row the reference shows highlighted; `data-search` is the query the field holds.
+                for (const row of document.querySelectorAll('[data-highlight]')) row.closest('ge-command').setActive(row);
                 // `data-options` is the JSON list of a select built from `options`; `data-disabled-options` lists the entries that are disabled.
                 for (const target of document.querySelectorAll('[data-options]')) {
                     target.options = JSON.parse(target.dataset.options);
@@ -138,9 +146,10 @@ for (const theme of ['light', 'dark']) {
             await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
             // Opening a menu moves focus into it, and with every case on one page the last one would keep a focus ring.
             // Only menus: a hover card closes when its trigger loses focus.
+            const top = document.activeElement;
             let active = document.activeElement;
             while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
-            if (active?.closest('ge-dropdown-menu')) active.blur();
+            if (active?.closest('ge-dropdown-menu') || top?.closest('ge-command-dialog')) active.blur();
         });
         await page.evaluate(() => document.fonts.ready);
         // `transition: all` runs whenever a style settles after first paint (Lit renders asynchronously, so the
