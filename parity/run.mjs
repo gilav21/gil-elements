@@ -83,11 +83,17 @@ let failures = 0;
 let compared = 0;
 const report = [];
 for (const theme of ['light', 'dark']) {
-    const shots = {};
-    const rects = {};
-    for (const side of ['ref', 'el']) {
+    const shots = { ref: new Map(), el: new Map() };
+    const rects = { ref: {}, el: {} };
+    // A case file marked `isolated` gets a page of its own: opening a menu moves focus into it, which scrolls the shared
+    // page, and every other case that measures itself on open would then measure at the wrong scroll position.
+    const groups = [cases.filter((c) => !c.isolated), ...cases.filter((c) => c.isolated).map((c) => [c])].filter((g) => g.length > 0);
+    for (const group of groups) for (const side of ['ref', 'el']) {
         const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 700, height: 900 } });
-        const body = rows(cases, side) + (side === 'el' ? `<script>${bundle}</script>` : '');
+        // Every case sits on one tall page, below the 900px viewport, where collision handling would flip the panels. The
+        // viewport height the elements read is raised so the case's own `overflow: hidden` wrapper is the box they stay in.
+        const unbounded = `<script>Object.defineProperty(window, 'innerHeight', { get: () => 100000 });</script>`;
+        const body = rows(group, side) + (side === 'el' ? `${unbounded}<script>${bundle}</script>` : '');
         await page.setContent(shell(theme, body, side === 'ref' ? referenceCss : ''));
         if (side === 'el') {
             await page.evaluate(async () => {
@@ -95,6 +101,12 @@ for (const theme of ['light', 'dark']) {
                 const tags = [...new Set([...document.querySelectorAll('*')].map((e) => e.localName).filter((n) => n.startsWith('ge-')))];
                 await Promise.race([Promise.all(tags.map((t) => customElements.whenDefined(t))), timeout]);
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+                // `data-hover` marks an element the reference shows hovered (a submenu that hover opened).
+                for (const target of document.querySelectorAll('[data-hover]')) target.dispatchEvent(new MouseEvent('mouseenter'));
+                // Panels measure themselves in the first animation frame after they open, so the page must be at the top by then.
+                // A menu that opens moves focus into itself, which scrolls the page to the last one.
+                window.scrollTo(0, 0);
+                await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
             });
         }
         // Images (shadow trees included) must be decoded, and the elements that react to them settled, before the shot.
@@ -110,6 +122,11 @@ for (const theme of ['light', 'dark']) {
             await Promise.all(images.map((img) => img.decode().catch(() => undefined)));
             await new Promise((resolve) => setTimeout(resolve, 50));
             await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+            // Opening a menu moves focus into it, and with every case on one page the last one would keep a focus ring.
+            // Only menus: a hover card closes when its trigger loses focus.
+            let active = document.activeElement;
+            while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+            if (active?.closest('ge-dropdown-menu')) active.blur();
         });
         await page.evaluate(() => document.fonts.ready);
         // `transition: all` runs whenever a style settles after first paint (Lit renders asynchronously, so the
@@ -134,7 +151,7 @@ for (const theme of ['light', 'dark']) {
             };
             freeze(document, 700);
         });
-        rects[side] = await page.evaluate(() => {
+        Object.assign(rects[side], await page.evaluate(() => {
             // The flat-tree parent of each case's first label text: its whole computed style, so a failure on a machine
             // we cannot screenshot can be explained by which property differs between the two sides.
             const found = {};
@@ -155,8 +172,7 @@ for (const theme of ['light', 'dark']) {
                 found[c.dataset.case] = Object.fromEntries([...cs].map((name) => [name, cs.getPropertyValue(name)]));
             }
             return found;
-        });
-        shots[side] = new Map();
+        }));
         for (const handle of await page.locator('[data-case]').all()) {
             const key = await handle.getAttribute('data-case');
             // A focused control paints its focus ring; focus it just before the shot, one case at a time.

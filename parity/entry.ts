@@ -36,3 +36,4 @@ import '../packages/elements/src/sheet/define.js';
 import '../packages/elements/src/popover/define.js';
 import '../packages/elements/src/tooltip/define.js';
 import '../packages/elements/src/hover-card/define.js';
+import '../packages/elements/src/dropdown-menu/define.js';
