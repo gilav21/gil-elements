@@ -328,4 +328,24 @@ describe('ge-command-dialog', () => {
         await settle(off);
         expect(dialog(off).open).toBe(false);
     });
+
+    it('takes several comma-separated shortcuts, and a bare key never fires while typing in a field', async () => {
+        const page = await mount(`<input id="plain">${DIALOG('shortcut="Mod+J, /"')}`);
+        await settle(page);
+        await userEvent.keyboard('{Control>}j{/Control}');
+        await settle(page);
+        expect(dialog(page).open).toBe(true);
+        await userEvent.keyboard('{Escape}');
+        await settle(page);
+        expect(dialog(page).open).toBe(false);
+        await userEvent.keyboard('/');
+        await settle(page);
+        expect(dialog(page).open).toBe(true);
+        await userEvent.keyboard('{Escape}');
+        await settle(page);
+        (page.querySelector('#plain') as HTMLInputElement).focus();
+        await userEvent.keyboard('/');
+        await settle(page);
+        expect(dialog(page).open).toBe(false);
+    });
 });

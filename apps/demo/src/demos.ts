@@ -2215,12 +2215,12 @@ document.getElementById('nm-data').items = [
             },
             {
                 title: 'Dialog',
-                note: 'Press Ctrl+K (⌘K on a Mac) or use the button. Add `no-shortcut` to turn the key off.',
+                note: 'Press Ctrl+K (⌘K on a Mac), `/`, or use the button. `shortcut` takes comma-separated alternatives; add `no-shortcut` to turn the key off.',
                 html: `<div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start">
   <ge-button variant="outline" id="cmd-open" style="width: 15rem">Show command dialog</ge-button>
-  <p style="margin: 0; font-size: 0.875rem; color: var(--muted-foreground)">Or press <ge-kbd>⌘</ge-kbd> <ge-kbd>K</ge-kbd></p>
+  <p style="margin: 0; font-size: 0.875rem; color: var(--muted-foreground)">Or press <ge-kbd>⌘</ge-kbd> <ge-kbd>K</ge-kbd> or <ge-kbd>/</ge-kbd></p>
 </div>
-<ge-command-dialog id="cmd-dialog">
+<ge-command-dialog id="cmd-dialog" shortcut="Mod+K, /">
   <ge-command>
     <ge-command-input placeholder="Type a command"></ge-command-input>
     <ge-command-list>
@@ -2253,7 +2253,7 @@ document.getElementById('cmd-open').addEventListener('click', () => { document.g
             { name: 'item: value', type: 'string', default: "''", description: 'What the row matches against and reports in `select-item`.' },
             { name: 'item: disabled', type: 'boolean', default: 'false', description: 'Dimmed and cannot be selected; the arrow keys still reach it, as in the Angular version.' },
             { name: 'group: heading', type: 'string', default: "''", description: 'The group label.' },
-            { name: 'dialog: shortcut', type: 'string', default: "'Mod+K'", description: 'The key that toggles the dialog; Mod is ⌘ on a Mac and Ctrl elsewhere.' },
+            { name: 'dialog: shortcut', type: 'string', default: "'Mod+K'", description: 'The key that toggles the dialog; Mod is ⌘ on a Mac and Ctrl elsewhere. Separate alternatives with commas (`Mod+K, /`); a bare key like `/` is ignored while typing in a field.' },
             { name: 'dialog: no-shortcut', type: 'boolean', default: 'false', description: 'Turn the key off.' },
             { name: '--density-menu', type: 'css', default: '--density', description: 'Spacing multiplier for rows and group headings.' },
         ],

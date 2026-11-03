@@ -12,6 +12,11 @@ export function matchesShortcut(event: KeyboardEvent, shortcut: string, mac: boo
     return event.key.toLowerCase() === key && event.metaKey === meta && event.ctrlKey === ctrl && event.altKey === wants('alt') && event.shiftKey === wants('shift');
 }
 
+function isEditable(target: EventTarget | null): boolean {
+    const el = (target as HTMLElement | null)?.closest?.('input,textarea,select,[contenteditable]');
+    return !!el || (target as HTMLElement | null)?.isContentEditable === true;
+}
+
 /**
  * A command palette in a modal dialog. Project a `ge-command` into it. A global key combination toggles it, and
  * each time it opens the projected `ge-command-input` takes focus.
@@ -21,7 +26,7 @@ export function matchesShortcut(event: KeyboardEvent, shortcut: string, mac: boo
  * @slot - A `ge-command`.
  * @fires open-change - When the user opens or closes it; `detail` is the new state.
  * @attr {boolean} open - Whether the dialog is showing.
- * @attr {string} shortcut - Key combination that toggles it, in `Mod+K` syntax. Defaults to `Mod+K`.
+ * @attr {string} shortcut - Key combinations that toggle it, in `Mod+K` syntax; separate alternatives with commas (`Mod+K, /`). Defaults to `Mod+K`.
  * @attr {boolean} no-shortcut - Drops the key binding; drive `open` yourself.
  */
 export class GeCommandDialog extends UiElement {
@@ -60,7 +65,11 @@ ge-dialog-content::part(panel){overflow:hidden;padding:0;box-shadow:0 10px 15px 
 
     private readonly onKeydown = (event: KeyboardEvent) => {
         if (this.noShortcut || !this.shortcut.trim() || event.defaultPrevented) return;
-        if (!matchesShortcut(event, this.shortcut, /mac|iphone|ipad/i.test(navigator.platform))) return;
+        const mac = /mac|iphone|ipad/i.test(navigator.platform);
+        const hit = this.shortcut.split(',').find((combo) => matchesShortcut(event, combo, mac));
+        if (!hit) return;
+        // A bare key such as `/` must not steal typing from a field.
+        if (!/[+]/.test(hit.trim()) && isEditable(event.target)) return;
         event.preventDefault();
         this.open = !this.open;
     };
