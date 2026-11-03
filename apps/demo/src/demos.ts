@@ -2258,4 +2258,145 @@ document.getElementById('cmd-open').addEventListener('click', () => { document.g
             { name: '--density-menu', type: 'css', default: '--density', description: 'Spacing multiplier for rows and group headings.' },
         ],
     },
+    {
+        id: 'banner',
+        group: 'Rung 3 · Interactive',
+        name: 'Banner',
+        tag: 'ge-banner',
+        description: 'A persistent, page-level announcement bar for system status and account notices. Set `message` for plain text, or project your own content and it replaces the message.',
+        examples: [
+            {
+                title: 'Variants',
+                note: '`destructive` is announced assertively (`role="alert"`), the others politely (`role="status"`).',
+                block: true,
+                html: `<div style="display:flex;flex-direction:column;gap:0.5rem;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius)">
+  <ge-banner variant="info" message="A new version of the console is available."></ge-banner>
+  <ge-banner variant="warning" message="Scheduled maintenance at 02:00 UTC."></ge-banner>
+  <ge-banner variant="success" message="Your workspace was migrated successfully."></ge-banner>
+  <ge-banner variant="destructive" message="Billing failed — update your card to avoid interruption."></ge-banner>
+</div>`,
+            },
+            {
+                title: 'Dismissible',
+                note: '`dismissed` fires once; the banner then hides and stops being a live region.',
+                block: true,
+                html: `<div style="overflow:hidden;border:1px solid var(--border);border-radius:var(--radius)">
+  <ge-banner id="bn-dismiss" variant="warning" message="You are impersonating another user." dismissible></ge-banner>
+</div>
+<p id="bn-count" style="margin:0.5rem 0 0;font-size:0.875rem;color:var(--muted-foreground)">0</p>
+<script>
+let bnCount = 0;
+document.getElementById('bn-dismiss').addEventListener('dismissed', () => { document.getElementById('bn-count').textContent = String(++bnCount); });
+</script>`,
+            },
+            {
+                title: 'Custom content',
+                note: 'Projected content replaces `message`, so it can hold a button or a link.',
+                block: true,
+                html: `<div style="overflow:hidden;border:1px solid var(--border);border-radius:var(--radius)">
+  <ge-banner variant="info" dismissible>
+    <span style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">
+      Trial ends in 3 days.
+      <ge-button size="sm" label="Upgrade"></ge-button>
+    </span>
+  </ge-banner>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'variant', type: "'info' | 'warning' | 'success' | 'destructive'", default: "'info'", description: 'Colour treatment and announcement urgency.' },
+            { name: 'message', type: 'string', default: "''", description: 'Plain-text announcement; ignored when content is projected.' },
+            { name: 'dismissible', type: 'boolean', default: 'false', description: 'Shows a close button that hides the banner.' },
+            { name: 'close-label', type: 'string', default: "'Close'", description: 'Accessible name of the close button.' },
+            { name: 'dismissed', type: 'event', default: '-', description: 'Fires once when the user closes the banner. `dismiss()` does the same from code.' },
+        ],
+    },
+    {
+        id: 'native-select',
+        group: 'Rung 3 · Interactive',
+        name: 'Native select',
+        tag: 'ge-native-select',
+        description: 'The platform\'s own `<select>`, styled like an input. The browser draws the list, so it behaves as it does on every device. Project `<option>` and `<optgroup>` children; they are mirrored into the control and kept in step as you change them.',
+        examples: [
+            {
+                title: 'Sizes and states',
+                note: '`value` picks the option; with none, the empty option (or the first) shows. `name` submits it with a form.',
+                html: `<ge-native-select aria-label="Role">
+  <option value="">Select a role</option>
+  <option value="admin">Admin</option>
+  <option value="editor">Editor</option>
+  <option value="viewer">Viewer</option>
+</ge-native-select>
+<ge-native-select size="sm" aria-label="Quantity">
+  <option value="">Small size</option>
+  <option value="1">Option 1</option>
+  <option value="2">Option 2</option>
+</ge-native-select>
+<ge-native-select disabled aria-label="Disabled">
+  <option value="">Disabled</option>
+</ge-native-select>
+<ge-native-select invalid aria-label="Invalid">
+  <option value="">Invalid</option>
+</ge-native-select>`,
+            },
+            {
+                title: 'Groups',
+                note: 'Disabled options stay in the list but cannot be picked.',
+                html: `<ge-native-select aria-label="Fruit" value="orange">
+  <option value="">Select a fruit</option>
+  <optgroup label="Citrus">
+    <option value="orange">Orange</option>
+    <option value="lemon" disabled>Lemon</option>
+  </optgroup>
+  <optgroup label="Berries">
+    <option value="blueberry">Blueberry</option>
+  </optgroup>
+</ge-native-select>`,
+            },
+        ],
+        api: [
+            { name: 'name', type: 'string', default: "''", description: 'Field name; with it the value is submitted with the surrounding form.' },
+            { name: 'value', type: 'string', default: "''", description: 'The picked option\'s value. A value no option has leaves the control blank.' },
+            { name: 'size', type: "'default' | 'sm'", default: "'default'", description: 'Control height.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks picking and dims the control.' },
+            { name: 'invalid', type: 'boolean', default: 'false', description: 'Destructive border and `aria-invalid`.' },
+            { name: 'aria-label', type: 'string', default: '-', description: 'Accessible name, forwarded to the inner select.' },
+            { name: 'change', type: 'event', default: '-', description: 'Fires when the user picks an option; `input` fires too.' },
+            { name: '--density-input', type: 'css', default: '--density', description: 'Spacing multiplier for height and padding.' },
+        ],
+    },
+    {
+        id: 'scroll-area',
+        group: 'Rung 3 · Interactive',
+        name: 'Scroll area',
+        tag: 'ge-scroll-area',
+        description: 'A clipped box whose content scrolls under thin custom scrollbars. The element is the root, so give it a height; each thumb shows only while its content overflows.',
+        examples: [
+            {
+                title: 'Tags',
+                note: 'Drag the thumb, use the wheel, or focus the box and use the arrow keys.',
+                html: `<ge-scroll-area id="sa-tags" style="height: 18rem; width: 12rem; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)">
+  <div style="padding: 1rem"></div>
+</ge-scroll-area>
+<script>
+const box = document.querySelector('#sa-tags > div');
+box.innerHTML = '<h4 style="margin:0 0 1rem;font-size:0.875rem;font-weight:500;line-height:1">Tags</h4>' +
+  Array.from({ length: 50 }, (_, i) => 'v1.2.0-beta.' + (50 - i)).map((tag) => '<div style="font-size:0.875rem">' + tag + '</div><ge-separator style="margin:0.5rem 0"></ge-separator>').join('');
+</script>`,
+            },
+            {
+                title: 'Both directions',
+                note: '`orientation="both"` also styles the horizontal thumb and fills the corner between them.',
+                html: `<ge-scroll-area orientation="both" style="height: 12rem; width: 18rem; border: 1px solid var(--border); border-radius: calc(var(--radius) - 2px)">
+  <div style="width: 40rem; padding: 1rem; font-size: 0.875rem; line-height: 2rem">
+    <div>Row 1 with a line that runs well past the right edge of the box</div><div>Row 2 with a line that runs well past the right edge of the box</div><div>Row 3 with a line that runs well past the right edge of the box</div><div>Row 4 with a line that runs well past the right edge of the box</div><div>Row 5 with a line that runs well past the right edge of the box</div><div>Row 6 with a line that runs well past the right edge of the box</div><div>Row 7 with a line that runs well past the right edge of the box</div>
+  </div>
+</ge-scroll-area>`,
+            },
+        ],
+        api: [
+            { name: 'orientation', type: "'vertical' | 'horizontal' | 'both'", default: "'vertical'", description: 'Which custom scrollbars may appear. The native ones are always hidden and the box scrolls both ways.' },
+            { name: 'scrollToBottom()', type: 'method', default: '-', description: 'Jumps to the end after layout; safe right after appending content. Also refreshes the thumbs.' },
+        ],
+    },
 ];

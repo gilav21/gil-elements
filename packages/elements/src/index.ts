@@ -42,3 +42,6 @@ export * from './menubar/index.js';
 export * from './select/index.js';
 export * from './navigation-menu/index.js';
 export * from './command/index.js';
+export * from './banner/index.js';
+export * from './native-select/index.js';
+export * from './scroll-area/index.js';

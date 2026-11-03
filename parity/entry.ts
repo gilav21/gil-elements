@@ -42,3 +42,6 @@ import '../packages/elements/src/menubar/define.js';
 import '../packages/elements/src/select/define.js';
 import '../packages/elements/src/navigation-menu/define.js';
 import '../packages/elements/src/command/define.js';
+import '../packages/elements/src/banner/define.js';
+import '../packages/elements/src/native-select/define.js';
+import '../packages/elements/src/scroll-area/define.js';

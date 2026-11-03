@@ -457,6 +457,36 @@
       "types": "./dist/command/define.d.ts",
       "development": "./src/command/define.ts",
       "default": "./dist/command/define.js"
+    },
+    "./banner": {
+      "types": "./dist/banner/index.d.ts",
+      "development": "./src/banner/index.ts",
+      "default": "./dist/banner/index.js"
+    },
+    "./banner/define": {
+      "types": "./dist/banner/define.d.ts",
+      "development": "./src/banner/define.ts",
+      "default": "./dist/banner/define.js"
+    },
+    "./native-select": {
+      "types": "./dist/native-select/index.d.ts",
+      "development": "./src/native-select/index.ts",
+      "default": "./dist/native-select/index.js"
+    },
+    "./native-select/define": {
+      "types": "./dist/native-select/define.d.ts",
+      "development": "./src/native-select/define.ts",
+      "default": "./dist/native-select/define.js"
+    },
+    "./scroll-area": {
+      "types": "./dist/scroll-area/index.d.ts",
+      "development": "./src/scroll-area/index.ts",
+      "default": "./dist/scroll-area/index.js"
+    },
+    "./scroll-area/define": {
+      "types": "./dist/scroll-area/define.d.ts",
+      "development": "./src/scroll-area/define.ts",
+      "default": "./dist/scroll-area/define.js"
     }
   },
   "scripts": {
