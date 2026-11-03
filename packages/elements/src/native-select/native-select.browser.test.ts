@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import '@gilav21/elements-base/tokens.css';
 import './define.js';
-import { mount } from '../test-utils.js';
+import { mount, useTheme } from '../test-utils.js';
 import type { GeNativeSelect } from './native-select.js';
 
 const first = (page: HTMLElement) => page.querySelector<GeNativeSelect>('ge-native-select')!;
@@ -98,6 +98,22 @@ describe('ge-native-select', () => {
         expect(inner(a).getAttribute('aria-invalid')).toBe('true');
         expect(inner(a).getAttribute('aria-label')).toBe('Fruit');
         expect(inner(b).hasAttribute('aria-invalid')).toBe(false);
+    });
+
+    it('draws the list in the theme\'s popover colours, so a dark theme does not get pale text on a white list', async () => {
+        const page = await mount(`<ge-native-select aria-label="Fruit">${FRUIT}</ge-native-select>`);
+        const option = () => inner(first(page)).querySelector('option')!;
+        const colours = () => [getComputedStyle(option()).backgroundColor, getComputedStyle(option()).color];
+        await settle(first(page));
+        const light = colours();
+        useTheme('dark');
+        const dark = colours();
+
+        expect(dark).not.toEqual(light);
+        expect(dark[0]).not.toBe(dark[1]);
+        const probe = Object.assign(document.createElement('div'), { style: 'background:var(--popover);color:var(--popover-foreground)' });
+        page.append(probe);
+        expect(dark).toEqual([getComputedStyle(probe).backgroundColor, getComputedStyle(probe).color]);
     });
 
     it('has no accessibility violations', async () => {

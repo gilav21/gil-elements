@@ -60,3 +60,9 @@ select:disabled {
     user-select: none;
     transform: translateY(-50%);
 }
+/* The list is drawn by the browser from the page's colour scheme, not our theme: without this a dark theme gets pale text on a white list. */
+option,
+optgroup {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+}
