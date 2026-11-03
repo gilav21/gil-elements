@@ -1,0 +1,5 @@
+:host {
+    --_d: var(--density-select, var(--density, 1));
+    position: relative;
+    display: inline-block;
+}

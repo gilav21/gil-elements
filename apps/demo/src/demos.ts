@@ -1989,4 +1989,110 @@ document.getElementById('cm-data').items = [
             { name: '--density-menu', type: 'css', default: '--density', description: 'Spacing multiplier for the bar, triggers and rows.' },
         ],
     },
+    {
+        id: 'select',
+        group: 'Rung 4 · Overlays',
+        name: 'Select',
+        tag: 'ge-select',
+        description: 'Picks one value from a list. It takes part in forms, opens from the keyboard (Enter, Space, Down), and walks the rows with the arrow keys. The panel either sits over the trigger so the chosen row lines up with it, or drops beside it.',
+        examples: [
+            {
+                title: 'Item-aligned (default)',
+                note: 'The panel opens so the selected row sits on the trigger, and falls back to `popper` when that would run off the screen.',
+                html: `<ge-select style="width:200px" position="item-aligned">
+  <ge-select-trigger>
+    <ge-select-value placeholder="Select a fruit"></ge-select-value>
+  </ge-select-trigger>
+  <ge-select-content>
+    <ge-select-group>
+      <ge-select-label>Fruits</ge-select-label>
+      <ge-select-item value="apple">Apple</ge-select-item>
+      <ge-select-item value="banana">Banana</ge-select-item>
+      <ge-select-item value="blueberry">Blueberry</ge-select-item>
+      <ge-select-item value="grapes">Grapes</ge-select-item>
+      <ge-select-item value="pineapple">Pineapple</ge-select-item>
+    </ge-select-group>
+  </ge-select-content>
+</ge-select>`,
+            },
+            {
+                title: 'Simple mode (data-driven)',
+                note: 'Set `options` and the select builds its own trigger and rows. For objects, set `value-attribute` and `displayWith`; `disabledWith` marks rows that cannot be picked.',
+                html: `<ge-select id="sel-data" style="width:200px" placeholder="Select a fruit"></ge-select>
+<script>
+document.getElementById('sel-data').options = ['Apple', 'Banana', 'Blueberry', 'Grapes', 'Pineapple'];
+</script>`,
+            },
+            {
+                title: 'Popper',
+                note: 'The panel drops beside the trigger, on the side with more room.',
+                html: `<ge-select style="width:200px" position="popper">
+  <ge-select-trigger>
+    <ge-select-value placeholder="Select a fruit"></ge-select-value>
+  </ge-select-trigger>
+  <ge-select-content>
+    <ge-select-group>
+      <ge-select-label>Fruits</ge-select-label>
+      <ge-select-item value="apple">Apple</ge-select-item>
+      <ge-select-item value="banana">Banana</ge-select-item>
+      <ge-select-item value="blueberry">Blueberry</ge-select-item>
+      <ge-select-item value="grapes">Grapes</ge-select-item>
+      <ge-select-item value="pineapple">Pineapple</ge-select-item>
+    </ge-select-group>
+  </ge-select-content>
+</ge-select>`,
+            },
+            {
+                title: 'Disabled item',
+                note: 'A disabled row is dimmed, cannot be picked and is skipped by the arrow keys.',
+                html: `<ge-select style="width:200px">
+  <ge-select-trigger>
+    <ge-select-value placeholder="Select a fruit"></ge-select-value>
+  </ge-select-trigger>
+  <ge-select-content>
+    <ge-select-group>
+      <ge-select-label>Fruits</ge-select-label>
+      <ge-select-item value="apple">Apple</ge-select-item>
+      <ge-select-item value="banana" disabled>Banana</ge-select-item>
+      <ge-select-item value="blueberry">Blueberry</ge-select-item>
+      <ge-select-item value="grapes">Grapes</ge-select-item>
+      <ge-select-item value="pineapple">Pineapple</ge-select-item>
+    </ge-select-group>
+  </ge-select-content>
+</ge-select>`,
+            },
+            {
+                title: 'In a form',
+                note: 'With a `name` the value is submitted as a string; `default-value` is what a reset returns to. `loading` swaps the chevron for a spinner and disables the trigger, and `skeleton` draws a placeholder instead.',
+                html: `<form id="sel-form" style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center">
+  <ge-select name="fruit" default-value="grapes" style="width:200px">
+    <ge-select-trigger><ge-select-value></ge-select-value></ge-select-trigger>
+    <ge-select-content>
+      <ge-select-item value="apple">Apple</ge-select-item>
+      <ge-select-item value="grapes">Grapes</ge-select-item>
+    </ge-select-content>
+  </ge-select>
+  <ge-button type="reset" variant="outline">Reset</ge-button>
+  <ge-select style="width:200px">
+    <ge-select-trigger loading><ge-select-value></ge-select-value></ge-select-trigger>
+  </ge-select>
+  <ge-select style="width:200px">
+    <ge-select-trigger skeleton></ge-select-trigger>
+  </ge-select>
+</form>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'unknown', default: 'undefined', description: 'The selected value. Setting it does not fire events; only a user pick does.' },
+            { name: 'default-value', type: 'string', default: 'undefined', description: 'Used while no value is set.' },
+            { name: 'name', type: 'string', default: "''", description: 'Field name for forms; the value is submitted as a string.' },
+            { name: 'placeholder', type: 'string', default: "'Select...'", description: 'Shown while nothing is selected.' },
+            { name: 'position', type: "'item-aligned' | 'popper'", default: "'item-aligned'", description: 'Where the panel opens.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks opening and picking.' },
+            { name: 'options / displayWith / value-attribute / disabledWith', type: 'property', default: '-', description: 'Data-driven mode; the select builds its own trigger and rows.' },
+            { name: 'value-change', type: 'event', default: '-', description: 'A user picked a different value; `detail` is the value itself. `input` and `change` fire too.' },
+            { name: 'trigger: loading / skeleton', type: 'boolean', default: 'false', description: 'A spinner in place of the chevron (disables the trigger) / a loading placeholder instead of the trigger.' },
+            { name: '--density-select', type: 'css', default: '--density', description: 'Spacing multiplier for the trigger and rows.' },
+        ],
+    },
 ];

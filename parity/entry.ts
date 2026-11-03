@@ -39,3 +39,4 @@ import '../packages/elements/src/hover-card/define.js';
 import '../packages/elements/src/dropdown-menu/define.js';
 import '../packages/elements/src/context-menu/define.js';
 import '../packages/elements/src/menubar/define.js';
+import '../packages/elements/src/select/define.js';

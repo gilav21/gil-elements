@@ -1,0 +1,36 @@
+:host {
+    position: absolute;
+    inset-inline-start: 0;
+    z-index: 50;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 8rem;
+    max-width: calc(100vw - 2rem);
+    max-height: 24rem;
+    overflow-y: auto;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    text-align: start;
+    outline: none;
+}
+:host(:not([data-state="open"])) {
+    display: none;
+}
+:host([data-position="item-aligned"]) {
+    top: 0;
+}
+:host([data-position="popper"][data-side="bottom"]) {
+    top: 100%;
+    margin-top: 0.25rem;
+}
+:host([data-position="popper"][data-side="top"]) {
+    bottom: 100%;
+    margin-bottom: 0.25rem;
+}
+:host([data-driven]) {
+    max-height: 15rem;
+}
