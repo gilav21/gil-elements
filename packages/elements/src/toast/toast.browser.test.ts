@@ -66,15 +66,20 @@ describe('ge-toast', () => {
         const page = await mount('<ge-toast heading="Hi"></ge-toast>');
         const toast = page.querySelector<GeToast>('ge-toast')!;
         const close = part(toast, '.close') as HTMLButtonElement;
-        // An earlier test may have left the pointer over this spot.
-        await userEvent.unhover(toast);
-        await expect.poll(() => getComputedStyle(close).opacity).toBe('0');
+        // An earlier test may have left the pointer over this spot, and unhover alone may park it there.
+        const away = document.createElement('div');
+        away.style.cssText = 'position:fixed;right:0;bottom:0;width:20px;height:20px';
+        page.append(away);
+        await userEvent.hover(away);
+        // Files that emulate touch share the browser and can leave a touch-only pointer behind, which shows the button at all times.
+        const touchOnly = matchMedia('(hover: none)').matches;
+        await expect.poll(() => getComputedStyle(close).opacity).toBe(touchOnly ? '1' : '0');
         close.focus();
         await expect.poll(() => getComputedStyle(close).opacity).toBe('1');
         close.blur();
         await userEvent.hover(toast);
         await expect.poll(() => getComputedStyle(close).opacity).toBe('1');
-        await userEvent.unhover(toast);
+        await userEvent.hover(away);
     });
 
     it('draws a spinner while loading, and a countdown on the action with a bar that drains to the seconds left', async () => {
@@ -284,3 +289,4 @@ describe('ge-toaster', () => {
         expect(rtlEnd[0]).toBe(0);
     });
 });
+
