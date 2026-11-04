@@ -116,10 +116,19 @@
 .remove:hover {
     background-color: var(--chip-remove-hover);
 }
+/* WCAG 2.5.8: a 44px tap target on touch, without making the chip taller. */
 @media (pointer: coarse) {
     .remove {
+        position: relative;
+    }
+    .remove::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
         width: 2.75rem;
         height: 2.75rem;
+        transform: translate(-50%, -50%);
     }
 }
 .remove-icon {

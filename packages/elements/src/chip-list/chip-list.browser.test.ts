@@ -1,6 +1,6 @@
 import axe from 'axe-core';
-import { describe, expect, it } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cdp, userEvent } from 'vitest/browser';
 import '@gilav21/elements-base/tokens.css';
 import './define.js';
 import { mount, useTheme } from '../test-utils.js';
@@ -34,7 +34,29 @@ const record = (el: GeChipList) => {
     return log;
 };
 
+const emulateTouch = (enabled: boolean) => cdp().send('Emulation.setTouchEmulationEnabled', { enabled, maxTouchPoints: 1 });
+
 describe('ge-chip-list', () => {
+    afterEach(() => emulateTouch(false));
+
+    it('keeps the chip height on touch but widens the remove tap target to 44px', async () => {
+        const { page, el } = await list();
+        const geometry = async (touch: boolean) => {
+            await emulateTouch(touch);
+            await settle(page);
+            const chip = el.shadowRoot!.querySelector('.chip')!.getBoundingClientRect();
+            const remove = el.shadowRoot!.querySelector('.remove')!.getBoundingClientRect();
+            const probe = el.shadowRoot!.elementFromPoint(remove.left + remove.width / 2 + 20, remove.top + remove.height / 2);
+            return { chipHeight: chip.height, removeSize: [remove.width, remove.height], hitsRemove: probe?.closest('.remove') != null };
+        };
+        const fine = await geometry(false);
+        const coarse = await geometry(true);
+        expect(coarse.chipHeight).toBe(fine.chipHeight);
+        expect(coarse.removeSize).toEqual(fine.removeSize);
+        expect(fine.hitsRemove).toBe(false);
+        expect(coarse.hitsRemove).toBe(true);
+    });
+
     it('commits trimmed text on Enter, announces it, and keeps the field empty', async () => {
         const { page, el } = await list();
         const log = record(el);
