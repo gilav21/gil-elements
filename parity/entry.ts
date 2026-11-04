@@ -63,3 +63,4 @@ import '../packages/elements/src/table/define.js';
 import '../packages/elements/src/time-picker/define.js';
 import '../packages/elements/src/toast/define.js';
 import '../packages/elements/src/tree/define.js';
+import '../packages/elements/src/sidebar/define.js';

@@ -137,6 +137,8 @@ export default defineConfig({
                 'toast/define': 'src/toast/define.ts',
                 'tree/index': 'src/tree/index.ts',
                 'tree/define': 'src/tree/define.ts',
+                'sidebar/index': 'src/sidebar/index.ts',
+                'sidebar/define': 'src/sidebar/define.ts',
             },
             formats: ['es'],
         },

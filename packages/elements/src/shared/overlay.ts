@@ -105,7 +105,8 @@ export function registerLayer(layer: OverlayLayer, doc: Document = document): ()
 const CANDIDATES = 'a[href],button,input:not([type="hidden"]),select,textarea,summary,[tabindex],[contenteditable]:not([contenteditable="false"]),audio[controls],video[controls]';
 
 function isTabStop(el: HTMLElement): boolean {
-    if (el.matches(':disabled') || el.closest('[inert]')) return false;
+    // A control that is not rendered (display:none, visibility:hidden) cannot take focus, so Tab never lands on it.
+    if (el.matches(':disabled') || el.closest('[inert]') || !el.checkVisibility({ visibilityProperty: true })) return false;
     const explicit = el.getAttribute('tabindex');
     return explicit === null || Number.parseInt(explicit, 10) >= 0;
 }

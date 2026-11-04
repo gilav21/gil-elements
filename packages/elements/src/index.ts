@@ -63,3 +63,4 @@ export * from './table/index.js';
 export * from './time-picker/index.js';
 export * from './toast/index.js';
 export * from './tree/index.js';
+export * from './sidebar/index.js';

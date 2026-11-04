@@ -1,0 +1,83 @@
+/* shadcn-angular sidebar: on desktop a sticky column (a rail when collapsed), below 768px a drawer that slides in over a scrim. */
+:host {
+    display: contents;
+}
+.scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background-color: rgb(0 0 0 / 0.5);
+}
+aside {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--sidebar);
+    color: var(--sidebar-foreground);
+}
+aside:focus {
+    outline: none;
+}
+aside[data-mobile] {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 50;
+    width: 280px;
+    border-inline-end: 1px solid var(--sidebar-border);
+    transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+aside[data-mobile][data-side='left'] {
+    left: 0;
+    transform: translateX(-100%);
+}
+aside[data-mobile][data-side='right'] {
+    right: 0;
+    transform: translateX(100%);
+}
+aside[data-mobile][data-state='open'] {
+    transform: translateX(0);
+}
+aside:not([data-mobile]) {
+    position: sticky;
+    top: 0;
+    display: none;
+    width: 280px;
+    transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (min-width: 768px) {
+    aside:not([data-mobile]) {
+        display: flex;
+    }
+}
+aside:not([data-mobile])[data-variant='sidebar'] {
+    height: 100vh;
+    border-inline-end: 1px solid var(--sidebar-border);
+}
+aside:not([data-mobile])[data-variant='floating'] {
+    margin: 0.5rem;
+    height: calc(100vh - 1rem);
+    border: 1px solid var(--sidebar-border);
+    border-radius: var(--radius);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+aside:not([data-mobile])[data-variant='inset'] {
+    margin: 0.5rem;
+    height: calc(100vh - 1rem);
+    border: 0;
+    border-radius: var(--radius);
+    box-shadow: none;
+}
+aside:not([data-mobile])[data-collapsed] {
+    width: 60px;
+}
+aside:not([data-mobile])[data-collapsed][data-collapse-mode='hidden'] {
+    width: 0;
+    border: 0;
+    overflow: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+    aside {
+        transition: none;
+    }
+}

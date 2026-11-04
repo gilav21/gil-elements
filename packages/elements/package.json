@@ -667,6 +667,16 @@
       "types": "./dist/tree/define.d.ts",
       "development": "./src/tree/define.ts",
       "default": "./dist/tree/define.js"
+    },
+    "./sidebar": {
+      "types": "./dist/sidebar/index.d.ts",
+      "development": "./src/sidebar/index.ts",
+      "default": "./dist/sidebar/index.js"
+    },
+    "./sidebar/define": {
+      "types": "./dist/sidebar/define.d.ts",
+      "development": "./src/sidebar/define.ts",
+      "default": "./dist/sidebar/define.js"
     }
   },
   "scripts": {

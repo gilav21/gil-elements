@@ -89,7 +89,7 @@ for (const theme of ['light', 'dark']) {
     // page, and every other case that measures itself on open would then measure at the wrong scroll position.
     const groups = [cases.filter((c) => !c.isolated), ...cases.filter((c) => c.isolated).map((c) => [c])].filter((g) => g.length > 0);
     for (const group of groups) for (const side of ['ref', 'el']) {
-        const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: 700, height: 900 } });
+        const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: group[0].width ?? 700, height: 900 } });
         // Every case sits on one tall page, below the 900px viewport, where collision handling would flip the panels. The
         // viewport height the elements read is raised so the case's own `overflow: hidden` wrapper is the box they stay in.
         const unbounded = `<script>Object.defineProperty(window, 'innerHeight', { get: () => 100000 });</script>`;
@@ -157,6 +157,8 @@ for (const theme of ['light', 'dark']) {
                 // `data-open` marks a select the reference shows open.
                 for (const target of document.querySelectorAll('[data-open]:not([data-options])')) target.closest('ge-select').show();
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+                // `data-collapsed` on a sidebar provider shows the desktop rail collapsed, the way a remembered flag would.
+                for (const target of document.querySelectorAll('ge-sidebar-provider[data-collapsed]')) target.isCollapsed = true;
                 // `data-state` is the JSON `{expand, select, focus}` a tree shows, and `data-nodes` the JSON `data` of a data-driven tree (with `data-depth` as its initial-expand-depth).
                 for (const target of document.querySelectorAll('ge-tree[data-nodes]')) {
                     target.data = JSON.parse(target.dataset.nodes);

@@ -1,0 +1,7 @@
+:host {
+    display: contents;
+}
+ge-scroll-area {
+    flex: 1 1 0%;
+    padding-block: 0.5rem;
+}

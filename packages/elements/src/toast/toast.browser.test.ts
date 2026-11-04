@@ -66,7 +66,9 @@ describe('ge-toast', () => {
         const page = await mount('<ge-toast heading="Hi"></ge-toast>');
         const toast = page.querySelector<GeToast>('ge-toast')!;
         const close = part(toast, '.close') as HTMLButtonElement;
-        expect(getComputedStyle(close).opacity).toBe('0');
+        // An earlier test may have left the pointer over this spot.
+        await userEvent.unhover(toast);
+        await expect.poll(() => getComputedStyle(close).opacity).toBe('0');
         close.focus();
         await expect.poll(() => getComputedStyle(close).opacity).toBe('1');
         close.blur();

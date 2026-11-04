@@ -1,0 +1,60 @@
+:host {
+    display: contents;
+}
+button {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 20;
+    display: none;
+    box-sizing: border-box;
+    width: 1rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    align-items: center;
+    justify-content: center;
+    outline: none;
+    cursor: w-resize;
+}
+button[data-collapsed] {
+    cursor: e-resize;
+}
+@media (min-width: 768px) {
+    button {
+        display: flex;
+    }
+}
+/* Just outside the sidebar's own edge, so it never overlaps content. */
+button[data-side='left'] {
+    inset-inline-end: -0.5rem;
+}
+button[data-side='right'] {
+    inset-inline-start: -0.5rem;
+}
+.line {
+    position: absolute;
+    top: 0.5rem;
+    bottom: 0.5rem;
+    width: 0.125rem;
+    border-radius: 9999px;
+    background-color: var(--sidebar-border);
+    opacity: 0;
+    transition: all 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+button[data-side='left'] .line {
+    inset-inline-end: 0.25rem;
+}
+button[data-side='right'] .line {
+    inset-inline-start: 0.25rem;
+}
+button:hover .line,
+button:focus .line {
+    background-color: var(--sidebar-primary);
+    opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+    .line {
+        transition: none;
+    }
+}

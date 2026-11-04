@@ -27,6 +27,28 @@ export interface Demo {
     api: ApiRow[];
 }
 
+const sbIcon = (d: string) => `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const SB_HOME = sbIcon('<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>');
+const SB_MAIL = sbIcon('<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-10 5L2 7"/>');
+const SB_CAL = sbIcon('<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>');
+const SB_SET = sbIcon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>');
+const SB_FOLDER = sbIcon('<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>');
+const SB_USERS = sbIcon('<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>');
+const SB_MORE = sbIcon('<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>');
+const SB_BOX = 'height:400px;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius)';
+const SB_TILE = (variant: string, collapsible: string, name: string) => `<div style="height:260px;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius);background:color-mix(in oklab, var(--muted) 20%, transparent)">
+  <ge-sidebar-provider>
+    <ge-sidebar${variant === 'sidebar' ? '' : ` variant="${variant}"`}${collapsible}>
+      <ge-sidebar-header><div style="font-weight:600">Acme Inc</div></ge-sidebar-header>
+      <ge-sidebar-content><ge-sidebar-group><ge-sidebar-group-content><ge-sidebar-menu>
+        <ge-sidebar-menu-item><ge-sidebar-menu-link active>${SB_HOME}<span>Home</span></ge-sidebar-menu-link></ge-sidebar-menu-item>
+        <ge-sidebar-menu-item><ge-sidebar-menu-link>${SB_SET}<span>Settings</span></ge-sidebar-menu-link></ge-sidebar-menu-item>
+      </ge-sidebar-menu></ge-sidebar-group-content></ge-sidebar-group></ge-sidebar-content>
+    </ge-sidebar>
+    <ge-sidebar-inset><header style="display:flex;min-height:3rem;flex-wrap:wrap;align-items:center;gap:.5rem;border-bottom:1px solid var(--border);padding:.5rem 1rem"><ge-sidebar-trigger></ge-sidebar-trigger><span style="font-size:.875rem;font-weight:500">${name}</span></header></ge-sidebar-inset>
+  </ge-sidebar-provider>
+</div>`;
+
 export const demos: Demo[] = [
     {
         id: 'badge',
@@ -3537,6 +3559,150 @@ remote.addEventListener('search-change', (e) => {
             { name: 'expandAll(keys) / collapseAll()', type: 'method', default: '-', description: '`expandAll` makes exactly `keys` the open set; `collapseAll` closes everything.' },
             { name: 'focusNode(key?)', type: 'method', default: '-', description: 'Focuses the tree and points it at `key`, or at the first node when none is set.' },
             { name: 'ge-tree-item value / has-nested', type: 'string / boolean', default: '- / auto', description: '`value` is the unique node key. `has-nested` forces the chevron on (lazy branches) or off (`false`); unset it counts child items.' },
+        ],
+    },
+    {
+        id: 'sidebar',
+        group: 'Rung 3 · Interactive',
+        name: 'Sidebar',
+        tag: 'ge-sidebar',
+        description: 'An app-shell sidebar. On a page 768px or wider it is a sticky column that collapses to a 60px icon rail; below that it is a drawer with a scrim, Escape to close and a focus trap. The collapsed flag is remembered in `localStorage`.',
+        examples: [
+            {
+                title: 'App shell',
+                note: 'Press the trigger, or hover the edge of the sidebar and press the rail. Resize the window under 768px for the drawer.',
+                block: true,
+                html: `<div style="${SB_BOX}">
+  <ge-sidebar-provider>
+    <ge-sidebar>
+      <ge-sidebar-header><div style="font-weight:600">Gil Elements</div></ge-sidebar-header>
+      <ge-sidebar-content>
+        <ge-sidebar-group>
+          <ge-sidebar-group-label>Navigation</ge-sidebar-group-label>
+          <ge-sidebar-group-content>
+            <ge-sidebar-menu>
+              <ge-sidebar-menu-item><ge-sidebar-menu-link href="#" active>${SB_HOME}<span>Home</span></ge-sidebar-menu-link></ge-sidebar-menu-item>
+              <ge-sidebar-menu-item><ge-sidebar-menu-link href="#">${SB_MAIL}<span>Inbox</span></ge-sidebar-menu-link></ge-sidebar-menu-item>
+              <ge-sidebar-menu-item><ge-sidebar-menu-link href="#">${SB_CAL}<span>Calendar</span></ge-sidebar-menu-link></ge-sidebar-menu-item>
+              <ge-sidebar-menu-item><ge-sidebar-menu-link href="#">${SB_SET}<span>Settings</span></ge-sidebar-menu-link></ge-sidebar-menu-item>
+            </ge-sidebar-menu>
+          </ge-sidebar-group-content>
+        </ge-sidebar-group>
+      </ge-sidebar-content>
+      <ge-sidebar-footer>
+        <ge-sidebar-separator></ge-sidebar-separator>
+        <div style="font-size:.75rem;color:var(--muted-foreground)">v1.0.0</div>
+      </ge-sidebar-footer>
+    </ge-sidebar>
+    <ge-sidebar-inset>
+      <header style="display:flex;height:3rem;align-items:center;border-bottom:1px solid var(--border);padding-inline:1rem">
+        <ge-sidebar-trigger></ge-sidebar-trigger>
+        <span style="margin-inline-start:1rem;font-size:.875rem;font-weight:500">Main content</span>
+      </header>
+      <div style="padding:1rem"><p style="margin:0;color:var(--muted-foreground)">The sidebar remembers whether you collapsed it.</p></div>
+    </ge-sidebar-inset>
+  </ge-sidebar-provider>
+</div>`,
+            },
+            {
+                title: 'Variants',
+                note: '`variant="sidebar"`, `"floating"` and `"inset"`, and `collapsible="false"`, which pins the rail open.',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(18rem,1fr))">
+${SB_TILE('sidebar', '', 'sidebar')}
+${SB_TILE('floating', '', 'floating')}
+${SB_TILE('inset', '', 'inset')}
+${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
+</div>`,
+            },
+            {
+                title: 'Nested menus, badges, actions and the rail',
+                note: 'A sub-menu keeps its rows in the DOM and collapses with a grid-row transition; closed rows are `inert`. Point the trigger\'s `for` at the sub-menu\'s id. The rail at the sidebar\'s edge collapses it.',
+                block: true,
+                html: `<div style="height:460px;overflow:hidden;border:1px solid var(--border);border-radius:var(--radius)">
+  <ge-sidebar-provider persist-collapsed="false">
+    <ge-sidebar>
+      <ge-sidebar-header><div style="font-weight:600">Acme Inc</div></ge-sidebar-header>
+      <ge-sidebar-content>
+        <ge-sidebar-group>
+          <ge-sidebar-group-label>Workspace</ge-sidebar-group-label>
+          <ge-sidebar-group-content>
+            <ge-sidebar-menu>
+              <ge-sidebar-menu-item><ge-sidebar-menu-link href="#" active>${SB_HOME}<span>Dashboard</span></ge-sidebar-menu-link></ge-sidebar-menu-item>
+              <ge-sidebar-menu-item>
+                <ge-sidebar-menu-link href="#">${SB_MAIL}<span>Inbox</span></ge-sidebar-menu-link>
+                <ge-sidebar-menu-badge>12</ge-sidebar-menu-badge>
+              </ge-sidebar-menu-item>
+              <ge-sidebar-menu-item>
+                <ge-sidebar-menu-sub-trigger for="sb-projects">${SB_FOLDER}<span>Projects</span></ge-sidebar-menu-sub-trigger>
+                <ge-sidebar-menu-sub id="sb-projects">
+                  <ge-sidebar-menu-sub-item><ge-sidebar-menu-sub-button href="#" active><span>Apollo</span></ge-sidebar-menu-sub-button></ge-sidebar-menu-sub-item>
+                  <ge-sidebar-menu-sub-item><ge-sidebar-menu-sub-button href="#"><span>Borealis</span></ge-sidebar-menu-sub-button></ge-sidebar-menu-sub-item>
+                  <ge-sidebar-menu-sub-item><ge-sidebar-menu-sub-button href="#"><span>Cartograph</span></ge-sidebar-menu-sub-button></ge-sidebar-menu-sub-item>
+                </ge-sidebar-menu-sub>
+              </ge-sidebar-menu-item>
+              <ge-sidebar-menu-item>
+                <ge-sidebar-menu-sub-trigger for="sb-team">${SB_USERS}<span>Team</span></ge-sidebar-menu-sub-trigger>
+                <ge-sidebar-menu-sub id="sb-team" expanded="false">
+                  <ge-sidebar-menu-sub-item><ge-sidebar-menu-sub-button href="#"><span>Members</span></ge-sidebar-menu-sub-button></ge-sidebar-menu-sub-item>
+                  <ge-sidebar-menu-sub-item><ge-sidebar-menu-sub-button href="#"><span>Invitations</span></ge-sidebar-menu-sub-button></ge-sidebar-menu-sub-item>
+                </ge-sidebar-menu-sub>
+              </ge-sidebar-menu-item>
+              <ge-sidebar-menu-item>
+                <ge-sidebar-menu-link href="#">${SB_SET}<span>Settings</span></ge-sidebar-menu-link>
+                <ge-sidebar-menu-action id="sb-action" label="Settings options">${SB_MORE}</ge-sidebar-menu-action>
+              </ge-sidebar-menu-item>
+              <ge-sidebar-menu-item>
+                <ge-sidebar-menu-button tooltip="Reports">${SB_CAL}<span>Reports</span></ge-sidebar-menu-button>
+                <ge-sidebar-menu-action label="Report options" show-on-hover>${SB_MORE}</ge-sidebar-menu-action>
+              </ge-sidebar-menu-item>
+            </ge-sidebar-menu>
+          </ge-sidebar-group-content>
+        </ge-sidebar-group>
+        <ge-sidebar-group>
+          <ge-sidebar-group-label>Loading</ge-sidebar-group-label>
+          <ge-sidebar-group-content>
+            <ge-sidebar-menu>
+              <ge-sidebar-menu-skeleton seed="0"></ge-sidebar-menu-skeleton>
+              <ge-sidebar-menu-skeleton seed="1"></ge-sidebar-menu-skeleton>
+              <ge-sidebar-menu-skeleton seed="2"></ge-sidebar-menu-skeleton>
+            </ge-sidebar-menu>
+          </ge-sidebar-group-content>
+        </ge-sidebar-group>
+      </ge-sidebar-content>
+      <ge-sidebar-rail></ge-sidebar-rail>
+    </ge-sidebar>
+    <ge-sidebar-inset>
+      <div style="padding:1rem">
+        <ge-sidebar-trigger></ge-sidebar-trigger>
+        <p id="sb-out" style="margin:.5rem 0 0;font-size:.875rem;color:var(--muted-foreground)">Try the actions and sub-menus.</p>
+      </div>
+    </ge-sidebar-inset>
+  </ge-sidebar-provider>
+</div>
+<script>(() => {
+  const out = document.getElementById('sb-out');
+  document.getElementById('sb-action').addEventListener('triggered', () => { out.textContent = 'Last action: settings'; });
+  for (const sub of document.querySelectorAll('#sb-projects, #sb-team')) {
+    sub.addEventListener('expanded-change', (e) => { out.textContent = sub.id.slice(3) + (e.detail ? ' opened' : ' closed'); });
+  }
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'ge-sidebar-provider persist-collapsed / storage-key', type: 'boolean / string', default: "true / 'ge-sidebar:collapsed'", description: 'Whether the collapsed flag is remembered in `localStorage` (set `persist-collapsed="false"` to turn it off), and under which key. Read once on load, written on each change; storage errors are swallowed.' },
+            { name: 'ge-sidebar side', type: "'left' | 'right'", default: "'left'", description: 'The edge it sits on; also the way the mobile drawer slides off-screen.' },
+            { name: 'ge-sidebar variant', type: "'sidebar' | 'floating' | 'inset'", default: "'sidebar'", description: 'Desktop look: flush with a border, a detached shadowed card, or a detached card with no border or shadow.' },
+            { name: 'ge-sidebar collapsible', type: 'boolean', default: 'true', description: 'Whether the desktop rail may collapse; `collapsible="false"` pins it open and the trigger does nothing on desktop.' },
+            { name: 'ge-sidebar collapse-mode', type: "'icon' | 'hidden'", default: "'icon'", description: 'Collapsed form: a 60px rail of icons (labels go visually hidden, menu buttons show a bubble) or zero width.' },
+            { name: 'ge-sidebar-menu-link / -sub-button', type: 'href, target, active', default: "'#'", description: '`active` highlights the row and sets `aria-current="page"`. `-sub-button` also takes `size` (`sm` | `md`). Router-aware links are Angular-specific; use `href`.' },
+            { name: 'ge-sidebar-menu-button tooltip', type: 'string', default: '-', description: 'Bubble text shown beside a collapsed rail on hover, also the accessible name. `active` highlights the row.' },
+            { name: 'ge-sidebar-menu-sub expanded', type: 'boolean', default: 'true', description: 'Whether the nested list is open; `expanded-change` fires after the user toggles it. Always closed on a collapsed rail.' },
+            { name: 'ge-sidebar-menu-sub-trigger for', type: 'string', default: '-', description: 'The id of the `ge-sidebar-menu-sub` it opens and closes.' },
+            { name: 'ge-sidebar-menu-action label / show-on-hover', type: 'string / boolean', default: '- / false', description: 'An icon button pinned to the end of a row; `triggered` fires on press without following the row\'s link. `show-on-hover` fades it in on hover or focus (always shown on touch).' },
+            { name: 'ge-sidebar-menu-badge announce', type: 'boolean', default: 'false', description: 'The badge is `aria-hidden` unless set to announce. On a collapsed rail it shrinks to a dot.' },
+            { name: 'ge-sidebar-menu-skeleton hide-icon / variant / seed', type: 'boolean / string / number', default: "false / 'pulse' / 0", description: 'A loading row; `seed` picks the text bar width from four.' },
+            { name: 'ge-sidebar-rail label / side', type: 'string / string', default: "- / 'left'", description: 'The edge handle that collapses and expands the rail (desktop only).' },
         ],
     },
 ];
