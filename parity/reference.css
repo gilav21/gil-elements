@@ -696,3 +696,33 @@ ui-input-otp {
         display: none;
     }
 }
+
+/* shadcn-angular table-cell.component.css and table-head.component.css, the density part */
+[data-slot="table-cell"],
+[data-slot="table-head"] {
+    --_d: var(--density-table, var(--density, 1));
+}
+@layer components {
+    [data-slot="table-cell"] {
+        padding: calc(0.5rem * var(--_d));
+    }
+    [data-slot="table-head"] {
+        height: calc(2.5rem * var(--_d));
+        padding-inline: calc(0.5rem * var(--_d));
+    }
+}
+
+/* shadcn-angular time-picker.component.css */
+[data-slot="time-picker"] {
+    --_d: var(--density-input, var(--density, 1));
+}
+@layer components {
+    [data-slot="time-picker"][data-variant="outline"] {
+        min-height: calc(2.25rem * var(--_d));
+    }
+}
+[data-slot="time-picker"] {
+    margin: 0;
+    padding-block: 0;
+    min-inline-size: 0;
+}

@@ -59,3 +59,5 @@ import '../packages/elements/src/input-otp/define.js';
 import '../packages/elements/src/split-button/define.js';
 import '../packages/elements/src/resizable/define.js';
 import '../packages/elements/src/carousel/define.js';
+import '../packages/elements/src/table/define.js';
+import '../packages/elements/src/time-picker/define.js';

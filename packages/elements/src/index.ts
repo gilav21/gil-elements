@@ -59,3 +59,5 @@ export * from './input-otp/index.js';
 export * from './split-button/index.js';
 export * from './resizable/index.js';
 export * from './carousel/index.js';
+export * from './table/index.js';
+export * from './time-picker/index.js';

@@ -1684,6 +1684,173 @@ document.querySelectorAll('ge-split-button[label]').forEach((s) => { if (!s.item
         ],
     },
     {
+        id: 'table',
+        group: 'Rung 3 · Interactive',
+        name: 'Table',
+        tag: 'ge-table',
+        description: 'A table made of flex rows, so the header can stick while the body scrolls. Size a column by giving its head and cells the same width.',
+        examples: [
+            {
+                title: 'Basic',
+                block: true,
+                html: `<ge-table>
+  <ge-table-caption>A list of your recent invoices.</ge-table-caption>
+  <ge-table-header>
+    <ge-table-row>
+      <ge-table-head style="flex:none;width:100px">Invoice</ge-table-head>
+      <ge-table-head>Status</ge-table-head>
+      <ge-table-head>Method</ge-table-head>
+      <ge-table-head style="flex:none;width:100px;text-align:right">Amount</ge-table-head>
+    </ge-table-row>
+  </ge-table-header>
+  <ge-table-body>
+    <ge-table-row>
+      <ge-table-cell style="flex:none;width:100px;font-weight:500">INV001</ge-table-cell>
+      <ge-table-cell>Paid</ge-table-cell>
+      <ge-table-cell>Credit Card</ge-table-cell>
+      <ge-table-cell style="flex:none;width:100px;text-align:right">$250.00</ge-table-cell>
+    </ge-table-row>
+    <ge-table-row>
+      <ge-table-cell style="flex:none;width:100px;font-weight:500">INV002</ge-table-cell>
+      <ge-table-cell>Pending</ge-table-cell>
+      <ge-table-cell>PayPal</ge-table-cell>
+      <ge-table-cell style="flex:none;width:100px;text-align:right">$150.00</ge-table-cell>
+    </ge-table-row>
+    <ge-table-row>
+      <ge-table-cell style="flex:none;width:100px;font-weight:500">INV003</ge-table-cell>
+      <ge-table-cell>Unpaid</ge-table-cell>
+      <ge-table-cell>Bank Transfer</ge-table-cell>
+      <ge-table-cell style="flex:none;width:100px;text-align:right">$350.00</ge-table-cell>
+    </ge-table-row>
+  </ge-table-body>
+</ge-table>`,
+            },
+            {
+                title: 'Selected row and footer',
+                note: '`selected` only paints the row; it does not manage a selection.',
+                block: true,
+                html: `<ge-table>
+  <ge-table-caption>A list of your recent invoices.</ge-table-caption>
+  <ge-table-header>
+    <ge-table-row>
+      <ge-table-head style="flex:none;width:100px">Invoice</ge-table-head>
+      <ge-table-head>Status</ge-table-head>
+      <ge-table-head>Method</ge-table-head>
+      <ge-table-head style="flex:none;width:100px;text-align:right">Amount</ge-table-head>
+    </ge-table-row>
+  </ge-table-header>
+  <ge-table-body>
+    <ge-table-row>
+      <ge-table-cell style="flex:none;width:100px;font-weight:500">INV001</ge-table-cell>
+      <ge-table-cell>Paid</ge-table-cell>
+      <ge-table-cell>Credit Card</ge-table-cell>
+      <ge-table-cell style="flex:none;width:100px;text-align:right">$250.00</ge-table-cell>
+    </ge-table-row>
+    <ge-table-row selected>
+      <ge-table-cell style="flex:none;width:100px;font-weight:500">INV002</ge-table-cell>
+      <ge-table-cell>Pending</ge-table-cell>
+      <ge-table-cell>PayPal</ge-table-cell>
+      <ge-table-cell style="flex:none;width:100px;text-align:right">$150.00</ge-table-cell>
+    </ge-table-row>
+    <ge-table-row>
+      <ge-table-cell style="flex:none;width:100px;font-weight:500">INV003</ge-table-cell>
+      <ge-table-cell>Unpaid</ge-table-cell>
+      <ge-table-cell>Bank Transfer</ge-table-cell>
+      <ge-table-cell style="flex:none;width:100px;text-align:right">$350.00</ge-table-cell>
+    </ge-table-row>
+  </ge-table-body>
+  <ge-table-footer>
+    <ge-table-row>
+      <ge-table-cell style="flex:none;width:100px;font-weight:500">Total</ge-table-cell>
+      <ge-table-cell></ge-table-cell>
+      <ge-table-cell></ge-table-cell>
+      <ge-table-cell style="flex:none;width:100px;text-align:right">$750.00</ge-table-cell>
+    </ge-table-row>
+  </ge-table-footer>
+</ge-table>`,
+            },
+            {
+                title: 'Loading',
+                note: '`skeleton` swaps the body rows for placeholders; the header and footer stay.',
+                block: true,
+                html: `<ge-table>
+  <ge-table-caption>A list of your recent invoices.</ge-table-caption>
+  <ge-table-header>
+    <ge-table-row>
+      <ge-table-head style="flex:none;width:100px">Invoice</ge-table-head>
+      <ge-table-head>Status</ge-table-head>
+      <ge-table-head>Method</ge-table-head>
+      <ge-table-head style="flex:none;width:100px;text-align:right">Amount</ge-table-head>
+    </ge-table-row>
+  </ge-table-header>
+  <ge-table-body skeleton skeleton-rows="3">
+  </ge-table-body>
+</ge-table>`,
+            },
+        ],
+        api: [
+            { name: 'table: role', type: "'table' | 'grid' | 'treegrid'", default: "'table'", description: 'The ARIA role of the table (the `role` attribute itself). Use `grid` for an interactive table, `treegrid` when rows expand. Cells follow with `cell` or `gridcell`.' },
+            { name: 'row: selected', type: 'boolean', default: 'false', description: 'Paints the selected background and sets `data-state="selected"`.' },
+            { name: 'body: skeleton / skeleton-rows', type: 'boolean / number', default: 'false / 5', description: 'Shows placeholder rows instead of the projected ones while data loads.' },
+            { name: 'head: role', type: "'columnheader' | 'presentation'", default: "'columnheader'", description: 'Use `presentation` on a decorative filler cell.' },
+            { name: 'cells: width', type: 'CSS', default: 'equal share', description: 'Cells are `flex: 1`. Set `flex: none` and a width on a head and its cells to size a column.' },
+        ],
+    },
+    {
+        id: 'time-picker',
+        group: 'Rung 3 · Interactive',
+        name: 'Time picker',
+        tag: 'ge-time-picker',
+        description: 'A time of day edited one segment at a time. The value is always 24-hour "HH:mm"; the order, separators, digits and AM/PM come from the locale.',
+        examples: [
+            {
+                title: 'Basic',
+                note: 'Arrow Up and Down step the segment under the caret; typing keeps the last two digits. The value stays empty until both hour and minute are set.',
+                html: `<ge-time-picker id="tp-basic" value="09:05" aria-label="Time"></ge-time-picker>
+<p id="tp-basic-out" style="margin-top:.5rem;font-size:.875rem;color:var(--muted-foreground)">Value: 09:05</p>
+<script>
+(() => {
+document.getElementById('tp-basic').addEventListener('value-change', (e) => {
+  document.getElementById('tp-basic-out').textContent = 'Value: ' + (e.detail || 'none');
+});
+})();
+</script>`,
+            },
+            {
+                title: 'Locales',
+                note: 'Each locale decides the layout: 12 or 24 hours, digits, and where the meridiem goes (first in zh-TW).',
+                block: true,
+                html: `<div style="display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))">
+  <ge-time-picker value="21:05" locale="en-US" aria-label="US English"></ge-time-picker>
+  <ge-time-picker value="21:05" locale="de-DE" aria-label="German"></ge-time-picker>
+  <ge-time-picker value="21:05" locale="ar-EG" aria-label="Egyptian Arabic"></ge-time-picker>
+  <ge-time-picker value="21:05" locale="zh-TW" aria-label="Traditional Chinese"></ge-time-picker>
+</div>`,
+            },
+            {
+                title: 'With seconds',
+                html: `<ge-time-picker value="09:05:09" locale="en-GB" with-seconds aria-label="Time"></ge-time-picker>`,
+            },
+            {
+                title: 'Variants and disabled',
+                html: `<div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center">
+  <ge-time-picker value="21:05" variant="underline" aria-label="Underline"></ge-time-picker>
+  <ge-time-picker value="21:05" variant="ghost" aria-label="Ghost"></ge-time-picker>
+  <ge-time-picker value="21:05" disabled aria-label="Disabled"></ge-time-picker>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string', default: "''", description: 'The time as `HH:mm` (`HH:mm:ss` with `with-seconds`), always 24-hour. Empty while incomplete. Setting it renders without firing `value-change`.' },
+            { name: 'locale', type: 'string (BCP-47)', default: 'page lang', description: 'Decides the layout, digits and day-period names.' },
+            { name: 'with-seconds', type: 'boolean', default: 'false', description: 'Adds a seconds segment.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Visual style of the wrapper.' },
+            { name: 'disabled / name', type: 'boolean / string', default: '-', description: 'Disables every segment; submits the value with its form (form-associated, resettable).' },
+            { name: 'aria-label', type: 'string', default: "'Time'", description: 'Accessible name of the group.' },
+            { name: 'value-change', type: 'event', default: '-', description: 'When the user changes the value; detail is the new `HH:mm` (empty while incomplete).' },
+        ],
+    },
+    {
         id: 'carousel',
         group: 'Rung 3 · Interactive',
         name: 'Carousel',

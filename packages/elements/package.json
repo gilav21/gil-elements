@@ -627,6 +627,26 @@
       "types": "./dist/carousel/define.d.ts",
       "development": "./src/carousel/define.ts",
       "default": "./dist/carousel/define.js"
+    },
+    "./table": {
+      "types": "./dist/table/index.d.ts",
+      "development": "./src/table/index.ts",
+      "default": "./dist/table/index.js"
+    },
+    "./table/define": {
+      "types": "./dist/table/define.d.ts",
+      "development": "./src/table/define.ts",
+      "default": "./dist/table/define.js"
+    },
+    "./time-picker": {
+      "types": "./dist/time-picker/index.d.ts",
+      "development": "./src/time-picker/index.ts",
+      "default": "./dist/time-picker/index.js"
+    },
+    "./time-picker/define": {
+      "types": "./dist/time-picker/define.d.ts",
+      "development": "./src/time-picker/define.ts",
+      "default": "./dist/time-picker/define.js"
     }
   },
   "scripts": {
