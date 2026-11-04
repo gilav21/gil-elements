@@ -677,6 +677,16 @@
       "types": "./dist/sidebar/define.d.ts",
       "development": "./src/sidebar/define.ts",
       "default": "./dist/sidebar/define.js"
+    },
+    "./eyedropper": {
+      "types": "./dist/eyedropper/index.d.ts",
+      "development": "./src/eyedropper/index.ts",
+      "default": "./dist/eyedropper/index.js"
+    },
+    "./eyedropper/define": {
+      "types": "./dist/eyedropper/define.d.ts",
+      "development": "./src/eyedropper/define.ts",
+      "default": "./dist/eyedropper/define.js"
     }
   },
   "scripts": {

@@ -3705,4 +3705,73 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'ge-sidebar-rail label / side', type: 'string / string', default: "- / 'left'", description: 'The edge handle that collapses and expands the rail (desktop only).' },
         ],
     },
+    {
+        id: 'eyedropper',
+        group: 'Rung 3 · Interactive',
+        name: 'Eyedropper',
+        tag: 'ge-eyedropper',
+        description: 'Picks a colour from the screen with the browser\'s own EyeDropper where it exists, and otherwise samples an image, canvas or video you point it at.',
+        examples: [
+            {
+                title: 'Native picker',
+                note: 'Chromium shows its magnifier over the whole screen; other browsers show the button disabled with a tooltip.',
+                html: `<div style="display:flex;align-items:center;gap:1rem">
+  <ge-eyedropper id="ed-native" variant="button" label="Pick a pixel"></ge-eyedropper>
+  <span id="ed-native-out" style="display:none;align-items:center;gap:.5rem"><span id="ed-native-swatch" style="width:2rem;height:2rem;border-radius:.25rem;border:1px solid var(--border)"></span><code id="ed-native-hex"></code></span>
+</div>
+<script>(() => {
+  const el = document.getElementById('ed-native');
+  el.addEventListener('color-pick', (e) => {
+    document.getElementById('ed-native-out').style.display = 'flex';
+    document.getElementById('ed-native-swatch').style.background = e.detail;
+    document.getElementById('ed-native-hex').textContent = e.detail;
+  });
+})();</script>`,
+            },
+            {
+                title: 'In-page fallback',
+                note: 'Set `fallbackTarget` to an image, canvas or video. Where the native picker exists it is used instead; click the image after pressing the button otherwise. Escape cancels.',
+                html: `<div style="display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+  <canvas id="ed-canvas" width="320" height="200" style="border-radius:.375rem;max-width:100%"></canvas>
+  <div style="display:flex;flex-direction:column;gap:.75rem">
+    <ge-eyedropper id="ed-fallback" variant="button" label="Sample from image"></ge-eyedropper>
+    <span id="ed-fallback-out" style="display:none;align-items:center;gap:.5rem"><span id="ed-fallback-swatch" style="width:2rem;height:2rem;border-radius:.25rem;border:1px solid var(--border)"></span><code id="ed-fallback-hex"></code></span>
+  </div>
+</div>
+<script>(() => {
+  const canvas = document.getElementById('ed-canvas');
+  const ctx = canvas.getContext('2d');
+  const gradient = ctx.createLinearGradient(0, 0, 320, 200);
+  for (const [at, colour] of [[0, '#ef4444'], [0.35, '#f59e0b'], [0.65, '#22c55e'], [1, '#3b82f6']]) gradient.addColorStop(at, colour);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 320, 200);
+  const el = document.getElementById('ed-fallback');
+  el.fallbackTarget = canvas;
+  el.addEventListener('color-pick', (e) => {
+    document.getElementById('ed-fallback-out').style.display = 'flex';
+    document.getElementById('ed-fallback-swatch').style.background = e.detail;
+    document.getElementById('ed-fallback-hex').textContent = e.detail;
+  });
+})();</script>`,
+            },
+            {
+                title: 'Variants and disabled',
+                html: `<div style="display:flex;align-items:center;gap:.75rem">
+  <ge-eyedropper></ge-eyedropper>
+  <ge-eyedropper variant="button"></ge-eyedropper>
+  <ge-eyedropper disabled></ge-eyedropper>
+  <ge-eyedropper variant="button" locale="he"></ge-eyedropper>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'variant', type: "'icon' | 'button'", default: "'icon'", description: 'A square icon button, or a wider one that also shows the label.' },
+            { name: 'label', type: 'string', default: "'Pick color'", description: 'Button text and `aria-label`; the default follows `locale`.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks picking. It is also disabled, with an explanatory tooltip, when there is neither a native picker nor a `fallbackTarget`.' },
+            { name: 'fallbackTarget', type: 'HTMLImageElement | HTMLCanvasElement | HTMLVideoElement | null', default: 'null', description: 'Element to sample when the browser has no EyeDropper. A cross-origin image needs `crossorigin`, or the canvas is tainted and nothing is picked. A property, not an attribute.' },
+            { name: 'locale', type: 'string', default: "page lang, then 'en'", description: 'Language of the default label and the unsupported tooltip.' },
+            { name: 'pick()', type: 'method', default: '-', description: 'Starts picking, like pressing the button. Ignored while disabled, unsupported or already picking.' },
+            { name: 'color-pick / pick-start / pick-cancel', type: 'event', default: '-', description: '`color-pick` carries the hex string in `detail`. `pick-start` fires first; a session ends with exactly one of `color-pick` or `pick-cancel` (dismissed, Escape, or a click outside the target).' },
+        ],
+    },
 ];

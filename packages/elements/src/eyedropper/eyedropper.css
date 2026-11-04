@@ -1,0 +1,48 @@
+/* shadcn-angular eyedropper: an outlined button with a pipette. The host is inline-block like Angular's. */
+:host {
+    display: inline-block;
+}
+button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    gap: 0.5rem;
+    height: 2.25rem;
+    width: 2.25rem;
+    padding: 0;
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--background);
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+:host([variant='button']) button {
+    width: auto;
+    padding-inline: 0.75rem;
+}
+button:hover {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+}
+button:focus-visible {
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+button[aria-pressed='true'] {
+    box-shadow: 0 0 0 2px var(--ring);
+}
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+svg {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+}

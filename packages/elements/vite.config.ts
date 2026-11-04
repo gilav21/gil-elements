@@ -139,6 +139,8 @@ export default defineConfig({
                 'tree/define': 'src/tree/define.ts',
                 'sidebar/index': 'src/sidebar/index.ts',
                 'sidebar/define': 'src/sidebar/define.ts',
+                'eyedropper/index': 'src/eyedropper/index.ts',
+                'eyedropper/define': 'src/eyedropper/define.ts',
             },
             formats: ['es'],
         },

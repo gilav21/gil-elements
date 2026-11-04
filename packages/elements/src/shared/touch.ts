@@ -53,3 +53,37 @@ export function onLongPress(element: HTMLElement, callback: (event: TouchEvent) 
         element.removeEventListener('touchcancel', cancel);
     };
 }
+
+/**
+ * Follows a drag that started elsewhere: calls `onMove` with the pointer position until the button or finger is
+ * released, then once `onEnd`. Like shadcn-angular's helper it keeps following the first touch through a pinch.
+ *
+ * @returns A function that removes every listener.
+ */
+export function onPointerDrag(
+    onMove: (clientX: number, clientY: number, event: MouseEvent | TouchEvent) => void,
+    onEnd: (event: MouseEvent | TouchEvent) => void,
+): () => void {
+    const handleMouseMove = (e: MouseEvent) => onMove(e.clientX, e.clientY, e);
+    const handleTouchMove = (e: TouchEvent) => {
+        const touch = e.touches[0];
+        if (touch) onMove(touch.clientX, touch.clientY, e);
+    };
+    const handleEnd = (e: MouseEvent | TouchEvent) => {
+        cleanup();
+        onEnd(e);
+    };
+    const cleanup = () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleEnd);
+        window.removeEventListener('touchmove', handleTouchMove);
+        window.removeEventListener('touchend', handleEnd);
+        window.removeEventListener('touchcancel', handleEnd);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleEnd);
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('touchend', handleEnd);
+    window.addEventListener('touchcancel', handleEnd);
+    return cleanup;
+}

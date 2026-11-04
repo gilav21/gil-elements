@@ -62,6 +62,7 @@ import '@gilav21/elements/time-picker/define';
 import '@gilav21/elements/toast/define';
 import '@gilav21/elements/tree/define';
 import '@gilav21/elements/sidebar/define';
+import '@gilav21/elements/eyedropper/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

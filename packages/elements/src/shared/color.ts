@@ -49,6 +49,17 @@ function clamp255(v: number): number {
     return Math.round(clamp(v, 0, 255));
 }
 
+function toHexByte(v: number): string {
+    return clamp255(v).toString(16).padStart(2, '0');
+}
+
+/** `#rrggbb`, or `#rrggbbaa` when `includeAlpha` is set and alpha is below 1. */
+export function formatHex(c: RGBA, includeAlpha = false): string {
+    const base = `#${toHexByte(c.r)}${toHexByte(c.g)}${toHexByte(c.b)}`;
+    const a = clamp01(c.a);
+    return includeAlpha && a < 1 ? base + toHexByte(a * 255) : base;
+}
+
 
 function parseHex(input: string): RGBA | null {
     const m = /^#?([\da-f]{3,8})$/i.exec(input.trim());
