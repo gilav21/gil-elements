@@ -3433,4 +3433,110 @@ remote.addEventListener('search-change', (e) => {
             { name: 'horizontal', type: "'start' | 'center' | 'end'", default: "'end'", description: 'Horizontal anchor; start and end follow the text direction.' },
         ],
     },
+    {
+        id: 'tree',
+        group: 'Rung 3 · Interactive',
+        name: 'Tree',
+        tag: 'ge-tree',
+        description: 'A hierarchy of expandable, optionally selectable nodes. The whole tree is one tab stop: arrow keys move, expand and collapse, `*` opens every visible parent and Enter or Space selects.',
+        examples: [
+            {
+                title: 'Items',
+                html: `<div style="max-width:24rem;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);padding:1rem">
+  <ge-tree id="tree-items" selectable="single">
+    <ge-tree-item value="documents">
+      <ge-tree-label><ge-tree-icon>📁</ge-tree-icon> Documents</ge-tree-label>
+      <ge-tree-item value="resume"><ge-tree-label><ge-tree-icon>📄</ge-tree-icon> Resume.pdf</ge-tree-label></ge-tree-item>
+      <ge-tree-item value="cover-letter"><ge-tree-label><ge-tree-icon>📄</ge-tree-icon> Cover letter.docx</ge-tree-label></ge-tree-item>
+    </ge-tree-item>
+    <ge-tree-item value="images">
+      <ge-tree-label><ge-tree-icon>📁</ge-tree-icon> Images</ge-tree-label>
+      <ge-tree-item value="photo1"><ge-tree-label><ge-tree-icon>🖼️</ge-tree-icon> Vacation.jpg</ge-tree-label></ge-tree-item>
+    </ge-tree-item>
+  </ge-tree>
+</div>
+<p id="tree-items-out" class="note" style="margin-top:.5rem">Selected: none</p>
+<script>(() => {
+  const tree = document.getElementById('tree-items');
+  tree.addEventListener('selection-change', (e) => {
+    document.getElementById('tree-items-out').textContent = 'Selected: ' + (e.detail.join(', ') || 'none');
+  });
+})();</script>`,
+            },
+            {
+                title: 'From data',
+                note: 'Set the `data` property to a list of `{ key, label, icon?, children? }` nodes and the tree draws them.',
+                html: `<div style="max-width:24rem;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);padding:1rem">
+  <ge-tree id="tree-data"></ge-tree>
+</div>
+<script>(() => {
+  document.getElementById('tree-data').data = [
+    { key: '1', label: 'Projects', children: [
+      { key: '1-1', label: 'Frontend', children: [
+        { key: '1-1-1', label: 'app.component.ts', icon: '📄' },
+        { key: '1-1-2', label: 'app.html', icon: '📄' },
+      ] },
+      { key: '1-2', label: 'Backend' },
+    ] },
+    { key: '2', label: 'Settings', icon: '⚙️' },
+  ];
+})();</script>`,
+            },
+            {
+                title: 'Initial expand depth',
+                note: '`initial-expand-depth="1"` opens the first level; `-1` opens everything.',
+                html: `<div style="max-width:24rem;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);padding:1rem">
+  <ge-tree id="tree-depth" selectable="multiple" initial-expand-depth="1"></ge-tree>
+</div>
+<script>(() => {
+  document.getElementById('tree-depth').data = [
+    { key: 'documents', label: 'Documents', icon: '📁', children: [
+      { key: 'work', label: 'Work', icon: '📂', children: [
+        { key: 'report', label: 'Report.docx', icon: '📄' },
+        { key: 'expenses', label: 'Expenses.xlsx', icon: '📊' },
+      ] },
+      { key: 'personal', label: 'Personal', icon: '📂', children: [{ key: 'resume', label: 'Resume.pdf', icon: '📄' }] },
+    ] },
+    { key: 'images', label: 'Images', icon: '🖼️', children: [
+      { key: 'vacation', label: 'Vacation', children: [
+        { key: 'beach', label: 'Beach.jpg', icon: '📷' },
+        { key: 'mountains', label: 'Mountains.jpg', icon: '📷' },
+      ] },
+    ] },
+  ];
+})();</script>`,
+            },
+            {
+                title: 'Custom node content',
+                note: 'Set `nodeContent` to a function returning the label content of each node.',
+                html: `<div style="max-width:24rem;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);padding:1rem">
+  <ge-tree id="tree-custom" initial-expand-depth="-1"></ge-tree>
+</div>
+<script>(() => {
+  const tree = document.getElementById('tree-custom');
+  tree.nodeContent = (node) => {
+    const strong = document.createElement('b');
+    strong.textContent = node.label;
+    const note = node.children ? node.children.length + ' items' : 'file';
+    const content = document.createDocumentFragment();
+    content.append(strong, ' (' + note + ')');
+    return content;
+  };
+  tree.data = [{ key: 'a', label: 'src', children: [{ key: 'a1', label: 'index.ts' }, { key: 'a2', label: 'app.ts' }] }];
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'selectable', type: "'none' | 'single' | 'multiple'", default: "'none'", description: 'Selection mode. `none` ignores clicks and omits `aria-selected`; `single` replaces the selection; `multiple` accumulates.' },
+            { name: 'data', type: 'TreeNode[]', default: '[]', description: 'Nodes to draw (`{ key, label, icon?, children?, data? }`). When non-empty the tree ignores projected items.' },
+            { name: 'initial-expand-depth', type: 'number', default: '0', description: 'Levels of `data` open on load: `0` none, `n` down to depth `n`, `-1` all. Re-applied, discarding the user\'s expansion, whenever `data` changes.' },
+            { name: 'nodeContent', type: '(node) => TemplateResult | string | Node', default: '-', description: 'Draws a node\'s label content in place of its icon and text.' },
+            { name: 'selection-change', type: 'event', default: '-', description: 'After the selection changes; `detail` is every selected key.' },
+            { name: 'expand-change', type: 'event', default: '-', description: 'After a node expands or collapses, and when the initial depth applies; `detail` is every expanded key.' },
+            { name: 'toggleExpanded / toggleSelected(key)', type: 'method', default: '-', description: 'Flip a node. Selection does nothing while `selectable` is `none`.' },
+            { name: 'expandAll(keys) / collapseAll()', type: 'method', default: '-', description: '`expandAll` makes exactly `keys` the open set; `collapseAll` closes everything.' },
+            { name: 'focusNode(key?)', type: 'method', default: '-', description: 'Focuses the tree and points it at `key`, or at the first node when none is set.' },
+            { name: 'ge-tree-item value / has-nested', type: 'string / boolean', default: '- / auto', description: '`value` is the unique node key. `has-nested` forces the chevron on (lazy branches) or off (`false`); unset it counts child items.' },
+        ],
+    },
 ];

@@ -157,6 +157,18 @@ for (const theme of ['light', 'dark']) {
                 // `data-open` marks a select the reference shows open.
                 for (const target of document.querySelectorAll('[data-open]:not([data-options])')) target.closest('ge-select').show();
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
+                // `data-state` is the JSON `{expand, select, focus}` a tree shows, and `data-nodes` the JSON `data` of a data-driven tree (with `data-depth` as its initial-expand-depth).
+                for (const target of document.querySelectorAll('ge-tree[data-nodes]')) {
+                    target.data = JSON.parse(target.dataset.nodes);
+                    if (target.dataset.depth) target.initialExpandDepth = Number(target.dataset.depth);
+                }
+                await Promise.all([...document.querySelectorAll('ge-tree')].map((t) => t.updateComplete));
+                for (const target of document.querySelectorAll('ge-tree[data-state]')) {
+                    const { expand = [], select = [], focus = null } = JSON.parse(target.dataset.state);
+                    target.expandedKeys = new Set(expand);
+                    target.selectedKeys = new Set(select);
+                    target.focusedKey = focus;
+                }
                 // `data-hover` marks an element the reference shows hovered (a submenu that hover opened).
                 for (const target of document.querySelectorAll('[data-hover]')) target.dispatchEvent(new MouseEvent('mouseenter'));
                 // Panels measure themselves in the first animation frame after they open, so the page must be at the top by then.

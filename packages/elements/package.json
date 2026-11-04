@@ -657,6 +657,16 @@
       "types": "./dist/toast/define.d.ts",
       "development": "./src/toast/define.ts",
       "default": "./dist/toast/define.js"
+    },
+    "./tree": {
+      "types": "./dist/tree/index.d.ts",
+      "development": "./src/tree/index.ts",
+      "default": "./dist/tree/index.js"
+    },
+    "./tree/define": {
+      "types": "./dist/tree/define.d.ts",
+      "development": "./src/tree/define.ts",
+      "default": "./dist/tree/define.js"
     }
   },
   "scripts": {
