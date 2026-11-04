@@ -58,3 +58,4 @@ export * from './chip-list/index.js';
 export * from './input-otp/index.js';
 export * from './split-button/index.js';
 export * from './resizable/index.js';
+export * from './carousel/index.js';

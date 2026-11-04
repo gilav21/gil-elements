@@ -167,6 +167,12 @@ for (const theme of ['light', 'dark']) {
         }
         // Images (shadow trees included) must be decoded, and the elements that react to them settled, before the shot.
         await page.evaluate(async () => {
+            // `data-scroll-end` marks a scroller the reference shows scrolled to its end (a carousel on its last slide).
+            for (const target of document.querySelectorAll('[data-scroll-end]')) {
+                target.style.scrollBehavior = 'auto';
+                target.scrollLeft = getComputedStyle(target).direction === 'rtl' ? -target.scrollWidth : target.scrollWidth;
+                target.scrollTop = target.scrollHeight;
+            }
             const images = [];
             const walk = (root) => {
                 for (const el of root.querySelectorAll('*')) {

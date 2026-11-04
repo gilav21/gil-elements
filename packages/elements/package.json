@@ -617,6 +617,16 @@
       "types": "./dist/resizable/define.d.ts",
       "development": "./src/resizable/define.ts",
       "default": "./dist/resizable/define.js"
+    },
+    "./carousel": {
+      "types": "./dist/carousel/index.d.ts",
+      "development": "./src/carousel/index.ts",
+      "default": "./dist/carousel/index.js"
+    },
+    "./carousel/define": {
+      "types": "./dist/carousel/define.d.ts",
+      "development": "./src/carousel/define.ts",
+      "default": "./dist/carousel/define.js"
     }
   },
   "scripts": {

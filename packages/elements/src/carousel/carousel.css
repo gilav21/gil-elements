@@ -1,0 +1,5 @@
+/* shadcn-angular carousel: the host is the positioned root, so the previous and next buttons place against it. */
+:host {
+    position: relative;
+    display: block;
+}

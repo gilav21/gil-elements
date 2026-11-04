@@ -127,6 +127,8 @@ export default defineConfig({
                 'split-button/define': 'src/split-button/define.ts',
                 'resizable/index': 'src/resizable/index.ts',
                 'resizable/define': 'src/resizable/define.ts',
+                'carousel/index': 'src/carousel/index.ts',
+                'carousel/define': 'src/carousel/define.ts',
             },
             formats: ['es'],
         },

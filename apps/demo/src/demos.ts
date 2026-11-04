@@ -1684,6 +1684,56 @@ document.querySelectorAll('ge-split-button[label]').forEach((s) => { if (!s.item
         ],
     },
     {
+        id: 'carousel',
+        group: 'Rung 3 · Interactive',
+        name: 'Carousel',
+        tag: 'ge-carousel',
+        description: 'Scroll-snapping slides with previous and next buttons. The arrow keys page it when the track has focus, and a finger swipes it.',
+        examples: [
+            {
+                title: 'Horizontal',
+                block: true,
+                html: `<div style="margin-inline:auto;max-width:24rem;padding-inline:3rem">
+<ge-carousel style="width:100%">
+  <ge-carousel-content>
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;aspect-ratio:1;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:2.25rem;font-weight:600">1</span></ge-card-content></ge-card></div></ge-carousel-item>
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;aspect-ratio:1;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:2.25rem;font-weight:600">2</span></ge-card-content></ge-card></div></ge-carousel-item>
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;aspect-ratio:1;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:2.25rem;font-weight:600">3</span></ge-card-content></ge-card></div></ge-carousel-item>
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;aspect-ratio:1;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:2.25rem;font-weight:600">4</span></ge-card-content></ge-card></div></ge-carousel-item>
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;aspect-ratio:1;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:2.25rem;font-weight:600">5</span></ge-card-content></ge-card></div></ge-carousel-item>
+  </ge-carousel-content>
+  <ge-carousel-previous></ge-carousel-previous>
+  <ge-carousel-next></ge-carousel-next>
+</ge-carousel>
+</div>`,
+            },
+            {
+                title: 'Vertical',
+                block: true,
+                html: `<div style="margin-inline:auto;max-width:24rem;padding-block:3rem">
+<ge-carousel orientation="vertical" style="width:100%">
+  <ge-carousel-content style="height:200px">
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:1.5rem;font-weight:600">Slide 1</span></ge-card-content></ge-card></div></ge-carousel-item>
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:1.5rem;font-weight:600">Slide 2</span></ge-card-content></ge-card></div></ge-carousel-item>
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:1.5rem;font-weight:600">Slide 3</span></ge-card-content></ge-card></div></ge-carousel-item>
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:1.5rem;font-weight:600">Slide 4</span></ge-card-content></ge-card></div></ge-carousel-item>
+    <ge-carousel-item><div style="padding:.25rem"><ge-card><ge-card-content style="display:flex;align-items:center;justify-content:center;padding:1.5rem"><span style="font-size:1.5rem;font-weight:600">Slide 5</span></ge-card-content></ge-card></div></ge-carousel-item>
+  </ge-carousel-content>
+  <ge-carousel-previous></ge-carousel-previous>
+  <ge-carousel-next></ge-carousel-next>
+</ge-carousel>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'orientation', type: "'horizontal' | 'vertical'", default: "'horizontal'", description: 'Scroll axis; it also decides the paging keys and where the buttons sit.' },
+            { name: 'slide-change', type: 'event', default: '-', description: 'When the first visible slide changes; detail is its index. Assumes slides of one size.' },
+            { name: 'scrollPrev() / scrollNext() / scrollToSlide(i)', type: 'methods', default: '-', description: 'Page back or forward by one view, or bring a slide into view. `scrollToSlide` is Angular\'s `scrollTo`, renamed because `scrollTo` is a native element method.' },
+            { name: 'item: flex-basis', type: 'CSS', default: '100%', description: 'Set it on a slide to show several at once, such as `50%`.' },
+            { name: 'previous / next: locale', type: 'string', default: 'page language', description: 'Language of the button labels.' },
+        ],
+    },
+    {
         id: 'resizable',
         group: 'Rung 3 · Interactive',
         name: 'Resizable',

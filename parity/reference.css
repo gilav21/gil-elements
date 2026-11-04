@@ -685,3 +685,14 @@ ui-input-otp {
         width: calc(2.5rem * var(--_d));
     }
 }
+
+/* shadcn-angular packages/styles.css hides carousel scrollbars with this. */
+@layer base {
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+}

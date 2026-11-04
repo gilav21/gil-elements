@@ -56,6 +56,7 @@ import '@gilav21/elements/chip-list/define';
 import '@gilav21/elements/input-otp/define';
 import '@gilav21/elements/split-button/define';
 import '@gilav21/elements/resizable/define';
+import '@gilav21/elements/carousel/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
