@@ -55,3 +55,6 @@ import '../packages/elements/src/date-picker/define.js';
 import '../packages/elements/src/autocomplete/define.js';
 import '../packages/elements/src/drawer/define.js';
 import '../packages/elements/src/chip-list/define.js';
+import '../packages/elements/src/input-otp/define.js';
+import '../packages/elements/src/split-button/define.js';
+import '../packages/elements/src/resizable/define.js';

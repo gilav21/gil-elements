@@ -1,0 +1,64 @@
+/* shadcn-angular split-button: a primary button joined to a dropdown toggle, with a menu that opens below or above. */
+:host {
+    display: contents;
+}
+.group {
+    position: relative;
+    display: inline-flex;
+}
+.primary {
+    --ge-join-se: 0px;
+    --ge-join-ee: 0px;
+    --ge-join-border-inline-end: 0px;
+}
+.dropdown {
+    --ge-join-ss: 0px;
+    --ge-join-es: 0px;
+}
+.chevron {
+    display: block;
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.chevron.open {
+    transform: rotate(180deg);
+}
+.menu,
+::slotted(ge-split-button-menu) {
+    position: absolute;
+    z-index: 50;
+    box-sizing: border-box;
+    min-width: 8rem;
+    max-width: calc(100vw - 2rem);
+    inset-inline-end: 0;
+    margin-block: 0.25rem;
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+.menu.below,
+:host(:not([data-above])) ::slotted(ge-split-button-menu) {
+    top: 100%;
+}
+.menu.above,
+:host([data-above]) ::slotted(ge-split-button-menu) {
+    bottom: 100%;
+}
+::slotted(ge-split-button-menu) {
+    display: none;
+}
+:host([open]) ::slotted(ge-split-button-menu) {
+    display: block;
+}
+
+/* A simple-mode label wins over a projected primary. */
+:host([label]:not([label=""])) ::slotted(ge-split-button-primary) {
+    display: none;
+}
+
+/* Data rows win over a projected menu. */
+:host([data-has-items]) ::slotted(ge-split-button-menu) {
+    display: none;
+}

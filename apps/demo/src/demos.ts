@@ -1562,6 +1562,183 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
         ],
     },
     {
+        id: 'input-otp',
+        group: 'Rung 3 · Interactive',
+        name: 'Input OTP',
+        tag: 'ge-input-otp',
+        description: 'A one-time-code field: a row of slots drawn over one visually hidden input, so typing, paste and autofill work natively.',
+        examples: [
+            {
+                title: 'Default',
+                note: 'Six slots with a dot after the third. Type, paste a code, or use the arrow keys, Home and End.',
+                html: `<ge-input-otp id="otp-basic"></ge-input-otp>
+<p id="otp-basic-out" style="margin:0.5rem 0 0;font-size:0.875rem;color:var(--muted-foreground)" dir="ltr">Code: —</p>
+<script>
+(() => {
+const otp = document.getElementById('otp-basic');
+otp.addEventListener('value-change', (e) => (document.getElementById('otp-basic-out').textContent = 'Code: ' + (e.detail || '—')));
+})();
+</script>`,
+            },
+            {
+                title: 'Length and separators',
+                block: true,
+                html: `<div style="display:grid;gap:1rem">
+  <ge-input-otp max-length="4" separator=""></ge-input-otp>
+  <ge-input-otp max-length="8" separator="1,5" value="12AB"></ge-input-otp>
+  <ge-input-otp disabled value="123"></ge-input-otp>
+</div>`,
+            },
+            {
+                title: 'In a form',
+                note: 'With a `name` the code is submitted with the form, and a reset restores the initial value.',
+                html: `<form id="otp-form" style="display:grid;gap:0.75rem;justify-items:start">
+  <ge-input-otp name="code"></ge-input-otp>
+  <div style="display:flex;gap:0.5rem">
+    <ge-button type="submit" size="sm">Verify</ge-button>
+    <ge-button type="reset" size="sm" variant="outline">Reset</ge-button>
+  </div>
+  <p id="otp-form-out" style="margin:0;font-size:0.875rem;color:var(--muted-foreground)" dir="ltr">Submitted: —</p>
+</form>
+<script>
+(() => {
+document.getElementById('otp-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  document.getElementById('otp-form-out').textContent = 'Submitted: ' + (new FormData(e.target).get('code') || '—');
+});
+})();
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string', default: "''", description: 'The code. A value set from outside is shown as it is; typed text is stripped to letters and digits, upper-cased and cut to `max-length`.' },
+            { name: 'max-length', type: 'number', default: '6', description: 'Number of slots and the cap on the code.' },
+            { name: 'separator', type: 'string', default: "'2'", description: 'Comma-separated zero-based slot indices after which a dot is drawn. Empty draws none.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables the field and dims the row.' },
+            { name: 'name', type: 'string', default: "''", description: 'Form field name; the code is submitted with the form.' },
+            { name: 'aria-label / locale', type: 'string', default: "'One-time code'", description: 'Accessible name of the field; the default follows `locale` or the page `lang`.' },
+            { name: 'value-change', type: 'event', default: '-', description: 'After a user edit; detail is the sanitised code.' },
+        ],
+    },
+    {
+        id: 'split-button',
+        group: 'Rung 3 · Interactive',
+        name: 'Split Button',
+        tag: 'ge-split-button',
+        description: 'A primary action joined to a dropdown of related actions. Set `label` and `items` for the quick form, or slot the parts yourself.',
+        examples: [
+            {
+                title: 'Simple mode',
+                note: 'The `items` property takes the rows; each row\'s own `click` runs after `item-click`.',
+                html: `<ge-split-button id="split-data" label="Save changes"></ge-split-button>
+<p id="split-data-out" style="margin:0.5rem 0 0;font-size:0.875rem;color:var(--muted-foreground)">Nothing yet.</p>
+<script>
+(() => {
+const split = document.getElementById('split-data');
+const out = document.getElementById('split-data-out');
+split.items = [{ label: 'Edit', icon: '✎' }, { label: 'Duplicate', icon: '📄' }, { label: 'Delete', icon: '🗑️', disabled: true }];
+split.addEventListener('primary-click', () => (out.textContent = 'Primary action'));
+split.addEventListener('item-click', (e) => (out.textContent = 'Menu item: ' + e.detail.label));
+})();
+</script>`,
+            },
+            {
+                title: 'Custom mode',
+                note: 'A projected row reports its `value`, not its text.',
+                html: `<ge-split-button>
+  <ge-split-button-primary>Deploy</ge-split-button-primary>
+  <ge-split-button-menu>
+    <ge-split-button-item value="staging">Deploy to staging</ge-split-button-item>
+    <ge-split-button-item value="production">Deploy to production</ge-split-button-item>
+    <ge-split-button-item value="rollback" disabled>Roll back</ge-split-button-item>
+  </ge-split-button-menu>
+</ge-split-button>`,
+            },
+            {
+                title: 'Variants and sizes',
+                block: true,
+                html: `<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center">
+  <ge-split-button label="Secondary" variant="secondary"></ge-split-button>
+  <ge-split-button label="Destructive" variant="destructive"></ge-split-button>
+  <ge-split-button label="Outline" variant="outline"></ge-split-button>
+  <ge-split-button label="Small" size="sm"></ge-split-button>
+  <ge-split-button label="Large" size="lg"></ge-split-button>
+  <ge-split-button label="Disabled" disabled></ge-split-button>
+</div>
+<script>
+(() => {
+document.querySelectorAll('ge-split-button[label]').forEach((s) => { if (!s.items.length && s.id === '') s.items = [{ label: 'One' }, { label: 'Two' }]; });
+})();
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'label', type: 'string', default: "''", description: 'Text of the primary half. A non-empty label wins over a projected `ge-split-button-primary`.' },
+            { name: 'items', type: '{ label, value?, icon?, disabled?, click? }[]', default: '[]', description: 'Property only. Menu rows; non-empty wins over a projected `ge-split-button-menu`.' },
+            { name: 'variant / size', type: 'button variant / size', default: "'default'", description: 'Applied to both halves.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables both halves.' },
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the menu is showing. It opens upward when fewer than 150px remain below.' },
+            { name: 'dropdown-label', type: 'string', default: "'More options'", description: 'Accessible name of the toggle.' },
+            { name: 'primary-click', type: 'event', default: '-', description: 'The primary half was clicked; the toggle never fires it.' },
+            { name: 'item-click', type: 'event', default: '-', description: 'A row was activated; detail is the item, or `{ label: \'\', value }` for a projected row.' },
+        ],
+    },
+    {
+        id: 'resizable',
+        group: 'Rung 3 · Interactive',
+        name: 'Resizable',
+        tag: 'ge-resizable-panel-group',
+        description: 'Panels you resize by dragging the divider between them, with a finger, or with the arrow keys (5% a press). Each panel keeps to its own limits.',
+        examples: [
+            {
+                title: 'Horizontal',
+                block: true,
+                html: `<ge-resizable-panel-group style="min-height:200px;max-width:28rem;border:1px solid var(--border);border-radius:var(--radius)">
+  <ge-resizable-panel default-size="30"><div style="display:flex;height:100%;align-items:center;justify-content:center;background:color-mix(in oklab,var(--muted) 30%,transparent);padding:1.5rem"><b>Left (30%)</b></div></ge-resizable-panel>
+  <ge-resizable-handle handle-size="2"></ge-resizable-handle>
+  <ge-resizable-panel default-size="70"><div style="display:flex;height:100%;align-items:center;justify-content:center;padding:1.5rem"><b>Right (70%)</b></div></ge-resizable-panel>
+</ge-resizable-panel-group>`,
+            },
+            {
+                title: 'Vertical',
+                block: true,
+                html: `<ge-resizable-panel-group direction="vertical" style="height:300px;max-width:28rem;border:1px solid var(--border);border-radius:var(--radius)">
+  <ge-resizable-panel default-size="40"><div style="display:flex;height:100%;align-items:center;justify-content:center;background:color-mix(in oklab,var(--muted) 30%,transparent);padding:1.5rem"><b>Top (40%)</b></div></ge-resizable-panel>
+  <ge-resizable-handle handle-size="2"></ge-resizable-handle>
+  <ge-resizable-panel default-size="60"><div style="display:flex;height:100%;align-items:center;justify-content:center;padding:1.5rem"><b>Bottom (60%)</b></div></ge-resizable-panel>
+</ge-resizable-panel-group>`,
+            },
+            {
+                title: 'Limits and a grip',
+                note: 'The left panel stays between 20% and 60%, the right between 40% and 80%.',
+                block: true,
+                html: `<ge-resizable-panel-group style="min-height:200px;max-width:28rem;border:1px solid var(--border);border-radius:var(--radius)">
+  <ge-resizable-panel id="rz-a" default-size="30" min-size="20" max-size="60"><div style="display:flex;height:100%;align-items:center;justify-content:center;background:color-mix(in oklab,var(--muted) 30%,transparent);padding:1rem;text-align:center"><span id="rz-a-out"><b>Left (30%)</b><br><small>range 20–60%</small></span></div></ge-resizable-panel>
+  <ge-resizable-handle with-handle handle-size="8"></ge-resizable-handle>
+  <ge-resizable-panel id="rz-b" default-size="70" min-size="40" max-size="80"><div style="display:flex;height:100%;align-items:center;justify-content:center;padding:1rem;text-align:center"><span id="rz-b-out"><b>Right (70%)</b><br><small>range 40–80%</small></span></div></ge-resizable-panel>
+</ge-resizable-panel-group>
+<script>
+(() => {
+for (const [id, label, range] of [['rz-a', 'Left', '20–60%'], ['rz-b', 'Right', '40–80%']]) {
+  document.getElementById(id).addEventListener('size-change', (e) => {
+    document.getElementById(id + '-out').innerHTML = '<b>' + label + ' (' + Math.round(e.detail) + '%)</b><br><small>range ' + range + '</small>';
+  });
+}
+})();
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'group: direction', type: "'horizontal' | 'vertical'", default: "'horizontal'", description: 'Axis the panels are laid out and resized along. A vertical group is `height: 100%`: give its parent a height.' },
+            { name: 'panel: default-size / min-size / max-size', type: 'number (%)', default: '50 / 10 / 90', description: 'Starting size, read once; the limits are enforced on every drag, key and method.' },
+            { name: 'panel: setSize(n) / updateSize(n)', type: 'methods', default: '-', description: '`setSize` moves this panel alone; `updateSize` takes the difference out of its neighbour.' },
+            { name: 'panel: size-change', type: 'event', default: '-', description: 'When the size moves; detail is the new percentage.' },
+            { name: 'handle: with-handle / handle-size', type: 'boolean / number (px)', default: 'false / 4', description: 'Draw the grip; divider thickness, which is also its hit area.' },
+            { name: 'handle: disabled', type: 'boolean', default: 'false', description: 'Removes the divider and freezes the panels.' },
+            { name: 'handle: resized', type: 'event', default: '-', description: 'While the boundary moves; detail is `{ delta, sizes }`.' },
+        ],
+    },
+    {
         id: 'textarea',
         group: 'Rung 3 · Interactive',
         name: 'Textarea',

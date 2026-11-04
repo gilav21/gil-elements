@@ -587,6 +587,36 @@
       "types": "./dist/chip-list/define.d.ts",
       "development": "./src/chip-list/define.ts",
       "default": "./dist/chip-list/define.js"
+    },
+    "./input-otp": {
+      "types": "./dist/input-otp/index.d.ts",
+      "development": "./src/input-otp/index.ts",
+      "default": "./dist/input-otp/index.js"
+    },
+    "./input-otp/define": {
+      "types": "./dist/input-otp/define.d.ts",
+      "development": "./src/input-otp/define.ts",
+      "default": "./dist/input-otp/define.js"
+    },
+    "./split-button": {
+      "types": "./dist/split-button/index.d.ts",
+      "development": "./src/split-button/index.ts",
+      "default": "./dist/split-button/index.js"
+    },
+    "./split-button/define": {
+      "types": "./dist/split-button/define.d.ts",
+      "development": "./src/split-button/define.ts",
+      "default": "./dist/split-button/define.js"
+    },
+    "./resizable": {
+      "types": "./dist/resizable/index.d.ts",
+      "development": "./src/resizable/index.ts",
+      "default": "./dist/resizable/index.js"
+    },
+    "./resizable/define": {
+      "types": "./dist/resizable/define.d.ts",
+      "development": "./src/resizable/define.ts",
+      "default": "./dist/resizable/define.js"
     }
   },
   "scripts": {

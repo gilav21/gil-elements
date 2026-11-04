@@ -1,0 +1,15 @@
+/* shadcn-angular resizable: the host is the flex row or column its slotted panels and handles lay out in, so a class or style on it shapes the box. */
+:host {
+    display: flex;
+}
+:host(:not([direction="vertical"])) {
+    flex-direction: row;
+    width: 100%;
+}
+:host([direction="vertical"]) {
+    flex-direction: column;
+    height: 100%;
+}
+slot {
+    display: contents;
+}

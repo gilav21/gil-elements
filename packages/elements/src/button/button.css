@@ -21,6 +21,7 @@ button {
     border-end-start-radius: var(--ge-join-es, var(--radius));
     border-end-end-radius: var(--ge-join-ee, var(--radius));
     border-inline-start-width: var(--ge-join-border-inline-start, 1px);
+    border-inline-end-width: var(--ge-join-border-inline-end, 1px);
     border-block-start-width: var(--ge-join-border-block-start, 1px);
     outline: none;
     background-color: var(--primary);
@@ -174,4 +175,12 @@ button:disabled {
     .skeleton {
         animation: none;
     }
+}
+
+/* The toggle half of ge-split-button: a faint divider on its start edge, whatever the variant, and tighter padding. */
+:host([data-split-divider]) button {
+    padding-inline: 0.5rem;
+}
+:host([data-split-divider]) button:not(:focus-visible) {
+    border-inline-start-color: color-mix(in oklab, currentColor 25%, transparent);
 }

@@ -55,3 +55,6 @@ export * from './date-picker/index.js';
 export * from './autocomplete/index.js';
 export * from './drawer/index.js';
 export * from './chip-list/index.js';
+export * from './input-otp/index.js';
+export * from './split-button/index.js';
+export * from './resizable/index.js';

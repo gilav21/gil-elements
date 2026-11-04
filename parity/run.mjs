@@ -126,6 +126,11 @@ for (const theme of ['light', 'dark']) {
                     list.items = JSON.parse(list.dataset.items);
                     await list.updateComplete;
                 }
+                // `data-items` is the JSON `items` of a data-driven split button.
+                for (const split of document.querySelectorAll('ge-split-button[data-items]')) {
+                    split.items = JSON.parse(split.dataset.items);
+                    await split.updateComplete;
+                }
                 // `data-items` is the JSON `items` of a data-driven navigation menu; `data-open-index` opens that entry's trigger.
                 for (const menu of document.querySelectorAll('ge-navigation-menu[data-items]')) {
                     menu.items = JSON.parse(menu.dataset.items);
