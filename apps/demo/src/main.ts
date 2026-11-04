@@ -59,12 +59,17 @@ import '@gilav21/elements/resizable/define';
 import '@gilav21/elements/carousel/define';
 import '@gilav21/elements/table/define';
 import '@gilav21/elements/time-picker/define';
+import '@gilav21/elements/toast/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
 import '@gilav21/elements/spinner/define';
+import { toast } from '@gilav21/elements/toast';
 import type { GeSlider } from '@gilav21/elements/slider';
 import { demos, type Demo, type Example } from './demos.js';
+
+(globalThis as { geToast?: typeof toast }).geToast = toast;
+document.body.append(document.createElement('ge-toaster'));
 
 const escapeHtml = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 // Prose may mark code with `backticks`; it is escaped first, so only these tags can appear.

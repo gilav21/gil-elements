@@ -3370,4 +3370,67 @@ remote.addEventListener('search-change', (e) => {
             { name: '--density-select', type: 'css', default: '--density', description: 'Spacing multiplier for the box.' },
         ],
     },
+    {
+        id: 'toast',
+        group: 'Rung 3 · Interactive',
+        name: 'Toast',
+        tag: 'ge-toaster',
+        description: 'Transient messages. Put one `ge-toaster` in the page and call the shared `toast` service from anywhere; the demo page exposes it as `globalThis.geToast`.',
+        examples: [
+            {
+                title: 'Variants',
+                html: `<ge-button variant="outline" id="t-default">Default</ge-button>
+<ge-button variant="outline" id="t-success">Success</ge-button>
+<ge-button variant="outline" id="t-error">Error</ge-button>
+<ge-button variant="outline" id="t-info">Info</ge-button>
+<ge-button variant="outline" id="t-warning">Warning</ge-button>
+<script>(() => {
+  const t = globalThis.geToast;
+  const on = (id, fn) => document.getElementById(id).addEventListener('click', fn);
+  on('t-default', () => t.toast({ heading: 'Event created', description: 'Friday, 4 November at 9:00' }));
+  on('t-success', () => t.success('Saved', 'Your changes are live.'));
+  on('t-error', () => t.error('Upload failed', 'The file is larger than 10 MB.'));
+  on('t-info', () => t.info('Update available', 'Reload to get version 2.'));
+  on('t-warning', () => t.warning('Storage almost full', '92% of your quota is used.'));
+})();</script>`,
+            },
+            {
+                title: 'Promise',
+                note: 'The toast follows the promise: loading, then success or error.',
+                html: `<ge-button variant="outline" id="t-promise">Save</ge-button>
+<script>(() => {
+  document.getElementById('t-promise').addEventListener('click', () => {
+    globalThis.geToast.promise(new Promise((resolve) => setTimeout(resolve, 1800)), {
+      loading: 'Saving...',
+      success: 'Saved',
+      error: 'Could not save',
+    });
+  });
+})();</script>`,
+            },
+            {
+                title: 'Action and countdown',
+                note: 'Hovering or focusing a toast pauses its timer.',
+                html: `<ge-button variant="outline" id="t-action">Delete file</ge-button>
+<script>(() => {
+  document.getElementById('t-action').addEventListener('click', () => {
+    globalThis.geToast.toast({
+      heading: 'File deleted',
+      description: 'report.pdf was moved to trash.',
+      duration: 8000,
+      showCountdown: true,
+      action: { label: 'Undo', onClick: () => globalThis.geToast.success('Restored') },
+    });
+  });
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'toast.success / error / info / warning', type: '(heading, description?, duration?)', default: '-', description: 'Show a toast of that variant and return its id.' },
+            { name: 'toast.toast(data)', type: '{ heading, description, duration, showCountdown, action }', default: 'duration 5000', description: 'Show a toast with full options; `action` is `{ label, onClick }`. A duration of `0` keeps it until dismissed.' },
+            { name: 'toast.promise(promise, messages)', type: '{ loading, success, error }', default: '-', description: 'Show a loading toast that turns into the outcome of the promise.' },
+            { name: 'vertical', type: "'top' | 'bottom'", default: "'bottom'", description: 'Where `ge-toaster` stacks toasts.' },
+            { name: 'horizontal', type: "'start' | 'center' | 'end'", default: "'end'", description: 'Horizontal anchor; start and end follow the text direction.' },
+        ],
+    },
 ];

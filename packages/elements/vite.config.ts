@@ -133,6 +133,8 @@ export default defineConfig({
                 'table/define': 'src/table/define.ts',
                 'time-picker/index': 'src/time-picker/index.ts',
                 'time-picker/define': 'src/time-picker/define.ts',
+                'toast/index': 'src/toast/index.ts',
+                'toast/define': 'src/toast/define.ts',
             },
             formats: ['es'],
         },

@@ -61,3 +61,4 @@ export * from './resizable/index.js';
 export * from './carousel/index.js';
 export * from './table/index.js';
 export * from './time-picker/index.js';
+export * from './toast/index.js';

@@ -1,0 +1,202 @@
+/*
+ * shadcn-angular toast: a bordered, shadowed row with an optional spinner, a heading and description, an optional
+ * action button, a close button that appears on hover or focus, and an optional countdown bar along the bottom.
+ */
+:host {
+    display: flex;
+    position: relative;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 1rem;
+    padding-inline-end: 1.5rem;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--background);
+    color: var(--foreground);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    pointer-events: auto;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+:host([variant='destructive']) {
+    border-color: var(--destructive);
+    background-color: var(--destructive);
+    color: #fff;
+}
+:host([variant='success']) {
+    border-color: var(--banner-success);
+    background-color: var(--banner-success);
+    color: #fff;
+}
+:host([variant='info']) {
+    border-color: var(--toast-info);
+    background-color: var(--toast-info);
+    color: #fff;
+}
+:host([variant='warning']) {
+    border-color: var(--banner-warning);
+    background-color: var(--banner-warning);
+    color: var(--toast-warning-foreground);
+}
+@media (pointer: coarse) {
+    :host {
+        padding-inline-end: 2.75rem;
+    }
+}
+/*
+ * space-x-2 between the row's children, absolute ones included. shadcn-angular writes `ltr:space-x-2`, so in RTL
+ * there is no spacing at all and `justify-between` alone separates the children.
+ */
+:host(:dir(ltr)) .spinner:not(:last-child),
+:host(:dir(ltr)) .body:not(:last-child),
+:host(:dir(ltr)) .action:not(:last-child),
+:host(:dir(ltr)) .close:not(:last-child) {
+    margin-right: 0.5rem;
+}
+.spinner {
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 9999px;
+    opacity: 0.7;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .spinner {
+        animation: none;
+    }
+}
+.body {
+    display: grid;
+    flex: 1 1 0%;
+    gap: 0.25rem;
+}
+.heading {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+}
+.description {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    opacity: 0.9;
+}
+button {
+    font: inherit;
+    cursor: pointer;
+}
+.action {
+    display: inline-flex;
+    height: 2rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    outline: none;
+    transition: color 150ms, background-color 150ms, border-color 150ms;
+}
+.action:hover {
+    background-color: var(--secondary);
+}
+.action:focus {
+    box-shadow: 0 0 0 1px var(--ring);
+}
+.action:disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+:host([variant='destructive']) .action {
+    border-color: color-mix(in oklab, var(--muted) 40%, transparent);
+}
+:host([variant='destructive']) .action:hover {
+    border-color: color-mix(in oklab, var(--destructive) 30%, transparent);
+    background-color: var(--destructive);
+    color: var(--destructive-foreground);
+}
+:host([variant='destructive']) .action:focus {
+    box-shadow: 0 0 0 1px var(--destructive);
+}
+.countdown {
+    margin-inline-start: 0.25rem;
+}
+.close {
+    position: absolute;
+    inset-inline-end: 0.25rem;
+    top: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: 0;
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: color-mix(in oklab, var(--foreground) 50%, transparent);
+    opacity: 0;
+    outline: none;
+    transition: opacity 150ms, color 150ms;
+}
+:host(:hover) .close,
+.close:focus {
+    opacity: 1;
+}
+.close:hover {
+    color: var(--foreground);
+}
+.close:focus {
+    box-shadow: 0 0 0 1px currentColor;
+}
+:host([variant='destructive']) .close {
+    color: oklch(0.808 0.114 19.571);
+}
+:host([variant='destructive']) .close:hover {
+    color: oklch(0.971 0.013 17.38);
+}
+:host([variant='destructive']) .close:focus {
+    box-shadow: 0 0 0 2px oklch(0.577 0.245 27.325), 0 0 0 3px oklch(0.704 0.191 22.216);
+}
+@media (hover: none) {
+    .close {
+        opacity: 1;
+    }
+}
+@media (pointer: coarse) {
+    .close {
+        inset-inline-end: 0;
+        top: 0;
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+}
+.close svg {
+    width: 1rem;
+    height: 1rem;
+}
+.progress {
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 0.25rem;
+    background-color: rgb(0 0 0 / 0.1);
+}
+.progress div {
+    height: 100%;
+    background-color: currentColor;
+    opacity: 0.3;
+    transition: width 1000ms linear;
+}

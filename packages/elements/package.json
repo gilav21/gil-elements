@@ -647,6 +647,16 @@
       "types": "./dist/time-picker/define.d.ts",
       "development": "./src/time-picker/define.ts",
       "default": "./dist/time-picker/define.js"
+    },
+    "./toast": {
+      "types": "./dist/toast/index.d.ts",
+      "development": "./src/toast/index.ts",
+      "default": "./dist/toast/index.js"
+    },
+    "./toast/define": {
+      "types": "./dist/toast/define.d.ts",
+      "development": "./src/toast/define.ts",
+      "default": "./dist/toast/define.js"
     }
   },
   "scripts": {

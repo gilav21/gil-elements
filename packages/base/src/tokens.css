@@ -20,6 +20,10 @@
     --status-success: oklch(0.627 0.194 149.214);
     --status-warning: oklch(0.666 0.179 58.318);
     --status-info: oklch(0.546 0.245 262.881);
+    /* Toast info fill: Tailwind blue-600 in both themes (--status-info lightens in dark mode). */
+    --toast-info: oklch(0.546 0.245 262.881);
+    /* Toast warning text: Tailwind amber-950, hard-coded in shadcn-angular. */
+    --toast-warning-foreground: oklch(0.279 0.077 45.635);
     /* Autocomplete match highlight: Tailwind yellow-200, hard-coded in shadcn-angular (yellow-800 with yellow-100 text in dark mode). */
     /* Chip remove button hover: black/10 in light mode, white/10 in dark. */
     --chip-remove-hover: rgb(0 0 0 / 0.1);
