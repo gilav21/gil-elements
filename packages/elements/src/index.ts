@@ -70,3 +70,5 @@ export * from './code-block/index.js';
 export * from './speed-dial/index.js';
 export * from './dock/index.js';
 export * from './file-upload/index.js';
+export * from './tree-context-menu/index.js';
+export * from './tree-select/index.js';

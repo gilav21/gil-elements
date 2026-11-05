@@ -70,3 +70,5 @@ import '../packages/elements/src/code-block/define.js';
 import '../packages/elements/src/speed-dial/define.js';
 import '../packages/elements/src/dock/define.js';
 import '../packages/elements/src/file-upload/define.js';
+import '../packages/elements/src/tree-context-menu/define.js';
+import '../packages/elements/src/tree-select/define.js';

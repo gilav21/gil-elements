@@ -176,6 +176,8 @@ for (const theme of ['light', 'dark']) {
                 for (const target of document.querySelectorAll('ge-eyedropper[data-picking]')) target.picking = true;
                 // `data-collapsed` on a sidebar provider shows the desktop rail collapsed, the way a remembered flag would.
                 for (const target of document.querySelectorAll('ge-sidebar-provider[data-collapsed]')) target.isCollapsed = true;
+                // `data-nodes` is also the JSON `nodes` of a tree select.
+                for (const target of document.querySelectorAll('ge-tree-select[data-nodes]')) target.nodes = JSON.parse(target.dataset.nodes);
                 // `data-state` is the JSON `{expand, select, focus}` a tree shows, and `data-nodes` the JSON `data` of a data-driven tree (with `data-depth` as its initial-expand-depth).
                 for (const target of document.querySelectorAll('ge-tree[data-nodes]')) {
                     target.data = JSON.parse(target.dataset.nodes);

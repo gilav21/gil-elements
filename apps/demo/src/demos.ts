@@ -4043,12 +4043,12 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             {
                 title: 'Images and PDFs, up to five',
                 note: '`accept` takes native syntax (extensions, `image/*`, exact MIME) and is re-checked on drop. `max-size` is in bytes and appears in the caption.',
-                html: `<div style="max-width:28rem"><ge-file-upload accept="image/*,.pdf" max-files="5" max-size="5242880"></ge-file-upload></div>`,
+                html: `<div style="width:100%;max-width:28rem"><ge-file-upload accept="image/*,.pdf" max-files="5" max-size="5242880"></ge-file-upload></div>`,
             },
             {
                 title: 'A cap, and the refusals',
                 note: 'Refused files never enter the queue and nothing renders them, so listen to `file-error` yourself.',
-                html: `<div style="max-width:28rem;display:flex;flex-direction:column;gap:.5rem"><ge-file-upload id="fu1" max-files="2"></ge-file-upload><p style="margin:0;font-size:.875rem;color:var(--muted-foreground)">At most two files; drop three to see one refused.</p><p style="margin:0;font-size:.875rem;font-weight:500">Refused files</p><ul id="fu1-out" style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.25rem;font-size:.875rem;color:var(--destructive)"></ul><p id="fu1-none" style="margin:0;font-size:.875rem;color:var(--muted-foreground)">None yet.</p></div>
+                html: `<div style="width:100%;max-width:28rem;display:flex;flex-direction:column;gap:.5rem"><ge-file-upload id="fu1" max-files="2"></ge-file-upload><p style="margin:0;font-size:.875rem;color:var(--muted-foreground)">At most two files; drop three to see one refused.</p><p style="margin:0;font-size:.875rem;font-weight:500">Refused files</p><ul id="fu1-out" style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.25rem;font-size:.875rem;color:var(--destructive)"></ul><p id="fu1-none" style="margin:0;font-size:.875rem;color:var(--muted-foreground)">None yet.</p></div>
 <script>(() => {
   const list = document.getElementById('fu1-out');
   const none = document.getElementById('fu1-none');
@@ -4064,12 +4064,12 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             {
                 title: 'Crop images first',
                 note: '`crop-images` holds each image in an inline crop step; `crop-aspect="1"` locks it square. Drag the box or its corner, or use the arrows and +/-. Non-images skip the step.',
-                html: `<div style="max-width:28rem"><ge-file-upload crop-images crop-aspect="1" accept="image/*"></ge-file-upload></div>`,
+                html: `<div style="width:100%;max-width:28rem"><ge-file-upload crop-images crop-aspect="1" accept="image/*"></ge-file-upload></div>`,
             },
             {
                 title: 'Reporting upload progress',
                 note: 'The component queues; you transfer. Each queued item has an `id` to pass to `updateFileProgress` (0-99 uploading, 100 complete) and `setFileError`. This demo fakes the transfer.',
-                html: `<div style="max-width:28rem"><ge-file-upload id="fu2"></ge-file-upload></div>
+                html: `<div style="width:100%;max-width:28rem"><ge-file-upload id="fu2"></ge-file-upload></div>
 <script>(() => {
   const el = document.getElementById('fu2');
   el.addEventListener('file-added', (event) => {
@@ -4091,12 +4091,12 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             {
                 title: 'Folders and a single file',
                 note: '`allow-directories` accepts dropped folders (walked recursively) and puts the picker in folder mode. `multiple="false"` limits one picker selection to a single file.',
-                html: `<div style="max-width:28rem;display:flex;flex-direction:column;gap:1rem"><ge-file-upload allow-directories></ge-file-upload><ge-file-upload multiple="false" max-files="1"></ge-file-upload></div>`,
+                html: `<div style="width:100%;max-width:28rem;display:flex;flex-direction:column;gap:1rem"><ge-file-upload allow-directories></ge-file-upload><ge-file-upload multiple="false" max-files="1"></ge-file-upload></div>`,
             },
             {
                 title: 'Hebrew (RTL)',
                 note: '`locale` is an id or a dictionary object; the layout follows its direction.',
-                html: `<div style="max-width:28rem"><ge-file-upload locale="he" max-size="10485760"></ge-file-upload></div>`,
+                html: `<div style="width:100%;max-width:28rem"><ge-file-upload locale="he" max-size="10485760"></ge-file-upload></div>`,
             },
         ],
         api: [
@@ -4122,6 +4122,165 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'file-error', type: 'event', default: '-', description: '`detail` is `{ file, error }` with a localised message.' },
             { name: 'cropped', type: 'event', default: '-', description: '`detail` is `{ original, file, rect }`.' },
             { name: '::part(dropzone)', type: 'css part', default: '-', description: 'The dashed drop target.' },
+        ],
+    },
+    {
+        id: 'tree-context-menu',
+        group: 'Rung 3 · Interactive',
+        name: 'Tree context menu',
+        tag: 'ge-tree-context-menu',
+        description: 'Wrap a `ge-tree` so that a right-click, the context-menu key or a long press on a node opens a `ge-context-menu` at the pointer, with the node it hit as the menu\'s `data`.',
+        examples: [
+            {
+                title: 'A file explorer',
+                note: 'The menu is one element shared by every node. `node-context-menu` fires first, so the handler can shape the menu for the node (here: folders get New file / New folder, files get Open). With the keyboard, move to a node with the arrows and press the context-menu key (or Shift+F10).',
+                html: `<div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start">
+  <div style="width:100%;max-width:20rem;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);padding:1rem">
+    <ge-context-menu id="tcm-menu">
+      <ge-context-menu-content style="width:14rem">
+        <ge-context-menu-label id="tcm-label"></ge-context-menu-label>
+        <ge-context-menu-separator></ge-context-menu-separator>
+        <ge-context-menu-item data-for="folder">New file<ge-context-menu-shortcut>⌘N</ge-context-menu-shortcut></ge-context-menu-item>
+        <ge-context-menu-item data-for="folder">New folder</ge-context-menu-item>
+        <ge-context-menu-item data-for="file">Open<ge-context-menu-shortcut>⏎</ge-context-menu-shortcut></ge-context-menu-item>
+        <ge-context-menu-item>Rename<ge-context-menu-shortcut>F2</ge-context-menu-shortcut></ge-context-menu-item>
+        <ge-context-menu-item>Duplicate</ge-context-menu-item>
+        <ge-context-menu-separator></ge-context-menu-separator>
+        <ge-context-menu-item variant="destructive">Delete<ge-context-menu-shortcut>⌘⌫</ge-context-menu-shortcut></ge-context-menu-item>
+      </ge-context-menu-content>
+      <ge-tree-context-menu id="tcm">
+        <ge-tree id="tcm-tree" selectable="single" initial-expand-depth="2"></ge-tree>
+      </ge-tree-context-menu>
+    </ge-context-menu>
+  </div>
+  <dl id="tcm-out" style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:.25rem .75rem;font-size:.75rem">
+    <dt style="color:var(--muted-foreground)">Last node</dt><dd id="tcm-node" style="margin:0">none yet</dd>
+  </dl>
+</div>
+<script>(() => {
+  const tree = document.getElementById('tcm-tree');
+  tree.data = [
+    { key: 'src', label: 'src', icon: '📁', children: [
+      { key: 'app', label: 'app', icon: '📁', children: [{ key: 'main', label: 'main.ts', icon: '📄' }, { key: 'styles', label: 'styles.css', icon: '📄' }] },
+      { key: 'index', label: 'index.html', icon: '📄' },
+    ] },
+    { key: 'docs', label: 'docs', icon: '📁', children: [{ key: 'guide', label: 'guide.md', icon: '📄' }] },
+    { key: 'readme', label: 'README.md', icon: '📄' },
+  ];
+  const menu = document.getElementById('tcm-menu');
+  const wrapper = document.getElementById('tcm');
+  wrapper.addEventListener('node-context-menu', (event) => {
+    const { node } = event.detail;
+    const folder = node.element.hasAttribute('has-nested') || node.element.querySelector(':scope > ge-tree-item') !== null;
+    document.getElementById('tcm-label').textContent = (folder ? 'Folder' : 'File') + ' — ' + node.label;
+    for (const row of menu.querySelectorAll('[data-for]')) row.hidden = row.dataset.for !== (folder ? 'folder' : 'file');
+    document.getElementById('tcm-node').textContent = node.label + ' (key ' + node.key + ', ' + (node.expanded ? 'expanded' : 'collapsed') + (node.selected ? ', selected' : '') + ')';
+  });
+})();</script>`,
+            },
+            {
+                title: 'Disabled',
+                note: '`disabled` leaves the gesture to the browser: no menu and no event.',
+                html: `<div style="max-width:20rem;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);padding:1rem">
+  <ge-context-menu><ge-context-menu-content><ge-context-menu-item>Never shown</ge-context-menu-item></ge-context-menu-content>
+    <ge-tree-context-menu disabled>
+      <ge-tree selectable="single"><ge-tree-item value="a"><ge-tree-label>Right-click me: the browser's own menu opens</ge-tree-label></ge-tree-item></ge-tree>
+    </ge-tree-context-menu>
+  </ge-context-menu>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'for', type: 'string', default: "''", description: 'Id of the `ge-context-menu` to open. Left empty, the one this element sits in.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Leaves the gesture to the browser: no menu, no event.' },
+            { name: 'node-context-menu', type: 'event', default: '-', description: '`detail` is `{ node, event }`; `node` is `{ key, label, expanded, selected, element }`, the same object the menu gets as `data`. `event` is the `contextmenu` event, or the `touchstart` that began a long press.' },
+            { name: 'menu.data', type: 'unknown', default: '-', description: 'On the `ge-context-menu`: the node that opened it.' },
+        ],
+    },
+    {
+        id: 'tree-select',
+        group: 'Rung 3 · Interactive',
+        name: 'Tree select',
+        tag: 'ge-tree-select',
+        description: 'A select whose options are the nodes of a tree. It is form-associated: the selected key is submitted under `name`.',
+        examples: [
+            {
+                title: 'Data-driven',
+                note: 'Set `nodes` and it draws its own combobox button and a single-select tree in a popover as wide as the button. Opening puts the tree\'s focus on the selected node.',
+                html: `<div style="width:100%;max-width:20rem"><ge-tree-select id="ts1" placeholder="Pick a location"></ge-tree-select></div>
+<p id="ts1-out" style="font-size:.875rem;color:var(--muted-foreground)">Selected: none</p>
+<script>(() => {
+  const el = document.getElementById('ts1');
+  el.nodes = [
+    { key: 'eu', label: 'Europe', children: [{ key: 'de', label: 'Germany' }, { key: 'fr', label: 'France' }, { key: 'es', label: 'Spain' }] },
+    { key: 'na', label: 'North America', children: [{ key: 'us', label: 'United States' }, { key: 'ca', label: 'Canada' }] },
+    { key: 'other', label: 'Elsewhere' },
+  ];
+  el.addEventListener('selection-change', (event) => {
+    document.getElementById('ts1-out').textContent = 'Selected: ' + (event.detail[0] ?? 'none');
+  });
+})();</script>`,
+            },
+            {
+                title: 'A preselected value, disabled and in a form',
+                note: '`value` is a node key. With `name` the key is part of the form data.',
+                html: `<form id="ts-form" style="display:flex;flex-direction:column;gap:.75rem;max-width:20rem">
+  <ge-tree-select id="ts2" name="region" value="fr"></ge-tree-select>
+  <ge-tree-select id="ts3" value="us" disabled></ge-tree-select>
+  <div style="display:flex;gap:.5rem;align-items:center"><ge-button type="submit">Submit</ge-button><ge-button type="reset" variant="outline">Reset</ge-button></div>
+  <p id="ts2-out" style="margin:0;font-size:.875rem;color:var(--muted-foreground)">Form data: region=fr</p>
+</form>
+<script>(() => {
+  const nodes = [
+    { key: 'eu', label: 'Europe', children: [{ key: 'de', label: 'Germany' }, { key: 'fr', label: 'France' }] },
+    { key: 'na', label: 'North America', children: [{ key: 'us', label: 'United States' }, { key: 'ca', label: 'Canada' }] },
+  ];
+  for (const id of ['ts2', 'ts3']) document.getElementById(id).nodes = nodes;
+  const form = document.getElementById('ts-form');
+  const out = document.getElementById('ts2-out');
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    out.textContent = 'Form data: ' + new URLSearchParams(new FormData(form)).toString();
+  });
+})();</script>`,
+            },
+            {
+                title: 'Custom trigger and content',
+                note: 'Leave `nodes` empty and project a `ge-popover-trigger` and a `ge-popover-content` (optionally inside `ge-tree-select-trigger` / `-content`). Call `select(key)` from your own content; it sets the value, fires `selection-change` and closes.',
+                html: `<ge-tree-select id="ts4">
+  <ge-tree-select-trigger><ge-popover-trigger><ge-button variant="outline">Choose a size</ge-button></ge-popover-trigger></ge-tree-select-trigger>
+  <ge-tree-select-content><ge-popover-content align="start" strategy="fixed">
+    <div style="display:flex;flex-direction:column;gap:.25rem">
+      <ge-button variant="ghost" data-pick="s">Small</ge-button><ge-button variant="ghost" data-pick="m">Medium</ge-button><ge-button variant="ghost" data-pick="l">Large</ge-button>
+    </div>
+  </ge-popover-content></ge-tree-select-content>
+</ge-tree-select>
+<p id="ts4-out" style="font-size:.875rem;color:var(--muted-foreground)">Picked: none</p>
+<script>(() => {
+  const el = document.getElementById('ts4');
+  for (const button of el.querySelectorAll('[data-pick]')) button.addEventListener('click', () => el.select(button.dataset.pick));
+  el.addEventListener('selection-change', (event) => { document.getElementById('ts4-out').textContent = 'Picked: ' + (event.detail[0] ?? 'none'); });
+})();</script>`,
+            },
+            {
+                title: 'Hebrew (RTL)',
+                html: `<div style="width:100%;max-width:20rem"><ge-tree-select id="ts5" locale="he"></ge-tree-select></div>
+<script>document.getElementById('ts5').nodes = [{ key: 'a', label: 'אירופה', children: [{ key: 'b', label: 'גרמניה' }] }, { key: 'c', label: 'אחר' }];</script>`,
+            },
+        ],
+        api: [
+            { name: 'nodes', type: 'TreeNode[]', default: '[]', description: '`{ key, label, icon?, children?, disabled?, data? }`. Non-empty switches on the built-in trigger and tree.' },
+            { name: 'value', type: 'string', default: 'none', description: 'Key of the selected node. Setting it does not fire events.' },
+            { name: 'name', type: 'string', default: "''", description: 'Form field name; the selected key is submitted. A form reset restores the starting value.' },
+            { name: 'placeholder', type: 'string', default: "'Select...'", description: 'Text while nothing is selected.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables the built-in trigger; a fieldset also disables it.' },
+            { name: 'locale', type: 'string | CommonLocale', default: "''", description: 'Locale id or dictionary; defaults to the page `lang`, then `en`.' },
+            { name: 'open / show() / hide()', type: 'boolean / method', default: 'false', description: 'It is a `ge-popover`, so these work as they do there.' },
+            { name: 'select(key)', type: 'method', default: '-', description: 'Pick a node from custom content (`null` clears). Sets the value, fires `selection-change` and `change`, closes. Ignores `disabled`.' },
+            { name: 'selection-change', type: 'event', default: '-', description: '`detail` is the selected keys, at most one (empty when cleared).' },
+            { name: 'change', type: 'event', default: '-', description: 'Fires with it, as for any form field.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'The user opened or closed the popover; `detail` is the new state.' },
+            { name: '::part(trigger)', type: 'css part', default: '-', description: 'The combobox button (built-in trigger).' },
         ],
     },
 ];
