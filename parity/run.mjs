@@ -172,6 +172,36 @@ for (const theme of ['light', 'dark']) {
                 await Promise.all(document.getAnimations().map((a) => a.finished));
                 // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
                 for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
+                // A kanban board takes its `columns` and `cards` as JSON; `data-dragged` is the id of the card shown mid-drag, `data-swimlane-by` the lane property.
+                for (const target of document.querySelectorAll('ge-kanban[data-columns]')) {
+                    target.columns = JSON.parse(target.dataset.columns);
+                    target.cards = JSON.parse(target.dataset.cards ?? '[]');
+                    if (target.dataset.dragged) target.draggedCardId = target.dataset.dragged;
+                    if (target.dataset.collapsedLanes) target.initiallyCollapsedSwimlanes = JSON.parse(target.dataset.collapsedLanes);
+                }
+                // `data-column-states` is JSON `{columnId: {collapsed, collapsible, dragOver}}`, applied to the board's own columns once they have rendered.
+                for (const target of document.querySelectorAll('ge-kanban[data-column-states]')) {
+                    await target.updateComplete;
+                    for (const [id, state] of Object.entries(JSON.parse(target.dataset.columnStates))) {
+                        const column = target.shadowRoot.querySelector(`ge-kanban-column[column-id="${id}"]`);
+                        if (state.collapsed) column.collapsed = true;
+                        if (state.collapsible === false) column.collapsible = false;
+                        if (state.dragOver) {
+                            column.isDragOver = true;
+                            column.dropIndicatorIndex = 0;
+                            column.dropIndicatorTop = 6;
+                        }
+                    }
+                }
+                // On a kanban column, `data-collapsed` collapses it and `data-drag-over` shows it as a drop target with the line at the first gap.
+                for (const target of document.querySelectorAll('ge-kanban-column')) {
+                    if (target.hasAttribute('data-collapsed')) target.collapsed = true;
+                    if (target.hasAttribute('data-drag-over-hook')) {
+                        target.isDragOver = true;
+                        target.dropIndicatorIndex = 0;
+                        target.dropIndicatorTop = 6;
+                    }
+                }
                 // `data-lift` on a sortable item lifts it with the keyboard, the way Space does.
                 for (const target of document.querySelectorAll('ge-sortable-item[data-lift]')) target.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
                 // `data-picking` on an eyedropper shows it mid-pick, the way a pick in progress would.

@@ -157,6 +157,8 @@ export default defineConfig({
                 'tree-select/define': 'src/tree-select/define.ts',
                 'sortable/index': 'src/sortable/index.ts',
                 'sortable/define': 'src/sortable/define.ts',
+                'kanban/index': 'src/kanban/index.ts',
+                'kanban/define': 'src/kanban/define.ts',
             },
             formats: ['es'],
         },

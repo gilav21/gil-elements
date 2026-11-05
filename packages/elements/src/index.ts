@@ -73,3 +73,4 @@ export * from './file-upload/index.js';
 export * from './tree-context-menu/index.js';
 export * from './tree-select/index.js';
 export * from './sortable/index.js';
+export * from './kanban/index.js';

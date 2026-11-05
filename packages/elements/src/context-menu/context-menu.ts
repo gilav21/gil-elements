@@ -15,6 +15,8 @@ export interface ContextMenuItem {
     /** The rows of a `sub` submenu. */
     children?: ContextMenuItem[];
     inset?: boolean;
+    /** `default`, or `destructive` to paint the row in the destructive colour. */
+    variant?: 'default' | 'destructive';
     /** Runs when the row is activated by pointer or keyboard. */
     click?: (item: ContextMenuItem) => void;
 }
@@ -137,6 +139,7 @@ export class GeContextMenu extends UiElement implements ContextMenuHost {
         return html`<ge-context-menu-item
             ?inset=${item.inset}
             ?disabled=${item.disabled}
+            variant=${item.variant ?? 'default'}
             shortcut=${item.shortcut ?? ''}
             @click=${() => item.click?.(item)}
             >${item.label}</ge-context-menu-item

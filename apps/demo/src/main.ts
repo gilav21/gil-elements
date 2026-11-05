@@ -71,6 +71,7 @@ import '@gilav21/elements/file-upload/define';
 import '@gilav21/elements/tree-context-menu/define';
 import '@gilav21/elements/tree-select/define';
 import '@gilav21/elements/sortable/define';
+import '@gilav21/elements/kanban/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
@@ -217,3 +218,26 @@ density.addEventListener('input', () => {
     root.style.setProperty('--density', String(density.value));
     densityOut.textContent = String(density.value);
 });
+
+/**
+ * The kanban board never changes its own data: it reports each change and waits for you to apply it. The demo pages
+ * share this wiring, which is what an app does with those events (mint an id, replace an entry, reparent cards).
+ */
+type KanbanBoard = HTMLElement & { columns: { id: string; order: number }[]; cards: { id: string; columnId: string }[] };
+(globalThis as { geKanbanWire?: (board: KanbanBoard) => void }).geKanbanWire = (board) => {
+    const on = <T>(name: string, handler: (detail: T) => void) => board.addEventListener(name, (event) => handler((event as CustomEvent<T>).detail));
+    on<KanbanBoard['cards']>('cards-change', (cards) => (board.cards = cards));
+    on<KanbanBoard['columns']>('columns-change', (columns) => (board.columns = columns));
+    on<{ columnId: string }>('card-added', (card) => {
+        const order = board.cards.filter((c) => c.columnId === card.columnId).length;
+        board.cards = [...board.cards, { ...card, id: `card-${Date.now()}`, order } as KanbanBoard['cards'][number]];
+    });
+    on<{ id: string }>('card-updated', (card) => (board.cards = board.cards.map((c) => (c.id === card.id ? (card as KanbanBoard['cards'][number]) : c))));
+    on<{ order: number }>('column-added', (column) => (board.columns = [...board.columns, { ...column, id: `col-${Date.now()}` }]));
+    on<{ id: string }>('column-updated', (column) => (board.columns = board.columns.map((c) => (c.id === column.id ? (column as KanbanBoard['columns'][number]) : c))));
+    on<{ columnId: string; moveCardsTo?: string }>('column-deleted', ({ columnId, moveCardsTo }) => {
+        board.columns = board.columns.filter((c) => c.id !== columnId);
+        const rest = board.cards.filter((c) => c.columnId !== columnId);
+        board.cards = moveCardsTo ? board.cards.map((c) => (c.columnId === columnId ? { ...c, columnId: moveCardsTo } : c)) : rest;
+    });
+};

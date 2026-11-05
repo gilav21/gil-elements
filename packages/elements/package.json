@@ -767,6 +767,16 @@
       "types": "./dist/sortable/define.d.ts",
       "development": "./src/sortable/define.ts",
       "default": "./dist/sortable/define.js"
+    },
+    "./kanban": {
+      "types": "./dist/kanban/index.d.ts",
+      "development": "./src/kanban/index.ts",
+      "default": "./dist/kanban/index.js"
+    },
+    "./kanban/define": {
+      "types": "./dist/kanban/define.d.ts",
+      "development": "./src/kanban/define.ts",
+      "default": "./dist/kanban/define.js"
     }
   },
   "scripts": {

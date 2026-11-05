@@ -4433,4 +4433,235 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'slots', type: 'slot', default: '-', description: 'Default (rows), `header`, `footer`, `empty`.' },
         ],
     },
+    {
+        id: 'kanban',
+        group: 'Rung 3 · Interactive',
+        name: 'Kanban',
+        tag: 'ge-kanban',
+        description: 'A board of columns and cards. Drag a card between columns; right-click or long-press for menus; Mod+Z undoes. The board is controlled: it reports every change as an event and waits for you to apply it.',
+        examples: [
+            {
+                title: 'Data-driven',
+                note: 'Set `columns` and `cards`. Each change leaves as an event carrying the next array, or the data to add, so apply it yourself (the demo pages share one small `geKanbanWire` helper for that, shown here in full for the first example). Right-click a card, a column header or empty board space; Ctrl+Z and Ctrl+Shift+Z undo and redo.',
+                html: `<div style="height:36rem;overflow:auto;background:color-mix(in srgb, var(--muted) 30%, transparent);border:1px solid var(--border);border-radius:calc(var(--radius) + 4px)">
+  <ge-kanban id="kb1"></ge-kanban>
+</div>
+<script>(() => {
+  const board = document.getElementById('kb1');
+  const columns = [
+    { id: 'backlog', title: 'Backlog', order: 0 },
+    { id: 'in-progress', title: 'In Progress', order: 1 },
+    { id: 'review', title: 'In Review', order: 2 },
+    { id: 'done', title: 'Done', order: 3 },
+  ];
+  const cards = [
+    { id: 'card-1', columnId: 'backlog', title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment.', priority: 'high', labels: [{ text: 'DevOps', color: '#6366f1' }], assignees: [{ name: 'Alice Chen' }], order: 0 },
+    { id: 'card-2', columnId: 'backlog', title: 'Design token refresh', description: 'Update color palette and spacing tokens to match the new brand guidelines.', priority: 'medium', labels: [{ text: 'Design', color: '#ec4899' }], assignees: [{ name: 'Bob Martin' }], order: 1 },
+    { id: 'card-3', columnId: 'in-progress', title: 'Implement Kanban board', description: 'Drag and drop, context menus and undo.', priority: 'urgent', labels: [{ text: 'Feature', color: '#22c55e' }, { text: 'UI', color: '#3b82f6' }], assignees: [{ name: 'Alice Chen' }, { name: 'Carol Diaz' }], order: 0 },
+    { id: 'card-4', columnId: 'review', title: 'Accessibility audit', description: 'Check contrast, focus order and screen reader names.', priority: 'low', labels: [{ text: 'A11y', color: '#f97316' }], assignees: [{ name: 'Bob Martin' }], order: 0 },
+    { id: 'card-5', columnId: 'done', title: 'Release v1.8.0', priority: 'medium', labels: [{ text: 'Release', color: '#8b5cf6' }], order: 0 },
+  ];
+  board.columns = columns;
+  board.cards = cards;
+  const on = (name, handler) => board.addEventListener(name, (event) => handler(event.detail));
+  on('cards-change', (next) => (board.cards = next));
+  on('columns-change', (next) => (board.columns = next));
+  on('card-added', (card) => {
+    const order = board.cards.filter((c) => c.columnId === card.columnId).length;
+    board.cards = [...board.cards, { ...card, id: 'card-' + Date.now(), order }];
+  });
+  on('card-updated', (card) => (board.cards = board.cards.map((c) => (c.id === card.id ? card : c))));
+  on('column-added', (column) => (board.columns = [...board.columns, { ...column, id: 'col-' + Date.now() }]));
+  on('column-updated', (column) => (board.columns = board.columns.map((c) => (c.id === column.id ? column : c))));
+  on('column-deleted', ({ columnId, moveCardsTo }) => {
+    board.columns = board.columns.filter((c) => c.id !== columnId);
+    board.cards = moveCardsTo
+      ? board.cards.map((c) => (c.columnId === columnId ? { ...c, columnId: moveCardsTo } : c))
+      : board.cards.filter((c) => c.columnId !== columnId);
+  });
+})();</script>`,
+            },
+            {
+                title: 'WIP limits',
+                note: 'A column with `wipLimit` shows `/ n` beside its count; going over turns the count and the border destructive. It never blocks a drop.',
+                html: `<div style="overflow:auto;border:1px solid var(--border);border-radius:calc(var(--radius) + 4px)">
+  <ge-kanban id="kb2"></ge-kanban>
+</div>
+<script>(() => {
+  const board = document.getElementById('kb2');
+  board.columns = [
+    { id: 'todo', title: 'To Do', order: 0, wipLimit: 4 },
+    { id: 'doing', title: 'Doing', order: 1, wipLimit: 2 },
+    { id: 'blocked', title: 'Blocked', order: 2, wipLimit: 1 },
+    { id: 'done', title: 'Done', order: 3 },
+  ];
+  board.cards = [
+    { id: 'w1', columnId: 'todo', title: 'Write unit tests for auth module', priority: 'high', order: 0 },
+    { id: 'w2', columnId: 'todo', title: 'Update API documentation', order: 1 },
+    { id: 'w3', columnId: 'doing', title: 'Dashboard analytics charts', order: 0 },
+    { id: 'w4', columnId: 'doing', title: 'Mobile responsive fixes', order: 1 },
+    { id: 'w5', columnId: 'doing', title: 'Refactor data fetching layer', order: 2 },
+    { id: 'w6', columnId: 'blocked', title: 'Third-party SSO integration', priority: 'urgent', order: 0 },
+    { id: 'w7', columnId: 'blocked', title: 'Payment provider approval', order: 1 },
+  ];
+  globalThis.geKanbanWire(board);
+})();</script>`,
+            },
+            {
+                title: 'Search, and no labels or assignees',
+                note: '`search-term` filters by title, description and label text, and the count badges follow. `have-labels="false"` and `have-assignees="false"` hide those fields in the card dialog.',
+                html: `<div style="overflow:auto;border:1px solid var(--border);border-radius:calc(var(--radius) + 4px)">
+  <ge-kanban id="kb3" search-term="audit" have-labels="false" have-assignees="false"></ge-kanban>
+</div>
+<script>(() => {
+  const board = document.getElementById('kb3');
+  const columns = [
+    { id: 'backlog', title: 'Backlog', order: 0 },
+    { id: 'in-progress', title: 'In Progress', order: 1 },
+    { id: 'review', title: 'In Review', order: 2 },
+    { id: 'done', title: 'Done', order: 3 },
+  ];
+  const cards = [
+    { id: 'card-1', columnId: 'backlog', title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment.', priority: 'high', labels: [{ text: 'DevOps', color: '#6366f1' }], assignees: [{ name: 'Alice Chen' }], order: 0 },
+    { id: 'card-2', columnId: 'backlog', title: 'Design token refresh', description: 'Update color palette and spacing tokens to match the new brand guidelines.', priority: 'medium', labels: [{ text: 'Design', color: '#ec4899' }], assignees: [{ name: 'Bob Martin' }], order: 1 },
+    { id: 'card-3', columnId: 'in-progress', title: 'Implement Kanban board', description: 'Drag and drop, context menus and undo.', priority: 'urgent', labels: [{ text: 'Feature', color: '#22c55e' }, { text: 'UI', color: '#3b82f6' }], assignees: [{ name: 'Alice Chen' }, { name: 'Carol Diaz' }], order: 0 },
+    { id: 'card-4', columnId: 'review', title: 'Accessibility audit', description: 'Check contrast, focus order and screen reader names.', priority: 'low', labels: [{ text: 'A11y', color: '#f97316' }], assignees: [{ name: 'Bob Martin' }], order: 0 },
+    { id: 'card-5', columnId: 'done', title: 'Release v1.8.0', priority: 'medium', labels: [{ text: 'Release', color: '#8b5cf6' }], order: 0 },
+  ];
+  board.columns = columns;
+  board.cards = cards;
+  globalThis.geKanbanWire(board);
+})();</script>`,
+            },
+            {
+                title: 'Hebrew (RTL)',
+                html: `<div style="overflow:auto;border:1px solid var(--border);border-radius:calc(var(--radius) + 4px)">
+  <ge-kanban id="kb4" locale="he"></ge-kanban>
+</div>
+<script>(() => {
+  const board = document.getElementById('kb4');
+  const columns = [
+    { id: 'backlog', title: 'Backlog', order: 0 },
+    { id: 'in-progress', title: 'In Progress', order: 1 },
+    { id: 'review', title: 'In Review', order: 2 },
+    { id: 'done', title: 'Done', order: 3 },
+  ];
+  const cards = [
+    { id: 'card-1', columnId: 'backlog', title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment.', priority: 'high', labels: [{ text: 'DevOps', color: '#6366f1' }], assignees: [{ name: 'Alice Chen' }], order: 0 },
+    { id: 'card-2', columnId: 'backlog', title: 'Design token refresh', description: 'Update color palette and spacing tokens to match the new brand guidelines.', priority: 'medium', labels: [{ text: 'Design', color: '#ec4899' }], assignees: [{ name: 'Bob Martin' }], order: 1 },
+    { id: 'card-3', columnId: 'in-progress', title: 'Implement Kanban board', description: 'Drag and drop, context menus and undo.', priority: 'urgent', labels: [{ text: 'Feature', color: '#22c55e' }, { text: 'UI', color: '#3b82f6' }], assignees: [{ name: 'Alice Chen' }, { name: 'Carol Diaz' }], order: 0 },
+    { id: 'card-4', columnId: 'review', title: 'Accessibility audit', description: 'Check contrast, focus order and screen reader names.', priority: 'low', labels: [{ text: 'A11y', color: '#f97316' }], assignees: [{ name: 'Bob Martin' }], order: 0 },
+    { id: 'card-5', columnId: 'done', title: 'Release v1.8.0', priority: 'medium', labels: [{ text: 'Release', color: '#8b5cf6' }], order: 0 },
+  ];
+  board.columns = columns;
+  board.cards = cards;
+  globalThis.geKanbanWire(board);
+})();</script>`,
+            },
+            {
+                title: 'Swimlanes by a property',
+                note: '`swimlane-by="assignee"` adds a second axis. Each lane collapses on its own, and because the grouping is a property name, dragging a card into another lane rewrites that field.',
+                html: `<div style="overflow:auto;border:1px solid var(--border);border-radius:calc(var(--radius) + 4px)">
+  <ge-kanban id="kb5" swimlane-by="assignee"></ge-kanban>
+</div>
+<script>(() => {
+  const board = document.getElementById('kb5');
+  const columns = [
+    { id: 'backlog', title: 'Backlog', order: 0 },
+    { id: 'in-progress', title: 'In Progress', order: 1 },
+    { id: 'review', title: 'In Review', order: 2 },
+    { id: 'done', title: 'Done', order: 3 },
+  ];
+  const cards = [
+    { id: 'card-1', columnId: 'backlog', title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment.', priority: 'high', labels: [{ text: 'DevOps', color: '#6366f1' }], assignees: [{ name: 'Alice Chen' }], order: 0 },
+    { id: 'card-2', columnId: 'backlog', title: 'Design token refresh', description: 'Update color palette and spacing tokens to match the new brand guidelines.', priority: 'medium', labels: [{ text: 'Design', color: '#ec4899' }], assignees: [{ name: 'Bob Martin' }], order: 1 },
+    { id: 'card-3', columnId: 'in-progress', title: 'Implement Kanban board', description: 'Drag and drop, context menus and undo.', priority: 'urgent', labels: [{ text: 'Feature', color: '#22c55e' }, { text: 'UI', color: '#3b82f6' }], assignees: [{ name: 'Alice Chen' }, { name: 'Carol Diaz' }], order: 0 },
+    { id: 'card-4', columnId: 'review', title: 'Accessibility audit', description: 'Check contrast, focus order and screen reader names.', priority: 'low', labels: [{ text: 'A11y', color: '#f97316' }], assignees: [{ name: 'Bob Martin' }], order: 0 },
+    { id: 'card-5', columnId: 'done', title: 'Release v1.8.0', priority: 'medium', labels: [{ text: 'Release', color: '#8b5cf6' }], order: 0 },
+  ];
+  board.columns = columns;
+  board.cards = cards.map((c) => ({ ...c, assignee: c.assignees?.[0]?.name ?? '' }));
+  globalThis.geKanbanWire(board);
+})();</script>`,
+            },
+            {
+                title: 'Swimlanes derived by a function',
+                note: 'Set `swimlaneBy` to a function to group by anything. A derived lane cannot be inverted, so a cross-lane drop only changes the column and reports `toSwimlaneId` for you to act on. `swimlaneLabel` names a lane and `initiallyCollapsedSwimlanes` starts some closed.',
+                html: `<div style="overflow:auto;border:1px solid var(--border);border-radius:calc(var(--radius) + 4px)">
+  <ge-kanban id="kb6"></ge-kanban>
+</div>
+<script>(() => {
+  const board = document.getElementById('kb6');
+  const columns = [
+    { id: 'backlog', title: 'Backlog', order: 0 },
+    { id: 'in-progress', title: 'In Progress', order: 1 },
+    { id: 'review', title: 'In Review', order: 2 },
+    { id: 'done', title: 'Done', order: 3 },
+  ];
+  const cards = [
+    { id: 'card-1', columnId: 'backlog', title: 'Set up CI/CD pipeline', description: 'Configure GitHub Actions for automated testing and deployment.', priority: 'high', labels: [{ text: 'DevOps', color: '#6366f1' }], assignees: [{ name: 'Alice Chen' }], order: 0 },
+    { id: 'card-2', columnId: 'backlog', title: 'Design token refresh', description: 'Update color palette and spacing tokens to match the new brand guidelines.', priority: 'medium', labels: [{ text: 'Design', color: '#ec4899' }], assignees: [{ name: 'Bob Martin' }], order: 1 },
+    { id: 'card-3', columnId: 'in-progress', title: 'Implement Kanban board', description: 'Drag and drop, context menus and undo.', priority: 'urgent', labels: [{ text: 'Feature', color: '#22c55e' }, { text: 'UI', color: '#3b82f6' }], assignees: [{ name: 'Alice Chen' }, { name: 'Carol Diaz' }], order: 0 },
+    { id: 'card-4', columnId: 'review', title: 'Accessibility audit', description: 'Check contrast, focus order and screen reader names.', priority: 'low', labels: [{ text: 'A11y', color: '#f97316' }], assignees: [{ name: 'Bob Martin' }], order: 0 },
+    { id: 'card-5', columnId: 'done', title: 'Release v1.8.0', priority: 'medium', labels: [{ text: 'Release', color: '#8b5cf6' }], order: 0 },
+  ];
+  board.columns = columns;
+  board.cards = cards;
+  board.swimlaneBy = (card) => card.priority ?? '';
+  board.swimlaneLabel = (id) => (id === '' ? 'No priority' : id.toUpperCase());
+  board.initiallyCollapsedSwimlanes = ['low'];
+  globalThis.geKanbanWire(board);
+})();</script>`,
+            },
+            {
+                title: 'Custom mode',
+                note: 'Place `ge-kanban-column`s yourself, with your own `ge-kanban-column-header` and `ge-kanban-card` children holding a `ge-kanban-card-content`. The board still gives you the menus, undo and drag coordination; set `cards` so drops know what they move.',
+                html: `<div style="overflow:auto;border:1px solid var(--border);border-radius:calc(var(--radius) + 4px)">
+  <ge-kanban id="kb7">
+    <ge-kanban-column column-id="todo" collapsible="false">
+      <ge-kanban-column-header>
+        <div style="display:flex;align-items:center;gap:.5rem;width:100%"><span style="width:.5rem;height:.5rem;border-radius:9999px;background:var(--muted-foreground)"></span><h3 style="margin:0;font-size:.875rem">To Do</h3></div>
+      </ge-kanban-column-header>
+      <ge-kanban-card card-id="c1"><ge-kanban-card-content><p style="margin:0;font-size:.875rem;font-weight:600">Competitor analysis report</p><p style="margin:.25rem 0 0;font-size:.75rem;color:var(--muted-foreground)">Evaluate the top five and summarize.</p></ge-kanban-card-content></ge-kanban-card>
+      <ge-kanban-card card-id="c2"><ge-kanban-card-content><p style="margin:0;font-size:.875rem;font-weight:600">Q2 roadmap planning</p></ge-kanban-card-content></ge-kanban-card>
+    </ge-kanban-column>
+    <ge-kanban-column column-id="active" collapsible="false">
+      <ge-kanban-column-header>
+        <div style="display:flex;align-items:center;gap:.5rem;width:100%"><span style="width:.5rem;height:.5rem;border-radius:9999px;background:var(--primary)"></span><h3 style="margin:0;font-size:.875rem">Active</h3></div>
+      </ge-kanban-column-header>
+      <ge-kanban-card card-id="c3"><ge-kanban-card-content><p style="margin:0;font-size:.875rem;font-weight:600">Fix production memory leak</p></ge-kanban-card-content></ge-kanban-card>
+    </ge-kanban-column>
+  </ge-kanban>
+</div>
+<script>(() => {
+  const board = document.getElementById('kb7');
+  board.cards = [
+    { id: 'c1', columnId: 'todo', title: 'Competitor analysis report', order: 0 },
+    { id: 'c2', columnId: 'todo', title: 'Q2 roadmap planning', order: 1 },
+    { id: 'c3', columnId: 'active', title: 'Fix production memory leak', order: 0 },
+  ];
+  board.addEventListener('card-moved', (event) => console.log('card moved', event.detail));
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'columns', type: 'KanbanColumn[]', default: '[]', description: '`{ id, title, wipLimit?, order }`, in any order; the board sorts by `order`. Ignored when `ge-kanban-column` children are placed by hand.' },
+            { name: 'cards', type: 'KanbanCard[]', default: '[]', description: '`{ id, columnId, title, description?, priority?, labels?, assignees?, order }`. The board never mutates it: apply the events.' },
+            { name: 'search-term', type: 'string', default: "''", description: 'Case-insensitive filter over title, description and label text. Hidden cards drop out of the count and so out of the WIP check.' },
+            { name: 'swimlane-by', type: 'string | (card) => string', default: 'null', description: 'Groups cards into lanes. A property name lets a cross-lane drop rewrite it; a function derives the lane and cannot be inverted.' },
+            { name: 'swimlaneLabel / initiallyCollapsedSwimlanes', type: 'function / string[]', default: 'none', description: 'Lane headings (the empty lane is "Unassigned"), and lanes closed on first render.' },
+            { name: 'have-labels / have-assignees', type: 'boolean', default: 'true', description: 'Show the label and assignee editors in the card dialog; `="false"` hides them.' },
+            { name: 'assigneeOptions', type: '{ name, avatar? }[]', default: '[]', description: 'Known assignees; with any, the dialog field is a multi-select that keeps their avatars.' },
+            { name: 'locale', type: 'string | KanbanLocale', default: "''", description: 'Locale id or object; defaults to the page `lang`, then `en`. A right-to-left locale mirrors the board.' },
+            { name: 'cards-change / columns-change', type: 'event', default: '-', description: '`detail` is the next array, after a move, delete, column move, undo or redo.' },
+            { name: 'card-moved', type: 'event', default: '-', description: '`detail` is `{ cardId, fromColumnId, toColumnId, newOrder }`, plus `fromSwimlaneId` and `toSwimlaneId` with lanes.' },
+            { name: 'card-added / card-updated / card-deleted', type: 'event', default: '-', description: 'Added: the data without an `id`. Updated: the whole card. Deleted: the id, once the six-second undo toast has ended.' },
+            { name: 'column-added / column-updated / column-deleted', type: 'event', default: '-', description: 'Added: no `id`. Updated: the whole column. Deleted: `{ columnId, moveCardsTo? }`; you remove it and move or drop its cards.' },
+            { name: 'history-change', type: 'event', default: '-', description: '`detail` is `{ canUndo, canRedo }`; drive your own buttons with `undo()` and `redo()`.' },
+            { name: 'undo() / redo()', type: 'method', default: '-', description: 'Fifty steps. Also Mod+Z and Mod+Shift+Z, except while typing in a field.' },
+            { name: 'showCardContextMenu(x, y, card)', type: 'method', default: '-', description: 'Opens the card menu from your own trigger, such as a kebab button.' },
+            { name: 'ge-kanban-column', type: 'element', default: '-', description: '`column-id`, `heading`, `wip-limit`, `collapsible`, `swimlane-id`; slots `header` and the default (cards).' },
+            { name: 'ge-kanban-card', type: 'element', default: '-', description: '`card` (or `card-id`); project a `ge-kanban-card-content` for your own layout.' },
+        ],
+    },
 ];
