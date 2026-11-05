@@ -26,6 +26,14 @@ export abstract class GeActivator<Host> extends UiElement {
     protected abstract readonly registerEvent: string;
     protected abstract readonly slotName: string;
     protected abstract activate(): void;
+    /** An accessible name for the wrapper while it is the button; a projected control carries its own. */
+    protected accessibleName(): string | undefined {
+        return undefined;
+    }
+    /** Mirrored as `data-state` on the wrapper, for a subclass that styles on it. */
+    protected stateName(): string | undefined {
+        return undefined;
+    }
 
     constructor() {
         super();
@@ -49,6 +57,8 @@ export abstract class GeActivator<Host> extends UiElement {
             data-slot=${this.slotName}
             role=${owns ? 'button' : nothing}
             tabindex=${owns ? '0' : nothing}
+            aria-label=${(owns && this.accessibleName()) || nothing}
+            data-state=${this.stateName() ?? nothing}
             @click=${this.onClick}
             @keydown=${this.onKeydown}
             ><slot @slotchange=${this.onSlotChange}></slot

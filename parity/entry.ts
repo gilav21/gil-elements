@@ -66,3 +66,6 @@ import '../packages/elements/src/tree/define.js';
 import '../packages/elements/src/sidebar/define.js';
 import '../packages/elements/src/eyedropper/define.js';
 import '../packages/elements/src/color-picker/define.js';
+import '../packages/elements/src/code-block/define.js';
+import '../packages/elements/src/speed-dial/define.js';
+import '../packages/elements/src/dock/define.js';

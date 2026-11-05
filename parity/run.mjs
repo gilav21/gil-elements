@@ -163,6 +163,15 @@ for (const theme of ['light', 'dark']) {
                 for (const target of document.querySelectorAll('ge-color-picker[data-fallback]')) target.fallbackTarget = document.createElement('canvas');
                 for (const target of document.querySelectorAll('ge-color-picker[data-recents]')) target.recentColors = JSON.parse(target.dataset.recents);
                 for (const target of document.querySelectorAll('ge-color-picker[data-extracted]')) target.extractedPalette = JSON.parse(target.dataset.extracted);
+                // `data-copied` shows a code block just after a copy; `data-theme-json` is its `theme`.
+                for (const target of document.querySelectorAll('ge-code-block[data-copied]')) target.copied = true;
+                for (const target of document.querySelectorAll('ge-code-block[data-theme-json]')) target.theme = JSON.parse(target.dataset.themeJson);
+                // `data-opened` shows a speed dial open; its items animate out, so wait for them to land.
+                for (const target of document.querySelectorAll('ge-speed-dial[data-opened]')) target.show();
+                await Promise.all([...document.querySelectorAll('ge-speed-dial[data-opened]')].map((t) => t.updateComplete));
+                await Promise.all(document.getAnimations().map((a) => a.finished));
+                // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
+                for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
                 // `data-picking` on an eyedropper shows it mid-pick, the way a pick in progress would.
                 for (const target of document.querySelectorAll('ge-eyedropper[data-picking]')) target.picking = true;
                 // `data-collapsed` on a sidebar provider shows the desktop rail collapsed, the way a remembered flag would.

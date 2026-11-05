@@ -697,6 +697,36 @@
       "types": "./dist/color-picker/define.d.ts",
       "development": "./src/color-picker/define.ts",
       "default": "./dist/color-picker/define.js"
+    },
+    "./code-block": {
+      "types": "./dist/code-block/index.d.ts",
+      "development": "./src/code-block/index.ts",
+      "default": "./dist/code-block/index.js"
+    },
+    "./code-block/define": {
+      "types": "./dist/code-block/define.d.ts",
+      "development": "./src/code-block/define.ts",
+      "default": "./dist/code-block/define.js"
+    },
+    "./speed-dial": {
+      "types": "./dist/speed-dial/index.d.ts",
+      "development": "./src/speed-dial/index.ts",
+      "default": "./dist/speed-dial/index.js"
+    },
+    "./speed-dial/define": {
+      "types": "./dist/speed-dial/define.d.ts",
+      "development": "./src/speed-dial/define.ts",
+      "default": "./dist/speed-dial/define.js"
+    },
+    "./dock": {
+      "types": "./dist/dock/index.d.ts",
+      "development": "./src/dock/index.ts",
+      "default": "./dist/dock/index.js"
+    },
+    "./dock/define": {
+      "types": "./dist/dock/define.d.ts",
+      "development": "./src/dock/define.ts",
+      "default": "./dist/dock/define.js"
     }
   },
   "scripts": {

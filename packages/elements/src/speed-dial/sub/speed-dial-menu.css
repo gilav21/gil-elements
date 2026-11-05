@@ -1,0 +1,78 @@
+/* shadcn-angular speed-dial-menu: the host draws nothing; the inner group is the box, placed from the dial's type and direction. */
+:host {
+    display: contents;
+}
+.menu[data-closed] {
+    pointer-events: none;
+}
+/* Anchored to the trigger. */
+.menu[data-type='linear']:not([data-fixed]) {
+    position: absolute;
+    display: flex;
+    gap: 0.5rem;
+}
+.menu[data-type='linear'][data-dir='up']:not([data-fixed]) {
+    bottom: 100%;
+    left: 50%;
+    translate: -50% 0;
+    margin-bottom: 0.5rem;
+    flex-direction: column-reverse;
+}
+.menu[data-type='linear'][data-dir='down']:not([data-fixed]) {
+    top: 100%;
+    left: 50%;
+    translate: -50% 0;
+    margin-top: 0.5rem;
+    flex-direction: column;
+}
+.menu[data-type='linear'][data-dir='left']:not([data-fixed]) {
+    right: 100%;
+    top: 50%;
+    translate: 0 -50%;
+    margin-right: 0.5rem;
+    flex-direction: row-reverse;
+    max-width: calc(100vw - 2rem);
+}
+.menu[data-type='linear'][data-dir='right']:not([data-fixed]) {
+    left: 100%;
+    top: 50%;
+    translate: 0 -50%;
+    margin-left: 0.5rem;
+    flex-direction: row;
+    max-width: calc(100vw - 2rem);
+}
+.menu:not([data-type='linear']):not([data-fixed]) {
+    position: absolute;
+    inset: 0;
+}
+/* Opened at a point: fixed at viewport coordinates. Only the straight directions lay a linear menu out. */
+.menu[data-fixed] {
+    position: fixed;
+    z-index: 50;
+}
+.menu[data-fixed][data-type='linear'] {
+    display: flex;
+    gap: 0.5rem;
+}
+.menu[data-fixed][data-type='linear'][data-dir='up'] {
+    flex-direction: column-reverse;
+    translate: -50% -100%;
+    margin-top: -8px;
+}
+.menu[data-fixed][data-type='linear'][data-dir='down'] {
+    flex-direction: column;
+    translate: -50% 0;
+    margin-top: 0.5rem;
+}
+.menu[data-fixed][data-type='linear'][data-dir='left'] {
+    flex-direction: row-reverse;
+    max-width: calc(100vw - 2rem);
+    translate: -100% -50%;
+    margin-right: 0.5rem;
+}
+.menu[data-fixed][data-type='linear'][data-dir='right'] {
+    flex-direction: row;
+    max-width: calc(100vw - 2rem);
+    translate: 0 -50%;
+    margin-left: 0.5rem;
+}

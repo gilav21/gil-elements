@@ -66,3 +66,6 @@ export * from './tree/index.js';
 export * from './sidebar/index.js';
 export * from './eyedropper/index.js';
 export * from './color-picker/index.js';
+export * from './code-block/index.js';
+export * from './speed-dial/index.js';
+export * from './dock/index.js';
