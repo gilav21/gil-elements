@@ -4,7 +4,7 @@ import {
     nearestPoint2D,
     getClientPoint,
     pointerToSvg,
-} from './chart-interaction.js.js';
+} from './chart-interaction.js';
 
 describe('nearestPointX', () => {
     const points = [

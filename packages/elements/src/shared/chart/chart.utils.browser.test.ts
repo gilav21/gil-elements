@@ -10,7 +10,7 @@ import {
     getDataRange,
     describeArc,
     positiveOrZero,
-} from './chart.utils.js.js';
+} from './chart.utils.js';
 
 /** Seeded PRNG (mulberry32) so a failing property prints a reproducible input. */
 function mulberry32(seed: number): () => number {

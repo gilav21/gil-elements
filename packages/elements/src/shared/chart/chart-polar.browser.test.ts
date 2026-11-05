@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { radarPoint, polygonPath } from './chart-polar.js.js';
+import { radarPoint, polygonPath } from './chart-polar.js';
 
 describe('radarPoint', () => {
     it('places the first axis straight up from the center', () => {

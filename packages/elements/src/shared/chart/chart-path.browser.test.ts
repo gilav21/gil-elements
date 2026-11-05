@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { linePath, areaPath, bandAreaPath, stackSeries } from './chart-path.js.js';
-import type { ChartSeries } from './chart.types.js.js';
+import { linePath, areaPath, bandAreaPath, stackSeries } from './chart-path.js';
+import type { ChartSeries } from './chart.types.js';
 
 describe('linePath', () => {
     it('returns an empty string for no points', () => {
