@@ -141,6 +141,8 @@ export default defineConfig({
                 'sidebar/define': 'src/sidebar/define.ts',
                 'eyedropper/index': 'src/eyedropper/index.ts',
                 'eyedropper/define': 'src/eyedropper/define.ts',
+                'color-picker/index': 'src/color-picker/index.ts',
+                'color-picker/define': 'src/color-picker/define.ts',
             },
             formats: ['es'],
         },

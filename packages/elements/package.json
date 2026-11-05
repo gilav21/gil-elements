@@ -687,6 +687,16 @@
       "types": "./dist/eyedropper/define.d.ts",
       "development": "./src/eyedropper/define.ts",
       "default": "./dist/eyedropper/define.js"
+    },
+    "./color-picker": {
+      "types": "./dist/color-picker/index.d.ts",
+      "development": "./src/color-picker/index.ts",
+      "default": "./dist/color-picker/index.js"
+    },
+    "./color-picker/define": {
+      "types": "./dist/color-picker/define.d.ts",
+      "development": "./src/color-picker/define.ts",
+      "default": "./dist/color-picker/define.js"
     }
   },
   "scripts": {

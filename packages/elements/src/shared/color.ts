@@ -17,6 +17,11 @@ export interface HSL {
     s: number;
     l: number;
 }
+export interface HSV {
+    h: number;
+    s: number;
+    v: number;
+}
 export interface OKLCH {
     /** 0..1 perceptual lightness */
     l: number;
@@ -293,4 +298,171 @@ export function readableForeground(background: string, backdrop = '#ffffff'): '#
 function compositeOver(fg: RGBA, backdrop: RGB): RGB {
     const over = (f: number, b: number): number => f * fg.a + b * (1 - fg.a);
     return { r: over(fg.r, backdrop.r), g: over(fg.g, backdrop.g), b: over(fg.b, backdrop.b) };
+}
+
+function roundTo(v: number, places: number): number {
+    const f = 10 ** places;
+    return Math.round(v * f) / f;
+}
+
+/** Format as `rgb(...)` or `rgba(...)` depending on alpha. */
+export function formatRgb(c: RGBA): string {
+    const r = clamp255(c.r);
+    const g = clamp255(c.g);
+    const b = clamp255(c.b);
+    const a = clamp01(c.a);
+    if (a >= 1) return `rgb(${r}, ${g}, ${b})`;
+    return `rgba(${r}, ${g}, ${b}, ${roundTo(a, 3)})`;
+}
+
+/** Format as `hsl(...)` or `hsla(...)` depending on alpha. */
+export function formatHsl(c: RGBA): string {
+    const hsl = rgbToHsl(c);
+    const h = Math.round(hsl.h);
+    const s = Math.round(hsl.s);
+    const l = Math.round(hsl.l);
+    const a = clamp01(c.a);
+    if (a >= 1) return `hsl(${h}, ${s}%, ${l}%)`;
+    return `hsla(${h}, ${s}%, ${l}%, ${roundTo(a, 3)})`;
+}
+
+/** Format as `oklch(L% C H)` with CSS Color 4 syntax. */
+export function formatOklch(c: RGBA): string {
+    const o = rgbToOklch(c);
+    const l = roundTo(o.l * 100, 1);
+    const ch = roundTo(o.c, 3);
+    const h = roundTo(o.h, 1);
+    const a = clamp01(c.a);
+    if (a >= 1) return `oklch(${l}% ${ch} ${h})`;
+    return `oklch(${l}% ${ch} ${h} / ${roundTo(a, 3)})`;
+}
+
+export function rgbToHsl(c: RGB): HSL {
+    const exact = rgbToHslExact(c);
+    return { h: Math.round(exact.h), s: Math.round(exact.s), l: Math.round(exact.l) };
+}
+
+/**
+ * {@link rgbToHsl} without rounding (h in degrees, s and l in percent), for
+ * callers that interpolate: rounding to whole degrees first would add up to
+ * half a degree of hue error at each endpoint.
+ */
+export function rgbToHslExact(c: RGB): HSL {
+    const r = c.r / 255;
+    const g = c.g / 255;
+    const b = c.b / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    let h = 0;
+    let s = 0;
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        h = hueFromMaxChannel(r, g, b, max, d);
+    }
+    return { h: h * 360, s: s * 100, l: l * 100 };
+}
+
+function hueFromMaxChannel(r: number, g: number, b: number, max: number, d: number): number {
+    if (max === r) return (((g - b) / d) + (g < b ? 6 : 0)) / 6;
+    if (max === g) return (((b - r) / d) + 2) / 6;
+    return (((r - g) / d) + 4) / 6;
+}
+
+export function rgbToHsv(c: RGB): HSV {
+    const r = c.r / 255;
+    const g = c.g / 255;
+    const b = c.b / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const d = max - min;
+    let h = 0;
+    if (d !== 0) {
+        h = hueFromMaxChannel(r, g, b, max, d);
+    }
+    const s = max === 0 ? 0 : d / max;
+    return { h: Math.round(h * 360), s: Math.round(s * 100), v: Math.round(max * 100) };
+}
+
+export function hsvToRgb(c: HSV): RGB {
+    const h = ((c.h % 360) + 360) % 360 / 360;
+    const s = clamp01(c.s / 100);
+    const v = clamp01(c.v / 100);
+    const i = Math.floor(h * 6);
+    const f = h * 6 - i;
+    const p = v * (1 - s);
+    const q = v * (1 - f * s);
+    const t = v * (1 - (1 - f) * s);
+    const channels = pickHsvChannels(i % 6, v, p, q, t);
+    return {
+        r: Math.round(channels[0] * 255),
+        g: Math.round(channels[1] * 255),
+        b: Math.round(channels[2] * 255),
+    };
+}
+
+function pickHsvChannels(sector: number, v: number, p: number, q: number, t: number): [number, number, number] {
+    switch (sector) {
+        case 0: return [v, t, p];
+        case 1: return [q, v, p];
+        case 2: return [p, v, t];
+        case 3: return [p, q, v];
+        case 4: return [t, p, v];
+        default: return [v, p, q];
+    }
+}
+
+/**
+ * Convert sRGB to OKLCH via Björn Ottosson's OKLab.
+ * Reference: https://bottosson.github.io/posts/oklab/
+ */
+export function rgbToOklch(c: RGB): OKLCH {
+    const r = srgbToLinear(c.r);
+    const g = srgbToLinear(c.g);
+    const b = srgbToLinear(c.b);
+
+    const l = 0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b;
+    const m = 0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b;
+    const s = 0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b;
+
+    const lp = Math.cbrt(l);
+    const mp = Math.cbrt(m);
+    const sp = Math.cbrt(s);
+
+    const L = 0.2104542553 * lp + 0.793617785 * mp - 0.0040720468 * sp;
+    const A = 1.9779984951 * lp - 2.428592205 * mp + 0.4505937099 * sp;
+    const B = 0.0259040371 * lp + 0.7827717662 * mp - 0.808675766 * sp;
+
+    const C = Math.hypot(A, B);
+    let H = (Math.atan2(B, A) * 180) / Math.PI;
+    if (H < 0) H += 360;
+    return { l: L, c: C, h: H };
+}
+
+function rotateHue(c: RGBA, deltaDeg: number): RGBA {
+    const hsl = rgbToHsl(c);
+    const rotated: HSL = { h: (hsl.h + deltaDeg + 360) % 360, s: hsl.s, l: hsl.l };
+    const rgb = hslToRgb(rotated);
+    return { ...rgb, a: c.a };
+}
+
+/** Two-color palette: original + 180° rotation. */
+export function harmonyComplementary(c: RGBA): RGBA[] {
+    return [c, rotateHue(c, 180)];
+}
+
+/** Three-color palette: original ±30°. */
+export function harmonyAnalogous(c: RGBA): RGBA[] {
+    return [rotateHue(c, -30), c, rotateHue(c, 30)];
+}
+
+/** Three-color palette: original + 120° + 240°. */
+export function harmonyTriadic(c: RGBA): RGBA[] {
+    return [c, rotateHue(c, 120), rotateHue(c, 240)];
+}
+
+/** Four-color palette: original + 90° + 180° + 270°. */
+export function harmonyTetradic(c: RGBA): RGBA[] {
+    return [c, rotateHue(c, 90), rotateHue(c, 180), rotateHue(c, 270)];
 }

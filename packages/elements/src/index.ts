@@ -65,3 +65,4 @@ export * from './toast/index.js';
 export * from './tree/index.js';
 export * from './sidebar/index.js';
 export * from './eyedropper/index.js';
+export * from './color-picker/index.js';

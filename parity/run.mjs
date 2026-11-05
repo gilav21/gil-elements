@@ -159,6 +159,10 @@ for (const theme of ['light', 'dark']) {
                 await Promise.all([...document.querySelectorAll('*')].filter((e) => e.updateComplete).map((e) => e.updateComplete));
                 // `data-fallback` gives an eyedropper something to sample, since the headless browser has no native picker.
                 for (const target of document.querySelectorAll('ge-eyedropper[data-fallback]')) target.fallbackTarget = document.createElement('canvas');
+                // `data-fallback` on a colour picker gives its eyedropper something to sample; `data-recents` and `data-extracted` are the JSON recents and image palette it shows.
+                for (const target of document.querySelectorAll('ge-color-picker[data-fallback]')) target.fallbackTarget = document.createElement('canvas');
+                for (const target of document.querySelectorAll('ge-color-picker[data-recents]')) target.recentColors = JSON.parse(target.dataset.recents);
+                for (const target of document.querySelectorAll('ge-color-picker[data-extracted]')) target.extractedPalette = JSON.parse(target.dataset.extracted);
                 // `data-picking` on an eyedropper shows it mid-pick, the way a pick in progress would.
                 for (const target of document.querySelectorAll('ge-eyedropper[data-picking]')) target.picking = true;
                 // `data-collapsed` on a sidebar provider shows the desktop rail collapsed, the way a remembered flag would.

@@ -65,3 +65,4 @@ import '../packages/elements/src/toast/define.js';
 import '../packages/elements/src/tree/define.js';
 import '../packages/elements/src/sidebar/define.js';
 import '../packages/elements/src/eyedropper/define.js';
+import '../packages/elements/src/color-picker/define.js';

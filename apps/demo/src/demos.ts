@@ -3774,4 +3774,81 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'color-pick / pick-start / pick-cancel', type: 'event', default: '-', description: '`color-pick` carries the hex string in `detail`. `pick-start` fires first; a session ends with exactly one of `color-pick` or `pick-cancel` (dismissed, Escape, or a click outside the target).' },
         ],
     },
+    {
+        id: 'color-picker',
+        group: 'Rung 3 · Interactive',
+        name: 'Color Picker',
+        tag: 'ge-color-picker',
+        description: 'A popover colour picker with saturation/value area, hue and alpha sliders, per-format editing, presets, recents, image palette extraction, harmonies and a WCAG contrast checker.',
+        examples: [
+            {
+                title: 'Default with presets',
+                html: `<div style="display:flex;align-items:center;gap:1rem">
+  <ge-color-picker id="cp-basic" style="width:12rem" value="#3b82f6" presets='["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899"]'></ge-color-picker>
+  <span style="display:flex;align-items:center;gap:.5rem"><span id="cp-basic-swatch" style="width:2rem;height:2rem;border-radius:.25rem;border:1px solid var(--border);background:#3b82f6"></span><code id="cp-basic-hex">#3b82f6</code></span>
+</div>
+<script>(() => {
+  const el = document.getElementById('cp-basic');
+  el.addEventListener('color-change', () => {
+    document.getElementById('cp-basic-swatch').style.background = el.value;
+    document.getElementById('cp-basic-hex').textContent = el.value;
+  });
+})();</script>`,
+            },
+            {
+                title: 'With alpha',
+                html: `<ge-color-picker style="width:12rem" alpha value="#3b82f6cc"></ge-color-picker>`,
+            },
+            {
+                title: 'Eyedropper and image pick',
+                note: 'The eyedropper uses the browser picker where it exists. Image pick extracts a palette from an uploaded picture.',
+                html: `<ge-color-picker style="width:12rem" enable-image-pick image-extract-count="6" value="#22c55e"></ge-color-picker>`,
+            },
+            {
+                title: 'Harmonies and contrast',
+                html: `<ge-color-picker style="width:12rem" show-harmonies show-contrast contrast-background="#ffffff" value="#fbbf24"></ge-color-picker>`,
+            },
+            {
+                title: 'OKLCH tab and persisted recents',
+                note: 'Recents are stored in localStorage under `storage-key`.',
+                html: `<ge-color-picker style="width:12rem" formats="hex rgb hsl oklch" storage-key="demo-recents" value="#ec4899"></ge-color-picker>`,
+            },
+            {
+                title: 'Programmatic write',
+                note: 'Setting `value` from code does not fire `color-change`, so the dirty flag only flips on a user pick.',
+                html: `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:1rem">
+  <ge-color-picker id="cp-prog" style="width:12rem" value="#0ea5e9"></ge-color-picker>
+  <ge-button id="cp-prog-btn" variant="outline" size="sm">Set programmatically</ge-button>
+  <code id="cp-prog-state">dirty: no</code>
+</div>
+<script>(() => {
+  const el = document.getElementById('cp-prog');
+  const state = document.getElementById('cp-prog-state');
+  el.addEventListener('color-change', () => { state.textContent = 'dirty: yes'; });
+  document.getElementById('cp-prog-btn').addEventListener('click', () => { el.value = '#8b5cf6'; });
+})();</script>`,
+            },
+            {
+                title: 'Inline panel',
+                html: `<ge-color-picker inline value="#8b5cf6"></ge-color-picker>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string', default: "'#000000'", description: 'Current colour, always normalised to hex (`#rrggbb`, or `#rrggbbaa` with `alpha`). Writing it from code does not fire `color-change`.' },
+            { name: 'name', type: 'string', default: '-', description: 'Form field name; the hex is submitted with the form.' },
+            { name: 'presets', type: 'string[]', default: '[]', description: 'Swatches shown in the panel. As an attribute, a JSON array.' },
+            { name: 'inline', type: 'boolean', default: 'false', description: 'Renders the panel in place with no trigger or popover.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks opening and editing.' },
+            { name: 'alpha', type: 'boolean', default: 'false', description: 'Adds the alpha slider and field.' },
+            { name: 'show-recent / max-recent / storage-key', type: 'boolean / number / string', default: 'true / 8 / -', description: 'Recent colours row. With `storage-key` the list is persisted in localStorage; `recent-colors-change` fires on change.' },
+            { name: 'enable-eyedropper / fallback-target', type: 'boolean / element', default: 'true / null', description: 'Shows a ge-eyedropper in the toolbar; `fallbackTarget` (property) is forwarded for browsers without a native picker.' },
+            { name: 'enable-image-pick / image-extract-algorithm / image-extract-count', type: 'boolean / string / number', default: "false / 'median-cut' / 6", description: 'Pick a file and extract its dominant colours (`median-cut` or `k-means`).' },
+            { name: 'show-harmonies', type: 'boolean', default: 'false', description: 'Complementary, analogous, triadic and other harmony swatches for the current colour.' },
+            { name: 'show-contrast / contrast-background', type: 'boolean / string', default: "false / '#ffffff'", description: 'WCAG ratio against a background with AA/AAA badges.' },
+            { name: 'formats', type: 'string', default: "'hex rgb hsl'", description: 'Space-separated list of editing tabs; add `oklch` for the OKLCH tab.' },
+            { name: 'locale', type: 'string', default: "page lang, then 'en'", description: 'Language of the built-in labels.' },
+            { name: 'slot trigger', type: 'slot', default: '-', description: 'Replaces the default trigger button; the part `trigger` styles the default.' },
+            { name: 'color-change / recent-colors-change', type: 'event', default: '-', description: '`color-change` fires on user changes only, with the new hex in `detail`.' },
+        ],
+    },
 ];
