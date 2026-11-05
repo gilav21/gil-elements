@@ -4033,4 +4033,95 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: '::part(base)', type: 'css part', default: '-', description: 'On `ge-dock`, the bar (set a height, margin or background here).' },
         ],
     },
+    {
+        id: 'file-upload',
+        group: 'Rung 3 · Interactive',
+        name: 'File upload',
+        tag: 'ge-file-upload',
+        description: 'A dropzone that validates and queues files, and can crop images first. It never transfers anything: upload on `file-added` and report back with `updateFileProgress`.',
+        examples: [
+            {
+                title: 'Images and PDFs, up to five',
+                note: '`accept` takes native syntax (extensions, `image/*`, exact MIME) and is re-checked on drop. `max-size` is in bytes and appears in the caption.',
+                html: `<div style="max-width:28rem"><ge-file-upload accept="image/*,.pdf" max-files="5" max-size="5242880"></ge-file-upload></div>`,
+            },
+            {
+                title: 'A cap, and the refusals',
+                note: 'Refused files never enter the queue and nothing renders them, so listen to `file-error` yourself.',
+                html: `<div style="max-width:28rem;display:flex;flex-direction:column;gap:.5rem"><ge-file-upload id="fu1" max-files="2"></ge-file-upload><p style="margin:0;font-size:.875rem;color:var(--muted-foreground)">At most two files; drop three to see one refused.</p><p style="margin:0;font-size:.875rem;font-weight:500">Refused files</p><ul id="fu1-out" style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.25rem;font-size:.875rem;color:var(--destructive)"></ul><p id="fu1-none" style="margin:0;font-size:.875rem;color:var(--muted-foreground)">None yet.</p></div>
+<script>(() => {
+  const list = document.getElementById('fu1-out');
+  const none = document.getElementById('fu1-none');
+  document.getElementById('fu1').addEventListener('file-error', (event) => {
+    none.hidden = true;
+    const li = document.createElement('li');
+    li.textContent = event.detail.file.name + ' — ' + event.detail.error;
+    list.prepend(li);
+    while (list.children.length > 5) list.lastChild.remove();
+  });
+})();</script>`,
+            },
+            {
+                title: 'Crop images first',
+                note: '`crop-images` holds each image in an inline crop step; `crop-aspect="1"` locks it square. Drag the box or its corner, or use the arrows and +/-. Non-images skip the step.',
+                html: `<div style="max-width:28rem"><ge-file-upload crop-images crop-aspect="1" accept="image/*"></ge-file-upload></div>`,
+            },
+            {
+                title: 'Reporting upload progress',
+                note: 'The component queues; you transfer. Each queued item has an `id` to pass to `updateFileProgress` (0-99 uploading, 100 complete) and `setFileError`. This demo fakes the transfer.',
+                html: `<div style="max-width:28rem"><ge-file-upload id="fu2"></ge-file-upload></div>
+<script>(() => {
+  const el = document.getElementById('fu2');
+  el.addEventListener('file-added', (event) => {
+    const item = event.detail;
+    let progress = 0;
+    const timer = setInterval(() => {
+      progress += 10;
+      if (item.file.name.includes('fail') && progress >= 50) {
+        clearInterval(timer);
+        el.setFileError(item.id, 'Upload failed: server refused the file');
+        return;
+      }
+      el.updateFileProgress(item.id, Math.min(progress, 100));
+      if (progress >= 100) clearInterval(timer);
+    }, 250);
+  });
+})();</script>`,
+            },
+            {
+                title: 'Folders and a single file',
+                note: '`allow-directories` accepts dropped folders (walked recursively) and puts the picker in folder mode. `multiple="false"` limits one picker selection to a single file.',
+                html: `<div style="max-width:28rem;display:flex;flex-direction:column;gap:1rem"><ge-file-upload allow-directories></ge-file-upload><ge-file-upload multiple="false" max-files="1"></ge-file-upload></div>`,
+            },
+            {
+                title: 'Hebrew (RTL)',
+                note: '`locale` is an id or a dictionary object; the layout follows its direction.',
+                html: `<div style="max-width:28rem"><ge-file-upload locale="he" max-size="10485760"></ge-file-upload></div>`,
+            },
+        ],
+        api: [
+            { name: 'accept', type: 'string', default: "''", description: 'Comma-separated filter in native `accept` syntax; rejected files fire `file-error` only.' },
+            { name: 'multiple', type: 'boolean', default: 'true', description: 'Native input `multiple`. Only limits one picker selection; use `max-files` to cap the list. `multiple="false"` turns it off.' },
+            { name: 'max-files', type: 'number', default: 'none', description: 'Cap on queued files, counting images waiting to be cropped. The dropzone disables itself while full.' },
+            { name: 'max-size', type: 'number', default: 'none', description: 'Per-file ceiling in bytes; shown in the caption.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks picking and dropping; queued files stay removable.' },
+            { name: 'allow-directories', type: 'boolean', default: 'false', description: 'Accept dropped folders (walked recursively) and switch the picker to folder mode. Files are still validated one by one.' },
+            { name: 'crop-images', type: 'boolean', default: 'false', description: 'Hold each image in an inline crop step before it is queued.' },
+            { name: 'crop-aspect', type: 'number', default: 'none', description: 'Lock the crop box to a width / height ratio.' },
+            { name: 'locale', type: 'string | FileUploadLocale', default: "''", description: 'Locale id or dictionary; defaults to the page `lang`, then `en`.' },
+            { name: 'files', type: 'FileUploadItem[]', default: '[]', description: 'The queue, read only: `{ file, id, progress, status, error, preview }`.' },
+            { name: 'addFiles(files)', type: 'method', default: '-', description: 'Validate and queue files from script.' },
+            { name: 'removeFile(id)', type: 'method', default: '-', description: 'Remove one queued file, revoking its preview.' },
+            { name: 'clearFiles()', type: 'method', default: '-', description: 'Empty the queue.' },
+            { name: 'updateFileProgress(id, n)', type: 'method', default: '-', description: '0-99 shows the bar; 100 or more marks the file complete.' },
+            { name: 'setFileError(id, message)', type: 'method', default: '-', description: 'Mark a file failed and show the message.' },
+            { name: 'openFilePicker()', type: 'method', default: '-', description: 'Open the OS dialog (needs a user gesture).' },
+            { name: 'applyCrop() / skipCrop() / cancelCrop() / setCropRect(rect)', type: 'method', default: '-', description: 'Drive the crop step from your own UI. The rect is in source-image pixels.' },
+            { name: 'files-change', type: 'event', default: '-', description: 'After any add, remove or clear; `detail` is the whole queue.' },
+            { name: 'file-added / file-removed', type: 'event', default: '-', description: '`detail` is the queue item.' },
+            { name: 'file-error', type: 'event', default: '-', description: '`detail` is `{ file, error }` with a localised message.' },
+            { name: 'cropped', type: 'event', default: '-', description: '`detail` is `{ original, file, rect }`.' },
+            { name: '::part(dropzone)', type: 'css part', default: '-', description: 'The dashed drop target.' },
+        ],
+    },
 ];

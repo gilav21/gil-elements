@@ -149,6 +149,8 @@ export default defineConfig({
                 'speed-dial/define': 'src/speed-dial/define.ts',
                 'dock/index': 'src/dock/index.ts',
                 'dock/define': 'src/dock/define.ts',
+                'file-upload/index': 'src/file-upload/index.ts',
+                'file-upload/define': 'src/file-upload/define.ts',
             },
             formats: ['es'],
         },

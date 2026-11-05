@@ -188,6 +188,21 @@ for (const theme of ['light', 'dark']) {
                     target.selectedKeys = new Set(select);
                     target.focusedKey = focus;
                 }
+                // `data-files` is the JSON list a file upload holds: {name, size, type, status, progress, error, image}; `image` gives the file the picture in `data-image`.
+                // `data-dragging` shows the dropzone as a drop target.
+                for (const target of document.querySelectorAll('ge-file-upload[data-files]')) {
+                    const bytes = Uint8Array.from(atob(target.dataset.image.split(',')[1]), (c) => c.charCodeAt(0));
+                    const specs = JSON.parse(target.dataset.files);
+                    const made = specs.map((s) => (s.image ? new File([bytes], s.name, { type: 'image/png' }) : new File([new Uint8Array(s.size)], s.name, { type: s.type ?? '' })));
+                    target.addFiles(made);
+                    target.files.forEach((item, i) => {
+                        const s = specs[i];
+                        if (s?.progress !== undefined) target.updateFileProgress(item.id, s.progress);
+                        if (s?.error) target.setFileError(item.id, s.error);
+                    });
+                    await target.updateComplete;
+                }
+                for (const target of document.querySelectorAll('ge-file-upload[data-dragging]')) target.isDragging = true;
                 // `data-hover` marks an element the reference shows hovered (a submenu that hover opened).
                 for (const target of document.querySelectorAll('[data-hover]')) target.dispatchEvent(new MouseEvent('mouseenter'));
                 // Panels measure themselves in the first animation frame after they open, so the page must be at the top by then.

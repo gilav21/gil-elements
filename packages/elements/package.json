@@ -727,6 +727,16 @@
       "types": "./dist/dock/define.d.ts",
       "development": "./src/dock/define.ts",
       "default": "./dist/dock/define.js"
+    },
+    "./file-upload": {
+      "types": "./dist/file-upload/index.d.ts",
+      "development": "./src/file-upload/index.ts",
+      "default": "./dist/file-upload/index.js"
+    },
+    "./file-upload/define": {
+      "types": "./dist/file-upload/define.d.ts",
+      "development": "./src/file-upload/define.ts",
+      "default": "./dist/file-upload/define.js"
     }
   },
   "scripts": {
