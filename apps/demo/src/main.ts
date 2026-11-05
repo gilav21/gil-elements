@@ -70,6 +70,7 @@ import '@gilav21/elements/dock/define';
 import '@gilav21/elements/file-upload/define';
 import '@gilav21/elements/tree-context-menu/define';
 import '@gilav21/elements/tree-select/define';
+import '@gilav21/elements/sortable/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

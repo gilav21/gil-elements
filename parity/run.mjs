@@ -172,6 +172,8 @@ for (const theme of ['light', 'dark']) {
                 await Promise.all(document.getAnimations().map((a) => a.finished));
                 // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
                 for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
+                // `data-lift` on a sortable item lifts it with the keyboard, the way Space does.
+                for (const target of document.querySelectorAll('ge-sortable-item[data-lift]')) target.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }));
                 // `data-picking` on an eyedropper shows it mid-pick, the way a pick in progress would.
                 for (const target of document.querySelectorAll('ge-eyedropper[data-picking]')) target.picking = true;
                 // `data-collapsed` on a sidebar provider shows the desktop rail collapsed, the way a remembered flag would.

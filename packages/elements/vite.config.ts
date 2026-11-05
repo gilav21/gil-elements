@@ -155,6 +155,8 @@ export default defineConfig({
                 'tree-context-menu/define': 'src/tree-context-menu/define.ts',
                 'tree-select/index': 'src/tree-select/index.ts',
                 'tree-select/define': 'src/tree-select/define.ts',
+                'sortable/index': 'src/sortable/index.ts',
+                'sortable/define': 'src/sortable/define.ts',
             },
             formats: ['es'],
         },

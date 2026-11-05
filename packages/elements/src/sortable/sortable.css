@@ -1,0 +1,43 @@
+:host {
+    display: block;
+}
+.list {
+    display: flex;
+    flex-direction: column;
+}
+.list[data-orientation='horizontal'] {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+}
+::slotted([data-slot='sortable-ghost']),
+::slotted([data-slot='sortable-ghost-host']) {
+    pointer-events: none;
+    animation: ge-sortable-ghost-fade-in 110ms ease-out;
+}
+::slotted([data-slot='sortable-ghost']) {
+    opacity: 0.6;
+}
+.placeholder {
+    position: fixed;
+    z-index: 0;
+    pointer-events: none;
+}
+.placeholder:not(.custom) {
+    border: 2px dashed color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+    border-radius: calc(var(--radius) - 4px);
+    background: color-mix(in srgb, var(--muted) 30%, transparent);
+    box-sizing: border-box;
+}
+@keyframes ge-sortable-ghost-fade-in {
+    from {
+        opacity: 0;
+        transform: scaleY(0.9);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    ::slotted([data-slot='sortable-ghost']),
+    ::slotted([data-slot='sortable-ghost-host']) {
+        animation: none;
+    }
+}

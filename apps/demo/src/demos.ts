@@ -4283,4 +4283,154 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: '::part(trigger)', type: 'css part', default: '-', description: 'The combobox button (built-in trigger).' },
         ],
     },
+    {
+        id: 'sortable',
+        group: 'Rung 3 · Interactive',
+        name: 'Sortable',
+        tag: 'ge-sortable',
+        description: 'A list you reorder by dragging, with the keyboard, or between lists. Write `ge-sortable-item`s yourself, or set `items` and `renderItem` and let it render them.',
+        examples: [
+            {
+                title: 'Vertical list',
+                note: 'Drag a row, or focus it and press Space, then the arrows (Home and End jump to the ends), then Space again; Escape puts it back. Each step is announced to screen readers. The list fires `reorder` with where the row came from and went.',
+                html: `<style>.sx-card{box-sizing:border-box;width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--card);color:var(--card-foreground);font-size:.875rem}</style>
+<ge-sortable id="sx1" style="max-width:20rem">
+  <ge-sortable-item><div class="sx-card">Write the spec</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card">Review the pull request</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card">Ship it</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card">Write the announcement</div></ge-sortable-item>
+</ge-sortable>
+<p id="sx1-out" style="font-size:.875rem;color:var(--muted-foreground)">Drag a row.</p>
+<script>document.getElementById('sx1').addEventListener('reorder', (event) => {
+  const { from, to, item } = event.detail;
+  document.getElementById('sx1-out').textContent = item.textContent.trim() + ': ' + from.index + ' to ' + to.index;
+});</script>`,
+            },
+            {
+                title: 'Horizontal',
+                html: `<ge-sortable orientation="horizontal" style="max-width:34rem">
+  <ge-sortable-item><div class="sx-card" style="width:7rem;text-align:center">Mon</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card" style="width:7rem;text-align:center">Tue</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card" style="width:7rem;text-align:center">Wed</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card" style="width:7rem;text-align:center">Thu</div></ge-sortable-item>
+</ge-sortable>`,
+            },
+            {
+                title: 'Handle only',
+                note: 'With `handle-only` a row drags from its `ge-sortable-handle` (or any `[data-sortable-handle]`), so its text stays selectable. Keyboard reordering still works from the row.',
+                html: `<ge-sortable handle-only style="max-width:20rem">
+  <ge-sortable-item><ge-sortable-handle><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted-foreground)"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></ge-sortable-handle><div class="sx-card">Alpha</div></ge-sortable-item>
+  <ge-sortable-item><ge-sortable-handle><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted-foreground)"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></ge-sortable-handle><div class="sx-card">Beta</div></ge-sortable-item>
+  <ge-sortable-item><ge-sortable-handle><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted-foreground)"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></ge-sortable-handle><div class="sx-card">Gamma</div></ge-sortable-item>
+</ge-sortable>`,
+            },
+            {
+                title: 'Disabled',
+                html: `<ge-sortable disabled style="max-width:20rem">
+  <ge-sortable-item><div class="sx-card">Locked one</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card">Locked two</div></ge-sortable-item>
+</ge-sortable>`,
+            },
+            {
+                title: 'Data-driven',
+                note: 'Set `items` and `renderItem`; every reorder arrives as a new array in `items-change` (your array is never mutated) and is written back to `items`. `trackBy` keeps each row\'s node, so the move animates.',
+                html: `<ge-sortable id="sx2" style="max-width:20rem"></ge-sortable>
+<p id="sx2-out" style="font-size:.875rem;color:var(--muted-foreground)"></p>
+<script>(() => {
+  const el = document.getElementById('sx2');
+  const out = document.getElementById('sx2-out');
+  el.renderItem = (task) => { const card = document.createElement('div'); card.className = 'sx-card'; card.textContent = task.title; return card; };
+  el.trackBy = (task) => task.id;
+  el.items = [{ id: 1, title: 'Plan' }, { id: 2, title: 'Build' }, { id: 3, title: 'Test' }, { id: 4, title: 'Release' }];
+  el.addEventListener('items-change', (event) => { out.textContent = event.detail.map((task) => task.title).join(' > '); });
+  out.textContent = el.items.map((task) => task.title).join(' > ');
+})();</script>`,
+            },
+            {
+                title: 'Between lists',
+                note: 'Lists that share a `group` exchange rows by drag, or with Tab and Shift+Tab while a row is lifted. `accepts` on the receiving list returns a boolean or `{ ok, reason }`; a refused drop sets `data-reject` on the list, fires `drop-rejected` and is announced. Here Done takes at most three rows.',
+                html: `<style>.sx-col{flex:1;min-width:11rem;min-height:9rem;padding:.5rem;border:1px dashed var(--border);border-radius:var(--radius)}.sx-col[data-receiving]{background:var(--accent)}.sx-col[data-reject]{border-color:var(--destructive)}.sx-col h4{margin:0 0 .5rem;font-size:.75rem;color:var(--muted-foreground)}</style>
+<div style="display:flex;gap:1rem;flex-wrap:wrap;max-width:38rem">
+  <ge-sortable id="sx3a" class="sx-col" group="board" list-id="todo">
+    <h4 slot="header">To do</h4>
+    <ge-sortable-item><div class="sx-card">Design</div></ge-sortable-item>
+    <ge-sortable-item><div class="sx-card">Prototype</div></ge-sortable-item>
+    <ge-sortable-item><div class="sx-card">Research</div></ge-sortable-item>
+    <ge-sortable-item><div class="sx-card">Estimate</div></ge-sortable-item>
+  </ge-sortable>
+  <ge-sortable id="sx3b" class="sx-col" group="board" list-id="done">
+    <h4 slot="header">Done (max 3)</h4>
+    <span slot="empty" style="font-size:.875rem;color:var(--muted-foreground)">Drop rows here</span>
+  </ge-sortable>
+</div>
+<p id="sx3-out" style="font-size:.875rem;color:var(--muted-foreground)"></p>
+<script>(() => {
+  const done = document.getElementById('sx3b');
+  done.accepts = (item, ctx) => done.querySelectorAll(':scope > ge-sortable-item').length < 3 || { ok: false, reason: 'Done is full' };
+  const out = document.getElementById('sx3-out');
+  document.getElementById('sx3a').addEventListener('drop-rejected', (event) => { out.textContent = 'Rejected: ' + event.detail.reason; });
+  for (const id of ['sx3a', 'sx3b']) document.getElementById(id).addEventListener('reorder', (event) => { out.textContent = event.detail.from.listId + ' > ' + event.detail.to.listId; });
+})();</script>`,
+            },
+            {
+                title: 'Land effects',
+                note: '`landEffect(item, from, to)` returns a built-in name from `SORTABLE_LAND_EFFECTS` (flash, pulse, shake, glow) or any class of yours, played on the row after it lands. The built-ins are skipped under reduced motion.',
+                html: `<ge-sortable id="sx4" style="max-width:20rem">
+  <ge-sortable-item><div class="sx-card">Flash</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card">Pulse</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card">Glow</div></ge-sortable-item>
+</ge-sortable>
+<script>document.getElementById('sx4').landEffect = (item) => 'ge-sortable-land-' + item.textContent.trim().toLowerCase();</script>`,
+            },
+            {
+                title: 'Custom ghost and placeholder',
+                note: 'A `ge-sortable-ghost` replaces the faded copy shown at the drop gap and a `ge-sortable-placeholder` replaces the dashed box left at the lift origin. Their content is copied.',
+                html: `<ge-sortable style="max-width:20rem">
+  <ge-sortable-item><div class="sx-card">One</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card">Two</div></ge-sortable-item>
+  <ge-sortable-item><div class="sx-card">Three</div></ge-sortable-item>
+  <ge-sortable-ghost><div style="height:2.5rem;border:2px solid var(--primary);border-radius:var(--radius);box-sizing:border-box"></div></ge-sortable-ghost>
+  <ge-sortable-placeholder><div style="height:100%;background:repeating-linear-gradient(45deg,var(--muted),var(--muted) 6px,transparent 6px,transparent 12px);border-radius:var(--radius)"></div></ge-sortable-placeholder>
+</ge-sortable>`,
+            },
+            {
+                title: 'Nested outline',
+                note: 'A list inside a row is its own list. Rows drag within it, or out to the list around it when the pointer leaves it. `reorder` carries the `path` of ids from the outermost list down.',
+                html: `<ge-sortable group="outline" list-id="root" style="max-width:22rem">
+  <ge-sortable-item style="flex-direction:column;align-items:stretch"><div class="sx-card">Fruit</div>
+    <ge-sortable group="outline" list-id="fruit" style="padding-inline-start:1.5rem;min-height:1.5rem">
+      <ge-sortable-item><div class="sx-card">Apple</div></ge-sortable-item>
+      <ge-sortable-item><div class="sx-card">Pear</div></ge-sortable-item>
+    </ge-sortable>
+  </ge-sortable-item>
+  <ge-sortable-item style="flex-direction:column;align-items:stretch"><div class="sx-card">Vegetables</div>
+    <ge-sortable group="outline" list-id="veg" style="padding-inline-start:1.5rem;min-height:1.5rem">
+      <ge-sortable-item><div class="sx-card">Leek</div></ge-sortable-item>
+    </ge-sortable>
+  </ge-sortable-item>
+</ge-sortable>`,
+            },
+        ],
+        api: [
+            { name: 'items / renderItem', type: 'unknown[] / (item, index) => unknown', default: '[] / none', description: 'Data mode. `renderItem` returns a Lit template, a node or text; every reorder is written back to `items` as a new array.' },
+            { name: 'trackBy', type: '(item, index) => unknown', default: 'the item', description: 'Key for data mode, so rows keep their nodes across changes.' },
+            { name: 'orientation', type: "'vertical' | 'horizontal'", default: "'vertical'", description: 'Axis the rows flow along; picks the arrow keys and the pointer axis.' },
+            { name: 'handle-only', type: 'boolean', default: 'false', description: 'Only a `ge-sortable-handle` (or `[data-sortable-handle]`) starts a pointer drag.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks drags, lifts and incoming drops (rejected with reason `disabled`).' },
+            { name: 'list-id', type: 'string', default: "'sortable-N'", description: 'Id reported in events and announced when a row changes list.' },
+            { name: 'group', type: 'string', default: "''", description: 'Lists with the same group exchange rows.' },
+            { name: 'accepts', type: 'boolean | (item, ctx) => boolean | { ok, reason? }', default: 'true', description: 'Gate for rows arriving from a peer; set on the receiving list.' },
+            { name: 'auto-scroll', type: 'boolean', default: 'true', description: 'Scroll the nearest scrollable ancestor while the pointer is near its edge; `auto-scroll="false"` turns it off.' },
+            { name: 'ariaItemLabel', type: '(item, index) => string', default: "'item N'", description: 'The spoken name of a row.' },
+            { name: 'positionClass', type: '(item, index, total, listId) => string', default: 'none', description: 'Class names put on each row by position.' },
+            { name: 'landEffect', type: '(item, from, to) => string | null', default: 'none', description: 'A `SORTABLE_LAND_EFFECTS` name or any class, played after a successful reorder.' },
+            { name: 'locale', type: 'string | SortableLocale', default: "''", description: 'Locale id or object for the announcements; defaults to the page `lang`, then `en`.' },
+            { name: 'reorder', type: 'event', default: '-', description: '`detail` is `{ from, to, item }`, each end `{ listId, index, path }`. Not fired when Escape puts a row back.' },
+            { name: 'items-change', type: 'event', default: '-', description: 'Data mode: `detail` is the new array.' },
+            { name: 'drop-rejected', type: 'event', default: '-', description: '`detail` is `{ item, fromListId, toListId, toIndex, reason }`.' },
+            { name: 'item-enter / item-leave', type: 'event', default: '-', description: 'On the receiving list while a foreign row hovers it.' },
+            { name: 'data-receiving / data-reject', type: 'attribute', default: '-', description: 'On the list while a foreign row hovers it, and the refusal reason while `accepts` says no.' },
+            { name: 'slots', type: 'slot', default: '-', description: 'Default (rows), `header`, `footer`, `empty`.' },
+        ],
+    },
 ];

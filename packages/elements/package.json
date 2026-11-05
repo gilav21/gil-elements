@@ -757,6 +757,16 @@
       "types": "./dist/tree-select/define.d.ts",
       "development": "./src/tree-select/define.ts",
       "default": "./dist/tree-select/define.js"
+    },
+    "./sortable": {
+      "types": "./dist/sortable/index.d.ts",
+      "development": "./src/sortable/index.ts",
+      "default": "./dist/sortable/index.js"
+    },
+    "./sortable/define": {
+      "types": "./dist/sortable/define.d.ts",
+      "development": "./src/sortable/define.ts",
+      "default": "./dist/sortable/define.js"
     }
   },
   "scripts": {
