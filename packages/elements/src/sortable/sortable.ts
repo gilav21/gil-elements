@@ -280,6 +280,7 @@ export class GeSortable extends UiElement implements SortableHost {
     private registeredGroup = '';
     private autoScroller: AutoScrollController | null = null;
     private dragStartLength: number | null = null;
+    private dataRendered = false;
     private dragCleanup: (() => void) | null = null;
     private draggedEl: HTMLElement | null = null;
     private rects: DOMRect[] = [];
@@ -445,7 +446,7 @@ export class GeSortable extends UiElement implements SortableHost {
     }
 
     protected override updated(changed: PropertyValues<this>): void {
-        if (this.dataMode) this.renderDataItems();
+        if (this.dataMode && (changed.has('items') || changed.has('renderItem') || changed.has('trackBy') || !this.dataRendered)) this.renderDataItems();
         this.toggleAttribute('data-receiving', this.foreignHover !== null);
         if (this.rejectReason === null) this.removeAttribute('data-reject');
         else this.setAttribute('data-reject', this.rejectReason);
@@ -455,8 +456,13 @@ export class GeSortable extends UiElement implements SortableHost {
         for (const part of this.parts) part.requestUpdate();
     }
 
-    /** Data mode renders into the host's light DOM, so the page's own styles reach the rows. */
+    /**
+     * Data mode renders into the host's light DOM, so the page's own styles reach the rows. Only when the data changes:
+     * a drag updates the list on every move, and `renderItem` handing back a new node each time would swap the row's
+     * content under the finger, which cuts the rest of a touch gesture off (its events go to the detached node).
+     */
     private renderDataItems(): void {
+        this.dataRendered = true;
         const template = repeat(
             this.items,
             (item, index) => this.trackBy(item, index),

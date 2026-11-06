@@ -27,6 +27,7 @@ export class GeSortableItem extends UiElement {
     declare ghost: boolean;
     private parent?: SortableHost;
     private appliedPositionClass = '';
+    private appliedRadius = '';
 
     constructor() {
         super();
@@ -85,6 +86,21 @@ export class GeSortableItem extends UiElement {
             this.style.transform = `translate(${delta.x}px, ${delta.y}px)${lift}`;
         }
         this.applyPositionClass(active ? parent.positionClassFor(this) : '');
+        this.followContentRadius();
+    }
+
+    /**
+     * The focus ring, lift ring, drag shadow and land glow are drawn on this box, so they take the corners of the row's
+     * own content: a square-cornered ring around a rounded card reads as a glitch. A radius you set on the row wins.
+     */
+    private followContentRadius(): void {
+        if (this.style.borderRadius !== '' && this.style.borderRadius !== this.appliedRadius) return;
+        const content = [...this.children].find((child) => child instanceof HTMLElement && !child.matches(HANDLE));
+        const radius = content ? getComputedStyle(content).borderRadius : '';
+        const next = radius === '0px' ? '' : radius;
+        if (next === this.appliedRadius) return;
+        this.style.borderRadius = next;
+        this.appliedRadius = next;
     }
 
     private applyPositionClass(next: string): void {

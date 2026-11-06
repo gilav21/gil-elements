@@ -246,6 +246,34 @@ describe('ge-sortable data mode', () => {
         expect([...el.querySelectorAll('ge-sortable-item')].includes(rowsNow[0]!)).toBe(true);
     });
 
+    it('keeps each row\'s own content node through a drag, so a touch gesture is not cut off', async () => {
+        const page = await mount('<ge-sortable id="a"></ge-sortable>');
+        const el = list(page);
+        // renderItem hands back a fresh node on every call, as the demo does.
+        el.renderItem = (item) => Object.assign(document.createElement('div'), { textContent: (item as { n: string }).n, style: ROW });
+        el.trackBy = (item) => (item as { id: number }).id;
+        el.items = [{ id: 1, n: 'A' }, { id: 2, n: 'B' }, { id: 3, n: 'C' }];
+        await settle(page);
+        const cards = [...el.querySelectorAll('ge-sortable-item:not([ghost]) > div')];
+        const drop = await drag(page, el.querySelectorAll('ge-sortable-item')[0]!, el.querySelectorAll('ge-sortable-item')[2]!, 10);
+        // `toEqual` compares DOM nodes structurally, so check identity one by one.
+        const now = [...el.querySelectorAll('ge-sortable-item:not([ghost]) > div')];
+        expect(now.map((card, i) => card === cards[i])).toEqual([true, true, true]);
+        await drop();
+        expect(names(el)).toEqual(['B', 'C', 'A']);
+    });
+
+    it('gives the row the corners of its content, so rings and shadows follow the card, unless the row sets its own', async () => {
+        const page = await mount(`<ge-sortable id="a">
+            <ge-sortable-item data-name="A"><div style="width:200px;height:40px;border-radius:12px">A</div></ge-sortable-item>
+            <ge-sortable-item data-name="B" style="border-radius:2px"><div style="width:200px;height:40px;border-radius:12px">B</div></ge-sortable-item>
+            <ge-sortable-item data-name="C"><div style="width:200px;height:40px">C</div></ge-sortable-item></ge-sortable>`);
+        await settle(page);
+        expect(getComputedStyle(item(page, 'A')).borderTopLeftRadius).toBe('12px');
+        expect(getComputedStyle(item(page, 'B')).borderTopLeftRadius).toBe('2px');
+        expect(getComputedStyle(item(page, 'C')).borderTopLeftRadius).toBe('4px');
+    });
+
     it('shows the empty slot only while there are no items', async () => {
         const page = await mount('<ge-sortable id="a"><span slot="empty" id="e">nothing</span></ge-sortable>');
         const el = list(page);
