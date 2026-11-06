@@ -479,6 +479,10 @@ for (const theme of ['light', 'dark']) {
             const focus = await handle.getAttribute('data-focus');
             if (process.env.PARITY_RECTS && key.includes(process.env.PARITY_RECTS_CASE ?? '')) console.log(side, key, await handle.locator(process.env.PARITY_RECTS).evaluateAll((els) => els.map((e) => { const b = e.getBoundingClientRect(); return `${e.localName}[${[b.left, b.top, b.width, b.height].map((n) => n.toFixed(1)).join(',')}]`; })));
             if (focus) {
+                // :focus-visible depends on the page's last input modality, so cases that ran before would decide whether a
+                // script focus paints a ring. A keypress and a fresh focus make the ring the same whatever ran earlier.
+                await page.keyboard.press('Shift');
+                await handle.locator(focus).first().evaluate((target) => target.blur());
                 await handle.locator(focus).first().focus();
                 // Focus starts the ring and floating-label transitions; the reference page has nothing left to animate.
                 await page.waitForTimeout(400);

@@ -78,6 +78,6 @@ export default {
         { id: 'search-kanban', wrap: W, ref: refDialog({ groups: ['kanban'], openGroup: 'kanban', openAction: 'kanban.undo', query: 'kanban' }), el: el('', '{"search":"kanban"}') },
         { id: 'no-match', wrap: W, ref: refDialog({ groups: [], query: 'zzz', empty: true }), el: el('', '{"search":"zzz"}') },
         { id: 'save-button', wrap: W, ref: refDialog({ groups: ALL, save: true }), el: el('allow-save-mapping') },
-        { id: 'hebrew', wrap: W, ref: refDialog({ groups: ALL, placeholder: '...חיפוש פעולות, קטגוריות, רכיבים או מקשים', dir: 'rtl' }), el: el('locale="he"') },
+        { id: 'hebrew', wrap: W, focus: { el: 'ge-shortcut-bindings-dialog >> .search' }, ref: refDialog({ groups: ALL, placeholder: '...חיפוש פעולות, קטגוריות, רכיבים או מקשים', dir: 'rtl' }), el: el('locale="he"') },
     ],
 };
