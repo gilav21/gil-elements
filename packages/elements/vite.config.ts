@@ -203,6 +203,8 @@ export default defineConfig({
                 'chart-brush/define': 'src/chart-brush/define.ts',
                 'pie-chart-drilldown/index': 'src/pie-chart-drilldown/index.ts',
                 'pie-chart-drilldown/define': 'src/pie-chart-drilldown/define.ts',
+                'bar-chart-drilldown/index': 'src/bar-chart-drilldown/index.ts',
+                'bar-chart-drilldown/define': 'src/bar-chart-drilldown/define.ts',
             },
             formats: ['es'],
         },

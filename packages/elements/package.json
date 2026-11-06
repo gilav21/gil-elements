@@ -997,6 +997,16 @@
       "types": "./dist/pie-chart-drilldown/define.d.ts",
       "development": "./src/pie-chart-drilldown/define.ts",
       "default": "./dist/pie-chart-drilldown/define.js"
+    },
+    "./bar-chart-drilldown": {
+      "types": "./dist/bar-chart-drilldown/index.d.ts",
+      "development": "./src/bar-chart-drilldown/index.ts",
+      "default": "./dist/bar-chart-drilldown/index.js"
+    },
+    "./bar-chart-drilldown/define": {
+      "types": "./dist/bar-chart-drilldown/define.d.ts",
+      "development": "./src/bar-chart-drilldown/define.ts",
+      "default": "./dist/bar-chart-drilldown/define.js"
     }
   },
   "scripts": {
