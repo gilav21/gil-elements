@@ -173,6 +173,8 @@ export default defineConfig({
                 'area-chart/define': 'src/area-chart/define.ts',
                 'stacked-bar-chart/index': 'src/stacked-bar-chart/index.ts',
                 'stacked-bar-chart/define': 'src/stacked-bar-chart/define.ts',
+                'scatter-chart/index': 'src/scatter-chart/index.ts',
+                'scatter-chart/define': 'src/scatter-chart/define.ts',
             },
             formats: ['es'],
         },

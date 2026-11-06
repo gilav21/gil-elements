@@ -847,6 +847,16 @@
       "types": "./dist/stacked-bar-chart/define.d.ts",
       "development": "./src/stacked-bar-chart/define.ts",
       "default": "./dist/stacked-bar-chart/define.js"
+    },
+    "./scatter-chart": {
+      "types": "./dist/scatter-chart/index.d.ts",
+      "development": "./src/scatter-chart/index.ts",
+      "default": "./dist/scatter-chart/index.js"
+    },
+    "./scatter-chart/define": {
+      "types": "./dist/scatter-chart/define.d.ts",
+      "development": "./src/scatter-chart/define.ts",
+      "default": "./dist/scatter-chart/define.js"
     }
   },
   "scripts": {
