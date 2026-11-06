@@ -323,7 +323,7 @@ export class GeKanban extends UiElement implements KanbanHost {
 
     /** The board menu: a right-click, the context-menu key or a long-press on empty board space. Gestures inside a column are the column's and card's. */
     private openBoardMenu(gesture: ContextGesture): boolean {
-        if (gesture.target.closest('[data-slot="kanban-column"]')) return false;
+        if (gesture.path.some((node) => node instanceof Element && node.localName === 'ge-kanban-column')) return false;
         this.menu('board')?.show(gesture.clientX, gesture.clientY);
         return true;
     }

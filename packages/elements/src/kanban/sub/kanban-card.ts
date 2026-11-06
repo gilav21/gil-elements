@@ -8,7 +8,7 @@ import type { GeKanbanColumn } from './kanban-column.js';
 import css from './kanban-card.css?inline';
 
 /** How long a finger rests on a card before it lifts, and how far it may drift while resting before the touch counts as a scroll. */
-const LIFT_MS = 350;
+const LIFT_MS = 300;
 const SLOP_PX = 10;
 const INTERACTIVE = 'button, a, input, textarea, select, [contenteditable]';
 
@@ -22,6 +22,8 @@ interface TouchDrag {
     moved: boolean;
     ghost: HTMLElement | undefined;
     column: GeKanbanColumn | undefined;
+    /** Scrollable ancestors held still while the card is lifted, with the `overflow` they had. */
+    frozen: { readonly el: HTMLElement; readonly overflow: string }[];
 }
 
 /** The element under a viewport point, looking through every shadow root on the way down. */
@@ -73,6 +75,7 @@ export class GeKanbanCard extends UiElement {
     private column?: KanbanColumnHost;
     private stopGesture?: () => void;
     private touchDrag: TouchDrag | undefined;
+    private touchEndedAt = 0;
 
     constructor() {
         super();
@@ -146,7 +149,8 @@ export class GeKanbanCard extends UiElement {
     // ---- touch drag ---------------------------------------------------------------------------------------
 
     private readonly onTouchContextMenu = (event: MouseEvent) => {
-        if (!this.touchDrag) return;
+        // The browser's long-press `contextmenu` can arrive just after the finger is up.
+        if (!this.touchDrag && Date.now() - this.touchEndedAt > 700) return;
         event.preventDefault();
         event.stopImmediatePropagation();
     };
@@ -158,7 +162,7 @@ export class GeKanbanCard extends UiElement {
         if ((event.target as Element | null)?.closest(INTERACTIVE)) return;
         // A card that is draggable would be picked up by the browser after its own hold, on top of ours.
         this.draggable = false;
-        const drag: TouchDrag = { startX: finger.clientX, startY: finger.clientY, x: finger.clientX, y: finger.clientY, timer: undefined, lifted: false, moved: false, ghost: undefined, column: undefined };
+        const drag: TouchDrag = { startX: finger.clientX, startY: finger.clientY, x: finger.clientX, y: finger.clientY, timer: undefined, lifted: false, moved: false, ghost: undefined, column: undefined, frozen: [] };
         drag.timer = setTimeout(() => this.lift(drag), LIFT_MS);
         this.touchDrag = drag;
         globalThis.addEventListener('touchmove', this.onTouchMove, { passive: false });
@@ -172,9 +176,31 @@ export class GeKanbanCard extends UiElement {
         drag.lifted = true;
         const columnId = this.column?.columnId || this.card?.columnId || '';
         this.kanban?.startDrag(this.resolvedCardId, columnId);
+        drag.frozen = this.freezeScrolling();
         drag.ghost = this.makeGhost();
         this.moveGhost(drag);
         globalThis.navigator?.vibrate?.(12);
+    }
+
+    /**
+     * The browser may already be deciding to scroll the board under the finger, and a scroll that has started cannot be
+     * cancelled. Every scrollable ancestor is held still for the length of the drag instead.
+     */
+    private freezeScrolling(): TouchDrag['frozen'] {
+        const frozen: TouchDrag['frozen'] = [];
+        let node: Node | null = this;
+        while (node) {
+            const parent: Node | null = node.parentNode ?? (node instanceof ShadowRoot ? node.host : null);
+            if (parent instanceof HTMLElement && parent !== document.body && parent !== document.documentElement) {
+                const { overflowX, overflowY } = getComputedStyle(parent);
+                if (/auto|scroll/.test(overflowX + overflowY)) {
+                    frozen.push({ el: parent, overflow: parent.style.overflow });
+                    parent.style.overflow = 'hidden';
+                }
+            }
+            node = parent;
+        }
+        return frozen;
     }
 
     /** A light stand-in that follows the finger; the card itself stays where it was, dimmed by `data-dragging`. */
@@ -259,6 +285,8 @@ export class GeKanbanCard extends UiElement {
         clearTimeout(drag.timer);
         drag.ghost?.remove();
         drag.column?.leaveCard();
+        for (const { el, overflow } of drag.frozen) el.style.overflow = overflow;
+        this.touchEndedAt = Date.now();
         this.touchDrag = undefined;
         globalThis.removeEventListener('touchmove', this.onTouchMove);
         globalThis.removeEventListener('touchend', this.onTouchEnd);

@@ -6,10 +6,12 @@ export function isTouchDevice(): boolean {
 /**
  * Calls `callback` once the user has held one finger down for `duration` ms without moving more than 10px.
  * More than one finger means pan and zoom, so a second finger cancels a pending press and none starts while it is down.
+ * `path` is where the finger landed, outermost last, read while the `touchstart` was still being dispatched: once it
+ * is over, the event's own `target` and `composedPath()` no longer see inside shadow trees.
  *
  * @returns A function that removes every listener.
  */
-export function onLongPress(element: HTMLElement, callback: (event: TouchEvent) => void, duration = 500): () => void {
+export function onLongPress(element: HTMLElement, callback: (event: TouchEvent, path: readonly EventTarget[]) => void, duration = 500): () => void {
     let timer: ReturnType<typeof setTimeout> | null = null;
     // A copy, not the live `Touch`: only the point the finger started at matters.
     let start: { clientX: number; clientY: number } | null = null;
@@ -26,9 +28,10 @@ export function onLongPress(element: HTMLElement, callback: (event: TouchEvent) 
         const touch = event.touches[0];
         if (!touch) return;
         start = { clientX: touch.clientX, clientY: touch.clientY };
+        const path = event.composedPath();
         timer = setTimeout(() => {
             timer = null;
-            callback(event);
+            callback(event, path);
         }, duration);
     };
     const onMove = (event: TouchEvent) => {
@@ -61,6 +64,8 @@ export interface ContextGesture {
     readonly clientY: number;
     /** The `contextmenu` event, or the long-press's `touchstart`. */
     readonly source: MouseEvent | TouchEvent;
+    /** Where it landed, innermost first, through every shadow root. Read at the time of the gesture, so it survives a long-press timer. */
+    readonly path: readonly EventTarget[];
     /**
      * Whether a finger made it: a long-press, or the `contextmenu` a browser
      * raises for one. A right-click and the keyboard key are not.
@@ -105,14 +110,16 @@ export function onContextGesture(
 ): () => void {
     const touch = trackContextTouch();
 
-    const onPress = (event: TouchEvent): void => {
+    const onPress = (event: TouchEvent, path: readonly EventTarget[]): void => {
         if (touch.dragged || claimedGestures.has(event)) return;
         const finger = event.touches[0] ?? event.changedTouches[0];
         if (!finger) return;
-        const target = (event.target as Element | null) ?? element;
+        // What a listener on `element` would have seen as `event.target`: the first node in its own tree scope.
+        const scope = element.getRootNode();
+        const target = path.find((node): node is Element => node instanceof Element && node.getRootNode() === scope) ?? element;
         // The browser's own hold timer can beat ours: its contextmenu already answered this press.
         if (isRecentSameGesture(lastClaimedContext, target)) return;
-        if (!handler({ target, clientX: finger.clientX, clientY: finger.clientY, source: event, viaTouch: true })) return;
+        if (!handler({ target, clientX: finger.clientX, clientY: finger.clientY, source: event, path, viaTouch: true })) return;
         claimedGestures.add(event);
         lastClaimedPress = { at: Date.now(), target };
         swallowReleaseClick(target);
@@ -127,7 +134,7 @@ export function onContextGesture(
             return;
         }
         const target = event.target as Element;
-        if (!handler({ target, clientX: event.clientX, clientY: event.clientY, source: event, viaTouch })) return;
+        if (!handler({ target, clientX: event.clientX, clientY: event.clientY, source: event, path: event.composedPath(), viaTouch })) return;
         claim(event);
         if (viaTouch) lastClaimedContext = { at: Date.now(), target };
     };

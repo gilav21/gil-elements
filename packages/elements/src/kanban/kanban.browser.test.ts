@@ -261,6 +261,9 @@ describe('ge-kanban card menu', () => {
             await vi.advanceTimersByTimeAsync(600);
             expect(board(page).draggedCardId).toBe('c2');
             expect(document.querySelector('[data-slot="kanban-touch-ghost"]')).not.toBeNull();
+            // A scroll the browser has begun cannot be cancelled, so the board is held still for the length of the drag.
+            const surface = inBoard<HTMLElement>(page, '[data-surface]');
+            expect(surface.style.overflow).toBe('hidden');
 
             const target = centreOf(columnEl(page, 'doing'));
             touch(card, 'touchmove', target.x, target.y);
@@ -273,6 +276,7 @@ describe('ge-kanban card menu', () => {
             expect(moved[0]).toMatchObject({ cardId: 'c2', fromColumnId: 'todo', toColumnId: 'doing' });
             expect(board(page).draggedCardId).toBeNull();
             expect(document.querySelector('[data-slot="kanban-touch-ghost"]')).toBeNull();
+            expect(surface.style.overflow).toBe('');
             expect(cardMenu(page).open).toBe(false);
             // The click that follows a release is swallowed for a moment; let that pass so it cannot reach later tests.
             await vi.advanceTimersByTimeAsync(500);
@@ -286,6 +290,8 @@ describe('ge-kanban card menu', () => {
             touch(card, 'touchstart', at.x, at.y);
             await vi.advanceTimersByTimeAsync(900);
             expect(cardMenu(page).open).toBe(false);
+            // The board's own long-press is listening too, and a hold on a card is not a hold on empty board space.
+            expect(inBoard<GeContextMenu>(page, 'ge-context-menu[data-menu="board"]').open).toBe(false);
             touch(card, 'touchend', at.x, at.y);
             await vi.advanceTimersByTimeAsync(0);
             expect(cardMenu(page).open).toBe(true);
