@@ -89,3 +89,4 @@ export * from './funnel-chart/index.js';
 export * from './waterfall-chart/index.js';
 export * from './bullet-chart/index.js';
 export * from './heatmap/index.js';
+export * from './calendar-heatmap/index.js';

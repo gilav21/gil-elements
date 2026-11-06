@@ -927,6 +927,16 @@
       "types": "./dist/heatmap/define.d.ts",
       "development": "./src/heatmap/define.ts",
       "default": "./dist/heatmap/define.js"
+    },
+    "./calendar-heatmap": {
+      "types": "./dist/calendar-heatmap/index.d.ts",
+      "development": "./src/calendar-heatmap/index.ts",
+      "default": "./dist/calendar-heatmap/index.js"
+    },
+    "./calendar-heatmap/define": {
+      "types": "./dist/calendar-heatmap/define.d.ts",
+      "development": "./src/calendar-heatmap/define.ts",
+      "default": "./dist/calendar-heatmap/define.js"
     }
   },
   "scripts": {

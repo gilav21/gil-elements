@@ -189,6 +189,8 @@ export default defineConfig({
                 'bullet-chart/define': 'src/bullet-chart/define.ts',
                 'heatmap/index': 'src/heatmap/index.ts',
                 'heatmap/define': 'src/heatmap/define.ts',
+                'calendar-heatmap/index': 'src/calendar-heatmap/index.ts',
+                'calendar-heatmap/define': 'src/calendar-heatmap/define.ts',
             },
             formats: ['es'],
         },
