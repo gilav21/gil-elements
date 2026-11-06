@@ -92,6 +92,7 @@
   "chunks/duration-input.js": 3600,
   "chunks/empty-title.js": 880,
   "chunks/error-page-illustration.js": 3900,
+  "chunks/auto-scroll.js": 1350,
   "chunks/field-mapper.js": 12800,
   "chunks/eyedropper.js": 3300,
   "chunks/field-set.js": 1440,
