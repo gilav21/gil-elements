@@ -134,3 +134,6 @@ import '../packages/elements/src/duration-input/define.js';
 import '../packages/elements/src/phone-input/define.js';
 import '../packages/elements/src/signature-pad/define.js';
 import '../packages/elements/src/emoji-picker/define.js';
+import '../packages/elements/src/treemap/define.js';
+import '../packages/elements/src/boxplot/define.js';
+import '../packages/elements/src/candlestick/define.js';

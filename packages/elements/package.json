@@ -1377,6 +1377,36 @@
       "types": "./dist/emoji-picker/define.d.ts",
       "development": "./src/emoji-picker/define.ts",
       "default": "./dist/emoji-picker/define.js"
+    },
+    "./treemap": {
+      "types": "./dist/treemap/index.d.ts",
+      "development": "./src/treemap/index.ts",
+      "default": "./dist/treemap/index.js"
+    },
+    "./treemap/define": {
+      "types": "./dist/treemap/define.d.ts",
+      "development": "./src/treemap/define.ts",
+      "default": "./dist/treemap/define.js"
+    },
+    "./boxplot": {
+      "types": "./dist/boxplot/index.d.ts",
+      "development": "./src/boxplot/index.ts",
+      "default": "./dist/boxplot/index.js"
+    },
+    "./boxplot/define": {
+      "types": "./dist/boxplot/define.d.ts",
+      "development": "./src/boxplot/define.ts",
+      "default": "./dist/boxplot/define.js"
+    },
+    "./candlestick": {
+      "types": "./dist/candlestick/index.d.ts",
+      "development": "./src/candlestick/index.ts",
+      "default": "./dist/candlestick/index.js"
+    },
+    "./candlestick/define": {
+      "types": "./dist/candlestick/define.d.ts",
+      "development": "./src/candlestick/define.ts",
+      "default": "./dist/candlestick/define.js"
     }
   },
   "scripts": {

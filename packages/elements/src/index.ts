@@ -134,3 +134,6 @@ export * from './duration-input/index.js';
 export * from './phone-input/index.js';
 export * from './signature-pad/index.js';
 export * from './emoji-picker/index.js';
+export * from './treemap/index.js';
+export * from './boxplot/index.js';
+export * from './candlestick/index.js';

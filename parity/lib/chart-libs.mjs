@@ -20,3 +20,6 @@ export const polar = await load('chart-polar');
 export const colorScale = await load('chart-color-scale');
 export const histogram = await load('histogram-bins');
 export const colorLib = await import(pathToFileURL(`${out}color.js`).href);
+export const treemapLayout = await load('treemap-layout');
+export const boxplotStats = await load('boxplot-stats');
+export const candlestickLib = await load('candlestick-utils');

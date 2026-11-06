@@ -5611,6 +5611,40 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
 <script>document.getElementById('hist1').values = Array.from({ length: 120 }, (_, i) => 40 + ((i * 53) % 97) * 0.9 + (i % 7) * 3);</script>`,
             },
             {
+                title: 'Treemap',
+                note: 'Areas are proportional to value; a node with `children` is a group whose area is their sum.',
+                block: true,
+                html: `<ge-treemap id="tm1" unit=" GB"></ge-treemap>
+<script>document.getElementById('tm1').nodes = [
+  { label: 'Media', children: [{ label: 'Photos', value: 420 }, { label: 'Video', value: 300 }, { label: 'Music', value: 120 }] },
+  { label: 'Code', children: [{ label: 'Repos', value: 180 }, { label: 'Builds', value: 60 }] },
+  { label: 'Docs', value: 90 },
+  { label: 'Trash', value: 30 },
+];</script>`,
+            },
+            {
+                title: 'Box plot',
+                note: 'Pass raw samples and it draws the quartiles, the whiskers and the outliers; `orientation="horizontal"` turns it.',
+                block: true,
+                html: `<ge-boxplot id="bp1" unit="ms"></ge-boxplot>
+<script>document.getElementById('bp1').groups = [
+  { label: 'API', values: [12, 14, 15, 15, 16, 17, 18, 19, 21, 22, 24, 95] },
+  { label: 'Web', values: [30, 32, 35, 36, 38, 40, 41, 44, 47, 52] },
+  { label: 'DB', values: [5, 6, 6, 7, 7, 8, 9, 9, 10, 12, 30] },
+];</script>`,
+            },
+            {
+                title: 'Candlestick',
+                note: 'Open, high, low and close per period; the ordinal axis leaves no gap for a weekend, `axis-mode="time"` shows it.',
+                block: true,
+                html: `<ge-candlestick id="cs1" unit="$"></ge-candlestick>
+<script>document.getElementById('cs1').points = Array.from({ length: 16 }, (_, i) => {
+  const open = 100 + Math.sin(i / 2) * 8 + i;
+  const close = open + Math.cos(i * 1.3) * 6;
+  return { date: new Date(Date.UTC(2024, 2, 4 + i + Math.floor(i / 5) * 2)), open, close, high: Math.max(open, close) + 3 + (i % 3), low: Math.min(open, close) - 3 - (i % 4) };
+});</script>`,
+            },
+            {
                 title: 'Chart brush',
                 note: 'Drag the track to select a range, the band to move it, an edge to resize it.',
                 block: true,
@@ -5707,6 +5741,9 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
             { name: 'data / unit / show-range-labels / bar-radius / bar-gap (column range)', type: 'RangeDataPoint[] / string / boolean / number', default: "[] / - / true / 4 / 12", description: 'A column is `{ name, low, high, color? }`. Fires `bar-click`.' },
             { name: 'barSeries / lineSeries / show-cumulative / cumulative-label (combo)', type: 'ChartSeries[] / boolean / string', default: '[] / [] / false / Cumulative', description: 'Lines use a second hidden axis. `bar-click` detail is `{ point, index }` of the bar\'s own series.' },
             { name: 'frames / frame-labels / auto-play / loop / max-bars / animation-duration (bar race)', type: 'ChartDataPoint[][] / string[] / boolean / number', default: '[] / [] / false / false / 10 / 500', description: 'Methods `play`, `pause`, `togglePlay`, `reset`, `goToFrame`; fires `frame-change` and `animation-complete`.' },
+            { name: 'nodes / group-padding / show-labels / min-label-width / min-label-height / cell-radius / unit (treemap)', type: 'TreemapNode[]', default: '[]', description: '`{ label, value?, color?, children? }`. A group takes the sum of its children and passes its colour down. Fires `node-click` and `node-hover`.' },
+            { name: 'groups / orientation / show-outliers / box-radius / unit (box plot)', type: 'BoxplotGroup[]', default: '[]', description: '`{ label, values?, stats?, color? }`; `stats` wins over `values`. Fires `group-click` and `group-hover`.' },
+            { name: 'points / axis-mode / rising-color / falling-color / unit / locale (candlestick)', type: 'OhlcPoint[]', default: '[]', description: '`{ date, open, high, low, close }`; `axis-mode` is `ordinal` or `time`. Fires `candle-click` and `candle-hover`.' },
             { name: 'values / bin-count / binEdges / unit (histogram)', type: 'number[] / number', default: '[] / Sturges / -', description: 'Explicit `binEdges` win over `bin-count`. Fires `bin-click` and `bin-hover`.' },
             { name: 'selection / width / height (chart brush)', type: 'BrushSelection / number', default: 'null / 400 / 40', description: 'Work in pixels along the x axis of `width`. `selection` only seeds the brush; fires `selection-change` with `{ start, end }` or `null`.' },
             { name: 'data / drilldownSeries / show-breadcrumb / back-button-text (drilldown charts)', type: 'DrilldownDataPoint[] / DrilldownSeries[]', default: '[] / [] / true / Back', description: 'A point with `drilldown` opens the series with that `id`. Fires `drilldown`, `drillup`; `drillUp()` goes back.' },
