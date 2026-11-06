@@ -198,6 +198,14 @@ for (const theme of ['light', 'dark']) {
                 for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
                 for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
+                // `data-render` names a row renderer for a virtual-scroll: functions cannot travel in `data-props`.
+                const cell = (style, text) => Object.assign(document.createElement('div'), { textContent: text, style });
+                const renderers = {
+                    rows: (item) => cell('height:50px;box-sizing:border-box;display:flex;align-items:center;padding-inline:.75rem;border-bottom:1px solid var(--border)', `Row ${item.id}`),
+                    cells: (item) => cell('height:100%;width:100px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border-right:1px solid var(--border)', item.id),
+                    grid: (item) => cell('height:40px;width:80px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)', item.id),
+                };
+                for (const target of document.querySelectorAll('[data-render]')) target.renderItem = renderers[target.dataset.render];
                 // `data-goto` is a step index: the tour, already running, jumps there.
                 for (const target of document.querySelectorAll('[data-goto]')) {
                     await target.updateComplete;

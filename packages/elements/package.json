@@ -1287,6 +1287,36 @@
       "types": "./dist/meteors/define.d.ts",
       "development": "./src/meteors/define.ts",
       "default": "./dist/meteors/define.js"
+    },
+    "./comparison-slider": {
+      "types": "./dist/comparison-slider/index.d.ts",
+      "development": "./src/comparison-slider/index.ts",
+      "default": "./dist/comparison-slider/index.js"
+    },
+    "./comparison-slider/define": {
+      "types": "./dist/comparison-slider/define.d.ts",
+      "development": "./src/comparison-slider/define.ts",
+      "default": "./dist/comparison-slider/define.js"
+    },
+    "./masonry": {
+      "types": "./dist/masonry/index.d.ts",
+      "development": "./src/masonry/index.ts",
+      "default": "./dist/masonry/index.js"
+    },
+    "./masonry/define": {
+      "types": "./dist/masonry/define.d.ts",
+      "development": "./src/masonry/define.ts",
+      "default": "./dist/masonry/define.js"
+    },
+    "./virtual-scroll": {
+      "types": "./dist/virtual-scroll/index.d.ts",
+      "development": "./src/virtual-scroll/index.ts",
+      "default": "./dist/virtual-scroll/index.js"
+    },
+    "./virtual-scroll/define": {
+      "types": "./dist/virtual-scroll/define.d.ts",
+      "development": "./src/virtual-scroll/define.ts",
+      "default": "./dist/virtual-scroll/define.js"
     }
   },
   "scripts": {

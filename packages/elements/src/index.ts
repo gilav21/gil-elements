@@ -125,3 +125,6 @@ export * from './wobble-card/index.js';
 export * from './stagger-children/index.js';
 export * from './scroll-progress/index.js';
 export * from './meteors/index.js';
+export * from './comparison-slider/index.js';
+export * from './masonry/index.js';
+export * from './virtual-scroll/index.js';

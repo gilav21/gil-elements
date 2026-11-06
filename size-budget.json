@@ -67,7 +67,7 @@
   "chunks/color-picker.js": 12800,
   "chunks/color.js": 3100,
   "chunks/command-shortcut.js": 4550,
-  "chunks/common-locales.js": 1764,
+  "chunks/common-locales.js": 1970,
   "chunks/compound.js": 340,
   "chunks/context-menu-trigger.js": 3600,
   "chunks/context-menu.js": 1030,
@@ -406,5 +406,14 @@
   "stagger-children/define.js": 145,
   "stagger-children/index.js": 90,
   "wobble-card/define.js": 140,
-  "wobble-card/index.js": 85
+  "wobble-card/index.js": 85,
+  "chunks/comparison-slider.js": 2640,
+  "chunks/masonry.js": 1265,
+  "chunks/virtual-scroll.js": 4290,
+  "comparison-slider/define.js": 145,
+  "comparison-slider/index.js": 90,
+  "masonry/define.js": 135,
+  "masonry/index.js": 75,
+  "virtual-scroll/define.js": 140,
+  "virtual-scroll/index.js": 85
 }

@@ -4892,6 +4892,134 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
         ],
     },
     {
+        id: 'comparison-slider',
+        group: 'Rung 3 · Interactive',
+        name: 'Comparison slider',
+        tag: 'ge-comparison-slider',
+        description: 'Two images in one box with a draggable divider. Drag anywhere, tap to jump, or focus the handle and use the arrow keys, Home and End.',
+        examples: [
+            {
+                title: 'Before and after',
+                note: 'The box is 16:9 and fills its width. Both images should share dimensions so they line up under the reveal.',
+                block: true,
+                html: `<ge-comparison-slider before-src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f97316'/%3E%3Cstop offset='1' stop-color='%23be123c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='640' height='360' fill='url(%23g)'/%3E%3Ccircle cx='180' cy='120' r='68' fill='white' fill-opacity='.7'/%3E%3Crect x='340' y='200' width='220' height='100' fill='black' fill-opacity='.35'/%3E%3C/svg%3E" after-src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2306b6d4'/%3E%3Cstop offset='1' stop-color='%234f46e5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='640' height='360' fill='url(%23g)'/%3E%3Ccircle cx='180' cy='120' r='68' fill='white' fill-opacity='.7'/%3E%3Crect x='340' y='200' width='220' height='100' fill='black' fill-opacity='.35'/%3E%3C/svg%3E" before-alt="Before" after-alt="After" before-label="Original" after-label="Edited" style="max-width:36rem;border-radius:var(--radius)"></ge-comparison-slider>`,
+            },
+            {
+                title: 'Vertical, starting at 30%',
+                note: '`orientation="vertical"` wipes top to bottom; Up and Down then move the divider up and down. Set `aspect-ratio` on the host to match your images.',
+                html: `<ge-comparison-slider id="cs2" orientation="vertical" position="30" before-src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f97316'/%3E%3Cstop offset='1' stop-color='%23be123c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='640' height='360' fill='url(%23g)'/%3E%3Ccircle cx='180' cy='120' r='68' fill='white' fill-opacity='.7'/%3E%3Crect x='340' y='200' width='220' height='100' fill='black' fill-opacity='.35'/%3E%3C/svg%3E" after-src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='360' viewBox='0 0 640 360'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2306b6d4'/%3E%3Cstop offset='1' stop-color='%234f46e5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='640' height='360' fill='url(%23g)'/%3E%3Ccircle cx='180' cy='120' r='68' fill='white' fill-opacity='.7'/%3E%3Crect x='340' y='200' width='220' height='100' fill='black' fill-opacity='.35'/%3E%3C/svg%3E" before-alt="Before" after-alt="After" style="width:min(18rem,100%);aspect-ratio:4/3;border-radius:var(--radius)"></ge-comparison-slider>
+<p id="cs2-out" style="margin:.5rem 0 0;font-size:.875rem;color:var(--muted-foreground)">30%</p>
+<script>document.getElementById('cs2').addEventListener('position-change', (e) => { document.getElementById('cs2-out').textContent = Math.round(e.detail) + '%'; });</script>`,
+            },
+        ],
+        api: [
+            { name: 'before-src / after-src / before-alt / after-alt', type: 'string', default: "''", description: 'The two images. The before image is clipped to the start side of the divider.' },
+            { name: 'before-label / after-label', type: 'string', default: '-', description: 'Caption badges in the top corners; omitted when unset, truncated when long.' },
+            { name: 'position', type: 'number', default: '50', description: 'Divider position in percent from the start edge, shown clamped to 0-100.' },
+            { name: 'orientation', type: "'horizontal' | 'vertical'", default: "'horizontal'", description: 'Wipe left-to-right or top-to-bottom.' },
+            { name: 'locale', type: 'string', default: 'page lang', description: 'Language of the handle accessible name.' },
+            { name: 'position-change', type: 'event', default: '-', description: '`detail` is the new position after each drag move or key press.' },
+        ],
+    },
+    {
+        id: 'masonry',
+        group: 'Rung 3 · Interactive',
+        name: 'Masonry',
+        tag: 'ge-masonry',
+        description: 'A column-balanced wall for items of uneven height. Unlike CSS columns, reading order, keyboard order and DOM order all agree.',
+        examples: [
+            {
+                title: 'Responsive wall',
+                note: 'Column counts are chosen from the wall own width (`sm` 640, `md` 768, `lg` 1024, `xl` 1280), so a wall in a narrow pane behaves like a wall on a narrow screen. Resize the window to watch it re-balance.',
+                block: true,
+                html: `<ge-masonry columns='{"base":1,"sm":2,"lg":3}' gap="12">
+  <div style="height:120px;background:var(--muted);border-radius:var(--radius);padding:.75rem">1</div>
+  <div style="height:80px;background:var(--secondary);border-radius:var(--radius);padding:.75rem">2</div>
+  <div style="height:150px;background:var(--accent);border-radius:var(--radius);padding:.75rem">3</div>
+  <div style="height:70px;background:var(--secondary);border-radius:var(--radius);padding:.75rem">4</div>
+  <div style="height:110px;background:var(--muted);border-radius:var(--radius);padding:.75rem">5</div>
+  <div style="height:90px;background:var(--accent);border-radius:var(--radius);padding:.75rem">6</div>
+  <div style="height:130px;background:var(--muted);border-radius:var(--radius);padding:.75rem">7</div>
+</ge-masonry>`,
+            },
+        ],
+        api: [
+            { name: 'columns', type: 'number | { base, sm, md, lg, xl }', default: '{ base: 1, sm: 2, lg: 3 }', description: 'A count (`columns="3"`), or JSON for the attribute and an object for the property.' },
+            { name: 'gap', type: 'number', default: '16', description: 'Pixels, between columns and between stacked items.' },
+            { name: 'layout()', type: 'method', default: '-', description: 'Re-balance now. Needed only after a change the element cannot see, such as a font swap or an image decode.' },
+        ],
+    },
+    {
+        id: 'virtual-scroll',
+        group: 'Rung 3 · Interactive',
+        name: 'Virtual scroll',
+        tag: 'ge-virtual-scroll',
+        description: 'Renders only the rows in view of a very long list, with variable heights, and anchors the scroll position when a row above changes size. Give it a bounded height.',
+        examples: [
+            {
+                title: 'Ten thousand rows',
+                note: '`renderItem` returns a Lit template, a node or text. Rows are rendered into the element light DOM, so your own styles reach them. The counter shows how many rows exist in the DOM right now.',
+                html: `<ge-virtual-scroll id="vs1" min-item-height="44" style="height:18rem;max-width:26rem;border:1px solid var(--border);border-radius:var(--radius)"></ge-virtual-scroll>
+<p id="vs1-out" style="margin:.5rem 0 0;font-size:.875rem;color:var(--muted-foreground)"></p>
+<ge-button variant="outline" size="sm" id="vs1-jump" style="margin-top:.5rem">Jump to row 5000</ge-button>
+<script>
+const vs = document.getElementById('vs1');
+vs.items = Array.from({ length: 10000 }, (_, id) => ({ id, tall: id % 7 === 0 }));
+vs.renderItem = (row) => {
+  const el = document.createElement('div');
+  el.style.cssText = 'padding:.75rem 1rem;border-bottom:1px solid var(--border);box-sizing:border-box;min-height:' + (row.tall ? '88px' : '44px');
+  el.textContent = 'Row ' + row.id + (row.tall ? ' (a taller one)' : '');
+  return el;
+};
+vs.addEventListener('scroll-state', (e) => {
+  document.getElementById('vs1-out').textContent = 'Rows in the DOM: ' + e.detail.windowSize + ' of ' + e.detail.totalItems;
+});
+document.getElementById('vs1-jump').addEventListener('click', () => vs.scrollToIndex(5000));
+</script>`,
+            },
+            {
+                title: 'Infinite scroll',
+                note: '`scroll-end` fires near the end while `has-more` is on and `loading` is off; set `loading` in the handler, add the next page, then clear it.',
+                html: `<ge-virtual-scroll id="vs2" min-item-height="44" style="height:14rem;max-width:26rem;border:1px solid var(--border);border-radius:var(--radius)"></ge-virtual-scroll>
+<script>
+const more = document.getElementById('vs2');
+let count = 0;
+const page = () => Array.from({ length: 20 }, () => ({ id: count++ }));
+more.items = page();
+more.renderItem = (row) => Object.assign(document.createElement('div'), { textContent: 'Item ' + row.id, style: 'padding:.75rem 1rem;border-bottom:1px solid var(--border);box-sizing:border-box;height:44px' });
+more.addEventListener('scroll-end', () => {
+  more.loading = true;
+  setTimeout(() => {
+    more.items = [...more.items, ...page()];
+    more.hasMore = more.items.length < 100;
+    more.loading = false;
+  }, 800);
+});
+</script>`,
+            },
+            {
+                title: 'A grid of cells',
+                note: '`orientation="both"` reads `items` as a flat row-major grid of `column-count` columns and windows both axes. `scrollToCell(row, column)` jumps to one.',
+                html: `<ge-virtual-scroll id="vs3" orientation="both" column-count="100" min-item-height="40" min-item-width="80" style="height:12rem;max-width:26rem;border:1px solid var(--border);border-radius:var(--radius)"></ge-virtual-scroll>
+<script>
+const grid = document.getElementById('vs3');
+grid.items = Array.from({ length: 100 * 1000 }, (_, id) => ({ id }));
+grid.renderItem = (cell) => Object.assign(document.createElement('div'), { textContent: cell.id, style: 'height:40px;width:80px;box-sizing:border-box;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.75rem' });
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'items / renderItem / trackBy', type: 'unknown[] / (item, index) => unknown / (item, index) => unknown', default: '[] / - / item.id, then index', description: 'Properties. Rows with a stable key keep their nodes as the window moves.' },
+            { name: 'min-item-height / min-item-width', type: 'number', default: '50 / 100', description: 'Estimates in pixels for rows not yet measured; roughly right is enough. Width is used by `horizontal` and `both`.' },
+            { name: 'orientation / column-count', type: "'vertical' | 'horizontal' | 'both' / number", default: "'vertical' / 1", description: 'In `horizontal` every cell is as tall as the box; give cells an explicit width. In `both`, `items` is a flat row-major grid.' },
+            { name: 'buffer', type: 'number', default: '5', description: 'Extra rows rendered beyond each edge of the viewport.' },
+            { name: 'loading / has-more', type: 'boolean', default: 'false / true', description: '`loading` shows the indicator and suppresses `scroll-end`; `has-more="false"` stops `scroll-end`. Replace the indicator with a `slot="loading"` child.' },
+            { name: 'window-change / scroll-state / cell-window-change / scroll-end', type: 'event', default: '-', description: '`detail` of the first is `{ start, end }`; of the second `{ windowStart, windowEnd, windowSize, totalItems, scrollProgress }`; of the third `{ rowStart, rowEnd, columnStart, columnEnd }`.' },
+            { name: 'scrollToIndex / scrollToCell / scrollToTop / scrollToBottom', type: 'method', default: '-', description: 'Instant jumps. Far into unmeasured territory a jump lands approximately and settles as rows are measured.' },
+            { name: '::part(viewport)', type: 'css part', default: '-', description: 'The scrolling box.' },
+        ],
+    },
+    {
         id: 'input-mask',
         group: 'Rung 3 · Interactive',
         name: 'Input mask',

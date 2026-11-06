@@ -125,3 +125,6 @@ import '../packages/elements/src/wobble-card/define.js';
 import '../packages/elements/src/stagger-children/define.js';
 import '../packages/elements/src/scroll-progress/define.js';
 import '../packages/elements/src/meteors/define.js';
+import '../packages/elements/src/comparison-slider/define.js';
+import '../packages/elements/src/masonry/define.js';
+import '../packages/elements/src/virtual-scroll/define.js';
