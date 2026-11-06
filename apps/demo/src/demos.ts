@@ -4759,6 +4759,73 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
 })();</script>`,
             },
             {
+                title: 'Scatter chart',
+                note: 'Clouds of points in continuous x/y space. The nearest point to the pointer is lifted and read out; hiding a series in the legend rescales both axes.',
+                block: true,
+                html: `<ge-scatter-chart id="scatter1" height="320"></ge-scatter-chart>
+<script>(() => {
+  const pts = (list) => list.map(([x, y]) => ({ x, y }));
+  document.getElementById('scatter1').series = [
+    { name: 'Group A', points: pts([[10, 20], [25, 45], [40, 38], [55, 70], [70, 62], [85, 90]]) },
+    { name: 'Group B', points: pts([[15, 60], [30, 30], [45, 80], [60, 25], [75, 50], [90, 35]]) },
+  ];
+})();</script>`,
+            },
+            {
+                title: 'Bubble chart',
+                note: 'A third value `z` sets the radius; the area, not the diameter, follows it. `min-radius` and `max-radius` bound the sizes.',
+                block: true,
+                html: `<ge-bubble-chart id="bubble1" height="340"></ge-bubble-chart>
+<script>(() => {
+  const pts = (list) => list.map(([x, y, z]) => ({ x, y, z }));
+  document.getElementById('bubble1').series = [
+    { name: 'Europe', points: pts([[20, 30, 10], [45, 60, 40], [70, 40, 90], [85, 80, 25]]) },
+    { name: 'Asia', points: pts([[15, 70, 60], [35, 20, 15], [60, 85, 100], [90, 45, 55]]) },
+  ];
+})();</script>`,
+            },
+            {
+                title: 'Radar chart',
+                note: 'One polygon per series on shared axes; `max-value` pins the outer ring and `fill-opacity` the fill.',
+                html: `<ge-radar-chart id="radar1"></ge-radar-chart>
+<script>(() => {
+  const axes = ['Speed', 'Power', 'Range', 'Armor', 'Agility'];
+  const make = (name, values) => ({ name, data: axes.map((a, i) => ({ name: a, value: values[i] })) });
+  document.getElementById('radar1').series = [make('Alpha', [80, 60, 90, 40, 70]), make('Beta', [50, 85, 40, 75, 60])];
+})();</script>`,
+            },
+            {
+                title: 'Gauge chart',
+                note: 'A semicircle for one value. Thresholds colour it by the highest step reached.',
+                html: `<div style="display:flex;flex-wrap:wrap;gap:1.5rem">
+  <ge-gauge-chart value="42" label="CPU load" unit="%" id="gauge1"></ge-gauge-chart>
+  <ge-gauge-chart value="92" label="Disk" unit="%" id="gauge2"></ge-gauge-chart>
+</div>
+<script>(() => {
+  const zones = [{ value: 0, color: '#22c55e' }, { value: 60, color: '#eab308' }, { value: 85, color: '#ef4444' }];
+  document.getElementById('gauge1').thresholds = zones;
+  document.getElementById('gauge2').thresholds = zones;
+})();</script>`,
+            },
+            {
+                title: 'Funnel chart',
+                note: 'Stages narrow with their values. `percentage-mode` measures a share against the first stage or the previous one.',
+                block: true,
+                html: `<ge-funnel-chart id="funnel1" width="440"></ge-funnel-chart>
+<script>document.getElementById('funnel1').data = [
+  { name: 'Visitors', value: 5000 }, { name: 'Signups', value: 3200 }, { name: 'Trials', value: 1800 }, { name: 'Paid', value: 640 }, { name: 'Retained', value: 410 },
+];</script>`,
+            },
+            {
+                title: 'Waterfall chart',
+                note: 'A running total: gains rise, losses fall, and a `total` bar stands from zero and resets the level.',
+                block: true,
+                html: `<ge-waterfall-chart id="waterfall1" show-values></ge-waterfall-chart>
+<script>document.getElementById('waterfall1').data = [
+  { name: 'Start', value: 1000, type: 'total' }, { name: 'Sales', value: 450 }, { name: 'Refunds', value: -120 }, { name: 'Costs', value: -380 }, { name: 'Tax', value: -90 }, { name: 'End', value: 860, type: 'total' },
+];</script>`,
+            },
+            {
                 title: 'Chart legend',
                 note: 'The legend on its own: it reports `item-toggle` and the chart you pair it with decides what to hide.',
                 html: `<ge-chart-legend id="legend1"></ge-chart-legend>
@@ -4792,6 +4859,11 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'series / categories / stacking (stacked bar)', type: 'ChartSeries[] / string[] / string', default: "[] / [] / 'absolute'", description: 'Series pair with categories by index; a missing entry counts as 0. `stacking="percent"` fills each stack.' },
             { name: 'show-total / bar-radius / bar-gap (stacked bar)', type: 'boolean / number / number', default: 'false / 4 / 12', description: 'The stack total above each stack, corner radius and gap in px.' },
             { name: 'segment-click (stacked bar)', type: 'CustomEvent', default: '-', description: '`detail` is `{ series, category, value }` with the raw value.' },
+            { name: 'series (scatter, bubble)', type: 'XYSeries[] / XYZSeries[]', default: '[]', description: '`{ id?, name, color?, points: { x, y, z? }[] }`. Bubble radii follow `z` between `min-radius` (6) and `max-radius` (28); scatter takes `point-radius` (5).' },
+            { name: 'series / size / levels / max-value (radar)', type: 'ChartSeries[] / number', default: '[] / 320 / 4 / auto', description: 'Axes come from the first series. `max-value` is the value on the outer ring; `fill-opacity` is 0.2.' },
+            { name: 'value / min / max / thickness / thresholds / label / unit (gauge)', type: 'number / GaugeThreshold[] / string', default: '0 / 0 / 100 / 0.2 / [] / - / -', description: '`size` is 220; `show-value="false"` hides the readout.' },
+            { name: 'data / percentage-mode / gap / show-values (funnel)', type: 'ChartDataPoint[] / string / number / boolean', default: "[] / 'first' / 2 / true", description: '`percentage-mode` is `first` or `previous`. Fires `stage-click`.' },
+            { name: 'data / show-connectors / show-values / positive-color / negative-color / total-color (waterfall)', type: 'WaterfallBar[] / boolean / string', default: 'true / false / green / red / blue', description: 'A bar is `{ name, value, type?: \'total\', color? }`. Fires `bar-click`.' },
             { name: 'show-tooltip / show-legend', type: 'boolean', default: 'true', description: 'The hover tooltip and, on the line chart, the legend.' },
             { name: 'point-click / bar-click / slice-click', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`.' },
             { name: 'point-hover / bar-hover / slice-hover', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`, or `null` when the pointer leaves.' },
