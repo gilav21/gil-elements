@@ -877,6 +877,16 @@
       "types": "./dist/radar-chart/define.d.ts",
       "development": "./src/radar-chart/define.ts",
       "default": "./dist/radar-chart/define.js"
+    },
+    "./gauge-chart": {
+      "types": "./dist/gauge-chart/index.d.ts",
+      "development": "./src/gauge-chart/index.ts",
+      "default": "./dist/gauge-chart/index.js"
+    },
+    "./gauge-chart/define": {
+      "types": "./dist/gauge-chart/define.d.ts",
+      "development": "./src/gauge-chart/define.ts",
+      "default": "./dist/gauge-chart/define.js"
     }
   },
   "scripts": {

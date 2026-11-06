@@ -84,3 +84,4 @@ import '../packages/elements/src/stacked-bar-chart/define.js';
 import '../packages/elements/src/scatter-chart/define.js';
 import '../packages/elements/src/bubble-chart/define.js';
 import '../packages/elements/src/radar-chart/define.js';
+import '../packages/elements/src/gauge-chart/define.js';

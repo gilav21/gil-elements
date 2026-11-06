@@ -179,6 +179,8 @@ export default defineConfig({
                 'bubble-chart/define': 'src/bubble-chart/define.ts',
                 'radar-chart/index': 'src/radar-chart/index.ts',
                 'radar-chart/define': 'src/radar-chart/define.ts',
+                'gauge-chart/index': 'src/gauge-chart/index.ts',
+                'gauge-chart/define': 'src/gauge-chart/define.ts',
             },
             formats: ['es'],
         },
