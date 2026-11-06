@@ -193,12 +193,21 @@ for (const theme of ['light', 'dark']) {
                 for (const target of document.querySelectorAll('[data-hover-at]')) {
                     await target.updateComplete;
                     const el = target.shadowRoot.querySelector('svg');
+                    // A synthetic event's clientX/clientY are whole numbers, while the chart reads the pointer against its own
+                    // (fractional) rect. Where a case lands on the page depends on every case above it, so the chart is nudged onto
+                    // whole pixels while the pointer lands, then put back: the chart keeps the position it read, in its own units.
+                    const before = el.getBoundingClientRect();
+                    const box = target.closest('[data-case]');
+                    box.style.marginLeft = `${Math.ceil(before.left) - before.left}px`;
+                    box.style.marginTop = `${Math.ceil(before.top) - before.top}px`;
                     const rect = el.getBoundingClientRect();
                     const [x, y] = target.dataset.hoverAt.split(',').map(Number);
                     const scale = rect.width / el.viewBox.baseVal.width;
                     el.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: rect.left + x * scale, clientY: rect.top + y * scale }));
                     await target.updateComplete;
                     for (const part of target.shadowRoot.querySelectorAll('ge-chart-tooltip')) await part.updateComplete;
+                    box.style.marginLeft = '';
+                    box.style.marginTop = '';
                 }
                 // `data-hover-bar` is the index of the bar of a bar chart the reference shows hovered.
                 for (const target of document.querySelectorAll('ge-bar-chart[data-hover-bar]')) {
