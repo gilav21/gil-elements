@@ -1,3 +1,12 @@
+/**
+ * Whether this pointer is an additional finger in a multi-touch gesture. Two fingers mean pan and zoom, so a stroke or drag the
+ * first finger started is given up when a second arrives. `isPrimary` is `false` by default on a dispatched event, so only a
+ * touch pointer is ever judged.
+ */
+export function isSecondaryTouch(event: PointerEvent): boolean {
+    return event.pointerType === 'touch' && !event.isPrimary;
+}
+
 /** True when the primary pointer is coarse (a finger), where hover previews would only leave stale state behind. */
 export function isTouchDevice(): boolean {
     return globalThis.window?.matchMedia?.('(pointer: coarse)').matches ?? false;

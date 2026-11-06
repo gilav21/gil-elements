@@ -5249,6 +5249,89 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
         ],
     },
     {
+        id: 'signature-pad',
+        group: 'Rung 3 · Interactive',
+        name: 'Signature pad',
+        tag: 'ge-signature-pad',
+        description: 'A canvas to sign on with a mouse, finger or pen. Undo removes the last stroke, Clear removes all; the result exports as a PNG data URL or an SVG.',
+        examples: [
+            {
+                title: 'Default',
+                html: `<div style="max-width:28rem"><ge-signature-pad></ge-signature-pad></div>`,
+                block: true,
+            },
+            {
+                title: 'Pen, height and variants',
+                html: `<div style="display:grid;gap:.75rem;max-width:28rem">
+  <ge-signature-pad pen-color="#2563eb" pen-width="3" height="120"></ge-signature-pad>
+  <ge-signature-pad variant="underline" hide-controls height="100"></ge-signature-pad>
+  <ge-signature-pad disabled height="100"></ge-signature-pad>
+</div>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string', default: "''", description: 'A PNG data URL drawn as the backdrop; written back after every stroke.' },
+            { name: 'pen-color', type: 'string', default: 'currentColor', description: 'Ink colour; a token such as `var(--primary)` works.' },
+            { name: 'pen-width', type: 'number', default: '2', description: 'Stroke width in pixels.' },
+            { name: 'height', type: 'number', default: '160', description: 'Canvas height in pixels.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment.' },
+            { name: 'hide-controls', type: 'boolean', default: 'false', description: 'Hides the Undo and Clear buttons.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Stops drawing.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submits the PNG data URL with a form.' },
+            { name: 'clear() / undo() / toDataURL(type?)', type: 'method', default: '-', description: '`toDataURL("svg")` returns the strokes as an SVG.' },
+            { name: 'strokes / hasSignature / canUndo', type: 'readonly', default: '-', description: 'The recorded strokes and the state of the buttons.' },
+            { name: 'input / change / stroke-end', type: 'event', default: '-', description: 'Fired as the signature changes.' },
+        ],
+    },
+    {
+        id: 'emoji-picker',
+        group: 'Rung 3 · Interactive',
+        name: 'Emoji picker',
+        tag: 'ge-emoji-picker',
+        description: 'A button that opens a panel of emoji: search by name or keyword, jump between categories with the tabs, and pick one. It is a `ge-popover`, so `open`, `show()` and `hide()` work as they do there.',
+        examples: [
+            {
+                title: 'Default',
+                html: `<ge-emoji-picker id="emoji-demo">
+  <ge-emoji-picker-trigger><ge-button variant="outline">Pick an emoji</ge-button></ge-emoji-picker-trigger>
+  <ge-emoji-picker-content></ge-emoji-picker-content>
+</ge-emoji-picker>
+<span id="emoji-demo-out" style="margin-inline-start:.75rem;font-size:1.5rem"></span>
+<script>document.getElementById('emoji-demo').addEventListener('emoji-select', (e) => { document.getElementById('emoji-demo-out').textContent += e.detail; });</script>`,
+                block: true,
+            },
+            {
+                title: 'Several picks in one visit',
+                html: `<ge-emoji-picker close-on-select="false">
+  <ge-emoji-picker-trigger><ge-button variant="secondary">Keep open</ge-button></ge-emoji-picker-trigger>
+  <ge-emoji-picker-content></ge-emoji-picker-content>
+</ge-emoji-picker>`,
+                block: true,
+            },
+            {
+                title: 'Fixed strategy',
+                html: `<ge-card style="max-width:20rem;overflow:hidden"><ge-card-content>
+  <ge-emoji-picker close-on-scroll>
+    <ge-emoji-picker-trigger><ge-button variant="ghost">😀 Inside a clipped card</ge-button></ge-emoji-picker-trigger>
+    <ge-emoji-picker-content strategy="fixed"></ge-emoji-picker-content>
+  </ge-emoji-picker>
+</ge-card-content></ge-card>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the panel is showing.' },
+            { name: 'close-on-select', type: 'boolean', default: 'true', description: 'Closes the panel after a pick; `close-on-select="false"` keeps it open.' },
+            { name: 'close-on-scroll', type: 'boolean', default: 'false', description: 'Closes when anything outside the picker scrolls.' },
+            { name: 'ge-emoji-picker-content: side / align / side-offset', type: 'string / string / number', default: 'bottom / start / 4', description: 'Placement against the trigger, as for `ge-popover-content`.' },
+            { name: 'ge-emoji-picker-content: strategy', type: "'absolute' | 'fixed'", default: "'absolute'", description: '`fixed` lifts the panel into the top layer so clipping ancestors cannot cut it.' },
+            { name: 'show() / hide() / toggle() / selectEmoji(emoji)', type: 'method', default: '-', description: '`selectEmoji` commits a pick from your own control.' },
+            { name: 'emoji-select', type: 'event', default: '-', description: '`detail` is the emoji; a flag or skin-tone variant is several code points, so count it with `Intl.Segmenter`.' },
+            { name: 'open-change', type: 'event', default: '-', description: 'The panel opened or closed; `detail` is the new state.' },
+        ],
+    },
+    {
         id: 'input-mask',
         group: 'Rung 3 · Interactive',
         name: 'Input mask',

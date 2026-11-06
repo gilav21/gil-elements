@@ -130,6 +130,8 @@ import '@gilav21/elements/bento-grid/define';
 import '@gilav21/elements/currency-input/define';
 import '@gilav21/elements/duration-input/define';
 import '@gilav21/elements/phone-input/define';
+import '@gilav21/elements/signature-pad/define';
+import '@gilav21/elements/emoji-picker/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

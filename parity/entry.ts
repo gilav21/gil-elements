@@ -132,3 +132,5 @@ import '../packages/elements/src/bento-grid/define.js';
 import '../packages/elements/src/currency-input/define.js';
 import '../packages/elements/src/duration-input/define.js';
 import '../packages/elements/src/phone-input/define.js';
+import '../packages/elements/src/signature-pad/define.js';
+import '../packages/elements/src/emoji-picker/define.js';

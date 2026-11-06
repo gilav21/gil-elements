@@ -132,3 +132,5 @@ export * from './bento-grid/index.js';
 export * from './currency-input/index.js';
 export * from './duration-input/index.js';
 export * from './phone-input/index.js';
+export * from './signature-pad/index.js';
+export * from './emoji-picker/index.js';

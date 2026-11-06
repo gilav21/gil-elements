@@ -1357,6 +1357,26 @@
       "types": "./dist/phone-input/define.d.ts",
       "development": "./src/phone-input/define.ts",
       "default": "./dist/phone-input/define.js"
+    },
+    "./signature-pad": {
+      "types": "./dist/signature-pad/index.d.ts",
+      "development": "./src/signature-pad/index.ts",
+      "default": "./dist/signature-pad/index.js"
+    },
+    "./signature-pad/define": {
+      "types": "./dist/signature-pad/define.d.ts",
+      "development": "./src/signature-pad/define.ts",
+      "default": "./dist/signature-pad/define.js"
+    },
+    "./emoji-picker": {
+      "types": "./dist/emoji-picker/index.d.ts",
+      "development": "./src/emoji-picker/index.ts",
+      "default": "./dist/emoji-picker/index.js"
+    },
+    "./emoji-picker/define": {
+      "types": "./dist/emoji-picker/define.d.ts",
+      "development": "./src/emoji-picker/define.ts",
+      "default": "./dist/emoji-picker/define.js"
     }
   },
   "scripts": {

@@ -10,7 +10,7 @@ import { GeActivator } from '../../shared/activator.js';
  */
 export class GePopoverTrigger extends GeActivator<PopoverHost> {
     protected readonly registerEvent = POPOVER_REGISTER;
-    protected readonly slotName = 'popover-trigger';
+    protected readonly slotName: string = 'popover-trigger';
 
     protected activate(): void {
         this.parent?.toggle();

@@ -49,7 +49,7 @@ export class GePopoverContent extends UiElement {
     declare noRestoreFocus: boolean;
     declare strategy: Strategy;
     declare placement: Placement;
-    private owner?: PopoverHost;
+    protected owner?: PopoverHost;
     private wasOpen = false;
     private frame = 0;
     private stopTracking?: () => void;
@@ -160,7 +160,12 @@ export class GePopoverContent extends UiElement {
             data-align=${this.align}
             data-strategy=${this.strategy}
             style=${this.panelStyle(side, nudge)}
-          ><slot></slot></div>`;
+          >${this.renderPanelBody()}</div>`;
+    }
+
+    /** What goes inside the panel; the default is the slotted content. */
+    protected renderPanelBody() {
+        return html`<slot></slot>`;
     }
 
     private panelStyle(side: Side, nudge: number): string {
