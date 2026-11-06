@@ -192,6 +192,9 @@ export class GeTree extends UiElement implements TreeHost {
     }
 
     protected override updated(): void {
+        // Read again on every update: a tree built inside another element is connected before that element's `dir` reaches it.
+        const rtl = isRtl(this);
+        if (rtl !== this.rtl) this.rtl = rtl;
         this.setAttribute('aria-multiselectable', String(this.selectable === 'multiple'));
         const active = this.focusedKey === null ? undefined : this.orderedItems().find((item) => item.value === this.focusedKey);
         if (active) this.setAttribute('aria-activedescendant', active.id);

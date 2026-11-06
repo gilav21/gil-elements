@@ -92,6 +92,15 @@ describe('ge-tree-select', () => {
         expect(trigger(el).getAttribute('aria-controls')).toBe(panel(el).id);
     });
 
+    it('turns the expand chevron and the arrow keys the RTL way when the select is in Hebrew', async () => {
+        const { el } = await mountSelect('locale="he"');
+        await open(el);
+        const tree = el.shadowRoot!.querySelector<GeTree>('ge-tree')!;
+        expect(getComputedStyle(tree).direction).toBe('rtl');
+        const chevron = item(el, 'docs').shadowRoot!.querySelector<HTMLElement>('.expand')!;
+        await expect.poll(() => getComputedStyle(chevron).transform).toBe('matrix(-1, 0, 0, -1, 0, 0)');
+    });
+
     it('picks a node: sets the value, fires selection-change and change once, closes, and the form submits the key', async () => {
         const { page, el } = await mountSelect('name="folder"');
         const seen = log(el);
