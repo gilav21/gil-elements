@@ -4826,6 +4826,66 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
 ];</script>`,
             },
             {
+                title: 'Bullet chart',
+                note: 'One measure against a target and qualitative bands, in a single row. `ranges` are upper bounds.',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;max-width:480px">
+  <ge-bullet-chart id="bullet1" value="270" target="250" label="Revenue" unit="k"></ge-bullet-chart>
+  <ge-bullet-chart id="bullet2" value="68" target="80" label="Satisfaction" unit="%" color="#22c55e"></ge-bullet-chart>
+</div>
+<script>(() => {
+  document.getElementById('bullet1').ranges = [150, 225, 300];
+  document.getElementById('bullet2').ranges = [50, 75, 100];
+})();</script>`,
+            },
+            {
+                title: 'Heatmap',
+                note: 'Cells coloured by value on a sequential scale; hover or focus a cell for its row, column and value.',
+                block: true,
+                html: `<ge-heatmap id="heat1" show-values></ge-heatmap>
+<script>(() => {
+  const rows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  const cols = ['9am', '11am', '1pm', '3pm', '5pm'];
+  document.getElementById('heat1').data = rows.flatMap((row, r) => cols.map((col, c) => ({ row, col, value: ((r * 7 + c * 5) % 11) * 9 + 4 })));
+})();</script>`,
+            },
+            {
+                title: 'Calendar heatmap',
+                note: 'A year of days, a column per week. Only the days you pass are drawn.',
+                block: true,
+                html: `<ge-calendar-heatmap id="cal1" heading="Contributions"></ge-calendar-heatmap>
+<script>(() => {
+  const days = [];
+  for (let i = 0; i < 180; i++) {
+    const d = new Date(Date.UTC(2025, 0, 1 + i));
+    days.push({ date: d.toISOString().slice(0, 10), value: (i * 37) % 11 });
+  }
+  document.getElementById('cal1').data = days;
+})();</script>`,
+            },
+            {
+                title: 'Column range chart',
+                note: 'Floating columns from a low to a high value.',
+                block: true,
+                html: `<ge-column-range-chart id="range1" unit="°C" width="480"></ge-column-range-chart>
+<script>document.getElementById('range1').data = [
+  { name: 'Jan', low: -2, high: 6 }, { name: 'Feb', low: 0, high: 9 }, { name: 'Mar', low: 4, high: 15 }, { name: 'Apr', low: 8, high: 20 }, { name: 'May', low: 12, high: 25 }, { name: 'Jun', low: 16, high: 30 },
+];</script>`,
+            },
+            {
+                title: 'Combo chart',
+                note: 'Bars on one axis and lines on a hidden second one. `show-cumulative` adds a Pareto line.',
+                block: true,
+                html: `<ge-combo-chart id="combo1" show-cumulative cumulative-label="Cumulative share"></ge-combo-chart>
+<script>(() => {
+  const cats = ['Crash', 'Slow', 'UI', 'Login', 'Other'];
+  const make = (name, values) => ({ name, data: cats.map((c, i) => ({ name: c, value: values[i] })) });
+  const chart = document.getElementById('combo1');
+  chart.barSeries = [make('Defects', [120, 80, 45, 30, 15])];
+  chart.lineSeries = [];
+})();</script>`,
+            },
+            {
                 title: 'Chart legend',
                 note: 'The legend on its own: it reports `item-toggle` and the chart you pair it with decides what to hide.',
                 html: `<ge-chart-legend id="legend1"></ge-chart-legend>
@@ -4864,6 +4924,11 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'value / min / max / thickness / thresholds / label / unit (gauge)', type: 'number / GaugeThreshold[] / string', default: '0 / 0 / 100 / 0.2 / [] / - / -', description: '`size` is 220; `show-value="false"` hides the readout.' },
             { name: 'data / percentage-mode / gap / show-values (funnel)', type: 'ChartDataPoint[] / string / number / boolean', default: "[] / 'first' / 2 / true", description: '`percentage-mode` is `first` or `previous`. Fires `stage-click`.' },
             { name: 'data / show-connectors / show-values / positive-color / negative-color / total-color (waterfall)', type: 'WaterfallBar[] / boolean / string', default: 'true / false / green / red / blue', description: 'A bar is `{ name, value, type?: \'total\', color? }`. Fires `bar-click`.' },
+            { name: 'value / target / ranges / min / color / label / unit (bullet)', type: 'number / number[] / string', default: '0 / - / [] / 0 / primary / - / -', description: '`ranges` are upper bounds of the bands, in any order.' },
+            { name: 'data / max-cell-size / min-cell-size / from-color / to-color / show-values (heatmap)', type: 'HeatmapCell[] / number / string / boolean', default: '[] / 52 / 18 / blue / blue / false', description: 'A cell is `{ row, col, value }`. Fires `cell-hover` with the cell, or `null`.' },
+            { name: 'data / cell-size / from-color / to-color (calendar heatmap)', type: 'CalendarDay[] / number / string', default: '[] / 13 / blue / blue', description: 'A day is `{ date: \'YYYY-MM-DD\', value }`. Fires `day-hover`.' },
+            { name: 'data / unit / show-range-labels / bar-radius / bar-gap (column range)', type: 'RangeDataPoint[] / string / boolean / number', default: "[] / - / true / 4 / 12", description: 'A column is `{ name, low, high, color? }`. Fires `bar-click`.' },
+            { name: 'barSeries / lineSeries / show-cumulative / cumulative-label (combo)', type: 'ChartSeries[] / boolean / string', default: '[] / [] / false / Cumulative', description: 'Lines use a second hidden axis. `bar-click` detail is `{ point, index }` of the bar\'s own series.' },
             { name: 'show-tooltip / show-legend', type: 'boolean', default: 'true', description: 'The hover tooltip and, on the line chart, the legend.' },
             { name: 'point-click / bar-click / slice-click', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`.' },
             { name: 'point-hover / bar-hover / slice-hover', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`, or `null` when the pointer leaves.' },
