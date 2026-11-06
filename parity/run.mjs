@@ -36,8 +36,8 @@ const bundle = readFileSync(`${out}/bundle/elements.js`, 'utf8');
 
 const rows = (cases_, side) =>
     cases_
-        .flatMap((c) => c.items.map((i) => ({ key: `${c.name}/${i.id}`, html: i[side], wrap: i.wrap ?? '', at: i.at, focus: i.focus?.[side], show: side === 'el' ? i.show : undefined })))
-        .map((i) => `<div data-case="${i.key}" ${i.at ? `data-at="${i.at}"` : ''} ${i.focus ? `data-focus="${i.focus}"` : ''} ${i.show ? `data-show="${i.show}"` : ''} style="padding:12px;${i.wrap}">${i.html}</div>`)
+        .flatMap((c) => c.items.map((i) => ({ key: `${c.name}/${i.id}`, html: i[side], wrap: i.wrap ?? '', at: i.at, focus: i.focus?.[side], show: side === 'el' ? i.show : undefined, scroll: i.scroll })))
+        .map((i) => `<div data-case="${i.key}" ${i.at ? `data-at="${i.at}"` : ''} ${i.focus ? `data-focus="${i.focus}"` : ''} ${i.show ? `data-show="${i.show}"` : ''} ${i.scroll ? 'data-scroll' : ''} style="padding:12px;${i.wrap}">${i.html}</div>`)
         .join('\n');
 const shell = (theme, body, extraCss) =>
     `<!doctype html><html class="${theme}"><head><style>${tokens}${extraCss}
@@ -175,6 +175,11 @@ for (const theme of ['light', 'dark']) {
                 for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
                 for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
+                // `data-goto` is a step index: the tour, already running, jumps there.
+                for (const target of document.querySelectorAll('[data-goto]')) {
+                    await target.updateComplete;
+                    target.goTo(Number(target.dataset.goto));
+                }
                 // `data-click-at` is `x,y;x,y` from an element's top-left: a pointer click lands at each, which is how a ripple starts.
                 // `data-move-at` is `x,y` the same way: a mousemove, which is how a magnetic element is pulled.
                 for (const target of document.querySelectorAll('[data-click-at], [data-move-at]')) {
@@ -391,6 +396,11 @@ for (const theme of ['light', 'dark']) {
             }
             // A context menu opens at the pointer, in the top layer at viewport coordinates, so it is opened at an offset
             // inside the case once the case has been scrolled to the top of the viewport.
+            // `scroll` brings the case to the top first and lets whatever follows the scroll (a tour's spotlight) settle.
+            if ((await handle.getAttribute('data-scroll')) !== null) {
+                await handle.evaluate((c) => c.scrollIntoView({ block: 'start', behavior: 'instant' }));
+                await page.waitForTimeout(500);
+            }
             const show = await handle.getAttribute('data-show');
             if (show) {
                 await handle.evaluate((c) => c.scrollIntoView({ block: 'start', behavior: 'instant' }));

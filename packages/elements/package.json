@@ -1127,6 +1127,16 @@
       "types": "./dist/chat-input/define.d.ts",
       "development": "./src/chat-input/define.ts",
       "default": "./dist/chat-input/define.js"
+    },
+    "./tour": {
+      "types": "./dist/tour/index.d.ts",
+      "development": "./src/tour/index.ts",
+      "default": "./dist/tour/index.js"
+    },
+    "./tour/define": {
+      "types": "./dist/tour/define.d.ts",
+      "development": "./src/tour/define.ts",
+      "default": "./dist/tour/define.js"
     }
   },
   "scripts": {

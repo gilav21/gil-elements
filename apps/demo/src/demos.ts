@@ -5216,4 +5216,86 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: '::part(scroll-area) (list) / ::part(send) (input)', type: 'css part', default: '-', description: 'The inner scroll area and the send button.' },
         ],
     },
+    {
+        id: 'tour',
+        group: 'Rung 3 · Interactive',
+        name: 'Tour',
+        tag: 'ge-tour',
+        description: 'A guided tour: the page dims, one element at a time is spotlit, and a card explains it. Set `steps` as a property and turn `active` on.',
+        examples: [
+            {
+                title: 'A three-step tour',
+                note: 'Each `target` is a CSS selector looked up when the step starts. Enter or ArrowRight go on, ArrowLeft goes back, Escape skips. The card sits on the side with the most room unless a step names a `side`.',
+                html: `<div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center">
+  <ge-button id="tour1-search" variant="outline">Search</ge-button>
+  <ge-badge id="tour1-badge">New</ge-badge>
+  <ge-button id="tour1-save">Save</ge-button>
+  <ge-button id="tour1-start" variant="secondary">Start the tour</ge-button>
+</div>
+<ge-tour id="tour1"></ge-tour>
+<p id="tour1-log" style="margin-top:1rem;font-size:.875rem;color:var(--muted-foreground)">Waiting.</p>
+<script>(() => {
+  const tour = document.getElementById('tour1');
+  const log = document.getElementById('tour1-log');
+  tour.steps = [
+    { target: '#tour1-search', title: 'Search', description: 'Find anything in the project.' },
+    { target: '#tour1-badge', title: 'What is new', description: 'Badges mark recent changes.', side: 'right' },
+    { target: '#tour1-save', title: 'Save', description: 'Saves your work.' },
+  ];
+  document.getElementById('tour1-start').addEventListener('click', () => { tour.active = true; });
+  tour.addEventListener('step-change', (e) => { log.textContent = 'Step ' + (e.detail + 1); });
+  tour.addEventListener('done', (e) => { log.textContent = 'Ended: ' + e.detail; });
+})();</script>`,
+            },
+            {
+                title: 'Hooks, branching and remembering',
+                note: '`beforeActivate` opens the panel the next step points at and `target-timeout` waits for it. `when` leaves a step out, and `next` branches. `storage-key` remembers that the tour ran, so it will not start again until `resetCompletion()`.',
+                html: `<div style="display:flex;flex-wrap:wrap;gap:1rem;align-items:center">
+  <ge-button id="tour2-menu" variant="outline">Menu</ge-button>
+  <div id="tour2-panel-slot" style="min-width:12rem;min-height:2.5rem"></div>
+  <ge-button id="tour2-start" variant="secondary">Start</ge-button>
+  <ge-button id="tour2-reset" variant="ghost">Forget it ran</ge-button>
+</div>
+<ge-tour id="tour2" target-timeout="1500" storage-key="demo-tour-2" next-label="Continue"></ge-tour>
+<p id="tour2-log" style="margin-top:1rem;font-size:.875rem;color:var(--muted-foreground)">Waiting.</p>
+<script>(() => {
+  const tour = document.getElementById('tour2');
+  const slot = document.getElementById('tour2-panel-slot');
+  const log = document.getElementById('tour2-log');
+  tour.steps = [
+    { target: '#tour2-menu', title: 'The menu', description: 'The next step opens a panel from here.' },
+    {
+      target: '#tour2-panel',
+      title: 'Settings',
+      description: 'This panel did not exist until the step asked for it.',
+      beforeActivate: async () => {
+        await new Promise((r) => setTimeout(r, 300));
+        slot.innerHTML = '<ge-card id="tour2-panel" style="padding:.5rem 1rem">Settings panel</ge-card>';
+      },
+      afterDeactivate: () => { slot.innerHTML = ''; },
+    },
+    { target: '#tour2-never', title: 'Skipped', when: () => false },
+    { target: '#tour2-start', title: 'That is all', description: 'Press Done to finish.' },
+  ];
+  document.getElementById('tour2-start').addEventListener('click', () => {
+    if (tour.isCompleted()) { log.textContent = 'It already ran. Forget it first.'; return; }
+    tour.active = true;
+  });
+  document.getElementById('tour2-reset').addEventListener('click', () => { tour.resetCompletion(); log.textContent = 'Forgotten.'; });
+  tour.addEventListener('step-skipped', (e) => { log.textContent = 'Skipped step ' + (e.detail.index + 1) + ': ' + e.detail.reason; });
+  tour.addEventListener('done', (e) => { log.textContent = 'Ended: ' + e.detail; });
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'steps', type: 'TourStep[]', default: '[]', description: '`{ target, title, description?, side?, beforeActivate?, afterDeactivate?, when?, targetTimeout?, next? }`. A missing, unrendered or failing step is skipped in the direction of travel with a console warning and a `step-skipped` event.' },
+            { name: 'active', type: 'boolean', default: 'false', description: 'Turning it on starts at the first step. Turning it off yourself cancels without a `done` event.' },
+            { name: 'show-skip / target-timeout', type: 'boolean / number', default: 'true / 0', description: '`show-skip="false"` hides Skip. `target-timeout` is the milliseconds to wait for a target a hook renders; 0 looks once.' },
+            { name: 'next-label / prev-label / finish-label / skip-label / locale', type: 'string', default: '-', description: 'Button wording; `locale` (an id or object) also sets `dir="rtl"` for Hebrew and Arabic.' },
+            { name: 'storage-key', type: 'string', default: "''", description: 'Remember under `ge-tour:<key>` in localStorage that the tour ended (finished or skipped), and refuse to start again. A tour that never showed a step records nothing.' },
+            { name: 'next() / previous() / skip() / goTo(i) / restart() / isCompleted() / resetCompletion()', type: 'methods', default: '-', description: '`next()` and `previous()` are ignored while a step\'s hooks run; `skip()` never is.' },
+            { name: 'done / active-change / step-change / step-skipped', type: 'events', default: '-', description: '`done` carries `finished` or `skipped`; `active-change` (`false`) fires when the tour turns itself off; `step-change` carries the index; `step-skipped` carries `{ index, reason }`.' },
+            { name: '::part(card)', type: 'css part', default: '-', description: 'The step card.' },
+        ],
+    },
 ];

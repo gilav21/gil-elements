@@ -229,6 +229,8 @@ export default defineConfig({
                 'chat-list/define': 'src/chat-list/define.ts',
                 'chat-input/index': 'src/chat-input/index.ts',
                 'chat-input/define': 'src/chat-input/define.ts',
+                'tour/index': 'src/tour/index.ts',
+                'tour/define': 'src/tour/define.ts',
             },
             formats: ['es'],
         },

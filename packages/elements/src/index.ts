@@ -109,3 +109,4 @@ export * from './input-mask/index.js';
 export * from './chat-message/index.js';
 export * from './chat-list/index.js';
 export * from './chat-input/index.js';
+export * from './tour/index.js';

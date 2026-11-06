@@ -107,6 +107,7 @@ import '@gilav21/elements/input-mask/define';
 import '@gilav21/elements/chat-message/define';
 import '@gilav21/elements/chat-list/define';
 import '@gilav21/elements/chat-input/define';
+import '@gilav21/elements/tour/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

@@ -67,7 +67,7 @@
   "chunks/color-picker.js": 12800,
   "chunks/color.js": 3100,
   "chunks/command-shortcut.js": 4550,
-  "chunks/common-locales.js": 1347,
+  "chunks/common-locales.js": 1764,
   "chunks/compound.js": 340,
   "chunks/context-menu-trigger.js": 3600,
   "chunks/context-menu.js": 1030,
@@ -358,5 +358,8 @@
   "chat-message/index.js": 81,
   "chunks/chat-input.js": 1047,
   "chunks/chat-list.js": 710,
-  "chunks/chat-message.js": 1074
+  "chunks/chat-message.js": 1074,
+  "chunks/tour.js": 5245,
+  "tour/define.js": 130,
+  "tour/index.js": 70
 }
