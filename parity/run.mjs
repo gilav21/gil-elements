@@ -169,7 +169,8 @@ for (const theme of ['light', 'dark']) {
                 // `data-opened` shows a speed dial open; its items animate out, so wait for them to land.
                 for (const target of document.querySelectorAll('ge-speed-dial[data-opened]')) target.show();
                 await Promise.all([...document.querySelectorAll('ge-speed-dial[data-opened]')].map((t) => t.updateComplete));
-                await Promise.all(document.getAnimations().map((a) => a.finished));
+                // An infinite animation (a spinner, a skeleton pulse, a marquee) never finishes, so waiting on it hangs the run.
+                await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));
                 // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
                 for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
@@ -219,7 +220,7 @@ for (const theme of ['light', 'dark']) {
                     target.shadowRoot.adoptedStyleSheets = [...target.shadowRoot.adoptedStyleSheets, still];
                     target.shadowRoot.querySelectorAll('.slice')[Number(target.dataset.hoverSlice)].dispatchEvent(new MouseEvent('mouseenter'));
                     await target.updateComplete;
-                    await Promise.all(target.shadowRoot.getAnimations({ subtree: true }).map((a) => a.finished));
+                    await Promise.all(target.shadowRoot.getAnimations({ subtree: true }).filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));
                 }
                 // A kanban board takes its `columns` and `cards` as JSON; `data-dragged` is the id of the card shown mid-drag, `data-swimlane-by` the lane property.
                 for (const target of document.querySelectorAll('ge-kanban[data-columns]')) {
