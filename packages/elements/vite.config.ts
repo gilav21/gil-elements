@@ -201,6 +201,8 @@ export default defineConfig({
                 'histogram/define': 'src/histogram/define.ts',
                 'chart-brush/index': 'src/chart-brush/index.ts',
                 'chart-brush/define': 'src/chart-brush/define.ts',
+                'pie-chart-drilldown/index': 'src/pie-chart-drilldown/index.ts',
+                'pie-chart-drilldown/define': 'src/pie-chart-drilldown/define.ts',
             },
             formats: ['es'],
         },

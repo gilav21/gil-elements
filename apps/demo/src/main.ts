@@ -93,6 +93,7 @@ import '@gilav21/elements/combo-chart/define';
 import '@gilav21/elements/bar-race-chart/define';
 import '@gilav21/elements/histogram/define';
 import '@gilav21/elements/chart-brush/define';
+import '@gilav21/elements/pie-chart-drilldown/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

@@ -211,7 +211,7 @@ for (const theme of ['light', 'dark']) {
                     for (const part of target.shadowRoot.querySelectorAll('ge-chart-tooltip')) await part.updateComplete;
                 }
                 // `data-hover-slice` is the index of the slice of a pie chart the reference shows hovered.
-                for (const target of document.querySelectorAll('ge-pie-chart[data-hover-slice]')) {
+                for (const target of document.querySelectorAll('ge-pie-chart[data-hover-slice], ge-pie-chart-drilldown[data-hover-slice]')) {
                     await target.updateComplete;
                     // The reference is static, so the hover is applied without the transitions a real one would run.
                     const still = new CSSStyleSheet();
