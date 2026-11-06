@@ -4294,7 +4294,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
                 title: 'Vertical list',
                 note: 'Drag a row, or focus it and press Space, then the arrows (Home and End jump to the ends), then Space again; Escape puts it back. Each step is announced to screen readers. The list fires `reorder` with where the row came from and went.',
                 html: `<style>.sx-card{box-sizing:border-box;width:100%;padding:.5rem .75rem;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--card);color:var(--card-foreground);font-size:.875rem}</style>
-<ge-sortable id="sx1" style="max-width:20rem">
+<ge-sortable id="sx1" style="width:100%;max-width:20rem">
   <ge-sortable-item><div class="sx-card">Write the spec</div></ge-sortable-item>
   <ge-sortable-item><div class="sx-card">Review the pull request</div></ge-sortable-item>
   <ge-sortable-item><div class="sx-card">Ship it</div></ge-sortable-item>
@@ -4308,7 +4308,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             },
             {
                 title: 'Horizontal',
-                html: `<ge-sortable orientation="horizontal" style="max-width:34rem">
+                html: `<ge-sortable orientation="horizontal" style="width:100%;max-width:34rem">
   <ge-sortable-item><div class="sx-card" style="width:7rem;text-align:center">Mon</div></ge-sortable-item>
   <ge-sortable-item><div class="sx-card" style="width:7rem;text-align:center">Tue</div></ge-sortable-item>
   <ge-sortable-item><div class="sx-card" style="width:7rem;text-align:center">Wed</div></ge-sortable-item>
@@ -4318,7 +4318,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             {
                 title: 'Handle only',
                 note: 'With `handle-only` a row drags from its `ge-sortable-handle` (or any `[data-sortable-handle]`), so its text stays selectable. Keyboard reordering still works from the row.',
-                html: `<ge-sortable handle-only style="max-width:20rem">
+                html: `<ge-sortable handle-only style="width:100%;max-width:20rem">
   <ge-sortable-item><ge-sortable-handle><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted-foreground)"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></ge-sortable-handle><div class="sx-card">Alpha</div></ge-sortable-item>
   <ge-sortable-item><ge-sortable-handle><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted-foreground)"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></ge-sortable-handle><div class="sx-card">Beta</div></ge-sortable-item>
   <ge-sortable-item><ge-sortable-handle><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted-foreground)"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></ge-sortable-handle><div class="sx-card">Gamma</div></ge-sortable-item>
@@ -4326,7 +4326,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             },
             {
                 title: 'Disabled',
-                html: `<ge-sortable disabled style="max-width:20rem">
+                html: `<ge-sortable disabled style="width:100%;max-width:20rem">
   <ge-sortable-item><div class="sx-card">Locked one</div></ge-sortable-item>
   <ge-sortable-item><div class="sx-card">Locked two</div></ge-sortable-item>
 </ge-sortable>`,
@@ -4334,7 +4334,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             {
                 title: 'Data-driven',
                 note: 'Set `items` and `renderItem`; every reorder arrives as a new array in `items-change` (your array is never mutated) and is written back to `items`. `trackBy` keeps each row\'s node, so the move animates.',
-                html: `<ge-sortable id="sx2" style="max-width:20rem"></ge-sortable>
+                html: `<ge-sortable id="sx2" style="width:100%;max-width:20rem"></ge-sortable>
 <p id="sx2-out" style="font-size:.875rem;color:var(--muted-foreground)"></p>
 <script>(() => {
   const el = document.getElementById('sx2');
@@ -4375,7 +4375,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             {
                 title: 'Land effects',
                 note: '`landEffect(item, from, to)` returns a built-in name from `SORTABLE_LAND_EFFECTS` (flash, pulse, shake, glow) or any class of yours, played on the row after it lands. The built-ins are skipped under reduced motion.',
-                html: `<ge-sortable id="sx4" style="max-width:20rem">
+                html: `<ge-sortable id="sx4" style="width:100%;max-width:20rem">
   <ge-sortable-item><div class="sx-card">Flash</div></ge-sortable-item>
   <ge-sortable-item><div class="sx-card">Pulse</div></ge-sortable-item>
   <ge-sortable-item><div class="sx-card">Glow</div></ge-sortable-item>
@@ -4385,7 +4385,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             {
                 title: 'Custom ghost and placeholder',
                 note: 'A `ge-sortable-ghost` replaces the faded copy shown at the drop gap and a `ge-sortable-placeholder` replaces the dashed box left at the lift origin. Their content is copied.',
-                html: `<ge-sortable style="max-width:20rem">
+                html: `<ge-sortable style="width:100%;max-width:20rem">
   <ge-sortable-item><div class="sx-card">One</div></ge-sortable-item>
   <ge-sortable-item><div class="sx-card">Two</div></ge-sortable-item>
   <ge-sortable-item><div class="sx-card">Three</div></ge-sortable-item>
@@ -4396,7 +4396,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             {
                 title: 'Nested outline',
                 note: 'A list inside a row is its own list. Rows drag within it, or out to the list around it when the pointer leaves it. `reorder` carries the `path` of ids from the outermost list down.',
-                html: `<ge-sortable group="outline" list-id="root" style="max-width:22rem">
+                html: `<ge-sortable group="outline" list-id="root" style="width:100%;max-width:22rem">
   <ge-sortable-item style="flex-direction:column;align-items:stretch"><div class="sx-card">Fruit</div>
     <ge-sortable group="outline" list-id="fruit" style="padding-inline-start:1.5rem;min-height:1.5rem">
       <ge-sortable-item><div class="sx-card">Apple</div></ge-sortable-item>
