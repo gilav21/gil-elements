@@ -1,0 +1,22 @@
+:host {
+    display: block;
+}
+.base {
+    position: relative;
+    width: 100%;
+}
+svg {
+    display: block;
+    width: 100%;
+}
+.stage {
+    cursor: pointer;
+    transition: fill-opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.caption {
+    pointer-events: none;
+    fill: var(--primary-foreground);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+}

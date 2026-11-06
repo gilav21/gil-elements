@@ -83,6 +83,7 @@ import '@gilav21/elements/scatter-chart/define';
 import '@gilav21/elements/bubble-chart/define';
 import '@gilav21/elements/radar-chart/define';
 import '@gilav21/elements/gauge-chart/define';
+import '@gilav21/elements/funnel-chart/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

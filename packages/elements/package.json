@@ -887,6 +887,16 @@
       "types": "./dist/gauge-chart/define.d.ts",
       "development": "./src/gauge-chart/define.ts",
       "default": "./dist/gauge-chart/define.js"
+    },
+    "./funnel-chart": {
+      "types": "./dist/funnel-chart/index.d.ts",
+      "development": "./src/funnel-chart/index.ts",
+      "default": "./dist/funnel-chart/index.js"
+    },
+    "./funnel-chart/define": {
+      "types": "./dist/funnel-chart/define.d.ts",
+      "development": "./src/funnel-chart/define.ts",
+      "default": "./dist/funnel-chart/define.js"
     }
   },
   "scripts": {

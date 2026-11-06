@@ -199,6 +199,17 @@ for (const theme of ['light', 'dark']) {
                     target.shadowRoot.querySelectorAll('.segment')[index].dispatchEvent(new MouseEvent('mouseenter'));
                     await target.updateComplete;
                 }
+                // `data-enter` is "selector,index": mouseenter fires on that part of the shadow tree, as a pointer arriving would.
+                for (const target of document.querySelectorAll('[data-enter]')) {
+                    await target.updateComplete;
+                    const [selector, index] = target.dataset.enter.split(',');
+                    const still = new CSSStyleSheet();
+                    still.replaceSync('*{transition:none !important}');
+                    target.shadowRoot.adoptedStyleSheets = [...target.shadowRoot.adoptedStyleSheets, still];
+                    target.shadowRoot.querySelectorAll(selector)[Number(index)].dispatchEvent(new MouseEvent('mouseenter'));
+                    await target.updateComplete;
+                    for (const part of target.shadowRoot.querySelectorAll('ge-chart-tooltip')) await part.updateComplete;
+                }
                 // `data-hover-slice` is the index of the slice of a pie chart the reference shows hovered.
                 for (const target of document.querySelectorAll('ge-pie-chart[data-hover-slice]')) {
                     await target.updateComplete;

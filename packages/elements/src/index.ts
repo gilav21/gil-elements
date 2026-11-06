@@ -85,3 +85,4 @@ export * from './scatter-chart/index.js';
 export * from './bubble-chart/index.js';
 export * from './radar-chart/index.js';
 export * from './gauge-chart/index.js';
+export * from './funnel-chart/index.js';

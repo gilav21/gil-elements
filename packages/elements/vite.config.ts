@@ -181,6 +181,8 @@ export default defineConfig({
                 'radar-chart/define': 'src/radar-chart/define.ts',
                 'gauge-chart/index': 'src/gauge-chart/index.ts',
                 'gauge-chart/define': 'src/gauge-chart/define.ts',
+                'funnel-chart/index': 'src/funnel-chart/index.ts',
+                'funnel-chart/define': 'src/funnel-chart/define.ts',
             },
             formats: ['es'],
         },
