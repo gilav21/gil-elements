@@ -1116,6 +1116,57 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
         ],
     },
     {
+        id: 'card-accordion',
+        group: 'Rung 3 · Interactive',
+        name: 'Card accordion',
+        tag: 'ge-card-accordion',
+        description: 'An accordion whose items are elevated cards with a smooth height animation. Same state engine as the accordion: type, value, collapsible, change.',
+        examples: [
+            {
+                title: 'Quick form',
+                note: 'A heading, an optional description and the body text; the closed card keeps its body out of the tab order.',
+                block: true,
+                html: `<ge-card-accordion value="billing" style="width:26rem">
+  <ge-card-accordion-item value="billing" heading="Billing" description="Invoices and plans" content="Your next invoice is due in May. You can download past ones from the invoices tab."></ge-card-accordion-item>
+  <ge-card-accordion-item value="security" heading="Security" content="Two-factor authentication is on."></ge-card-accordion-item>
+  <ge-card-accordion-item value="notifications" heading="Notifications" description="Email and push" content="You get a weekly digest."></ge-card-accordion-item>
+</ge-card-accordion>`,
+            },
+            {
+                title: 'Header actions',
+                note: 'Project a trigger, actions and content. Controls inside ge-card-accordion-actions sit beside the chevron and never toggle the card; every click inside is stopped there, so listen on the controls themselves.',
+                block: true,
+                html: `<ge-card-accordion type="multiple" value="deploys" style="width:26rem">
+  <ge-card-accordion-item value="deploys">
+    <ge-card-accordion-trigger>Deploys
+      <ge-card-accordion-actions><ge-button variant="outline" size="sm">Retry</ge-button></ge-card-accordion-actions>
+    </ge-card-accordion-trigger>
+    <ge-card-accordion-content>Last deploy finished 4 minutes ago.</ge-card-accordion-content>
+  </ge-card-accordion-item>
+  <ge-card-accordion-item value="backups">
+    <ge-card-accordion-trigger>Backups</ge-card-accordion-trigger>
+    <ge-card-accordion-content>Nightly, kept for 30 days.</ge-card-accordion-content>
+  </ge-card-accordion-item>
+</ge-card-accordion>`,
+            },
+            {
+                title: 'Loading',
+                block: true,
+                html: `<ge-card-accordion style="width:26rem">
+  <ge-card-accordion-item value="a" skeleton></ge-card-accordion-item>
+  <ge-card-accordion-item value="b" heading="Loaded card" content="The skeleton keeps the card's shape while data loads."></ge-card-accordion-item>
+</ge-card-accordion>`,
+            },
+        ],
+        api: [
+            { name: 'type / value / collapsible', type: "'single' | 'multiple' / string[] / boolean", default: "'single' / [] / true", description: 'As on ge-accordion; `value` is a comma-separated list in the attribute and `collapsible="false"` keeps one card open.' },
+            { name: 'change', type: 'event', default: '-', description: 'After the user opens or closes a card; read `value`.' },
+            { name: 'item: value / heading / description / content / skeleton', type: 'string / boolean', default: '-', description: 'On ge-card-accordion-item. The first four are the quick form; `skeleton` shows placeholders in the card shape.' },
+            { name: 'ge-card-accordion-trigger / -actions / -content', type: 'parts', default: '-', description: 'Custom form. The trigger label truncates; the actions row is outside the toggle button; the content is always rendered so it can animate, and is `inert` while closed.' },
+            { name: '--density-card-accordion', type: 'css', default: '1', description: 'Card padding and gap multiplier; falls back to --density.' },
+        ],
+    },
+    {
         id: 'tabs',
         group: 'Rung 3 · Interactive',
         name: 'Tabs',
@@ -5903,6 +5954,100 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
             { name: 'next() / previous() / skip() / goTo(i) / restart() / isCompleted() / resetCompletion()', type: 'methods', default: '-', description: '`next()` and `previous()` are ignored while a step\'s hooks run; `skip()` never is.' },
             { name: 'done / active-change / step-change / step-skipped', type: 'events', default: '-', description: '`done` carries `finished` or `skipped`; `active-change` (`false`) fires when the tour turns itself off; `step-change` carries the index; `step-skipped` carries `{ index, reason }`.' },
             { name: '::part(card)', type: 'css part', default: '-', description: 'The step card.' },
+        ],
+    },
+    {
+        id: 'icon',
+        group: 'Rung 1 · Static',
+        name: 'Icon',
+        tag: 'ge-icon',
+        description: 'An inline SVG icon from about a thousand built-in glyphs, drawn in the surrounding text colour. An unknown name draws nothing instead of throwing.',
+        examples: [
+            {
+                title: 'Sizes',
+                note: '`size` takes xs, sm, md (the default), lg or xl, or any SVG length such as `2rem`.',
+                html: `<ge-icon name="settings" size="xs"></ge-icon>
+<ge-icon name="settings" size="sm"></ge-icon>
+<ge-icon name="settings"></ge-icon>
+<ge-icon name="settings" size="lg"></ge-icon>
+<ge-icon name="settings" size="xl"></ge-icon>
+<ge-icon name="settings" size="2rem"></ge-icon>`,
+            },
+            {
+                title: 'Weights',
+                note: '`solid` fills the glyph where it has a filled form (heart, bell, star...) and stays outlined where it has not.',
+                html: `<ge-icon name="heart" size="lg" weight="light"></ge-icon>
+<ge-icon name="heart" size="lg"></ge-icon>
+<ge-icon name="heart" size="lg" weight="thick"></ge-icon>
+<ge-icon name="heart" size="lg" weight="solid"></ge-icon>
+<ge-icon name="circle-check" size="lg" weight="solid"></ge-icon>
+<ge-icon name="arrow-up" size="lg" weight="solid"></ge-icon>`,
+            },
+            {
+                title: 'Colour',
+                note: '`color` tints the whole glyph, `fill-color` colours in an outline, `stroke-width` overrides the weight.',
+                html: `<ge-icon name="heart" size="lg" color="var(--destructive)"></ge-icon>
+<ge-icon name="circle" size="lg" fill-color="#22c55e"></ge-icon>
+<ge-icon name="star" size="lg" stroke-width="1"></ge-icon>
+<span style="color:var(--primary);display:inline-flex;align-items:center;gap:.375rem"><ge-icon name="info"></ge-icon> inherits the text colour</span>`,
+            },
+            {
+                title: 'Your own glyphs',
+                note: '`registerIcons({ name: "<svg inner markup>" })` (the demo page exposes it as `globalThis.geRegisterIcons`) adds glyphs, or replaces built-in ones, for every icon on the page. The markup is trusted: never build it from user input.',
+                html: `<ge-icon id="brand" name="brand-mark" size="xl"></ge-icon>
+<script>
+  globalThis.geRegisterIcons({ 'brand-mark': '<circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" />' });
+</script>`,
+            },
+        ],
+        api: [
+            { name: 'name', type: 'string', default: "''", description: 'Glyph key, looked up in your icons before the built-in set. Unknown or empty draws an empty svg.' },
+            { name: 'size', type: "'xs' | 'sm' | 'md' | 'lg' | 'xl' | string", default: "'md'", description: '12 / 16 / 24 / 32 / 48px, or any SVG length.' },
+            { name: 'weight', type: "'light' | 'regular' | 'thick' | 'solid'", default: "'regular'", description: 'Stroke 1.5 / 2 / 2.5, or a filled glyph with no stroke when the icon has a solid form.' },
+            { name: 'stroke-width / color / fill-color', type: 'number / string / string', default: '-', description: 'Stroke width overriding the weight; colour of the whole glyph (else inherited); explicit fill.' },
+            { name: 'registerIcons(icons)', type: 'function', default: '-', description: 'From `@gilav21/elements/icon`. Adds or replaces glyphs; icons already on the page redraw. The counterpart of `provideIcons`.' },
+            { name: '::part(base)', type: 'css part', default: '-', description: 'The svg.' },
+        ],
+    },
+    {
+        id: 'error-page',
+        group: 'Rung 2 · Slots',
+        name: 'Error page',
+        tag: 'ge-error-page',
+        description: 'A full-page 404, 403 or 500 state with the status code (or your own artwork), a message and two recovery actions. It reports; you decide where to go.',
+        examples: [
+            {
+                title: 'Status codes',
+                note: 'Copy comes from the locale, keyed by `code`; any other code gets the generic copy. Press the buttons: the page fires `go-back` and `go-home`.',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:100%">
+  <div style="border:1px solid var(--border);border-radius:var(--radius)"><ge-error-page code="404"></ge-error-page></div>
+  <div style="border:1px solid var(--border);border-radius:var(--radius)"><ge-error-page code="500"></ge-error-page></div>
+</div>`,
+            },
+            {
+                title: 'Your own copy, artwork and actions',
+                note: 'A direct `ge-error-page-illustration` replaces the code; a direct `ge-error-page-actions` replaces both default buttons, and then `go-back` and `go-home` no longer fire.',
+                block: true,
+                html: `<div style="border:1px solid var(--border);border-radius:var(--radius)">
+  <ge-error-page code="418" heading="I'm a teapot" description="The server refuses to brew coffee.">
+    <ge-error-page-illustration><ge-icon name="coffee" size="48" stroke-width="1.5"></ge-icon></ge-error-page-illustration>
+    <ge-error-page-actions><ge-button>Try tea</ge-button></ge-error-page-actions>
+  </ge-error-page>
+</div>`,
+            },
+            {
+                title: 'Hebrew',
+                block: true,
+                html: `<div style="border:1px solid var(--border);border-radius:var(--radius)"><ge-error-page code="403" locale="he"></ge-error-page></div>`,
+            },
+        ],
+        api: [
+            { name: 'code', type: 'string', default: "'404'", description: 'Shown as the default illustration and used to pick the copy: 404, 403 and 500 have their own, anything else the generic.' },
+            { name: 'heading / description', type: 'string', default: "''", description: 'Override the code\'s default heading and supporting line.' },
+            { name: 'locale', type: 'string | ErrorPageLocale', default: "''", description: 'Locale id or object; defaults to the page `lang`, then English. Right-to-left locales set `dir="rtl"`.' },
+            { name: 'go-back / go-home', type: 'event', default: '-', description: 'The default buttons were pressed. The page has no routing of its own.' },
+            { name: 'ge-error-page-illustration / ge-error-page-actions', type: 'slots', default: '-', description: 'Direct children only; each assigns itself to its slot and removes the default it replaces.' },
         ],
     },
 ];

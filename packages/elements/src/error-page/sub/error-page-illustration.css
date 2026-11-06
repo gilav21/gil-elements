@@ -1,0 +1,13 @@
+:host {
+    display: contents;
+}
+.illustration {
+    display: flex;
+    max-width: 100%;
+    align-items: center;
+    justify-content: center;
+}
+::slotted(img),
+::slotted(svg) {
+    max-width: 100%;
+}

@@ -137,3 +137,6 @@ export * from './emoji-picker/index.js';
 export * from './treemap/index.js';
 export * from './boxplot/index.js';
 export * from './candlestick/index.js';
+export * from './card-accordion/index.js';
+export * from './error-page/index.js';
+export * from './icon/index.js';

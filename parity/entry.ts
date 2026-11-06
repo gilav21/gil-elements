@@ -137,3 +137,6 @@ import '../packages/elements/src/emoji-picker/define.js';
 import '../packages/elements/src/treemap/define.js';
 import '../packages/elements/src/boxplot/define.js';
 import '../packages/elements/src/candlestick/define.js';
+import '../packages/elements/src/card-accordion/define.js';
+import '../packages/elements/src/error-page/define.js';
+import '../packages/elements/src/icon/define.js';

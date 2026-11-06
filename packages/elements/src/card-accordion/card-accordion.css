@@ -1,0 +1,11 @@
+/* shadcn-angular card-accordion: a flex column of cards, spaced by density. */
+:host {
+    --_d: var(--density-card-accordion, var(--density, 1));
+    display: contents;
+}
+.card-accordion {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: calc(0.75rem * var(--_d));
+}

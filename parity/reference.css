@@ -370,6 +370,51 @@ ui-accordion-trigger {
     }
 }
 
+/* shadcn-angular card-accordion*.component.css: item, trigger and content each scope the same --_d; the item's trigger shorthand lands before the trigger component's longhands. */
+ui-card-accordion,
+ui-card-accordion-item,
+ui-card-accordion-trigger,
+ui-card-accordion-content {
+    --_d: var(--density-card-accordion, var(--density, 1));
+}
+@layer components {
+    [data-slot="card-accordion"] {
+        gap: calc(0.75rem * var(--_d));
+    }
+    [data-slot="card-accordion-trigger"] {
+        padding: calc(1rem * var(--_d));
+    }
+    [data-slot="card-accordion-body"] {
+        padding-block: 0 calc(1rem * var(--_d));
+        padding-inline: calc(1rem * var(--_d));
+    }
+    [data-slot="card-accordion-trigger"] {
+        padding-block: calc(1rem * var(--_d));
+        padding-inline-start: calc(1rem * var(--_d));
+    }
+    [data-slot="card-accordion-chevron"] {
+        padding-block: calc(1rem * var(--_d));
+        padding-inline-end: calc(1rem * var(--_d));
+    }
+    @media (min-width: 640px) {
+        [data-slot="card-accordion-trigger"] {
+            padding: calc(1.5rem * var(--_d));
+        }
+        [data-slot="card-accordion-body"] {
+            padding-block: 0 calc(1.5rem * var(--_d));
+            padding-inline: calc(1.5rem * var(--_d));
+        }
+        [data-slot="card-accordion-trigger"] {
+            padding-block: calc(1.5rem * var(--_d));
+            padding-inline-start: calc(1.5rem * var(--_d));
+        }
+        [data-slot="card-accordion-chevron"] {
+            padding-block: calc(1.5rem * var(--_d));
+            padding-inline-end: calc(1.5rem * var(--_d));
+        }
+    }
+}
+
 /* shadcn-angular tabs-trigger.component.css */
 ui-tabs-trigger {
     --_d: var(--density-tabs, var(--density, 1));
@@ -784,4 +829,9 @@ ui-color-picker {
         background-size: 8px 8px;
         background-position: 0 0, 0 4px, 4px -4px, -4px 0;
     }
+}
+
+/* shadcn-angular icon.component.css */
+ui-icon {
+    display: inline-flex;
 }

@@ -1,0 +1,11 @@
+:host {
+    display: contents;
+}
+.actions {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}

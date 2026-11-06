@@ -1,0 +1,33 @@
+:host {
+    --_d: var(--density-card-accordion, var(--density, 1));
+    display: contents;
+}
+.panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 300ms cubic-bezier(0, 0, 0.2, 1);
+}
+.panel[data-state="open"] {
+    grid-template-rows: 1fr;
+}
+.clip {
+    overflow: hidden;
+}
+.body {
+    padding-block: 0 calc(1rem * var(--_d));
+    padding-inline: calc(1rem * var(--_d));
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    opacity: 0;
+    transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.panel[data-state="open"] .body {
+    opacity: 1;
+}
+@media (min-width: 640px) {
+    .body {
+        padding-block: 0 calc(1.5rem * var(--_d));
+        padding-inline: calc(1.5rem * var(--_d));
+    }
+}

@@ -135,6 +135,10 @@ import '@gilav21/elements/emoji-picker/define';
 import '@gilav21/elements/treemap/define';
 import '@gilav21/elements/boxplot/define';
 import '@gilav21/elements/candlestick/define';
+import '@gilav21/elements/card-accordion/define';
+import '@gilav21/elements/error-page/define';
+import { registerIcons } from '@gilav21/elements/icon';
+import '@gilav21/elements/icon/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
@@ -144,6 +148,7 @@ import type { GeSlider } from '@gilav21/elements/slider';
 import { demos, type Demo, type Example } from './demos.js';
 
 (globalThis as { geToast?: typeof toast }).geToast = toast;
+(globalThis as { geRegisterIcons?: typeof registerIcons }).geRegisterIcons = registerIcons;
 document.body.append(document.createElement('ge-toaster'));
 
 const escapeHtml = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
