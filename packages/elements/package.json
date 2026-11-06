@@ -857,6 +857,16 @@
       "types": "./dist/scatter-chart/define.d.ts",
       "development": "./src/scatter-chart/define.ts",
       "default": "./dist/scatter-chart/define.js"
+    },
+    "./bubble-chart": {
+      "types": "./dist/bubble-chart/index.d.ts",
+      "development": "./src/bubble-chart/index.ts",
+      "default": "./dist/bubble-chart/index.js"
+    },
+    "./bubble-chart/define": {
+      "types": "./dist/bubble-chart/define.d.ts",
+      "development": "./src/bubble-chart/define.ts",
+      "default": "./dist/bubble-chart/define.js"
     }
   },
   "scripts": {

@@ -82,3 +82,4 @@ import '../packages/elements/src/pie-chart/define.js';
 import '../packages/elements/src/area-chart/define.js';
 import '../packages/elements/src/stacked-bar-chart/define.js';
 import '../packages/elements/src/scatter-chart/define.js';
+import '../packages/elements/src/bubble-chart/define.js';

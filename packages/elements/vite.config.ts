@@ -175,6 +175,8 @@ export default defineConfig({
                 'stacked-bar-chart/define': 'src/stacked-bar-chart/define.ts',
                 'scatter-chart/index': 'src/scatter-chart/index.ts',
                 'scatter-chart/define': 'src/scatter-chart/define.ts',
+                'bubble-chart/index': 'src/bubble-chart/index.ts',
+                'bubble-chart/define': 'src/bubble-chart/define.ts',
             },
             formats: ['es'],
         },
