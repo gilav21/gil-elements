@@ -12,6 +12,8 @@ ge-input-group-addon::part(addon) {
 /* Angular's ghost ui-input inside the group carries `px-0`: the trigger's own padding is the only space before the number. */
 ge-input-group-input::part(input) {
     padding-inline: 0;
+    /* Angular's number is a full ui-input, h-9 and density-scaled, not the group's slimmer field. */
+    height: calc(2.25rem * var(--density-input, var(--density, 1)));
 }
 .trigger {
     display: flex;
