@@ -191,6 +191,17 @@ for (const theme of ['light', 'dark']) {
                     target.shadowRoot.querySelectorAll('.bar')[Number(target.dataset.hoverBar)].dispatchEvent(new MouseEvent('mouseenter'));
                     await target.updateComplete;
                 }
+                // `data-hover-slice` is the index of the slice of a pie chart the reference shows hovered.
+                for (const target of document.querySelectorAll('ge-pie-chart[data-hover-slice]')) {
+                    await target.updateComplete;
+                    // The reference is static, so the hover is applied without the transitions a real one would run.
+                    const still = new CSSStyleSheet();
+                    still.replaceSync('*{transition:none !important}');
+                    target.shadowRoot.adoptedStyleSheets = [...target.shadowRoot.adoptedStyleSheets, still];
+                    target.shadowRoot.querySelectorAll('.slice')[Number(target.dataset.hoverSlice)].dispatchEvent(new MouseEvent('mouseenter'));
+                    await target.updateComplete;
+                    await Promise.all(target.shadowRoot.getAnimations({ subtree: true }).map((a) => a.finished));
+                }
                 // A kanban board takes its `columns` and `cards` as JSON; `data-dragged` is the id of the card shown mid-drag, `data-swimlane-by` the lane property.
                 for (const target of document.querySelectorAll('ge-kanban[data-columns]')) {
                     target.columns = JSON.parse(target.dataset.columns);
