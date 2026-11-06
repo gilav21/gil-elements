@@ -4664,4 +4664,100 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'ge-kanban-card', type: 'element', default: '-', description: '`card` (or `card-id`); project a `ge-kanban-card-content` for your own layout.' },
         ],
     },
+    {
+        id: 'charts',
+        group: 'Rung 3 · Interactive',
+        name: 'Charts',
+        tag: 'ge-line-chart',
+        description: 'Pure SVG charts that measure their own width, follow `dir`, and take their data as a property. Hover, focus or tap a point for its tooltip; the legend hides and shows series.',
+        examples: [
+            {
+                title: 'Line chart',
+                note: 'Several series over shared categories, with a crosshair, a tooltip listing every visible series, and a legend that toggles them. `curve` is `linear`, `monotone` or `step`. A missing value (`NaN`, `null`) is a gap.',
+                block: true,
+                html: `<ge-line-chart id="line1" curve="monotone" heading="Line chart" height="300"></ge-line-chart>
+<script>(() => {
+  const cats = ['Q1', 'Q2', 'Q3', 'Q4'];
+  const series = (name, values) => ({ name, data: cats.map((c, i) => ({ name: c, value: values[i] })) });
+  document.getElementById('line1').series = [series('Desktop', [50, 55, 60, 65]), series('Mobile', [40, 50, 55, 68]), series('Tablet', [10, 12, 8, 10])];
+})();</script>`,
+            },
+            {
+                title: 'Pie chart',
+                note: 'Slices share the circle by value; a slice is a button. `legend-position` is `right`, `left`, `top`, `bottom` or `none`.',
+                html: `<ge-pie-chart id="pie1" size="280" legend-position="right"></ge-pie-chart>
+<script>document.getElementById('pie1').data = [
+  { name: 'Chrome', value: 61.41 }, { name: 'Safari', value: 24.43 }, { name: 'Edge', value: 6.28 }, { name: 'Firefox', value: 4.14 }, { name: 'Other', value: 3.74 },
+];</script>`,
+            },
+            {
+                title: 'Donut chart',
+                note: '`inner-radius` is the hole as a fraction of the radius.',
+                html: `<ge-pie-chart id="pie2" size="280" inner-radius="0.5"></ge-pie-chart>
+<script>document.getElementById('pie2').data = [
+  { name: 'Chrome', value: 61.41 }, { name: 'Safari', value: 24.43 }, { name: 'Edge', value: 6.28 }, { name: 'Firefox', value: 4.14 }, { name: 'Other', value: 3.74 },
+];</script>`,
+            },
+            {
+                title: 'Bar chart (vertical)',
+                note: 'Columns on a nice value axis from a zero baseline, with captions for both axes.',
+                block: true,
+                html: `<ge-bar-chart id="bar1" height="280" x-axis-label="Month" y-axis-label="Revenue ($)"></ge-bar-chart>
+<script>document.getElementById('bar1').data = [
+  { name: 'Jan', value: 4500 }, { name: 'Feb', value: 3800 }, { name: 'Mar', value: 5200 }, { name: 'Apr', value: 4800 }, { name: 'May', value: 6100 }, { name: 'Jun', value: 5500 },
+];</script>`,
+            },
+            {
+                title: 'Bar chart (profit and loss)',
+                note: 'Bars grow from a zero baseline: gains rise and losses fall below it.',
+                block: true,
+                html: `<ge-bar-chart id="bar2" height="280"></ge-bar-chart>
+<script>document.getElementById('bar2').data = [{ name: 'Q1', value: 120 }, { name: 'Q2', value: -45 }, { name: 'Q3', value: 30 }, { name: 'Q4', value: -10 }];</script>`,
+            },
+            {
+                title: 'Bar chart (horizontal)',
+                note: 'Horizontal bars for comparing categorical data.',
+                block: true,
+                html: `<ge-bar-chart id="bar3" height="280" orientation="horizontal"></ge-bar-chart>
+<script>document.getElementById('bar3').data = [
+  { name: 'Chrome', value: 61.41 }, { name: 'Safari', value: 24.43 }, { name: 'Edge', value: 6.28 }, { name: 'Firefox', value: 4.14 }, { name: 'Other', value: 3.74 },
+];</script>`,
+            },
+            {
+                title: 'Chart legend',
+                note: 'The legend on its own: it reports `item-toggle` and the chart you pair it with decides what to hide.',
+                html: `<ge-chart-legend id="legend1"></ge-chart-legend>
+<script>(() => {
+  const legend = document.getElementById('legend1');
+  legend.items = [{ key: 'a', label: 'Revenue', color: 'var(--chart-1)' }, { key: 'b', label: 'Costs', color: 'var(--chart-2)' }, { key: 'c', label: 'Profit', color: 'var(--chart-3)' }];
+  legend.addEventListener('item-toggle', (event) => {
+    const key = event.detail;
+    legend.hiddenKeys = legend.hiddenKeys.includes(key) ? legend.hiddenKeys.filter((k) => k !== key) : [...legend.hiddenKeys, key];
+  });
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'series (line)', type: 'ChartSeries[]', default: '[]', description: 'One entry per line: `{ id?, name, color?, data: { name, value }[] }`. Points match across series by position; categories come from the first series.' },
+            { name: 'data (bar, pie)', type: 'ChartDataPoint[]', default: '[]', description: 'One entry per bar or slice: `{ name, value, color? }`.' },
+            { name: 'width / height', type: 'number', default: '500 / 300', description: 'Line and bar charts measure their own width; `width` is used until then. `height` is applied literally.' },
+            { name: 'heading', type: 'string', default: '-', description: 'A name for the chart, put before its accessible summary.' },
+            { name: 'dir', type: "'auto' | 'ltr' | 'rtl'", default: "'auto'", description: 'Layout direction; `auto` follows the inherited one.' },
+            { name: 'curve (line)', type: "'linear' | 'monotone' | 'step'", default: "'linear'", description: 'Interpolation between points.' },
+            { name: 'show-points / show-grid / show-crosshair (line)', type: 'boolean', default: 'true', description: 'Markers, gridlines and the hover crosshair; `="false"` hides them.' },
+            { name: 'orientation (bar)', type: "'vertical' | 'horizontal'", default: "'vertical'", description: 'Columns or rows.' },
+            { name: 'show-values / show-grid (bar)', type: 'boolean', default: 'true', description: 'The value on each bar and the gridlines.' },
+            { name: 'bar-radius / bar-gap (bar)', type: 'number', default: '4 / 8', description: 'Corner radius and gap in px.' },
+            { name: 'x-axis-label / y-axis-label (bar)', type: 'string', default: "''", description: 'Axis captions.' },
+            { name: 'size (pie)', type: 'number', default: '300', description: 'Width and height of the circle in px.' },
+            { name: 'inner-radius (pie)', type: 'number', default: '0', description: 'The hole as a fraction of the radius; 0.5 is a donut.' },
+            { name: 'show-labels / show-legend (pie)', type: 'boolean', default: 'true', description: 'Percentages on slices of 5% or more, and the legend.' },
+            { name: 'legend-position (pie)', type: "'right' | 'left' | 'top' | 'bottom' | 'none'", default: "'right'", description: 'Where the legend sits.' },
+            { name: 'show-tooltip / show-legend', type: 'boolean', default: 'true', description: 'The hover tooltip and, on the line chart, the legend.' },
+            { name: 'point-click / bar-click / slice-click', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`.' },
+            { name: 'point-hover / bar-hover / slice-hover', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`, or `null` when the pointer leaves.' },
+            { name: 'ge-chart-legend', type: 'element', default: '-', description: '`items` (`{ key, label, color }`), `hiddenKeys`, `position`, `interactive`; fires `item-toggle` with the key.' },
+            { name: 'ge-chart-tooltip', type: 'element', default: '-', description: '`visible`, `x`, `y`, `heading`, `rows` (`{ label, value, color? }`), `flip-x`, `flip-y`.' },
+        ],
+    },
 ];
