@@ -82,9 +82,22 @@ export class GeDock extends UiElement {
         this.itemCenters = this.allItems().map((item) => item.getCenter(axis));
     }
 
-    private readonly onEnter = () => this.recalculateItemCenters();
+    // A tap makes the browser replay it as mouseenter and mousemove and sends no mouseleave until the next tap elsewhere, which
+    // would leave the tapped icon swollen. The pointer events that precede those mouse events say which kind of input it was.
+    private touching = false;
+
+    private readonly onPointer = (event: PointerEvent) => {
+        const touch = event.pointerType === 'touch';
+        if (touch && !this.touching) this.onLeave();
+        this.touching = touch;
+    };
+
+    private readonly onEnter = () => {
+        if (!this.touching) this.recalculateItemCenters();
+    };
 
     private readonly onMove = (event: MouseEvent) => {
+        if (this.touching) return;
         this.pointer = this.isVertical ? event.clientY : event.clientX;
         if (this.frame !== null) return;
         this.frame = requestAnimationFrame(() => {
@@ -147,6 +160,8 @@ export class GeDock extends UiElement {
             data-slot="dock"
             data-position=${this.position}
             tabindex="0"
+            @pointerdown=${this.onPointer}
+            @pointermove=${this.onPointer}
             @mouseenter=${this.onEnter}
             @mousemove=${this.onMove}
             @mouseleave=${this.onLeave}

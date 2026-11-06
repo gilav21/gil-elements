@@ -43,6 +43,32 @@ describe('ge-dock', () => {
         expect(widths(el)).toEqual([40, 40, 40, 40, 40]);
     });
 
+    it('stays at rest for a tap, though the browser replays it as mouse events, and swells again for a real mouse afterwards', async () => {
+        const page = await mount(custom('magnification="70" distance="80"'));
+        const el = first(page);
+        await frame();
+        const x = dockItems(el)[2]!.getCenter('x');
+        const move = () => {
+            bar(el).dispatchEvent(new MouseEvent('mouseenter'));
+            bar(el).dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: x, clientY: 0 }));
+        };
+        bar(el).dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch', bubbles: true }));
+        move();
+        await frame();
+        await settle();
+        expect(widths(el)).toEqual([40, 40, 40, 40, 40]);
+
+        bar(el).dispatchEvent(new PointerEvent('pointermove', { pointerType: 'mouse', bubbles: true }));
+        move();
+        await frame();
+        await settle();
+        expect(Math.max(...widths(el))).toBeGreaterThan(60);
+
+        bar(el).dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch', bubbles: true }));
+        await settle();
+        expect(widths(el)).toEqual([40, 40, 40, 40, 40]);
+    });
+
     it('a vertical dock follows the pointer along Y and stacks the whole column', async () => {
         const page = await mount(`<div style="height:600px">${custom('position="left" magnification="60" distance="100"')}</div>`);
         const el = first(page);
