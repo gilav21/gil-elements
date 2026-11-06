@@ -45,6 +45,10 @@
     position: absolute;
     inset: 0;
 }
+/* Open, it stands above the mask (z-index 40); closed, it stays out of the page's layers. */
+.menu:not([data-closed]):not([data-fixed]) {
+    z-index: 50;
+}
 /* Opened at a point: fixed at viewport coordinates. Only the straight directions lay a linear menu out. */
 .menu[data-fixed] {
     position: fixed;

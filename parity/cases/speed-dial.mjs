@@ -26,7 +26,10 @@ const position = (type, direction, radius, index, total) => {
 };
 
 const ref = ({ type = 'linear', direction = 'up', radius = 80, count = 3, open = false, mask = false, trigger = FAB(open) }) => {
-    const menuClass = (type === 'linear' ? (LINEAR[direction] ?? LINEAR.up) : 'absolute inset-0') + (open ? '' : ' pointer-events-none');
+    // Angular puts neither the trigger nor an anchored menu above its `z-40` mask, so an open dial is dimmed under it; the proposed fix is `z-50` on both while open.
+    const above = mask && open;
+    const menuClass = (type === 'linear' ? (LINEAR[direction] ?? LINEAR.up) : 'absolute inset-0') + (open ? '' : ' pointer-events-none') + (above ? ' z-50' : '');
+    if (above) trigger = trigger.replace('class="inline-flex', 'class="relative z-50 inline-flex');
     const items = Array.from({ length: count }, (_, i) => {
         const circular = type !== 'linear';
         const delay = (open ? i : count - 1 - i) * 80;

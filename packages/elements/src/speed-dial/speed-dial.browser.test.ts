@@ -95,6 +95,21 @@ describe('ge-speed-dial', () => {
         expect(el.open).toBe(true);
     });
 
+    it('keeps an open dial above its mask, so the trigger and the items can be seen and pressed', async () => {
+        const page = await mount(dial('', { extra: '<ge-speed-dial-mask></ge-speed-dial-mask>', trigger: '<ge-speed-dial-trigger><ge-button size="icon" aria-label="Open">+</ge-button></ge-speed-dial-trigger>' }));
+        const el = first(page);
+        el.show();
+        await settle();
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        const top = (control: Element) => {
+            const { x, y } = centre(control.shadowRoot!.querySelector('button')!);
+            const hit = document.elementFromPoint(x, y);
+            return hit?.closest('ge-speed-dial-trigger, ge-speed-dial-item, ge-speed-dial-mask')?.tagName.toLowerCase();
+        };
+        expect(top(el.querySelector('ge-speed-dial-trigger ge-button')!)).toBe('ge-speed-dial-trigger');
+        for (const item of el.querySelectorAll('ge-speed-dial-item ge-button')) expect(top(item)).toBe('ge-speed-dial-item');
+    });
+
     it('staggers items by transition-delay in order on open and in reverse on close, and uses 30ms when opened at a point', async () => {
         const page = await mount(dial('transition-delay="50"'));
         const el = first(page);

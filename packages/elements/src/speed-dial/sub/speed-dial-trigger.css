@@ -6,6 +6,11 @@
 [part='base'][data-state='open'] {
     transform: rotate(45deg);
 }
+/* Open, it stands above the mask (z-index 40) so the dial can still be seen and closed from its own button. */
+[part='base'][data-state='open'] {
+    position: relative;
+    z-index: 50;
+}
 @media (prefers-reduced-motion: reduce) {
     [part='base'] {
         transition: none;
