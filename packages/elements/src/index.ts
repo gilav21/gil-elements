@@ -98,3 +98,6 @@ export * from './chart-brush/index.js';
 export * from './pie-chart-drilldown/index.js';
 export * from './bar-chart-drilldown/index.js';
 export * from './org-chart/index.js';
+export * from './text-reveal/index.js';
+export * from './marquee/index.js';
+export * from './particles/index.js';

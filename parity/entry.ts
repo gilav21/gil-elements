@@ -98,3 +98,6 @@ import '../packages/elements/src/chart-brush/define.js';
 import '../packages/elements/src/pie-chart-drilldown/define.js';
 import '../packages/elements/src/bar-chart-drilldown/define.js';
 import '../packages/elements/src/org-chart/define.js';
+import '../packages/elements/src/text-reveal/define.js';
+import '../packages/elements/src/marquee/define.js';
+import '../packages/elements/src/particles/define.js';

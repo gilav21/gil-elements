@@ -1017,6 +1017,36 @@
       "types": "./dist/org-chart/define.d.ts",
       "development": "./src/org-chart/define.ts",
       "default": "./dist/org-chart/define.js"
+    },
+    "./text-reveal": {
+      "types": "./dist/text-reveal/index.d.ts",
+      "development": "./src/text-reveal/index.ts",
+      "default": "./dist/text-reveal/index.js"
+    },
+    "./text-reveal/define": {
+      "types": "./dist/text-reveal/define.d.ts",
+      "development": "./src/text-reveal/define.ts",
+      "default": "./dist/text-reveal/define.js"
+    },
+    "./marquee": {
+      "types": "./dist/marquee/index.d.ts",
+      "development": "./src/marquee/index.ts",
+      "default": "./dist/marquee/index.js"
+    },
+    "./marquee/define": {
+      "types": "./dist/marquee/define.d.ts",
+      "development": "./src/marquee/define.ts",
+      "default": "./dist/marquee/define.js"
+    },
+    "./particles": {
+      "types": "./dist/particles/index.d.ts",
+      "development": "./src/particles/index.ts",
+      "default": "./dist/particles/index.js"
+    },
+    "./particles/define": {
+      "types": "./dist/particles/define.d.ts",
+      "development": "./src/particles/define.ts",
+      "default": "./dist/particles/define.js"
     }
   },
   "scripts": {

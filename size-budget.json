@@ -170,7 +170,7 @@
   "file-upload/index.js": 190,
   "hover-card/define.js": 210,
   "hover-card/index.js": 145,
-  "index.js": 4728,
+  "index.js": 4796,
   "input-group/define.js": 180,
   "input-group/index.js": 120,
   "input-otp/define.js": 150,
@@ -324,5 +324,15 @@
   "org-chart/define.js": 151,
   "org-chart/index.js": 77,
   "pie-chart-drilldown/define.js": 163,
-  "pie-chart-drilldown/index.js": 90
+  "pie-chart-drilldown/index.js": 90,
+  "chunks/marquee.js": 1231,
+  "chunks/motion.js": 146,
+  "chunks/particles.js": 1807,
+  "chunks/text-reveal.js": 628,
+  "marquee/define.js": 147,
+  "marquee/index.js": 72,
+  "particles/define.js": 148,
+  "particles/index.js": 74,
+  "text-reveal/define.js": 152,
+  "text-reveal/index.js": 80
 }

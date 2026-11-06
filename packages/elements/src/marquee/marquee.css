@@ -1,0 +1,23 @@
+:host {
+    display: block;
+}
+.viewport {
+    height: 100%;
+    overflow: hidden;
+}
+.track {
+    display: flex;
+    width: max-content;
+}
+.segment {
+    display: flex;
+    flex-shrink: 0;
+}
+.column {
+    flex-direction: column;
+}
+:host([direction='up']) .track,
+:host([direction='down']) .track {
+    width: auto;
+    flex-direction: column;
+}

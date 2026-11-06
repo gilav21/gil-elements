@@ -4665,6 +4665,57 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
         ],
     },
     {
+        id: 'effects',
+        group: 'Rung 3 · Interactive',
+        name: 'Effects',
+        tag: 'ge-marquee',
+        description: 'Motion that decorates a page. All three stand still under `prefers-reduced-motion: reduce`.',
+        examples: [
+            {
+                title: 'Text reveal',
+                note: 'A sentence that blurs in word by word. `delay` is the stagger in milliseconds.',
+                html: `<ge-text-reveal id="reveal1" text="Build once and use it in every framework you write." delay="80" style="font-size:1.5rem;font-weight:700;max-width:28rem"></ge-text-reveal>
+<ge-button variant="outline" size="sm" id="reveal1-again">Replay</ge-button>
+<script>document.getElementById('reveal1-again').addEventListener('click', () => {
+  const el = document.getElementById('reveal1');
+  const text = el.text;
+  el.text = '';
+  requestAnimationFrame(() => { el.text = text; });
+});</script>`,
+            },
+            {
+                title: 'Marquee',
+                note: 'The content loops forever with no seam. `direction` is physical (`left`, `right`, `up`, `down`), `speed` is seconds per loop, and `pause-on-hover` also pauses while a touch is held.',
+                block: true,
+                html: `<ge-marquee pause-on-hover speed="14" gap="12">
+  <ge-badge>Lit 3</ge-badge><ge-badge variant="secondary">Web components</ge-badge><ge-badge variant="outline">Shadow DOM</ge-badge><ge-badge>SSR safe</ge-badge><ge-badge variant="secondary">Tokens</ge-badge><ge-badge variant="outline">Parity tested</ge-badge>
+</ge-marquee>
+<ge-marquee direction="right" speed="22" gap="12" style="margin-top:.75rem">
+  <ge-badge variant="outline">Right</ge-badge><ge-badge variant="outline">to</ge-badge><ge-badge variant="outline">left</ge-badge><ge-badge variant="outline">and</ge-badge><ge-badge variant="outline">back</ge-badge><ge-badge variant="outline">again</ge-badge>
+</ge-marquee>
+<ge-marquee direction="up" speed="8" gap="8" style="height:5rem;margin-top:.75rem;max-width:12rem">
+  <ge-badge>First</ge-badge><ge-badge variant="secondary">Second</ge-badge><ge-badge variant="outline">Third</ge-badge>
+</ge-marquee>`,
+            },
+            {
+                title: 'Particles',
+                note: 'A canvas of drifting dots over a positioned box. It takes the surrounding text colour; move the pointer to push the dots away. Set `mouse-interaction="false"` to let clicks through.',
+                block: true,
+                html: `<div style="position:relative;height:14rem;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;color:var(--primary);background:var(--card)">
+  <ge-particles count="60"></ge-particles>
+  <div style="position:relative;pointer-events:none;display:flex;height:100%;align-items:center;justify-content:center;font-weight:600;color:var(--foreground)">Move the pointer over the dots</div>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'text / delay (text reveal)', type: 'string / number', default: "'' / 50", description: 'Words split at whitespace runs; each starts `index * delay` ms after the first and animates for 1s. Plain text only.' },
+            { name: 'direction / speed / gap / pause-on-hover (marquee)', type: "string / number / number / boolean", default: "'left' / 20 / 16 / false", description: '`speed` is seconds per loop (more content moves faster at the same value). Vertical directions need a height on the host. The copy is hidden from assistive tech.' },
+            { name: 'count / color / speed / connect-distance / mouse-interaction (particles)', type: 'number / string / number / number / boolean', default: "50 / 'currentColor' / 0.5 / 120 / true", description: 'Fills its nearest positioned ancestor. Cost grows with the square of `count`. While `mouse-interaction` is on it captures pointer events.' },
+            { name: '::part(base)', type: 'css part', default: '-', description: 'Text reveal\'s word container; set `justify-content` here.' },
+            { name: '::part(viewport)', type: 'css part', default: '-', description: 'The marquee\'s clipping box.' },
+        ],
+    },
+    {
         id: 'charts',
         group: 'Rung 3 · Interactive',
         name: 'Charts',
