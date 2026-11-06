@@ -199,6 +199,8 @@ export default defineConfig({
                 'bar-race-chart/define': 'src/bar-race-chart/define.ts',
                 'histogram/index': 'src/histogram/index.ts',
                 'histogram/define': 'src/histogram/define.ts',
+                'chart-brush/index': 'src/chart-brush/index.ts',
+                'chart-brush/define': 'src/chart-brush/define.ts',
             },
             formats: ['es'],
         },

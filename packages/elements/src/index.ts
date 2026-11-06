@@ -94,3 +94,4 @@ export * from './column-range-chart/index.js';
 export * from './combo-chart/index.js';
 export * from './bar-race-chart/index.js';
 export * from './histogram/index.js';
+export * from './chart-brush/index.js';

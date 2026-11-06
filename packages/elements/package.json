@@ -977,6 +977,16 @@
       "types": "./dist/histogram/define.d.ts",
       "development": "./src/histogram/define.ts",
       "default": "./dist/histogram/define.js"
+    },
+    "./chart-brush": {
+      "types": "./dist/chart-brush/index.d.ts",
+      "development": "./src/chart-brush/index.ts",
+      "default": "./dist/chart-brush/index.js"
+    },
+    "./chart-brush/define": {
+      "types": "./dist/chart-brush/define.d.ts",
+      "development": "./src/chart-brush/define.ts",
+      "default": "./dist/chart-brush/define.js"
     }
   },
   "scripts": {
