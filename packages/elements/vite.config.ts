@@ -185,6 +185,8 @@ export default defineConfig({
                 'funnel-chart/define': 'src/funnel-chart/define.ts',
                 'waterfall-chart/index': 'src/waterfall-chart/index.ts',
                 'waterfall-chart/define': 'src/waterfall-chart/define.ts',
+                'bullet-chart/index': 'src/bullet-chart/index.ts',
+                'bullet-chart/define': 'src/bullet-chart/define.ts',
             },
             formats: ['es'],
         },

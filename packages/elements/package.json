@@ -907,6 +907,16 @@
       "types": "./dist/waterfall-chart/define.d.ts",
       "development": "./src/waterfall-chart/define.ts",
       "default": "./dist/waterfall-chart/define.js"
+    },
+    "./bullet-chart": {
+      "types": "./dist/bullet-chart/index.d.ts",
+      "development": "./src/bullet-chart/index.ts",
+      "default": "./dist/bullet-chart/index.js"
+    },
+    "./bullet-chart/define": {
+      "types": "./dist/bullet-chart/define.d.ts",
+      "development": "./src/bullet-chart/define.ts",
+      "default": "./dist/bullet-chart/define.js"
     }
   },
   "scripts": {

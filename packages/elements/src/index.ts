@@ -87,3 +87,4 @@ export * from './radar-chart/index.js';
 export * from './gauge-chart/index.js';
 export * from './funnel-chart/index.js';
 export * from './waterfall-chart/index.js';
+export * from './bullet-chart/index.js';
