@@ -80,6 +80,21 @@ describe('ge-speed-dial', () => {
         expect(trigger.isConnected).toBe(true);
     });
 
+    it('does not take focus on a mouse press, so no ring spins with the quarter turn, and still takes it from the keyboard', async () => {
+        const page = await mount(dial('', { trigger: '<ge-speed-dial-trigger><ge-button size="icon" aria-label="Open">+</ge-button></ge-speed-dial-trigger>' }));
+        const el = first(page);
+        const control = el.querySelector('ge-speed-dial-trigger ge-button')!;
+        await userEvent.click(control);
+        expect(el.open).toBe(true);
+        expect(document.activeElement).not.toBe(control);
+        await userEvent.click(control);
+        expect(el.open).toBe(false);
+        await userEvent.tab();
+        expect(document.activeElement).toBe(control);
+        await userEvent.keyboard('{Enter}');
+        expect(el.open).toBe(true);
+    });
+
     it('staggers items by transition-delay in order on open and in reverse on close, and uses 30ms when opened at a point', async () => {
         const page = await mount(dial('transition-delay="50"'));
         const el = first(page);

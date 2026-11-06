@@ -30,10 +30,16 @@ export class GeSpeedDialTrigger extends GeActivator<SpeedDialHost> {
 
     override connectedCallback(): void {
         super.connectedCallback();
+        this.addEventListener('mousedown', GeSpeedDialTrigger.keepFocusOnPointer);
         this.parent?.register(this);
     }
 
+    // The trigger turns a quarter while open, so a focus ring painted by a mouse click would spin with it. A pointer press
+    // therefore does not move focus here; the keyboard still does, and shows the ring as usual.
+    private static readonly keepFocusOnPointer = (event: MouseEvent): void => event.preventDefault();
+
     override disconnectedCallback(): void {
+        this.removeEventListener('mousedown', GeSpeedDialTrigger.keepFocusOnPointer);
         this.parent?.unregister(this);
         super.disconnectedCallback();
     }
