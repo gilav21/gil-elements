@@ -191,6 +191,8 @@ export default defineConfig({
                 'heatmap/define': 'src/heatmap/define.ts',
                 'calendar-heatmap/index': 'src/calendar-heatmap/index.ts',
                 'calendar-heatmap/define': 'src/calendar-heatmap/define.ts',
+                'column-range-chart/index': 'src/column-range-chart/index.ts',
+                'column-range-chart/define': 'src/column-range-chart/define.ts',
             },
             formats: ['es'],
         },

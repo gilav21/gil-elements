@@ -937,6 +937,16 @@
       "types": "./dist/calendar-heatmap/define.d.ts",
       "development": "./src/calendar-heatmap/define.ts",
       "default": "./dist/calendar-heatmap/define.js"
+    },
+    "./column-range-chart": {
+      "types": "./dist/column-range-chart/index.d.ts",
+      "development": "./src/column-range-chart/index.ts",
+      "default": "./dist/column-range-chart/index.js"
+    },
+    "./column-range-chart/define": {
+      "types": "./dist/column-range-chart/define.d.ts",
+      "development": "./src/column-range-chart/define.ts",
+      "default": "./dist/column-range-chart/define.js"
     }
   },
   "scripts": {
