@@ -477,5 +477,12 @@
   "masonry/define.js": 135,
   "masonry/index.js": 75,
   "virtual-scroll/define.js": 140,
-  "virtual-scroll/index.js": 85
+  "virtual-scroll/index.js": 85,
+  "chunks/page-builder.utils.js": 1200,
+  "chunks/page-renderer.js": 950,
+  "chunks/property-editor.js": 9700,
+  "page-builder/define.js": 200,
+  "page-builder/index.js": 220,
+  "page-renderer/define.js": 170,
+  "page-renderer/index.js": 100
 }

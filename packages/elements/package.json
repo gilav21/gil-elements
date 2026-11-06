@@ -1467,6 +1467,26 @@
       "types": "./dist/file-viewer/define.d.ts",
       "development": "./src/file-viewer/define.ts",
       "default": "./dist/file-viewer/define.js"
+    },
+    "./page-builder": {
+      "types": "./dist/page-builder/index.d.ts",
+      "development": "./src/page-builder/index.ts",
+      "default": "./dist/page-builder/index.js"
+    },
+    "./page-builder/define": {
+      "types": "./dist/page-builder/define.d.ts",
+      "development": "./src/page-builder/define.ts",
+      "default": "./dist/page-builder/define.js"
+    },
+    "./page-renderer": {
+      "types": "./dist/page-renderer/index.d.ts",
+      "development": "./src/page-renderer/index.ts",
+      "default": "./dist/page-renderer/index.js"
+    },
+    "./page-renderer/define": {
+      "types": "./dist/page-renderer/define.d.ts",
+      "development": "./src/page-renderer/define.ts",
+      "default": "./dist/page-renderer/define.js"
     }
   },
   "scripts": {

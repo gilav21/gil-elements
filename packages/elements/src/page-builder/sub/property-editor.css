@@ -1,0 +1,395 @@
+:host {
+    display: block;
+    height: 100%;
+}
+
+.panel {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    background: var(--background);
+}
+
+.body {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 1.5rem;
+}
+
+.empty {
+    display: flex;
+    height: 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    padding: 2rem;
+    text-align: center;
+    color: var(--muted-foreground);
+    background: color-mix(in srgb, var(--muted) 5%, transparent);
+}
+
+.empty-icon {
+    display: flex;
+    width: 5rem;
+    height: 5rem;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    border-radius: 9999px;
+    background: var(--muted);
+}
+
+.empty-icon ge-icon {
+    opacity: 0.5;
+}
+
+.empty h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    font-weight: 500;
+    color: var(--foreground);
+}
+
+.empty p {
+    margin: 0;
+    max-width: 200px;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.head {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--card) 50%, transparent);
+}
+
+.head-icon {
+    display: flex;
+    width: 3rem;
+    height: 3rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+    color: var(--primary);
+}
+
+.head-text {
+    min-width: 0;
+    flex: 1;
+}
+
+.head-text h3 {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 1.125rem;
+    line-height: 1.25;
+    font-weight: 600;
+}
+
+.head-text p {
+    margin: 0.25rem 0 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--muted-foreground);
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.section-head,
+.setting-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.section-head h4 {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+    color: var(--foreground);
+}
+
+.tag {
+    font-size: 10px;
+    line-height: 1.5;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+}
+
+.two {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.muted-label {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+}
+
+.with-icon {
+    position: relative;
+}
+
+.text-input {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    height: 2.5rem;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    outline: none;
+    transition: color 150ms, background-color 150ms, border-color 150ms;
+}
+
+.text-input::placeholder {
+    color: var(--muted-foreground);
+}
+
+.text-input:focus-visible {
+    box-shadow: 0 0 0 1px var(--ring);
+}
+
+.icon-input {
+    padding-inline-start: 2.25rem;
+}
+
+.field-icon {
+    position: absolute;
+    inset-inline-start: 0.75rem;
+    top: 50%;
+    display: flex;
+    transform: translateY(-50%);
+    color: var(--muted-foreground);
+}
+
+.rule {
+    height: 1px;
+    background: var(--border);
+}
+
+.setting {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.setting-label {
+    display: block;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: var(--foreground);
+}
+
+.bind-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    transition: color 150ms;
+}
+
+.bind-toggle:hover,
+.bind-toggle[data-bound] {
+    color: var(--primary);
+}
+
+.bound-input {
+    padding-inline-start: 2rem;
+    border-color: color-mix(in srgb, var(--primary) 50%, transparent);
+    background: color-mix(in srgb, var(--primary) 5%, transparent);
+    color: var(--primary);
+    font-family: var(--font-mono, ui-monospace, monospace);
+}
+
+.bound-mark {
+    position: absolute;
+    inset-inline-start: 0.625rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.switch-row {
+    display: flex;
+    box-sizing: border-box;
+    height: 2.5rem;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background: color-mix(in srgb, var(--card) 50%, transparent);
+}
+
+.switch-label {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: var(--foreground);
+}
+
+ge-select {
+    width: 100%;
+}
+
+.delete-row {
+    padding-top: 0.5rem;
+}
+
+.delete {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid color-mix(in srgb, var(--destructive) 20%, transparent);
+    border-radius: calc(var(--radius) - 2px);
+    background: color-mix(in srgb, var(--destructive) 5%, transparent);
+    color: var(--destructive);
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 150ms;
+}
+
+.delete:hover {
+    border-color: color-mix(in srgb, var(--destructive) 30%, transparent);
+    background: color-mix(in srgb, var(--destructive) 15%, transparent);
+}
+
+.delete:focus-visible,
+.bind-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+}
+
+.skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.sk-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--card) 10%, transparent);
+}
+
+.sk-avatar {
+    width: 3rem;
+    height: 3rem;
+    flex-shrink: 0;
+    border-radius: var(--radius);
+    background: var(--muted);
+}
+
+.sk-lines {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-block: 0.25rem;
+}
+
+.sk-line {
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--muted);
+}
+
+.sk-block {
+    height: 2.5rem;
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--muted);
+}
+
+.sk-pad {
+    padding-top: 1rem;
+}
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+@media (pointer: coarse) {
+    .bind-toggle,
+    .delete {
+        min-height: 2.75rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton {
+        animation: none;
+    }
+}

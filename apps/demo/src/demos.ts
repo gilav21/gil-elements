@@ -6216,4 +6216,47 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
             { name: 'prevPage() / nextPage() / zoomIn() / zoomOut() / setActiveSheet(i)', type: 'methods', default: '-', description: 'Drive it from code, for instance from a custom toolbar.' },
         ],
     },
+    {
+        id: 'page-builder',
+        group: 'Rung 3 · Interactive',
+        name: 'Page builder',
+        tag: 'ge-page-builder',
+        description: 'A drag-and-drop page editor: a palette of your own components, a grid canvas, and a property editor that is drawn from each widget\'s own properties. Save emits a plain JSON document that `ge-page-renderer` turns back into a live page. Widgets are any custom element named by `tag`, so the palette can hold anything on the page.',
+        examples: [
+            {
+                title: 'Build a page, then render it',
+                note: 'Drag a palette entry onto the canvas (or press its Add button), select it, and edit its properties on the right. Save emits the document; the renderer below shows the saved page read-only, with a binding filling the badge from `context`.',
+                block: true,
+                html: `<div style="display:grid;gap:1rem;width:100%">
+  <ge-page-builder id="pb1" style="height:560px"></ge-page-builder>
+  <ge-page-renderer id="pr1" style="height:220px"></ge-page-renderer>
+</div>
+<script>(() => {
+  const components = [
+    { id: 'badge', name: 'Badge', category: 'Display', tag: 'ge-badge', icon: 'tag', defaultInputs: { label: 'New' }, defaultCols: 3, defaultRows: 2 },
+    { id: 'stat', name: 'Stat card', category: 'Display', tag: 'ge-stat-card', icon: 'chart-column', defaultInputs: { label: 'Revenue', value: '$12,400' }, defaultCols: 4, defaultRows: 3 },
+    { id: 'button', name: 'Button', category: 'Actions', tag: 'ge-button', icon: 'mouse-pointer-click', defaultInputs: { label: 'Click me' }, defaultCols: 3, defaultRows: 2 },
+  ];
+  const builder = document.getElementById('pb1');
+  const renderer = document.getElementById('pr1');
+  builder.components = components;
+  renderer.components = components;
+  renderer.context = { user: { plan: 'Pro' } };
+  builder.addEventListener('save', (e) => {
+    const data = structuredClone(e.detail);
+    for (const item of data.items) if (item.componentId === 'badge') item.bindings = { label: 'user.plan' };
+    renderer.data = data;
+  });
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'components', type: 'ComponentMeta[]', default: '[]', description: 'Property: the palette. `tag` names the custom element to create; `defaultInputs`, `inputs` (schema overrides), `defaultCols` and `defaultRows` are optional.' },
+            { name: 'data', type: 'PageData | null', default: 'null', description: 'Property: layout to load. A new value replaces the board; items whose `componentId` is not in `components` are dropped.' },
+            { name: 'enable-save', type: 'boolean', default: 'true', description: 'Shows the Save button (`enable-save="false"` hides it).' },
+            { name: 'enable-export', type: 'boolean', default: 'false', description: 'Shows Export, which downloads the layout as JSON; Import is always available.' },
+            { name: 'save / view-mode-change', type: 'event', default: '-', description: '`detail` is the current `PageData`, or `\'edit\'` / `\'preview\'`.' },
+            { name: 'ge-page-renderer: data / components / context', type: 'properties', default: '-', description: 'The read-only counterpart. A binding maps an input name to a dot-path in `context`; a path that resolves overrides the saved value.' },
+        ],
+    },
 ];

@@ -143,3 +143,5 @@ export * from './icon/index.js';
 export * from './shortcut-bindings-dialog/index.js';
 export * from './field-mapper/index.js';
 export * from './file-viewer/index.js';
+export * from './page-builder/index.js';
+export * from './page-renderer/index.js';
