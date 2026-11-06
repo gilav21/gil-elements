@@ -235,15 +235,80 @@ describe('ge-kanban card menu', () => {
         expect(added[0]).toMatchObject({ columnId: 'todo', title: 'Write the spec (copy)', priority: 'high', labels: [{ text: 'docs', color: '#3b82f6' }] });
     });
 
-    it('opens on a long-press of the card too', async () => {
-        const page = await mountBoard();
-        vi.useFakeTimers({ toFake: ['setTimeout'] });
-        const card = cardEl(page, 'c2');
-        const finger = new Touch({ identifier: 1, target: card, clientX: 40, clientY: 40 });
-        card.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, composed: true, cancelable: true, touches: [finger], changedTouches: [finger] }));
-        vi.advanceTimersByTime(600);
-        await vi.advanceTimersByTimeAsync(0);
-        expect(inBoard<GeContextMenu>(page, 'ge-context-menu[data-menu="card"]').open).toBe(true);
+    describe('with a finger', () => {
+        const touch = (target: Element, type: string, x: number, y: number) => {
+            const finger = new Touch({ identifier: 1, target, clientX: x, clientY: y });
+            const list = type === 'touchend' ? [] : [finger];
+            target.dispatchEvent(new TouchEvent(type, { bubbles: true, composed: true, cancelable: true, touches: list, changedTouches: [finger] }));
+        };
+        const centreOf = (el: Element) => {
+            const r = el.getBoundingClientRect();
+            return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+        };
+        const cardMenu = (page: HTMLElement) => inBoard<GeContextMenu>(page, 'ge-context-menu[data-menu="card"]');
+
+        it('lifts a held card, and a drop on another column moves it there without opening the menu', async () => {
+            const page = await mountBoard();
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            const moved = log<KanbanCardMoveEvent>(board(page), 'card-moved');
+            const card = cardEl(page, 'c2');
+            const from = centreOf(card);
+            touch(card, 'touchstart', from.x, from.y);
+            // The hold is the browser's long-press too, which raises `contextmenu`; it must not open the menu.
+            const native = new MouseEvent('contextmenu', { bubbles: true, composed: true, cancelable: true, clientX: from.x, clientY: from.y });
+            card.dispatchEvent(native);
+            expect(native.defaultPrevented).toBe(true);
+            await vi.advanceTimersByTimeAsync(600);
+            expect(board(page).draggedCardId).toBe('c2');
+            expect(document.querySelector('[data-slot="kanban-touch-ghost"]')).not.toBeNull();
+
+            const target = centreOf(columnEl(page, 'doing'));
+            touch(card, 'touchmove', target.x, target.y);
+            await settle(page);
+            expect(columnEl(page, 'doing').shadowRoot!.querySelector('[data-slot="kanban-drop-indicator"][data-active]')).not.toBeNull();
+            touch(card, 'touchend', target.x, target.y);
+            await vi.advanceTimersByTimeAsync(0);
+
+            expect(moved).toHaveLength(1);
+            expect(moved[0]).toMatchObject({ cardId: 'c2', fromColumnId: 'todo', toColumnId: 'doing' });
+            expect(board(page).draggedCardId).toBeNull();
+            expect(document.querySelector('[data-slot="kanban-touch-ghost"]')).toBeNull();
+            expect(cardMenu(page).open).toBe(false);
+            // The click that follows a release is swallowed for a moment; let that pass so it cannot reach later tests.
+            await vi.advanceTimersByTimeAsync(500);
+        });
+
+        it('opens the card menu when a held card is let go without moving, and not while it is held', async () => {
+            const page = await mountBoard();
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            const card = cardEl(page, 'c2');
+            const at = centreOf(card);
+            touch(card, 'touchstart', at.x, at.y);
+            await vi.advanceTimersByTimeAsync(900);
+            expect(cardMenu(page).open).toBe(false);
+            touch(card, 'touchend', at.x, at.y);
+            await vi.advanceTimersByTimeAsync(0);
+            expect(cardMenu(page).open).toBe(true);
+            expect(board(page).draggedCardId).toBeNull();
+            await vi.advanceTimersByTimeAsync(500);
+        });
+
+        it('leaves a finger that moves before the hold is up to scroll the board', async () => {
+            const page = await mountBoard();
+            vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+            const moved = log<KanbanCardMoveEvent>(board(page), 'card-moved');
+            const card = cardEl(page, 'c2');
+            const at = centreOf(card);
+            touch(card, 'touchstart', at.x, at.y);
+            touch(card, 'touchmove', at.x, at.y + 40);
+            await vi.advanceTimersByTimeAsync(900);
+            touch(card, 'touchend', at.x, at.y + 40);
+            await vi.advanceTimersByTimeAsync(0);
+            expect(board(page).draggedCardId).toBeNull();
+            expect(document.querySelector('[data-slot="kanban-touch-ghost"]')).toBeNull();
+            expect(cardMenu(page).open).toBe(false);
+            expect(moved).toHaveLength(0);
+        });
     });
 });
 

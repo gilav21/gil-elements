@@ -208,6 +208,41 @@ export class GeKanbanColumn extends UiElement implements KanbanColumnHost, Kanba
         this.clearDragVisuals();
     };
 
+    /**
+     * Touch has no HTML5 drag events, so the card that follows a finger drives the column through these three: show the
+     * drop line for a finger at `clientY`, hide it, and drop the card here. A collapsed column takes nothing.
+     */
+    hoverCard(clientY: number): void {
+        if (this.collapsed || !this.kanban?.draggedCardId) return;
+        this.isDragOver = true;
+        const container = this.renderRoot.querySelector<HTMLElement>('.cards');
+        if (!container) {
+            this.dropIndicatorIndex = 0;
+            this.dropIndicatorTop = 12;
+            return;
+        }
+        const origin = container.getBoundingClientRect().top;
+        const cards = [...container.querySelectorAll<HTMLElement>('ge-kanban-card'), ...this.customCards].filter((c) => c.dataset.slot === 'kanban-card');
+        const rects = cards.map((card) => card.getBoundingClientRect());
+        const index = this.gapIndex(rects, clientY);
+        this.dropIndicatorIndex = index;
+        this.dropIndicatorTop = this.gapTop(rects, index, origin);
+    }
+
+    /** Hides the drop line and highlight; the finger left the column. */
+    leaveCard(): void {
+        this.dragEnterCount = 0;
+        this.clearDragVisuals();
+    }
+
+    /** Moves the card here at the drop line, as a mouse drop would. Returns whether the column took it. */
+    dropCard(cardId: string): boolean {
+        if (this.collapsed || !this.kanban || this.dropIndicatorIndex < 0) return false;
+        this.kanban.moveCard(cardId, this.columnId, this.dropIndicatorIndex, this.swimlaneId);
+        this.leaveCard();
+        return true;
+    }
+
     private clearDragVisuals(): void {
         this.dropIndicatorIndex = -1;
         this.dropIndicatorTop = -1;

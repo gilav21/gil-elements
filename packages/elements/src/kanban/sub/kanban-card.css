@@ -82,3 +82,12 @@
     border-radius: 9999px;
     box-sizing: border-box;
 }
+:host {
+    -webkit-touch-callout: none;
+}
+@media (pointer: coarse) {
+    :host {
+        user-select: none;
+        -webkit-user-select: none;
+    }
+}
