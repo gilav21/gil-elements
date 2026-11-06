@@ -4886,6 +4886,78 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
 })();</script>`,
             },
             {
+                title: 'Bar race chart',
+                note: 'Ranked bars that slide between frames, with play, pause and a slider.',
+                block: true,
+                html: `<ge-bar-race-chart id="race1" auto-play loop animation-duration="900" max-bars="4"></ge-bar-race-chart>
+<script>(() => {
+  const names = ['Lit', 'React', 'Vue', 'Svelte', 'Solid'];
+  const frames = [0, 1, 2, 3, 4].map((t) => names.map((name, i) => ({ name, value: 20 + ((i * 17 + t * (9 + i * 4)) % 60) + t * 8 })));
+  const chart = document.getElementById('race1');
+  chart.frames = frames;
+  chart.frameLabels = ['2021', '2022', '2023', '2024', '2025'];
+})();</script>`,
+            },
+            {
+                title: 'Histogram',
+                note: 'Pass raw observations and it bins them (Sturges\' rule unless `bin-count` is set).',
+                block: true,
+                html: `<ge-histogram id="hist1" unit="ms"></ge-histogram>
+<script>document.getElementById('hist1').values = Array.from({ length: 120 }, (_, i) => 40 + ((i * 53) % 97) * 0.9 + (i % 7) * 3);</script>`,
+            },
+            {
+                title: 'Chart brush',
+                note: 'Drag the track to select a range, the band to move it, an edge to resize it.',
+                block: true,
+                html: `<ge-chart-brush id="brush1" width="480"></ge-chart-brush>
+<p id="brush1-out" style="font-size:.875rem;color:var(--muted-foreground)">No selection</p>
+<script>document.getElementById('brush1').addEventListener('selection-change', (event) => {
+  const d = event.detail;
+  document.getElementById('brush1-out').textContent = d ? 'From ' + Math.round(d.start) + ' to ' + Math.round(d.end) : 'No selection';
+});</script>`,
+            },
+            {
+                title: 'Pie chart with drilldown',
+                note: 'A slice that names a child series opens it; a breadcrumb leads back.',
+                block: true,
+                html: `<ge-pie-chart-drilldown id="pdd1"></ge-pie-chart-drilldown>
+<script>(() => {
+  const chart = document.getElementById('pdd1');
+  chart.data = [{ name: 'Web', value: 60, drilldown: 'web' }, { name: 'Mobile', value: 30, drilldown: 'mobile' }, { name: 'Desktop', value: 10 }];
+  chart.drilldownSeries = [
+    { id: 'web', name: 'Web', data: [{ name: 'Chrome', value: 35 }, { name: 'Safari', value: 15 }, { name: 'Firefox', value: 10 }] },
+    { id: 'mobile', name: 'Mobile', data: [{ name: 'iOS', value: 18 }, { name: 'Android', value: 12 }] },
+  ];
+})();</script>`,
+            },
+            {
+                title: 'Bar chart with drilldown',
+                note: 'The same idea for columns.',
+                block: true,
+                html: `<ge-bar-chart-drilldown id="bdd1"></ge-bar-chart-drilldown>
+<script>(() => {
+  const chart = document.getElementById('bdd1');
+  chart.data = [{ name: '2024', value: 480, drilldown: 'y24' }, { name: '2025', value: 620, drilldown: 'y25' }, { name: '2026', value: 300 }];
+  chart.drilldownSeries = [
+    { id: 'y24', name: '2024', data: [{ name: 'Q1', value: 100 }, { name: 'Q2', value: 120 }, { name: 'Q3', value: 130 }, { name: 'Q4', value: 130 }] },
+    { id: 'y25', name: '2025', data: [{ name: 'Q1', value: 140 }, { name: 'Q2', value: 150 }, { name: 'Q3', value: 160 }, { name: 'Q4', value: 170 }] },
+  ];
+})();</script>`,
+            },
+            {
+                title: 'Org chart',
+                note: 'A flat list linked by `parentId`. Cards are buttons; `layout="horizontal"` runs left to right.',
+                block: true,
+                html: `<ge-org-chart id="org1"></ge-org-chart>
+<script>document.getElementById('org1').data = [
+  { id: 'ceo', name: 'Ada Lovelace', title: 'Chief Executive' },
+  { id: 'cto', name: 'Grace Hopper', title: 'CTO', description: 'Owns engineering.', parentId: 'ceo' },
+  { id: 'cfo', name: 'Alan Turing', title: 'CFO', parentId: 'ceo' },
+  { id: 'dev1', name: 'Linus Torvalds', title: 'Engineer', parentId: 'cto' },
+  { id: 'dev2', name: 'Margaret Hamilton', title: 'Engineer', parentId: 'cto' },
+];</script>`,
+            },
+            {
                 title: 'Chart legend',
                 note: 'The legend on its own: it reports `item-toggle` and the chart you pair it with decides what to hide.',
                 html: `<ge-chart-legend id="legend1"></ge-chart-legend>
@@ -4929,6 +5001,11 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'data / cell-size / from-color / to-color (calendar heatmap)', type: 'CalendarDay[] / number / string', default: '[] / 13 / blue / blue', description: 'A day is `{ date: \'YYYY-MM-DD\', value }`. Fires `day-hover`.' },
             { name: 'data / unit / show-range-labels / bar-radius / bar-gap (column range)', type: 'RangeDataPoint[] / string / boolean / number', default: "[] / - / true / 4 / 12", description: 'A column is `{ name, low, high, color? }`. Fires `bar-click`.' },
             { name: 'barSeries / lineSeries / show-cumulative / cumulative-label (combo)', type: 'ChartSeries[] / boolean / string', default: '[] / [] / false / Cumulative', description: 'Lines use a second hidden axis. `bar-click` detail is `{ point, index }` of the bar\'s own series.' },
+            { name: 'frames / frame-labels / auto-play / loop / max-bars / animation-duration (bar race)', type: 'ChartDataPoint[][] / string[] / boolean / number', default: '[] / [] / false / false / 10 / 500', description: 'Methods `play`, `pause`, `togglePlay`, `reset`, `goToFrame`; fires `frame-change` and `animation-complete`.' },
+            { name: 'values / bin-count / binEdges / unit (histogram)', type: 'number[] / number', default: '[] / Sturges / -', description: 'Explicit `binEdges` win over `bin-count`. Fires `bin-click` and `bin-hover`.' },
+            { name: 'selection / width / height (chart brush)', type: 'BrushSelection / number', default: 'null / 400 / 40', description: 'Work in pixels along the x axis of `width`. `selection` only seeds the brush; fires `selection-change` with `{ start, end }` or `null`.' },
+            { name: 'data / drilldownSeries / show-breadcrumb / back-button-text (drilldown charts)', type: 'DrilldownDataPoint[] / DrilldownSeries[]', default: '[] / [] / true / Back', description: 'A point with `drilldown` opens the series with that `id`. Fires `drilldown`, `drillup`; `drillUp()` goes back.' },
+            { name: 'data / layout / node-width / node-height / line-type / hide-images (org chart)', type: 'OrgNode[] / string / number', default: "[] / 'vertical' / 180 / 80 / 'curved' / false", description: 'A node is `{ id, name, title?, description?, image?, color?, parentId? }`. Fires `node-click` and `node-hover`.' },
             { name: 'show-tooltip / show-legend', type: 'boolean', default: 'true', description: 'The hover tooltip and, on the line chart, the legend.' },
             { name: 'point-click / bar-click / slice-click', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`.' },
             { name: 'point-hover / bar-hover / slice-hover', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`, or `null` when the pointer leaves.' },
