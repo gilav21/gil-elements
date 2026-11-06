@@ -20,7 +20,18 @@ for (const file of readdirSync(`${here}cases`).sort()) {
 }
 
 // Tailwind only emits classes it finds in source, so write every reference snippet to one file first.
-writeFileSync(`${out}/reference-source.html`, cases.flatMap((c) => c.items.map((i) => i.ref)).join('\n'));
+// PARITY_TW_ALL / PARITY_TW_SKIP: build the reference CSS from every case (minus the named ones) while comparing only the wanted cases,
+// to tell a component that differs on its own from a reference stylesheet that depends on which other cases exist.
+let sourceCases = cases;
+if (process.env.PARITY_TW_ALL) {
+    const skip = (process.env.PARITY_TW_SKIP ?? '').split(',');
+    sourceCases = [];
+    for (const file of readdirSync(`${here}cases`).sort()) {
+        const mod = (await import(pathToFileURL(`${here}cases/${file}`).href)).default;
+        if (!skip.includes(mod.name)) sourceCases.push(mod);
+    }
+}
+writeFileSync(`${out}/reference-source.html`, sourceCases.flatMap((c) => c.items.map((i) => i.ref)).join('\n'));
 execFileSync('npx', ['tailwindcss', '-i', `${here}reference.css`, '-o', `${out}/reference.out.css`], { stdio: 'ignore' });
 await build({
     configFile: false,
@@ -87,7 +98,19 @@ for (const theme of ['light', 'dark']) {
     const rects = { ref: {}, el: {} };
     // A case file marked `isolated` gets a page of its own: opening a menu moves focus into it, which scrolls the shared
     // page, and every other case that measures itself on open would then measure at the wrong scroll position.
-    const groups = [cases.filter((c) => !c.isolated), ...cases.filter((c) => c.isolated).map((c) => [c])].filter((g) => g.length > 0);
+    // The shared pages are also capped in size: past a few thousand pixels of height the same markup rasterises differently
+    // (a full run differed in text on whole components that pass alone, and a half run in the one that sits deepest), so
+    // cases are packed into pages of at most `PAGE_ITEMS` items.
+    const PAGE_ITEMS = 80;
+    const shared = [];
+    for (const c of cases.filter((c) => !c.isolated)) {
+        const last = shared.at(-1);
+        if (last && last.items + c.items.length <= PAGE_ITEMS) {
+            last.cases.push(c);
+            last.items += c.items.length;
+        } else shared.push({ cases: [c], items: c.items.length });
+    }
+    const groups = [...shared.map((g) => g.cases), ...cases.filter((c) => c.isolated).map((c) => [c])].filter((g) => g.length > 0);
     for (const group of groups) for (const side of ['ref', 'el']) {
         const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: group[0].width ?? 700, height: 900 } });
         // Every case sits on one tall page, below the 900px viewport, where collision handling would flip the panels. The
@@ -385,6 +408,16 @@ for (const theme of ['light', 'dark']) {
                 }
             };
             freeze(document, 700);
+        });
+        // Cases stack on one tall page, so each one's top sits at the sum of the heights above it, usually fractional. Text on a
+        // layer at a fractional offset is rasterised on a different subpixel grid, and which cases land on a whole pixel shifts
+        // whenever any case above them changes height. Nudge every case onto a whole pixel, the same way on both sides.
+        await page.evaluate(() => {
+            for (const c of document.querySelectorAll('[data-case]')) {
+                const top = c.getBoundingClientRect().top + scrollY;
+                const fraction = top - Math.floor(top);
+                if (fraction > 0.001) c.style.marginTop = `${1 - fraction}px`;
+            }
         });
         Object.assign(rects[side], await page.evaluate(() => {
             // The flat-tree parent of each case's first label text: its whole computed style, so a failure on a machine
