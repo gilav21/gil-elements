@@ -267,6 +267,8 @@ export default defineConfig({
                 'masonry/define': 'src/masonry/define.ts',
                 'virtual-scroll/index': 'src/virtual-scroll/index.ts',
                 'virtual-scroll/define': 'src/virtual-scroll/define.ts',
+                'bento-grid/index': 'src/bento-grid/index.ts',
+                'bento-grid/define': 'src/bento-grid/define.ts',
             },
             formats: ['es'],
         },

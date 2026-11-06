@@ -126,6 +126,7 @@ import '@gilav21/elements/meteors/define';
 import '@gilav21/elements/comparison-slider/define';
 import '@gilav21/elements/masonry/define';
 import '@gilav21/elements/virtual-scroll/define';
+import '@gilav21/elements/bento-grid/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

@@ -29,6 +29,10 @@
     --chip-remove-hover: rgb(0 0 0 / 0.1);
     /* Colour picker "copied" badge text: Tailwind green-700 in light mode, green-300 in dark, hard-coded in shadcn-angular. */
     --color-picker-copied-foreground: oklch(0.527 0.154 150.069);
+    /* Bento grid merge bar (white, zinc-100 on hover; zinc-800 and zinc-700 in dark mode) and static item card (white; black in dark mode), hard-coded in shadcn-angular. The static card's border is --border, white/20 in dark mode. */
+    --bento-merge-surface: #fff;
+    --bento-merge-surface-hover: oklch(0.967 0.001 286.375);
+    --bento-item-surface: #fff;
     --highlight: oklch(0.945 0.129 101.54);
     --highlight-foreground: currentColor;
     --density: 1;         /* spacing/size multiplier — 0.75 | 0.875 | 1.0 | 1.125 | 1.25 */
@@ -90,6 +94,10 @@
     --banner-warning-foreground: oklch(0.924 0.12 95.746);
     --banner-success-foreground: oklch(0.925 0.084 155.995);
     --color-picker-copied-foreground: oklch(0.871 0.15 154.449);
+    --bento-merge-surface: oklch(0.274 0.006 286.033);
+    --bento-merge-surface-hover: oklch(0.37 0.013 285.805);
+    --bento-item-surface: #000;
+    --bento-item-border: rgb(255 255 255 / 0.2);
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);

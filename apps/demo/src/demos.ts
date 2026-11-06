@@ -5020,6 +5020,82 @@ grid.renderItem = (cell) => Object.assign(document.createElement('div'), { textC
         ],
     },
     {
+        id: 'bento-grid',
+        group: 'Rung 3 · Interactive',
+        name: 'Bento grid',
+        tag: 'ge-bento-grid',
+        description: 'A dashboard canvas of cards on a grid: drag to move, pull a grip to resize, select neighbours and merge them, split or delete from the context menu, and right-click empty space to add.',
+        examples: [
+            {
+                title: 'Editable dashboard',
+                note: 'Hand it `items` ({ id, x, y, cols, rows, content }, 1-based). The element never edits your array: it emits `items-change` with the new layout and you decide whether to keep it. Dropping a card over others shrinks them or removes them. Click cards to select, then use the Merge bar. Touch works too: drag a card with a finger, long-press for the menu.',
+                block: true,
+                html: `<ge-bento-grid id="bg1" cols="4" row-height="64" gap="12"></ge-bento-grid>
+<p id="bg1-out" style="margin:.75rem 0 0;font-size:.875rem;color:var(--muted-foreground)"></p>
+<script>
+const board = document.getElementById('bg1');
+board.items = [
+  { id: 'revenue', x: 1, y: 1, cols: 2, rows: 2, content: 'Revenue' },
+  { id: 'orders', x: 3, y: 1, cols: 2, rows: 1, content: 'Orders' },
+  { id: 'users', x: 3, y: 2, cols: 1, rows: 1, content: 'Users' },
+  { id: 'churn', x: 4, y: 2, cols: 1, rows: 1, content: 'Churn' },
+];
+board.addEventListener('items-change', (e) => {
+  board.items = e.detail;
+  document.getElementById('bg1-out').textContent = e.detail.map((i) => i.content + ' ' + i.x + ',' + i.y + ' ' + i.cols + 'x' + i.rows).join('  ·  ');
+});
+</script>`,
+            },
+            {
+                title: 'Rendering your own cards',
+                note: '`renderItem` returns a Lit template or a node. It is rendered into the light DOM, so page styles reach it. With `editable="false"` there are no grips, pattern or menus, and `resize-handle-type` picks edges, corners or both while editing.',
+                block: true,
+                html: `<ge-bento-grid id="bg2" cols="3" row-height="80" gap="12" editable="false"></ge-bento-grid>
+<script>
+const stats = document.getElementById('bg2');
+stats.items = [
+  { id: 'a', x: 1, y: 1, cols: 2, rows: 1, content: { label: 'Visitors', value: '12,480' } },
+  { id: 'b', x: 3, y: 1, cols: 1, rows: 2, content: { label: 'Conversion', value: '3.4%' } },
+  { id: 'c', x: 1, y: 2, cols: 2, rows: 1, content: { label: 'Revenue', value: '$48,200' } },
+];
+stats.renderItem = (item) => {
+  const el = document.createElement('div');
+  el.innerHTML = '<div style="font-size:.75rem;color:var(--muted-foreground)">' + item.content.label + '</div><div style="font-size:1.5rem;font-weight:600">' + item.content.value + '</div>';
+  return el;
+};
+</script>`,
+            },
+            {
+                title: 'Static cards',
+                note: '`ge-bento-grid-item` children place themselves by `span` and `row-span`, for a bento layout that is not editable data.',
+                block: true,
+                html: `<ge-bento-grid cols="3" row-height="72" gap="12" editable="false">
+  <ge-bento-grid-item span="2" row-span="2"><strong>Wide card</strong><span style="color:var(--muted-foreground)">Spans two columns and two rows.</span></ge-bento-grid-item>
+  <ge-bento-grid-item><strong>Small</strong></ge-bento-grid-item>
+  <ge-bento-grid-item><strong>Small</strong></ge-bento-grid-item>
+</ge-bento-grid>`,
+            },
+        ],
+        api: [
+            { name: 'items', type: 'DashboardItem[]', default: '[]', description: '{ id, x, y, cols, rows, content }; x and y are 1-based grid lines.' },
+            { name: 'renderItem', type: '(item) => unknown', default: 'null', description: 'Returns a Lit template or node for a card. Without it the content is shown as text.' },
+            { name: 'cols', type: 'number', default: '12', description: 'Number of columns.' },
+            { name: 'row-height', type: 'length', default: '120px', description: 'Row height. A bare number is pixels.' },
+            { name: 'column-width', type: 'length', default: '1fr', description: 'Column width; the fluid default shares the space equally.' },
+            { name: 'gap', type: 'length', default: '1.5rem', description: 'Space between cards.' },
+            { name: 'show-borders', type: 'boolean', default: 'true', description: 'Border and shadow on every card. Editable cards are outlined anyway.' },
+            { name: 'border-radius', type: 'length', default: '0.75rem', description: 'Card corner radius.' },
+            { name: 'item-padding', type: 'length', default: '1rem', description: 'Card padding.' },
+            { name: 'editable', type: 'boolean', default: 'true', description: 'Dragging, resizing, selecting, merging and the menus.' },
+            { name: 'resize-handle-type', type: "'edges' | 'corners' | 'both'", default: "'both'", description: 'Which grips cards show while editable.' },
+            { name: 'items-change', type: 'event', default: '-', description: 'detail is the whole new layout after a move, resize, merge, split, add or delete.' },
+            { name: 'selection-change', type: 'event', default: '-', description: 'detail is the selected ids.' },
+            { name: 'external-drop', type: 'event', default: '-', description: 'A widget dragged in from elsewhere (application/json { type: "widget", id }); detail has widgetId, targetId and, on empty canvas, x and y.' },
+            { name: 'toggleSelection(id, add?) / clearSelection() / isSelected(id)', type: 'method', default: '-', description: 'Drive the selection from code.' },
+            { name: 'mergeSelected() / splitItem(id, direction) / deleteItem(id) / addItemAt(x, y, cols, rows)', type: 'method', default: '-', description: 'The menu actions, callable directly. Each emits items-change.' },
+        ],
+    },
+    {
         id: 'input-mask',
         group: 'Rung 3 · Interactive',
         name: 'Input mask',

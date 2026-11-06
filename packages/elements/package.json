@@ -1317,6 +1317,16 @@
       "types": "./dist/virtual-scroll/define.d.ts",
       "development": "./src/virtual-scroll/define.ts",
       "default": "./dist/virtual-scroll/define.js"
+    },
+    "./bento-grid": {
+      "types": "./dist/bento-grid/index.d.ts",
+      "development": "./src/bento-grid/index.ts",
+      "default": "./dist/bento-grid/index.js"
+    },
+    "./bento-grid/define": {
+      "types": "./dist/bento-grid/define.d.ts",
+      "development": "./src/bento-grid/define.ts",
+      "default": "./dist/bento-grid/define.js"
     }
   },
   "scripts": {
