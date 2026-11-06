@@ -967,6 +967,16 @@
       "types": "./dist/bar-race-chart/define.d.ts",
       "development": "./src/bar-race-chart/define.ts",
       "default": "./dist/bar-race-chart/define.js"
+    },
+    "./histogram": {
+      "types": "./dist/histogram/index.d.ts",
+      "development": "./src/histogram/index.ts",
+      "default": "./dist/histogram/index.js"
+    },
+    "./histogram/define": {
+      "types": "./dist/histogram/define.d.ts",
+      "development": "./src/histogram/define.ts",
+      "default": "./dist/histogram/define.js"
     }
   },
   "scripts": {

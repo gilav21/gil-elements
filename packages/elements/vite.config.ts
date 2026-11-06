@@ -197,6 +197,8 @@ export default defineConfig({
                 'combo-chart/define': 'src/combo-chart/define.ts',
                 'bar-race-chart/index': 'src/bar-race-chart/index.ts',
                 'bar-race-chart/define': 'src/bar-race-chart/define.ts',
+                'histogram/index': 'src/histogram/index.ts',
+                'histogram/define': 'src/histogram/define.ts',
             },
             formats: ['es'],
         },
