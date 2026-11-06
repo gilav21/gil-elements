@@ -1,0 +1,31 @@
+:host {
+    display: contents;
+}
+.base {
+    display: inline-flex;
+}
+.char {
+    display: inline-block;
+    opacity: 0;
+    animation: flip-in forwards cubic-bezier(0.2, 0.6, 0.35, 1);
+}
+@keyframes flip-in {
+    0% {
+        opacity: 0;
+        transform: rotateX(90deg);
+        filter: blur(4px);
+    }
+    100% {
+        opacity: 1;
+        transform: rotateX(0deg);
+        filter: blur(0);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .char {
+        animation: none;
+        opacity: 1;
+        transform: none;
+        filter: none;
+    }
+}

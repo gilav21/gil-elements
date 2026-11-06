@@ -4748,6 +4748,52 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
   document.getElementById('confetti1-cannons').addEventListener('click', () => { box.options = { variant: 'side-cannons', particleCount: 60 }; box.fire(); });
 })();</script>`,
             },
+            {
+                title: 'Blur fade',
+                note: 'Fades its content in with a blur, from `direction` (`up`, `down`, `left`, `right`), once it scrolls into view. Set `in-view="false"` to play on load.',
+                html: `<ge-blur-fade id="bf1" delay="100" duration="600"><ge-card style="max-width:20rem"><ge-card-header><ge-card-title>Fades in</ge-card-title></ge-card-header><ge-card-content>Blurred, then sharp.</ge-card-content></ge-card></ge-blur-fade>
+<ge-button variant="outline" size="sm" id="bf1-again" style="margin-top:.5rem">Replay</ge-button>
+<script>document.getElementById('bf1-again').addEventListener('click', () => document.getElementById('bf1').playAnimation());</script>`,
+            },
+            {
+                title: 'Flip text',
+                note: 'Each character flips in from above; `delay` is the stagger in milliseconds.',
+                html: `<ge-flip-text id="ft1" text="Flip it good" style="font-size:2rem;font-weight:800"></ge-flip-text>
+<ge-button variant="outline" size="sm" id="ft1-again" style="margin-left:1rem">Replay</ge-button>
+<script>document.getElementById('ft1-again').addEventListener('click', () => document.getElementById('ft1').playAnimation());</script>`,
+            },
+            {
+                title: 'Gradient text',
+                note: 'A gradient that pans through `colors`; `speed` is seconds per loop and `direction` is the angle of travel.',
+                html: `<ge-gradient-text id="gt1" speed="4" style="font-size:2.5rem;font-weight:800">Gradient text</ge-gradient-text>
+<script>document.getElementById('gt1').colors = ['#ef4444', '#f59e0b', '#22c55e', '#3b82f6', '#a855f7'];</script>`,
+            },
+            {
+                title: 'Typing animation',
+                note: 'Types each string, pauses, deletes it, and moves on. `loop="false"` stops on the last string; `complete` fires when it does.',
+                html: `<ge-typing-animation id="ta1" style="font-size:1.5rem;font-weight:600"></ge-typing-animation>
+<script>document.getElementById('ta1').strings = ['Build once.', 'Use everywhere.', 'Any framework.'];</script>`,
+            },
+            {
+                title: 'Word rotate',
+                note: 'Slides through `words` in place; the box is the size of the longest word.',
+                html: `<span style="font-size:1.5rem;font-weight:700">Made for <ge-word-rotate id="wr1" duration="1800"></ge-word-rotate></span>
+<script>document.getElementById('wr1').words = ['designers', 'developers', 'everyone'];</script>`,
+            },
+            {
+                title: 'Streaming text',
+                note: 'Types `text` as it grows, the way a chat reply arrives. Text that does not extend the old one restarts.',
+                html: `<ge-streaming-text id="st1" text="Streaming text types itself out, a character at a time, with a pulsing cursor." speed="25" style="display:block;max-width:24rem"></ge-streaming-text>`,
+            },
+            {
+                title: 'Number ticker',
+                note: 'Counts to `value`, each digit rolling like an odometer. `duration` and `delay` are seconds; `decimal-places` keeps the width steady; `locale` sets the separators.',
+                html: `<div style="display:flex;gap:2rem;flex-wrap:wrap;font-size:2.25rem;font-weight:700">
+  <ge-number-ticker value="1234567" duration="2"></ge-number-ticker>
+  <ge-number-ticker value="98.6" decimal-places="1" delay="0.5"></ge-number-ticker>
+  <ge-number-ticker value="1234.5" decimal-places="1" locale="de"></ge-number-ticker>
+</div>`,
+            },
         ],
         api: [
             { name: 'text / delay (text reveal)', type: 'string / number', default: "'' / 50", description: 'Words split at whitespace runs; each starts `index * delay` ms after the first and animates for 1s. Plain text only.' },
@@ -4757,6 +4803,13 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'strength / radius / smoothing (magnetic)', type: 'number', default: '0.3 / 200 / 150', description: 'Inline-block; the element itself moves. Distance is measured from its current, moved, centre.' },
             { name: 'value / locale / copied (copy-to)', type: 'string / string | object / event', default: "'' / page lang / -", description: '`value` is read at click time. `copied` fires only when the clipboard write succeeds.' },
             { name: 'options / manual-trigger / fire() (confetti)', type: 'ConfettiOptions / boolean / method', default: '{} / false / -', description: '`particleCount`, `angle`, `spread`, `startVelocity`, `decay`, `gravity`, `drift`, `ticks`, `origin`, `colors`, `shapes`, `scalar`, `zIndex`, `disableForReducedMotion`, `variant`. A `0` falls back to the default.' },
+            { name: 'delay / duration / direction / in-view (blur fade)', type: 'number / number / string / boolean', default: "0 / 400 / 'up' / true", description: 'Milliseconds. `replay` fires and `playAnimation()` plays again. The host is the animated box.' },
+            { name: 'text / delay / duration (flip text)', type: 'string / number / number', default: "'' / 50 / 500", description: 'Spaces stay as spaces. `playAnimation()` replays.' },
+            { name: 'colors / speed / direction (gradient text)', type: 'string[] / number / string', default: '- / 3 / -', description: '`colors` is a property. The gradient clips to the text, so give it a `font-size`.' },
+            { name: 'strings / type-speed / delete-speed / pause-duration / loop / cursor (typing animation)', type: 'string[] / number / number / number / boolean / boolean', default: '- / 50 / 30 / 1500 / true / true', description: 'Milliseconds per character, and the hold before deleting. `complete` fires when a non-looping run ends.' },
+            { name: 'words / duration (word rotate)', type: 'string[] / number', default: '- / 2000', description: 'Milliseconds each word stays. Changing either restarts the timer.' },
+            { name: 'text / speed / show-cursor (streaming text)', type: 'string / number / boolean', default: "'' / 30 / true", description: 'Milliseconds per character. `complete` fires each time it catches up with `text`.' },
+            { name: 'value / delay / duration / decimal-places / locale (number ticker)', type: 'number / number / number / number / string', default: "0 / 0 / 1 / 0 / page lang", description: 'Seconds. Every change of `value` counts from what is showing. Text takes the theme foreground; set `color` to override. `direction` is accepted and does nothing.' },
             { name: '::part(base)', type: 'css part', default: '-', description: 'Text reveal\'s word container; set `justify-content` here.' },
             { name: '::part(viewport)', type: 'css part', default: '-', description: 'The marquee\'s clipping box.' },
         ],

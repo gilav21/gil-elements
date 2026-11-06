@@ -1137,6 +1137,76 @@
       "types": "./dist/tour/define.d.ts",
       "development": "./src/tour/define.ts",
       "default": "./dist/tour/define.js"
+    },
+    "./blur-fade": {
+      "types": "./dist/blur-fade/index.d.ts",
+      "development": "./src/blur-fade/index.ts",
+      "default": "./dist/blur-fade/index.js"
+    },
+    "./blur-fade/define": {
+      "types": "./dist/blur-fade/define.d.ts",
+      "development": "./src/blur-fade/define.ts",
+      "default": "./dist/blur-fade/define.js"
+    },
+    "./flip-text": {
+      "types": "./dist/flip-text/index.d.ts",
+      "development": "./src/flip-text/index.ts",
+      "default": "./dist/flip-text/index.js"
+    },
+    "./flip-text/define": {
+      "types": "./dist/flip-text/define.d.ts",
+      "development": "./src/flip-text/define.ts",
+      "default": "./dist/flip-text/define.js"
+    },
+    "./gradient-text": {
+      "types": "./dist/gradient-text/index.d.ts",
+      "development": "./src/gradient-text/index.ts",
+      "default": "./dist/gradient-text/index.js"
+    },
+    "./gradient-text/define": {
+      "types": "./dist/gradient-text/define.d.ts",
+      "development": "./src/gradient-text/define.ts",
+      "default": "./dist/gradient-text/define.js"
+    },
+    "./typing-animation": {
+      "types": "./dist/typing-animation/index.d.ts",
+      "development": "./src/typing-animation/index.ts",
+      "default": "./dist/typing-animation/index.js"
+    },
+    "./typing-animation/define": {
+      "types": "./dist/typing-animation/define.d.ts",
+      "development": "./src/typing-animation/define.ts",
+      "default": "./dist/typing-animation/define.js"
+    },
+    "./word-rotate": {
+      "types": "./dist/word-rotate/index.d.ts",
+      "development": "./src/word-rotate/index.ts",
+      "default": "./dist/word-rotate/index.js"
+    },
+    "./word-rotate/define": {
+      "types": "./dist/word-rotate/define.d.ts",
+      "development": "./src/word-rotate/define.ts",
+      "default": "./dist/word-rotate/define.js"
+    },
+    "./streaming-text": {
+      "types": "./dist/streaming-text/index.d.ts",
+      "development": "./src/streaming-text/index.ts",
+      "default": "./dist/streaming-text/index.js"
+    },
+    "./streaming-text/define": {
+      "types": "./dist/streaming-text/define.d.ts",
+      "development": "./src/streaming-text/define.ts",
+      "default": "./dist/streaming-text/define.js"
+    },
+    "./number-ticker": {
+      "types": "./dist/number-ticker/index.d.ts",
+      "development": "./src/number-ticker/index.ts",
+      "default": "./dist/number-ticker/index.js"
+    },
+    "./number-ticker/define": {
+      "types": "./dist/number-ticker/define.d.ts",
+      "development": "./src/number-ticker/define.ts",
+      "default": "./dist/number-ticker/define.js"
     }
   },
   "scripts": {
