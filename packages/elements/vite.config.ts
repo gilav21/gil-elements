@@ -183,6 +183,8 @@ export default defineConfig({
                 'gauge-chart/define': 'src/gauge-chart/define.ts',
                 'funnel-chart/index': 'src/funnel-chart/index.ts',
                 'funnel-chart/define': 'src/funnel-chart/define.ts',
+                'waterfall-chart/index': 'src/waterfall-chart/index.ts',
+                'waterfall-chart/define': 'src/waterfall-chart/define.ts',
             },
             formats: ['es'],
         },

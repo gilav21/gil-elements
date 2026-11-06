@@ -1,0 +1,32 @@
+:host {
+    display: block;
+}
+.base {
+    position: relative;
+    width: 100%;
+}
+svg {
+    display: block;
+    width: 100%;
+    overflow: visible;
+    touch-action: none;
+}
+.grid {
+    stroke: var(--border);
+}
+.tick {
+    fill: var(--muted-foreground);
+    font-size: 10px;
+}
+.connector {
+    stroke: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+}
+.bar {
+    cursor: pointer;
+    transition: fill-opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.value {
+    pointer-events: none;
+    fill: var(--foreground);
+    font-size: 10px;
+}

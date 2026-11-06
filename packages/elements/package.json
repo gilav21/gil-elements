@@ -897,6 +897,16 @@
       "types": "./dist/funnel-chart/define.d.ts",
       "development": "./src/funnel-chart/define.ts",
       "default": "./dist/funnel-chart/define.js"
+    },
+    "./waterfall-chart": {
+      "types": "./dist/waterfall-chart/index.d.ts",
+      "development": "./src/waterfall-chart/index.ts",
+      "default": "./dist/waterfall-chart/index.js"
+    },
+    "./waterfall-chart/define": {
+      "types": "./dist/waterfall-chart/define.d.ts",
+      "development": "./src/waterfall-chart/define.ts",
+      "default": "./dist/waterfall-chart/define.js"
     }
   },
   "scripts": {
