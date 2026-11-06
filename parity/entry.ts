@@ -79,3 +79,4 @@ import '../packages/elements/src/chart-tooltip/define.js';
 import '../packages/elements/src/line-chart/define.js';
 import '../packages/elements/src/bar-chart/define.js';
 import '../packages/elements/src/pie-chart/define.js';
+import '../packages/elements/src/area-chart/define.js';

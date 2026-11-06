@@ -169,6 +169,8 @@ export default defineConfig({
                 'bar-chart/define': 'src/bar-chart/define.ts',
                 'pie-chart/index': 'src/pie-chart/index.ts',
                 'pie-chart/define': 'src/pie-chart/define.ts',
+                'area-chart/index': 'src/area-chart/index.ts',
+                'area-chart/define': 'src/area-chart/define.ts',
             },
             formats: ['es'],
         },

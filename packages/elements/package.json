@@ -827,6 +827,16 @@
       "types": "./dist/pie-chart/define.d.ts",
       "development": "./src/pie-chart/define.ts",
       "default": "./dist/pie-chart/define.js"
+    },
+    "./area-chart": {
+      "types": "./dist/area-chart/index.d.ts",
+      "development": "./src/area-chart/index.ts",
+      "default": "./dist/area-chart/index.js"
+    },
+    "./area-chart/define": {
+      "types": "./dist/area-chart/define.d.ts",
+      "development": "./src/area-chart/define.ts",
+      "default": "./dist/area-chart/define.js"
     }
   },
   "scripts": {

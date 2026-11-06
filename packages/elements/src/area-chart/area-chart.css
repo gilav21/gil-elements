@@ -1,0 +1,27 @@
+:host {
+    display: block;
+}
+.base {
+    position: relative;
+    width: 100%;
+}
+svg {
+    display: block;
+    width: 100%;
+    overflow: visible;
+    touch-action: none;
+}
+.grid {
+    stroke: var(--border);
+}
+.tick {
+    fill: var(--muted-foreground);
+    font-size: 10px;
+}
+.crosshair {
+    stroke: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+}
+ge-chart-legend::part(base) {
+    margin-top: 0.5rem;
+    justify-content: center;
+}
