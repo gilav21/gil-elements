@@ -81,6 +81,7 @@ import '@gilav21/elements/area-chart/define';
 import '@gilav21/elements/stacked-bar-chart/define';
 import '@gilav21/elements/scatter-chart/define';
 import '@gilav21/elements/bubble-chart/define';
+import '@gilav21/elements/radar-chart/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

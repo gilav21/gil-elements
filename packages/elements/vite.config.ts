@@ -177,6 +177,8 @@ export default defineConfig({
                 'scatter-chart/define': 'src/scatter-chart/define.ts',
                 'bubble-chart/index': 'src/bubble-chart/index.ts',
                 'bubble-chart/define': 'src/bubble-chart/define.ts',
+                'radar-chart/index': 'src/radar-chart/index.ts',
+                'radar-chart/define': 'src/radar-chart/define.ts',
             },
             formats: ['es'],
         },

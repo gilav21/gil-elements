@@ -16,3 +16,4 @@ export const utils = await load('chart.utils');
 export const scale = await load('chart-scale');
 export const path = await load('chart-path');
 export const interaction = await load('chart-interaction');
+export const polar = await load('chart-polar');

@@ -83,3 +83,4 @@ export * from './area-chart/index.js';
 export * from './stacked-bar-chart/index.js';
 export * from './scatter-chart/index.js';
 export * from './bubble-chart/index.js';
+export * from './radar-chart/index.js';

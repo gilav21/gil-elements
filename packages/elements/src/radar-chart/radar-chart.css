@@ -1,0 +1,22 @@
+:host {
+    display: block;
+}
+.base {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+}
+svg {
+    overflow: visible;
+}
+.ring {
+    stroke: var(--border);
+}
+.axis {
+    fill: var(--muted-foreground);
+    font-size: 10px;
+}
+ge-chart-legend::part(base) {
+    margin-top: 0.5rem;
+    justify-content: center;
+}

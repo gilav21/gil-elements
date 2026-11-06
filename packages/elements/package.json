@@ -867,6 +867,16 @@
       "types": "./dist/bubble-chart/define.d.ts",
       "development": "./src/bubble-chart/define.ts",
       "default": "./dist/bubble-chart/define.js"
+    },
+    "./radar-chart": {
+      "types": "./dist/radar-chart/index.d.ts",
+      "development": "./src/radar-chart/index.ts",
+      "default": "./dist/radar-chart/index.js"
+    },
+    "./radar-chart/define": {
+      "types": "./dist/radar-chart/define.d.ts",
+      "development": "./src/radar-chart/define.ts",
+      "default": "./dist/radar-chart/define.js"
     }
   },
   "scripts": {
