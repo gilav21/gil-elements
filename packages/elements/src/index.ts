@@ -106,3 +106,6 @@ export * from './magnetic/index.js';
 export * from './copy-to/index.js';
 export * from './confetti/index.js';
 export * from './input-mask/index.js';
+export * from './chat-message/index.js';
+export * from './chat-list/index.js';
+export * from './chat-input/index.js';

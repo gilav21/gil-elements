@@ -106,3 +106,6 @@ import '../packages/elements/src/magnetic/define.js';
 import '../packages/elements/src/copy-to/define.js';
 import '../packages/elements/src/confetti/define.js';
 import '../packages/elements/src/input-mask/define.js';
+import '../packages/elements/src/chat-message/define.js';
+import '../packages/elements/src/chat-list/define.js';
+import '../packages/elements/src/chat-input/define.js';

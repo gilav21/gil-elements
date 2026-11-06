@@ -170,7 +170,7 @@
   "file-upload/index.js": 190,
   "hover-card/define.js": 210,
   "hover-card/index.js": 145,
-  "index.js": 4882,
+  "index.js": 4956,
   "input-group/define.js": 180,
   "input-group/index.js": 120,
   "input-otp/define.js": 150,
@@ -349,5 +349,14 @@
   "ripple/index.js": 71,
   "chunks/input-mask.js": 1107,
   "input-mask/define.js": 154,
-  "input-mask/index.js": 79
+  "input-mask/index.js": 79,
+  "chat-input/define.js": 153,
+  "chat-input/index.js": 79,
+  "chat-list/define.js": 151,
+  "chat-list/index.js": 79,
+  "chat-message/define.js": 154,
+  "chat-message/index.js": 81,
+  "chunks/chat-input.js": 1047,
+  "chunks/chat-list.js": 710,
+  "chunks/chat-message.js": 1074
 }

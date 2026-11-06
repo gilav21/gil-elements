@@ -1,0 +1,68 @@
+:host {
+    display: contents;
+}
+.row {
+    display: flex;
+    width: 100%;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+.avatar {
+    width: 2rem;
+    height: 2rem;
+    flex-shrink: 0;
+}
+.bubble {
+    position: relative;
+    box-sizing: border-box;
+    max-width: 85%;
+    border-radius: var(--radius);
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+}
+@media (min-width: 640px) {
+    .bubble {
+        max-width: 75%;
+    }
+}
+@media (min-width: 768px) {
+    .bubble {
+        max-width: 65%;
+    }
+}
+span[hidden] {
+    display: none;
+}
+[data-sender='user'] {
+    justify-content: flex-end;
+    padding-inline-start: 2rem;
+}
+[data-sender='user'] .avatar {
+    order: 1;
+}
+[data-sender='user'] .bubble {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+}
+[data-sender='assistant'] {
+    justify-content: flex-start;
+    padding-inline-end: 2rem;
+}
+[data-sender='assistant'] .bubble {
+    background-color: var(--muted);
+    border: 1px solid var(--border);
+}
+[data-sender='system'] {
+    justify-content: center;
+    padding-inline: 1rem;
+    margin-bottom: 0.5rem;
+}
+[data-sender='system'] .bubble {
+    background-color: transparent;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: calc(1 / 0.75);
+    text-align: center;
+    font-style: italic;
+}

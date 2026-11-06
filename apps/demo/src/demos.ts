@@ -5148,4 +5148,72 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'ge-chart-tooltip', type: 'element', default: '-', description: '`visible`, `x`, `y`, `heading`, `rows` (`{ label, value, color? }`), `flip-x`, `flip-y`.' },
         ],
     },
+    {
+        id: 'chat',
+        group: 'Rung 3 · Interactive',
+        name: 'Chat',
+        tag: 'ge-chat-message',
+        description: 'A message list, a message bubble and a composer. The list follows new messages; the composer sends on Enter.',
+        examples: [
+            {
+                title: 'A conversation',
+                note: 'Type a message and press Enter (Shift+Enter adds a line). The reply streams in by updating `content`, and the list keeps following it because `auto-scroll` is on.',
+                html: `<div style="border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:28rem;height:25rem;display:flex;flex-direction:column;overflow:hidden">
+  <ge-chat-list id="chat1" auto-scroll style="flex:1">
+    <ge-chat-message sender="assistant" avatar-fallback="AI" content="Hello! I am a simulated assistant. Ask me anything."></ge-chat-message>
+  </ge-chat-list>
+  <div style="padding:1rem;border-top:1px solid var(--border);background:color-mix(in srgb, var(--muted) 20%, transparent)">
+    <ge-chat-input id="chat1-input"></ge-chat-input>
+  </div>
+</div>
+<script>(() => {
+  const list = document.getElementById('chat1');
+  const reply = 'This is a simulated reply that streams in one letter at a time, so the list has to keep following it down as it grows.';
+  document.getElementById('chat1-input').addEventListener('send', (event) => {
+    const mine = document.createElement('ge-chat-message');
+    mine.setAttribute('sender', 'user');
+    mine.setAttribute('avatar-fallback', 'ME');
+    mine.setAttribute('content', event.detail);
+    list.append(mine);
+    setTimeout(() => {
+      const theirs = document.createElement('ge-chat-message');
+      theirs.setAttribute('sender', 'assistant');
+      theirs.setAttribute('avatar-fallback', 'AI');
+      list.append(theirs);
+      let i = 0;
+      const timer = setInterval(() => {
+        i += 1;
+        theirs.content = reply.slice(0, i);
+        if (i >= reply.length) clearInterval(timer);
+      }, 25);
+    }, 400);
+  });
+})();</script>`,
+            },
+            {
+                title: 'Senders and projected content',
+                note: '`sender` is `user` (end side, primary), `assistant` (start side, muted and bordered) or `system` (centred, small, italic, no avatar). Anything placed inside the message replaces `content`.',
+                html: `<div style="width:100%;max-width:28rem">
+  <ge-chat-message sender="system" content="Conversation started"></ge-chat-message>
+  <ge-chat-message sender="user" avatar-fallback="GL" content="Can you show me a list?"></ge-chat-message>
+  <ge-chat-message sender="assistant" avatar-fallback="AI"><strong>Sure.</strong> Here you go:<ul style="margin:.25rem 0 0 1rem;list-style:disc"><li>One</li><li>Two</li></ul></ge-chat-message>
+</div>`,
+            },
+            {
+                title: 'Composer',
+                note: '`placeholder` and `disabled`. The send button stays off until there is something to send, and the box clears the moment `send` fires.',
+                html: `<div style="display:grid;gap:1rem;width:100%;max-width:28rem">
+  <ge-chat-input placeholder="Ask anything"></ge-chat-input>
+  <ge-chat-input disabled></ge-chat-input>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'sender / content / avatar-src / avatar-fallback (message)', type: 'string', default: "'user' / '' / '' / '?'", description: '`sender` is `user`, `assistant` or `system` (named `role` in the Angular library; an attribute called `role` would be read as an ARIA role). Projected content wins over `content`.' },
+            { name: 'auto-scroll / scrollToBottom() (list)', type: 'boolean / method', default: 'false / -', description: 'While on, any added message or changed text scrolls to the bottom, even if the reader scrolled up. Call `scrollToBottom()` for a "jump to latest" button.' },
+            { name: 'placeholder / disabled / send (input)', type: 'string / boolean / event', default: "'Type a message...' / false / -", description: '`send` carries the raw text. Enter sends, Shift+Enter breaks the line, and the Enter that confirms an IME composition does nothing. A blank draft is never sent. `disabled` blocks sending but leaves the box editable.' },
+            { name: '::part(row) / ::part(bubble) (message)', type: 'css part', default: '-', description: 'The row and the bubble.' },
+            { name: '::part(scroll-area) (list) / ::part(send) (input)', type: 'css part', default: '-', description: 'The inner scroll area and the send button.' },
+        ],
+    },
 ];

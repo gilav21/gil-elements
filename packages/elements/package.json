@@ -1097,6 +1097,36 @@
       "types": "./dist/input-mask/define.d.ts",
       "development": "./src/input-mask/define.ts",
       "default": "./dist/input-mask/define.js"
+    },
+    "./chat-message": {
+      "types": "./dist/chat-message/index.d.ts",
+      "development": "./src/chat-message/index.ts",
+      "default": "./dist/chat-message/index.js"
+    },
+    "./chat-message/define": {
+      "types": "./dist/chat-message/define.d.ts",
+      "development": "./src/chat-message/define.ts",
+      "default": "./dist/chat-message/define.js"
+    },
+    "./chat-list": {
+      "types": "./dist/chat-list/index.d.ts",
+      "development": "./src/chat-list/index.ts",
+      "default": "./dist/chat-list/index.js"
+    },
+    "./chat-list/define": {
+      "types": "./dist/chat-list/define.d.ts",
+      "development": "./src/chat-list/define.ts",
+      "default": "./dist/chat-list/define.js"
+    },
+    "./chat-input": {
+      "types": "./dist/chat-input/index.d.ts",
+      "development": "./src/chat-input/index.ts",
+      "default": "./dist/chat-input/index.js"
+    },
+    "./chat-input/define": {
+      "types": "./dist/chat-input/define.d.ts",
+      "development": "./src/chat-input/define.ts",
+      "default": "./dist/chat-input/define.js"
     }
   },
   "scripts": {
