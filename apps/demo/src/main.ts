@@ -139,6 +139,8 @@ import '@gilav21/elements/card-accordion/define';
 import '@gilav21/elements/error-page/define';
 import { registerIcons } from '@gilav21/elements/icon';
 import '@gilav21/elements/icon/define';
+import '@gilav21/elements/shortcut-bindings-dialog/define';
+import { shortcutBindings } from '@gilav21/elements/shortcut-bindings-dialog';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
@@ -149,6 +151,24 @@ import { demos, type Demo, type Example } from './demos.js';
 
 (globalThis as { geToast?: typeof toast }).geToast = toast;
 (globalThis as { geRegisterIcons?: typeof registerIcons }).geRegisterIcons = registerIcons;
+
+// The sample actions the "Shortcut bindings dialog" page lists; any `ge-command-dialog` or `ge-kanban` on screen joins them.
+shortcutBindings.registerComponent(
+    'demo-notes',
+    (
+        [
+            ['Bold', 'Mod+B', 'Format'],
+            ['Save', 'Mod+S', 'File'],
+        ] as const
+    ).map(([description, defaultShortcut, category]) => ({
+        actionId: `notes.${description.toLowerCase()}`,
+        description,
+        defaultShortcut,
+        category,
+        scope: 'global' as const,
+        handler: () => void toast.info(`${description} pressed`),
+    })),
+);
 document.body.append(document.createElement('ge-toaster'));
 
 const escapeHtml = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');

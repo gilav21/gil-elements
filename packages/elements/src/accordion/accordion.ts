@@ -30,6 +30,7 @@ const defaultTrue = { fromAttribute: (attribute: string | null): boolean => attr
  *
  * @slot - `ge-accordion-item`s.
  * @fires change - After the user opens or closes an item; read `value`.
+ * @csspart base - The wrapper.
  * @attr {'single' | 'multiple'} type - `single` keeps at most one item open; `multiple` lets any number stay open.
  * @attr {string} value - Values of the open items, comma-separated. In `single` only the first counts. Read it back after `change`.
  * @attr {boolean} collapsible - In `single`, whether pressing the open item closes it. On unless set to `false`; ignored by `multiple`.
@@ -93,6 +94,6 @@ export class GeAccordion extends UiElement implements AccordionHost {
     }
 
     protected override render() {
-        return html`<div class="accordion" data-slot="accordion"><slot></slot></div>`;
+        return html`<div part="base" class="accordion" data-slot="accordion"><slot></slot></div>`;
     }
 }

@@ -196,6 +196,14 @@ for (const theme of ['light', 'dark']) {
                 await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));
                 // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
                 for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
+                // `data-shortcuts` is the JSON list `[{ component, actions: [{ actionId, description, defaultShortcut, category }] }]` a
+                // shortcut-bindings dialog finds registered; an entry with `definition` only declares it, with no live instance.
+                for (const target of document.querySelectorAll('[data-shortcuts]')) {
+                    for (const { component, definition, actions } of JSON.parse(target.dataset.shortcuts)) {
+                        if (definition) globalThis.geShortcutBindings.defineShortcuts(component, actions);
+                        else globalThis.geShortcutBindings.registerComponent(component, actions.map((action) => ({ ...action, handler: () => {} })));
+                    }
+                }
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
                 for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
                 // `data-render` names a row renderer for a virtual-scroll: functions cannot travel in `data-props`.

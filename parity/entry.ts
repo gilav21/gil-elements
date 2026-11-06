@@ -140,3 +140,6 @@ import '../packages/elements/src/candlestick/define.js';
 import '../packages/elements/src/card-accordion/define.js';
 import '../packages/elements/src/error-page/define.js';
 import '../packages/elements/src/icon/define.js';
+import '../packages/elements/src/shortcut-bindings-dialog/define.js';
+import { shortcutBindings } from '../packages/elements/src/shared/shortcut-bindings.js';
+(globalThis as { geShortcutBindings?: typeof shortcutBindings }).geShortcutBindings = shortcutBindings;

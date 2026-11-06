@@ -20,6 +20,7 @@ export interface AccordionItemHost {
  * `ge-accordion-trigger` and `ge-accordion-content` for full control.
  *
  * @slot - A `ge-accordion-trigger` and `ge-accordion-content`, used when there is no `heading`.
+ * @csspart base - The item's box.
  * @attr {string} value - Identifies the item in the accordion's `value`. Required.
  * @attr {string} heading - Quick form: the trigger's label (not `title`, which would add a browser tooltip).
  * @attr {string} content - Quick form: the panel's text.
@@ -85,7 +86,7 @@ export class GeAccordionItem extends UiElement implements AccordionItemHost {
     }
 
     protected override render() {
-        return html`<div class="item" data-slot="accordion-item">${this.skeleton ? this.renderSkeleton() : this.heading ? this.renderQuick() : html`<slot></slot>`}</div>`;
+        return html`<div part="base" class="item" data-slot="accordion-item">${this.skeleton ? this.renderSkeleton() : this.heading ? this.renderQuick() : html`<slot></slot>`}</div>`;
     }
 
     private renderSkeleton() {

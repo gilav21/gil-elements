@@ -1,7 +1,8 @@
 import { html, nothing, unsafeCSS, type PropertyValues, type TemplateResult } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
 import { adoptChildren } from '../shared/compound.js';
-import { isEditable, isMacPlatform, matchesShortcut } from '../shared/shortcut.js';
+import { isEditable } from '../shared/shortcut.js';
+import { shortcutBindings, type ShortcutComponentHandle } from '../shared/shortcut-bindings.js';
 import { onContextGesture, type ContextGesture } from '../shared/touch.js';
 import type { ContextMenuItem, GeContextMenu } from '../context-menu/context-menu.js';
 import {
@@ -143,12 +144,16 @@ export class GeKanban extends UiElement implements KanbanHost {
 
     override connectedCallback(): void {
         super.connectedCallback();
-        document.addEventListener('keydown', this.onKeydown);
+        this.shortcuts = shortcutBindings.registerComponent('kanban', [
+            { actionId: 'kanban.undo', description: 'Undo last action', defaultShortcut: 'Mod+Z', category: 'Kanban', scope: 'global', when: this.canHandleKey, handler: () => this.undo() },
+            { actionId: 'kanban.redo', description: 'Redo last action', defaultShortcut: 'Mod+Shift+Z', category: 'Kanban', scope: 'global', when: this.canHandleKey, handler: () => this.redo() },
+        ]);
     }
 
     override disconnectedCallback(): void {
         super.disconnectedCallback();
-        document.removeEventListener('keydown', this.onKeydown);
+        this.shortcuts?.unregister();
+        this.shortcuts = undefined;
         this.stopSurfaceGesture?.();
         this.stopSurfaceGesture = undefined;
         this.surface = undefined;
@@ -167,17 +172,10 @@ export class GeKanban extends UiElement implements KanbanHost {
         return resolveKanbanLocale(this.locale);
     }
 
-    private readonly onKeydown = (event: KeyboardEvent) => {
-        if (event.defaultPrevented || isEditable(event.composedPath()[0] ?? null)) return;
-        const mac = isMacPlatform();
-        if (matchesShortcut(event, 'Mod+Shift+Z', mac)) {
-            event.preventDefault();
-            this.redo();
-        } else if (matchesShortcut(event, 'Mod+Z', mac)) {
-            event.preventDefault();
-            this.undo();
-        }
-    };
+    private shortcuts?: ShortcutComponentHandle;
+
+    /** Undo and redo must not steal the browser's own undo from a text field. */
+    private readonly canHandleKey = (event: KeyboardEvent) => !isEditable(event.composedPath()[0] ?? null);
 
     // ---- derived data -------------------------------------------------------------------------------------
 

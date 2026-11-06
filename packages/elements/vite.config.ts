@@ -291,6 +291,8 @@ export default defineConfig({
                 'error-page/define': 'src/error-page/define.ts',
                 'icon/index': 'src/icon/index.ts',
                 'icon/define': 'src/icon/define.ts',
+                'shortcut-bindings-dialog/index': 'src/shortcut-bindings-dialog/index.ts',
+                'shortcut-bindings-dialog/define': 'src/shortcut-bindings-dialog/define.ts',
             },
             formats: ['es'],
         },

@@ -6050,4 +6050,38 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
             { name: 'ge-error-page-illustration / ge-error-page-actions', type: 'slots', default: '-', description: 'Direct children only; each assigns itself to its slot and removes the default it replaces.' },
         ],
     },
+    {
+        id: 'shortcut-bindings-dialog',
+        group: 'Rung 2 · Slots',
+        name: 'Shortcut bindings dialog',
+        tag: 'ge-shortcut-bindings-dialog',
+        description: 'A searchable list of every keyboard shortcut the page registers, where each can be rebound by pressing a new key. Components register through the shared `shortcutBindings` registry; this dialog edits it.',
+        examples: [
+            {
+                title: 'Rebind the page shortcuts',
+                note: 'Press Ctrl+B or Ctrl+S on this page first (a toast confirms), then rebind one here and try the new key. Overrides persist in localStorage. When a `ge-command-dialog` or `ge-kanban` is on screen it appears too.',
+                html: `<ge-button onclick="this.nextElementSibling.open = true">Keyboard shortcuts</ge-button>
+<ge-shortcut-bindings-dialog></ge-shortcut-bindings-dialog>`,
+            },
+            {
+                title: 'With Save Changes',
+                note: '`allow-save-mapping` adds the button; `mapping-save` carries the override schema, ready to store on a server and load back through `mappingSchema`.',
+                html: `<ge-button variant="outline" onclick="this.nextElementSibling.open = true">Open with Save</ge-button>
+<ge-shortcut-bindings-dialog allow-save-mapping></ge-shortcut-bindings-dialog>`,
+            },
+            {
+                title: 'Hebrew',
+                html: `<ge-button variant="outline" onclick="this.nextElementSibling.open = true">פתח</ge-button>
+<ge-shortcut-bindings-dialog locale="he"></ge-shortcut-bindings-dialog>`,
+            },
+        ],
+        api: [
+            { name: 'open', type: 'boolean', default: 'false', description: 'Whether the dialog is showing. `open-change` fires when it closes itself.' },
+            { name: 'allow-save-mapping', type: 'boolean', default: 'false', description: 'Shows Save Changes, which fires `mapping-save` with the override schema.' },
+            { name: 'replace-on-schema-load', type: 'boolean', default: 'true', description: 'Whether a loaded `mappingSchema` replaces the current overrides (`replace-on-schema-load="false"` merges).' },
+            { name: 'mappingSchema', type: 'Record<string, string>', default: '-', description: 'Property: overrides to import, e.g. the schema saved earlier.' },
+            { name: 'locale', type: 'string | object', default: "''", description: 'Locale id or object; defaults to the page `lang`, then English.' },
+            { name: 'shortcutBindings', type: 'singleton', default: '-', description: 'Import from `@gilav21/elements/shortcut-bindings-dialog`: `registerComponent(name, [{ actionId, description, defaultShortcut, handler, scope }])` to list your own action here.' },
+        ],
+    },
 ];

@@ -140,3 +140,4 @@ export * from './candlestick/index.js';
 export * from './card-accordion/index.js';
 export * from './error-page/index.js';
 export * from './icon/index.js';
+export * from './shortcut-bindings-dialog/index.js';

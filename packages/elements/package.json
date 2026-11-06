@@ -1437,6 +1437,16 @@
       "types": "./dist/icon/define.d.ts",
       "development": "./src/icon/define.ts",
       "default": "./dist/icon/define.js"
+    },
+    "./shortcut-bindings-dialog": {
+      "types": "./dist/shortcut-bindings-dialog/index.d.ts",
+      "development": "./src/shortcut-bindings-dialog/index.ts",
+      "default": "./dist/shortcut-bindings-dialog/index.js"
+    },
+    "./shortcut-bindings-dialog/define": {
+      "types": "./dist/shortcut-bindings-dialog/define.d.ts",
+      "development": "./src/shortcut-bindings-dialog/define.ts",
+      "default": "./dist/shortcut-bindings-dialog/define.js"
     }
   },
   "scripts": {

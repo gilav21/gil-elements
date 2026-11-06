@@ -1,3 +1,4 @@
+import { shortcutBindings } from '../shared/shortcut-bindings.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import '@gilav21/elements-base/tokens.css';
 import './define.js';
@@ -546,6 +547,22 @@ describe('ge-kanban history', () => {
         expect(history.at(-1)).toEqual({ canUndo: false, canRedo: true });
         board(page).moveCard('c2', 'done', 0);
         expect(history.at(-1)).toEqual({ canUndo: true, canRedo: false });
+    });
+
+    it('lists undo and redo in the shared shortcut registry and follows a remapped key', async () => {
+        const page = await mountBoard();
+        const changed = log<KanbanCard[]>(board(page), 'cards-change');
+        board(page).moveCard('c1', 'done', 0);
+        expect(shortcutBindings.getShortcutCatalog().filter((item) => item.componentName === 'kanban').map((item) => item.actionId).sort()).toEqual(['kanban.redo', 'kanban.undo']);
+        shortcutBindings.setShortcutOverride('kanban.undo', 'Alt+U');
+        try {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true, cancelable: true }));
+            expect(changed).toHaveLength(1);
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'u', altKey: true, bubbles: true, cancelable: true }));
+            expect(changed).toHaveLength(2);
+        } finally {
+            shortcutBindings.clearAllShortcutOverrides();
+        }
     });
 
     it('leaves Mod+Z to a text field being typed in', async () => {
