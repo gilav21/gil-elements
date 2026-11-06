@@ -193,6 +193,8 @@ export default defineConfig({
                 'calendar-heatmap/define': 'src/calendar-heatmap/define.ts',
                 'column-range-chart/index': 'src/column-range-chart/index.ts',
                 'column-range-chart/define': 'src/column-range-chart/define.ts',
+                'combo-chart/index': 'src/combo-chart/index.ts',
+                'combo-chart/define': 'src/combo-chart/define.ts',
             },
             formats: ['es'],
         },

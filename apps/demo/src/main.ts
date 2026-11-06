@@ -89,6 +89,7 @@ import '@gilav21/elements/bullet-chart/define';
 import '@gilav21/elements/heatmap/define';
 import '@gilav21/elements/calendar-heatmap/define';
 import '@gilav21/elements/column-range-chart/define';
+import '@gilav21/elements/combo-chart/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

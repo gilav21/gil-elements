@@ -91,3 +91,4 @@ import '../packages/elements/src/bullet-chart/define.js';
 import '../packages/elements/src/heatmap/define.js';
 import '../packages/elements/src/calendar-heatmap/define.js';
 import '../packages/elements/src/column-range-chart/define.js';
+import '../packages/elements/src/combo-chart/define.js';

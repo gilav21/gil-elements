@@ -3,11 +3,11 @@ import { utils } from './chart-libs.mjs';
 
 export const colorOf = (index, color) => utils.getChartColor(index, color);
 
-export const legendRef = (items, hidden = []) => {
+export const legendRef = (items, hidden = [], interactive = true) => {
     const body = items
         .map((item) => {
             const off = hidden.includes(item.key);
-            return `<span data-slot="chart-legend-item" class="inline-flex items-center gap-1.5 cursor-pointer select-none ${off ? 'opacity-70' : ''}" role="button" tabindex="0" aria-pressed="${!off}" aria-label="${item.label}"><span class="inline-block size-2.5 shrink-0 rounded-[2px]" style="background:${item.color}"></span><span class="${off ? 'line-through' : ''}">${item.label}</span></span>`;
+            return `<span data-slot="chart-legend-item" class="inline-flex items-center gap-1.5 ${interactive ? 'cursor-pointer select-none ' : ''}${off ? 'opacity-70' : ''}"${interactive ? ` role="button" tabindex="0" aria-pressed="${!off}"` : ''} aria-label="${item.label}"><span class="inline-block size-2.5 shrink-0 rounded-[2px]" style="background:${item.color}"></span><span class="${off ? 'line-through' : ''}">${item.label}</span></span>`;
         })
         .join('');
     return `<ui-chart-legend class="mt-2 justify-center contents"><div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm mt-2 justify-center" data-slot="chart-legend">${body}</div></ui-chart-legend>`;

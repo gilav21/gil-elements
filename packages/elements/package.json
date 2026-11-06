@@ -947,6 +947,16 @@
       "types": "./dist/column-range-chart/define.d.ts",
       "development": "./src/column-range-chart/define.ts",
       "default": "./dist/column-range-chart/define.js"
+    },
+    "./combo-chart": {
+      "types": "./dist/combo-chart/index.d.ts",
+      "development": "./src/combo-chart/index.ts",
+      "default": "./dist/combo-chart/index.js"
+    },
+    "./combo-chart/define": {
+      "types": "./dist/combo-chart/define.d.ts",
+      "development": "./src/combo-chart/define.ts",
+      "default": "./dist/combo-chart/define.js"
     }
   },
   "scripts": {
