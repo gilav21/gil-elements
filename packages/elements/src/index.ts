@@ -77,3 +77,4 @@ export * from './kanban/index.js';
 export * from './chart-legend/index.js';
 export * from './chart-tooltip/index.js';
 export * from './line-chart/index.js';
+export * from './bar-chart/index.js';

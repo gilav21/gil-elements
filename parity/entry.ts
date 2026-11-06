@@ -77,3 +77,4 @@ import '../packages/elements/src/kanban/define.js';
 import '../packages/elements/src/chart-legend/define.js';
 import '../packages/elements/src/chart-tooltip/define.js';
 import '../packages/elements/src/line-chart/define.js';
+import '../packages/elements/src/bar-chart/define.js';

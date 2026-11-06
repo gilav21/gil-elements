@@ -1,0 +1,75 @@
+:host {
+    display: block;
+}
+.base {
+    position: relative;
+    display: block;
+    width: 100%;
+}
+svg {
+    display: block;
+    overflow: visible;
+}
+.grid {
+    color: var(--border);
+}
+.grid .zero {
+    color: var(--muted-foreground);
+}
+.axis {
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+.bar {
+    cursor: pointer;
+    outline: none;
+}
+.bar[data-dim] {
+    opacity: 0.5;
+}
+.bar rect {
+    transition: all 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+.bar rect[data-hover] {
+    filter: brightness(1.1);
+}
+.value {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    pointer-events: none;
+    fill: var(--foreground);
+    stroke: var(--background);
+    stroke-width: 2px;
+    paint-order: stroke;
+}
+.caption {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    fill: var(--muted-foreground);
+}
+.tooltip {
+    position: absolute;
+    z-index: 50;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    border: 1px solid var(--border);
+    pointer-events: none;
+    max-width: calc(100vw - 2rem);
+    overflow-wrap: break-word;
+}
+.tooltip[data-flip] {
+    translate: -100% 0;
+}
+.name {
+    font-weight: 500;
+}
+.amount {
+    color: var(--muted-foreground);
+}

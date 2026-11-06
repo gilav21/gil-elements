@@ -185,6 +185,12 @@ for (const theme of ['light', 'dark']) {
                     await target.updateComplete;
                     for (const part of target.shadowRoot.querySelectorAll('ge-chart-tooltip')) await part.updateComplete;
                 }
+                // `data-hover-bar` is the index of the bar of a bar chart the reference shows hovered.
+                for (const target of document.querySelectorAll('ge-bar-chart[data-hover-bar]')) {
+                    await target.updateComplete;
+                    target.shadowRoot.querySelectorAll('.bar')[Number(target.dataset.hoverBar)].dispatchEvent(new MouseEvent('mouseenter'));
+                    await target.updateComplete;
+                }
                 // A kanban board takes its `columns` and `cards` as JSON; `data-dragged` is the id of the card shown mid-drag, `data-swimlane-by` the lane property.
                 for (const target of document.querySelectorAll('ge-kanban[data-columns]')) {
                     target.columns = JSON.parse(target.dataset.columns);

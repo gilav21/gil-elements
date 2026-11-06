@@ -165,6 +165,8 @@ export default defineConfig({
                 'chart-tooltip/define': 'src/chart-tooltip/define.ts',
                 'line-chart/index': 'src/line-chart/index.ts',
                 'line-chart/define': 'src/line-chart/define.ts',
+                'bar-chart/index': 'src/bar-chart/index.ts',
+                'bar-chart/define': 'src/bar-chart/define.ts',
             },
             formats: ['es'],
         },

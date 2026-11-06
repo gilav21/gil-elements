@@ -807,6 +807,16 @@
       "types": "./dist/line-chart/define.d.ts",
       "development": "./src/line-chart/define.ts",
       "default": "./dist/line-chart/define.js"
+    },
+    "./bar-chart": {
+      "types": "./dist/bar-chart/index.d.ts",
+      "development": "./src/bar-chart/index.ts",
+      "default": "./dist/bar-chart/index.js"
+    },
+    "./bar-chart/define": {
+      "types": "./dist/bar-chart/define.d.ts",
+      "development": "./src/bar-chart/define.ts",
+      "default": "./dist/bar-chart/define.js"
     }
   },
   "scripts": {
