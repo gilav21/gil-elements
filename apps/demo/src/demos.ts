@@ -4724,6 +4724,41 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
 ];</script>`,
             },
             {
+                title: 'Area chart',
+                note: 'Filled areas over shared categories; `stacked` stacks them and `stacking-mode="percent"` turns the stack into shares. `fill-opacity` sets the fill.',
+                block: true,
+                html: `<ge-area-chart id="area1" stacked curve="monotone" heading="Traffic"></ge-area-chart>
+<script>(() => {
+  const cats = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+  const series = (name, values) => ({ name, data: cats.map((c, i) => ({ name: c, value: values[i] })) });
+  document.getElementById('area1').series = [series('Desktop', [186, 305, 237, 273, 209, 314]), series('Mobile', [80, 200, 120, 190, 130, 140])];
+})();</script>`,
+            },
+            {
+                title: 'Stacked bar chart',
+                note: 'Stacked columns; positive segments rise from zero and negative ones fall below it. `stacking="percent"` fills every stack, `show-total` prints the total above it. A segment is a button.',
+                block: true,
+                html: `<ge-stacked-bar-chart id="stack1" height="300" show-total></ge-stacked-bar-chart>
+<script>(() => {
+  const series = (name, values) => ({ name, data: values.map((value, i) => ({ name: 'c' + i, value })) });
+  const chart = document.getElementById('stack1');
+  chart.categories = ['Q1', 'Q2', 'Q3', 'Q4'];
+  chart.series = [series('Desktop', [120, 150, 90, 200]), series('Mobile', [80, 60, 110, 70]), series('Tablet', [30, 40, 25, 50])];
+})();</script>`,
+            },
+            {
+                title: 'Stacked bar chart (percent)',
+                note: 'Each stack normalised to 100%; the tooltip adds the share.',
+                block: true,
+                html: `<ge-stacked-bar-chart id="stack2" height="300" stacking="percent"></ge-stacked-bar-chart>
+<script>(() => {
+  const series = (name, values) => ({ name, data: values.map((value, i) => ({ name: 'c' + i, value })) });
+  const chart = document.getElementById('stack2');
+  chart.categories = ['Q1', 'Q2', 'Q3', 'Q4'];
+  chart.series = [series('Desktop', [120, 150, 90, 200]), series('Mobile', [80, 60, 110, 70]), series('Tablet', [30, 40, 25, 50])];
+})();</script>`,
+            },
+            {
                 title: 'Chart legend',
                 note: 'The legend on its own: it reports `item-toggle` and the chart you pair it with decides what to hide.',
                 html: `<ge-chart-legend id="legend1"></ge-chart-legend>
@@ -4753,6 +4788,10 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'inner-radius (pie)', type: 'number', default: '0', description: 'The hole as a fraction of the radius; 0.5 is a donut.' },
             { name: 'show-labels / show-legend (pie)', type: 'boolean', default: 'true', description: 'Percentages on slices of 5% or more, and the legend.' },
             { name: 'legend-position (pie)', type: "'right' | 'left' | 'top' | 'bottom' | 'none'", default: "'right'", description: 'Where the legend sits.' },
+            { name: 'stacked / stacking-mode / fill-opacity (area)', type: 'boolean / string / number', default: "false / 'absolute' / 0.25", description: 'Stack the areas; `percent` shows shares; opacity of the fill.' },
+            { name: 'series / categories / stacking (stacked bar)', type: 'ChartSeries[] / string[] / string', default: "[] / [] / 'absolute'", description: 'Series pair with categories by index; a missing entry counts as 0. `stacking="percent"` fills each stack.' },
+            { name: 'show-total / bar-radius / bar-gap (stacked bar)', type: 'boolean / number / number', default: 'false / 4 / 12', description: 'The stack total above each stack, corner radius and gap in px.' },
+            { name: 'segment-click (stacked bar)', type: 'CustomEvent', default: '-', description: '`detail` is `{ series, category, value }` with the raw value.' },
             { name: 'show-tooltip / show-legend', type: 'boolean', default: 'true', description: 'The hover tooltip and, on the line chart, the legend.' },
             { name: 'point-click / bar-click / slice-click', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`.' },
             { name: 'point-hover / bar-hover / slice-hover', type: 'CustomEvent', default: '-', description: '`detail` is `{ point, index }`, or `null` when the pointer leaves.' },

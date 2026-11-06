@@ -78,6 +78,7 @@ import '@gilav21/elements/line-chart/define';
 import '@gilav21/elements/bar-chart/define';
 import '@gilav21/elements/pie-chart/define';
 import '@gilav21/elements/area-chart/define';
+import '@gilav21/elements/stacked-bar-chart/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

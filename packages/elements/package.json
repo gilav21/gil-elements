@@ -837,6 +837,16 @@
       "types": "./dist/area-chart/define.d.ts",
       "development": "./src/area-chart/define.ts",
       "default": "./dist/area-chart/define.js"
+    },
+    "./stacked-bar-chart": {
+      "types": "./dist/stacked-bar-chart/index.d.ts",
+      "development": "./src/stacked-bar-chart/index.ts",
+      "default": "./dist/stacked-bar-chart/index.js"
+    },
+    "./stacked-bar-chart/define": {
+      "types": "./dist/stacked-bar-chart/define.d.ts",
+      "development": "./src/stacked-bar-chart/define.ts",
+      "default": "./dist/stacked-bar-chart/define.js"
     }
   },
   "scripts": {

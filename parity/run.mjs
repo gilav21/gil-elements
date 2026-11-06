@@ -191,6 +191,14 @@ for (const theme of ['light', 'dark']) {
                     target.shadowRoot.querySelectorAll('.bar')[Number(target.dataset.hoverBar)].dispatchEvent(new MouseEvent('mouseenter'));
                     await target.updateComplete;
                 }
+                // `data-hover-segment` is "category,series" of the stacked-bar segment the reference shows hovered.
+                for (const target of document.querySelectorAll('ge-stacked-bar-chart[data-hover-segment]')) {
+                    await target.updateComplete;
+                    const [category, series] = target.dataset.hoverSegment.split(',').map(Number);
+                    const index = category * target.series.length + series;
+                    target.shadowRoot.querySelectorAll('.segment')[index].dispatchEvent(new MouseEvent('mouseenter'));
+                    await target.updateComplete;
+                }
                 // `data-hover-slice` is the index of the slice of a pie chart the reference shows hovered.
                 for (const target of document.querySelectorAll('ge-pie-chart[data-hover-slice]')) {
                     await target.updateComplete;

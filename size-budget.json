@@ -262,5 +262,12 @@
   "tree-select/define.js": 170,
   "tree-select/index.js": 110,
   "tree/define.js": 170,
-  "tree/index.js": 110
+  "tree/index.js": 110,
+  "area-chart/define.js": 153,
+  "area-chart/index.js": 79,
+  "chunks/area-chart.js": 2486,
+  "chunks/chart-interaction.js": 1394,
+  "chunks/stacked-bar-chart.js": 3150,
+  "stacked-bar-chart/define.js": 139,
+  "stacked-bar-chart/index.js": 88
 }
