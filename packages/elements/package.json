@@ -1007,6 +1007,16 @@
       "types": "./dist/bar-chart-drilldown/define.d.ts",
       "development": "./src/bar-chart-drilldown/define.ts",
       "default": "./dist/bar-chart-drilldown/define.js"
+    },
+    "./org-chart": {
+      "types": "./dist/org-chart/index.d.ts",
+      "development": "./src/org-chart/index.ts",
+      "default": "./dist/org-chart/index.js"
+    },
+    "./org-chart/define": {
+      "types": "./dist/org-chart/define.d.ts",
+      "development": "./src/org-chart/define.ts",
+      "default": "./dist/org-chart/define.js"
     }
   },
   "scripts": {

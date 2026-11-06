@@ -205,6 +205,8 @@ export default defineConfig({
                 'pie-chart-drilldown/define': 'src/pie-chart-drilldown/define.ts',
                 'bar-chart-drilldown/index': 'src/bar-chart-drilldown/index.ts',
                 'bar-chart-drilldown/define': 'src/bar-chart-drilldown/define.ts',
+                'org-chart/index': 'src/org-chart/index.ts',
+                'org-chart/define': 'src/org-chart/define.ts',
             },
             formats: ['es'],
         },

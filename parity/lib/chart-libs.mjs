@@ -19,3 +19,4 @@ export const interaction = await load('chart-interaction');
 export const polar = await load('chart-polar');
 export const colorScale = await load('chart-color-scale');
 export const histogram = await load('histogram-bins');
+export const colorLib = await import(pathToFileURL(`${out}color.js`).href);

@@ -97,3 +97,4 @@ export * from './histogram/index.js';
 export * from './chart-brush/index.js';
 export * from './pie-chart-drilldown/index.js';
 export * from './bar-chart-drilldown/index.js';
+export * from './org-chart/index.js';
