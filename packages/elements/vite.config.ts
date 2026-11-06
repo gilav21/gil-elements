@@ -187,6 +187,8 @@ export default defineConfig({
                 'waterfall-chart/define': 'src/waterfall-chart/define.ts',
                 'bullet-chart/index': 'src/bullet-chart/index.ts',
                 'bullet-chart/define': 'src/bullet-chart/define.ts',
+                'heatmap/index': 'src/heatmap/index.ts',
+                'heatmap/define': 'src/heatmap/define.ts',
             },
             formats: ['es'],
         },

@@ -917,6 +917,16 @@
       "types": "./dist/bullet-chart/define.d.ts",
       "development": "./src/bullet-chart/define.ts",
       "default": "./dist/bullet-chart/define.js"
+    },
+    "./heatmap": {
+      "types": "./dist/heatmap/index.d.ts",
+      "development": "./src/heatmap/index.ts",
+      "default": "./dist/heatmap/index.js"
+    },
+    "./heatmap/define": {
+      "types": "./dist/heatmap/define.d.ts",
+      "development": "./src/heatmap/define.ts",
+      "default": "./dist/heatmap/define.js"
     }
   },
   "scripts": {

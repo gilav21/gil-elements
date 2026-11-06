@@ -88,3 +88,4 @@ import '../packages/elements/src/gauge-chart/define.js';
 import '../packages/elements/src/funnel-chart/define.js';
 import '../packages/elements/src/waterfall-chart/define.js';
 import '../packages/elements/src/bullet-chart/define.js';
+import '../packages/elements/src/heatmap/define.js';
