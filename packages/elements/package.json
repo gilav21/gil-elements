@@ -1047,6 +1047,56 @@
       "types": "./dist/particles/define.d.ts",
       "development": "./src/particles/define.ts",
       "default": "./dist/particles/define.js"
+    },
+    "./ripple": {
+      "types": "./dist/ripple/index.d.ts",
+      "development": "./src/ripple/index.ts",
+      "default": "./dist/ripple/index.js"
+    },
+    "./ripple/define": {
+      "types": "./dist/ripple/define.d.ts",
+      "development": "./src/ripple/define.ts",
+      "default": "./dist/ripple/define.js"
+    },
+    "./magnetic": {
+      "types": "./dist/magnetic/index.d.ts",
+      "development": "./src/magnetic/index.ts",
+      "default": "./dist/magnetic/index.js"
+    },
+    "./magnetic/define": {
+      "types": "./dist/magnetic/define.d.ts",
+      "development": "./src/magnetic/define.ts",
+      "default": "./dist/magnetic/define.js"
+    },
+    "./copy-to": {
+      "types": "./dist/copy-to/index.d.ts",
+      "development": "./src/copy-to/index.ts",
+      "default": "./dist/copy-to/index.js"
+    },
+    "./copy-to/define": {
+      "types": "./dist/copy-to/define.d.ts",
+      "development": "./src/copy-to/define.ts",
+      "default": "./dist/copy-to/define.js"
+    },
+    "./confetti": {
+      "types": "./dist/confetti/index.d.ts",
+      "development": "./src/confetti/index.ts",
+      "default": "./dist/confetti/index.js"
+    },
+    "./confetti/define": {
+      "types": "./dist/confetti/define.d.ts",
+      "development": "./src/confetti/define.ts",
+      "default": "./dist/confetti/define.js"
+    },
+    "./input-mask": {
+      "types": "./dist/input-mask/index.d.ts",
+      "development": "./src/input-mask/index.ts",
+      "default": "./dist/input-mask/index.js"
+    },
+    "./input-mask/define": {
+      "types": "./dist/input-mask/define.d.ts",
+      "development": "./src/input-mask/define.ts",
+      "default": "./dist/input-mask/define.js"
     }
   },
   "scripts": {

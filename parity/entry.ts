@@ -101,3 +101,8 @@ import '../packages/elements/src/org-chart/define.js';
 import '../packages/elements/src/text-reveal/define.js';
 import '../packages/elements/src/marquee/define.js';
 import '../packages/elements/src/particles/define.js';
+import '../packages/elements/src/ripple/define.js';
+import '../packages/elements/src/magnetic/define.js';
+import '../packages/elements/src/copy-to/define.js';
+import '../packages/elements/src/confetti/define.js';
+import '../packages/elements/src/input-mask/define.js';

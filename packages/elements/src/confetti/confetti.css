@@ -1,0 +1,11 @@
+:host {
+    display: block;
+    position: relative;
+    overflow: hidden;
+}
+canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}

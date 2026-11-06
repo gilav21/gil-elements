@@ -101,3 +101,8 @@ export * from './org-chart/index.js';
 export * from './text-reveal/index.js';
 export * from './marquee/index.js';
 export * from './particles/index.js';
+export * from './ripple/index.js';
+export * from './magnetic/index.js';
+export * from './copy-to/index.js';
+export * from './confetti/index.js';
+export * from './input-mask/index.js';

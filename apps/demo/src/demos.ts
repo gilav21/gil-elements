@@ -4669,7 +4669,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
         group: 'Rung 3 · Interactive',
         name: 'Effects',
         tag: 'ge-marquee',
-        description: 'Motion that decorates a page. All three stand still under `prefers-reduced-motion: reduce`.',
+        description: 'Motion that decorates a page. All of them stand still under `prefers-reduced-motion: reduce`.',
         examples: [
             {
                 title: 'Text reveal',
@@ -4706,13 +4706,97 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
   <div style="position:relative;pointer-events:none;display:flex;height:100%;align-items:center;justify-content:center;font-weight:600;color:var(--foreground)">Move the pointer over the dots</div>
 </div>`,
             },
+            {
+                title: 'Ripple',
+                note: 'Wraps anything that should ripple from the click point. The wrapper is the box (relative, clipping), so give it the radius and background. `duration` is in milliseconds; `color` defaults to a tint of the text colour.',
+                html: `<ge-ripple style="width:12rem;height:4rem;border-radius:var(--radius);background:var(--primary);color:var(--primary-foreground);cursor:pointer">
+  <div style="display:flex;height:100%;align-items:center;justify-content:center;font-weight:500">Click anywhere</div>
+</ge-ripple>
+<ge-ripple duration="1200" color="color-mix(in srgb, var(--primary) 30%, transparent)" style="width:12rem;height:4rem;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer;margin-top:.75rem">
+  <div style="display:flex;height:100%;align-items:center;justify-content:center;font-weight:500">Slower, tinted</div>
+</ge-ripple>`,
+            },
+            {
+                title: 'Magnetic',
+                note: 'The wrapped element leans towards the pointer while the pointer is within `radius` of its centre. `strength` is the fraction of the distance, `smoothing` the easing time.',
+                html: `<div style="padding:2rem;display:flex;gap:2rem;flex-wrap:wrap">
+  <ge-magnetic><ge-button>Default pull</ge-button></ge-magnetic>
+  <ge-magnetic strength="0.6" radius="120" smoothing="250"><ge-button variant="outline">Strong pull</ge-button></ge-magnetic>
+</div>`,
+            },
+            {
+                title: 'Copy to clipboard',
+                note: 'Click to copy `value`; a "Copied!" label floats above for a moment and `copied` fires. It draws no box of its own. Needs a secure context (https or localhost).',
+                html: `<div style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap">
+  <ge-copy-to value="sk-live-1234567890"><ge-button variant="outline">Copy API key</ge-button></ge-copy-to>
+  <ge-copy-to value="#ef4444" locale="he"><div style="width:2.5rem;height:2.5rem;border-radius:.5rem;background:#ef4444;cursor:pointer" role="button" tabindex="0" aria-label="Copy colour"></div></ge-copy-to>
+</div>`,
+            },
+            {
+                title: 'Confetti',
+                note: 'The element is the box. Call `fire()`, or turn `manual-trigger` on. `options` carries the count, angle, spread, colours and physics; `variant: \'side-cannons\'` fires from the bottom corners.',
+                block: true,
+                html: `<ge-confetti id="confetti1" style="height:14rem;border:1px dashed var(--border);border-radius:var(--radius)">
+  <div style="display:flex;height:100%;align-items:center;justify-content:center;gap:.75rem">
+    <ge-button id="confetti1-burst">Burst</ge-button>
+    <ge-button variant="outline" id="confetti1-cannons">Side cannons</ge-button>
+  </div>
+</ge-confetti>
+<script>(() => {
+  const box = document.getElementById('confetti1');
+  document.getElementById('confetti1-burst').addEventListener('click', () => { box.options = { particleCount: 80, spread: 70 }; box.fire(); });
+  document.getElementById('confetti1-cannons').addEventListener('click', () => { box.options = { variant: 'side-cannons', particleCount: 60 }; box.fire(); });
+})();</script>`,
+            },
         ],
         api: [
             { name: 'text / delay (text reveal)', type: 'string / number', default: "'' / 50", description: 'Words split at whitespace runs; each starts `index * delay` ms after the first and animates for 1s. Plain text only.' },
             { name: 'direction / speed / gap / pause-on-hover (marquee)', type: "string / number / number / boolean", default: "'left' / 20 / 16 / false", description: '`speed` is seconds per loop (more content moves faster at the same value). Vertical directions need a height on the host. The copy is hidden from assistive tech.' },
             { name: 'count / color / speed / connect-distance / mouse-interaction (particles)', type: 'number / string / number / number / boolean', default: "50 / 'currentColor' / 0.5 / 120 / true", description: 'Fills its nearest positioned ancestor. Cost grows with the square of `count`. While `mouse-interaction` is on it captures pointer events.' },
+            { name: 'color / duration / disabled (ripple)', type: 'string / number / boolean', default: "tint of currentColor / 600 / false", description: 'The wrapper is `display: block`, relative and clipping. A click from the keyboard ripples from the centre.' },
+            { name: 'strength / radius / smoothing (magnetic)', type: 'number', default: '0.3 / 200 / 150', description: 'Inline-block; the element itself moves. Distance is measured from its current, moved, centre.' },
+            { name: 'value / locale / copied (copy-to)', type: 'string / string | object / event', default: "'' / page lang / -", description: '`value` is read at click time. `copied` fires only when the clipboard write succeeds.' },
+            { name: 'options / manual-trigger / fire() (confetti)', type: 'ConfettiOptions / boolean / method', default: '{} / false / -', description: '`particleCount`, `angle`, `spread`, `startVelocity`, `decay`, `gravity`, `drift`, `ticks`, `origin`, `colors`, `shapes`, `scalar`, `zIndex`, `disableForReducedMotion`, `variant`. A `0` falls back to the default.' },
             { name: '::part(base)', type: 'css part', default: '-', description: 'Text reveal\'s word container; set `justify-content` here.' },
             { name: '::part(viewport)', type: 'css part', default: '-', description: 'The marquee\'s clipping box.' },
+        ],
+    },
+    {
+        id: 'input-mask',
+        group: 'Rung 3 · Interactive',
+        name: 'Input mask',
+        tag: 'ge-input-mask',
+        description: 'Formats what is typed into a wrapped `ge-input` or native `input`. `0` and `9` take a digit, `a` a letter, `*` either; every other character is a literal. The wrapper draws no box.',
+        examples: [
+            {
+                title: 'Phone, date and plate',
+                note: 'Characters that do not fit are dropped, and pasted text is reformatted whatever punctuation it carries. The formatted text is the value, also in a form.',
+                html: `<div style="display:grid;gap:1rem;max-width:20rem">
+  <ge-label>Phone</ge-label>
+  <ge-input-mask mask="(000) 000-0000"><ge-input placeholder="(555) 555-5555"></ge-input></ge-input-mask>
+  <ge-label>Date</ge-label>
+  <ge-input-mask mask="99/99/9999"><ge-input placeholder="DD/MM/YYYY"></ge-input></ge-input-mask>
+  <ge-label>Licence plate</ge-label>
+  <ge-input-mask mask="aaa-999"><ge-input placeholder="abc-123"></ge-input></ge-input-mask>
+</div>`,
+            },
+            {
+                title: 'Show the whole mask',
+                note: '`show-mask-typed` keeps every literal and fills the empty slots with `slot-char`.',
+                html: `<div style="display:grid;gap:1rem;max-width:20rem">
+  <ge-input-mask mask="(000) 000-0000" show-mask-typed><ge-input placeholder="Type a number"></ge-input></ge-input-mask>
+  <ge-input-mask mask="99/99/9999" show-mask-typed slot-char="•"><ge-input placeholder="Type a date"></ge-input></ge-input-mask>
+</div>`,
+            },
+            {
+                title: 'Native input',
+                html: `<ge-input-mask mask="(000) 000-0000"><input placeholder="Native input (000) 000-0000" style="height:2.25rem;width:20rem;max-width:100%;padding:0 .75rem;border:1px solid var(--input);border-radius:var(--radius);background:transparent;font:inherit;color:inherit"></ge-input-mask>`,
+            },
+        ],
+        api: [
+            { name: 'mask', type: 'string', default: "''", description: '`0`/`9` digit, `a` letter, `*` letter or digit; anything else is a literal. Changing it reformats the current text.' },
+            { name: 'slot-char / show-mask-typed', type: 'string / boolean', default: "'_' / false", description: 'With `show-mask-typed` every unfilled slot shows `slot-char`; an empty `slot-char` shows nothing for it.' },
+            { name: 'slot', type: 'ge-input | input', default: '-', description: 'The first one inside is masked. The caret stays after what was typed, also when editing in the middle.' },
         ],
     },
     {

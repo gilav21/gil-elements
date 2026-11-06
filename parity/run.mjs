@@ -169,11 +169,26 @@ for (const theme of ['light', 'dark']) {
                 // `data-opened` shows a speed dial open; its items animate out, so wait for them to land.
                 for (const target of document.querySelectorAll('ge-speed-dial[data-opened]')) target.show();
                 await Promise.all([...document.querySelectorAll('ge-speed-dial[data-opened]')].map((t) => t.updateComplete));
-                await Promise.all(document.getAnimations().map((a) => a.finished));
+                // An infinite animation (a spinner, a marquee) never finishes, so waiting on it would hang the run.
+                await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));
                 // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
                 for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
                 for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
+                // `data-click-at` is `x,y;x,y` from an element's top-left: a pointer click lands at each, which is how a ripple starts.
+                // `data-move-at` is `x,y` the same way: a mousemove, which is how a magnetic element is pulled.
+                for (const target of document.querySelectorAll('[data-click-at], [data-move-at]')) {
+                    await target.updateComplete;
+                    const rect = target.getBoundingClientRect();
+                    for (const point of (target.dataset.clickAt ?? '').split(';').filter(Boolean)) {
+                        const [x, y] = point.split(',').map(Number);
+                        target.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, detail: 1, clientX: rect.left + x, clientY: rect.top + y }));
+                    }
+                    if (target.dataset.moveAt) {
+                        const [x, y] = target.dataset.moveAt.split(',').map(Number);
+                        target.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: rect.left + x, clientY: rect.top + y }));
+                    }
+                }
                 // `data-hover-at` is `x,y` in a chart's user space: the pointer moves there, so the crosshair and tooltip show as a hover would.
                 for (const target of document.querySelectorAll('[data-hover-at]')) {
                     await target.updateComplete;
@@ -219,7 +234,7 @@ for (const theme of ['light', 'dark']) {
                     target.shadowRoot.adoptedStyleSheets = [...target.shadowRoot.adoptedStyleSheets, still];
                     target.shadowRoot.querySelectorAll('.slice')[Number(target.dataset.hoverSlice)].dispatchEvent(new MouseEvent('mouseenter'));
                     await target.updateComplete;
-                    await Promise.all(target.shadowRoot.getAnimations({ subtree: true }).map((a) => a.finished));
+                    await Promise.all(target.shadowRoot.getAnimations({ subtree: true }).filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));
                 }
                 // A kanban board takes its `columns` and `cards` as JSON; `data-dragged` is the id of the card shown mid-drag, `data-swimlane-by` the lane property.
                 for (const target of document.querySelectorAll('ge-kanban[data-columns]')) {
