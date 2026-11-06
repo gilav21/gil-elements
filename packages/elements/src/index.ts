@@ -142,3 +142,4 @@ export * from './error-page/index.js';
 export * from './icon/index.js';
 export * from './shortcut-bindings-dialog/index.js';
 export * from './field-mapper/index.js';
+export * from './file-viewer/index.js';

@@ -295,6 +295,8 @@ export default defineConfig({
                 'shortcut-bindings-dialog/define': 'src/shortcut-bindings-dialog/define.ts',
                 'field-mapper/index': 'src/field-mapper/index.ts',
                 'field-mapper/define': 'src/field-mapper/define.ts',
+                'file-viewer/index': 'src/file-viewer/index.ts',
+                'file-viewer/define': 'src/file-viewer/define.ts',
             },
             formats: ['es'],
         },

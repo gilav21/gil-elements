@@ -33,6 +33,11 @@
     --bento-merge-surface: #fff;
     --bento-merge-surface-hover: oklch(0.967 0.001 286.375);
     --bento-item-surface: #fff;
+    /* File viewer: DOC tracked-change tints (Tailwind green-100 and red-100; 900 at 30% in dark mode) and the spreadsheet truncation notice (amber-50 with amber-700 text; amber-950 at 30% with amber-400 in dark mode), hard-coded in shadcn-angular. */
+    --file-viewer-added: oklch(0.962 0.044 156.743);
+    --file-viewer-removed: oklch(0.936 0.032 17.717);
+    --file-viewer-notice: oklch(0.987 0.022 95.277);
+    --file-viewer-notice-foreground: oklch(0.555 0.163 48.998);
     --highlight: oklch(0.945 0.129 101.54);
     --highlight-foreground: currentColor;
     --density: 1;         /* spacing/size multiplier — 0.75 | 0.875 | 1.0 | 1.125 | 1.25 */
@@ -98,6 +103,10 @@
     --bento-merge-surface-hover: oklch(0.37 0.013 285.805);
     --bento-item-surface: #000;
     --bento-item-border: rgb(255 255 255 / 0.2);
+    --file-viewer-added: color-mix(in srgb, oklch(0.393 0.095 152.535) 30%, transparent);
+    --file-viewer-removed: color-mix(in srgb, oklch(0.396 0.141 25.723) 30%, transparent);
+    --file-viewer-notice: color-mix(in srgb, oklch(0.279 0.077 45.635) 30%, transparent);
+    --file-viewer-notice-foreground: oklch(0.828 0.189 84.429);
     --background: oklch(0.145 0 0);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.205 0 0);

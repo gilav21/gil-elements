@@ -6157,4 +6157,63 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
             { name: 'link() / unlink() / unlinkItem() / pick() / cancel() / selectLink()', type: 'methods', default: '-', description: 'Drive it from code; `link` honours `maxLinks` and refuses disabled items.' },
         ],
     },
+    {
+        id: 'file-viewer',
+        group: 'Rung 3 · Interactive',
+        name: 'File viewer',
+        tag: 'ge-file-viewer',
+        description: 'Previews a file in the page without uploading it: PDF, Word (DOCX and DOC), PowerPoint (PPTX and PPT), Excel (XLSX), images (SVG is sanitised first), text, video and audio. The type is read from the file\'s bytes, so a wrong extension does not matter. Parsing runs in the browser and each format loads only when it is first opened.',
+        examples: [
+            {
+                title: 'Open any file',
+                note: 'Set `file` to a `File` or `Blob`. Pick a PDF, a Word or Excel file, a slide deck or an image; the toolbar offers pages for PDF and slides, zoom where it makes sense, and a download link. `loaded` and `load-error` report the outcome.',
+                block: true,
+                html: `<div style="display:grid;gap:.75rem;width:100%">
+  <input id="fv1-pick" type="file" accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,image/*,text/*,video/*,audio/*" />
+  <ge-file-viewer id="fv1" height="420px"></ge-file-viewer>
+  <p id="fv1-out" style="margin:0;font-size:.75rem;color:var(--muted-foreground)">Nothing opened yet.</p>
+</div>
+<script>(() => {
+  const viewer = document.getElementById('fv1');
+  const out = document.getElementById('fv1-out');
+  document.getElementById('fv1-pick').addEventListener('change', (e) => { viewer.file = e.target.files[0] ?? null; });
+  viewer.addEventListener('loaded', (e) => (out.textContent = 'loaded: ' + JSON.stringify(e.detail)));
+  viewer.addEventListener('load-error', (e) => (out.textContent = 'load-error: ' + JSON.stringify(e.detail)));
+  viewer.file = new File(['Pick a file above to preview it here.\\n\\nNothing leaves your browser: the file is parsed locally.\\n'], 'welcome.txt');
+})();</script>`,
+            },
+            {
+                title: 'From a URL, with a zoom to start from',
+                note: '`src` is fetched with `fetch()`, so the server must allow CORS; the name comes from the URL path unless you set `filename`. `zoom` and `page` are starting values; the toolbar steps zoom by 25% between 25% and 300%.',
+                block: true,
+                html: `<ge-file-viewer height="260px" zoom="1.5" filename="logo.svg" src="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='100'%3E%3Crect width='160' height='100' rx='12' fill='%232563eb'/%3E%3Ccircle cx='80' cy='50' r='26' fill='white'/%3E%3C/svg%3E"></ge-file-viewer>`,
+            },
+            {
+                title: 'Your own toolbar and content',
+                note: 'Put a `ge-file-viewer-toolbar` or `ge-file-viewer-content` directly inside and the built-in chrome is replaced entirely; the page and zoom are then yours to drive (`prevPage()`, `zoomIn()` and so on).',
+                block: true,
+                html: `<ge-file-viewer height="160px">
+  <ge-file-viewer-toolbar>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;border-bottom:1px solid var(--border)">
+      <strong>My preview</strong><ge-badge>custom</ge-badge>
+    </div>
+  </ge-file-viewer-toolbar>
+  <ge-file-viewer-content>
+    <p style="padding:.75rem;margin:0;color:var(--muted-foreground)">Anything goes here.</p>
+  </ge-file-viewer-content>
+</ge-file-viewer>`,
+            },
+        ],
+        api: [
+            { name: 'file', type: 'File | Blob | null', default: 'null', description: 'Property: the file to render. Takes precedence over `src`.' },
+            { name: 'src', type: 'string', default: "''", description: 'URL fetched and treated like `file`; subject to CORS.' },
+            { name: 'type', type: "'pdf' | 'docx' | 'doc' | 'pptx' | 'ppt' | 'xlsx' | 'image' | 'text' | 'video' | 'audio'", default: "''", description: 'Forces a viewer instead of sniffing the bytes.' },
+            { name: 'height', type: 'string', default: "'600px'", description: 'CSS height of the frame; the content scrolls inside it.' },
+            { name: 'zoom / page', type: 'number', default: '1 / 1', description: 'Starting zoom factor and 1-based page or slide.' },
+            { name: 'filename', type: 'string', default: "''", description: 'Overrides the name in the toolbar.' },
+            { name: 'loaded / load-error', type: 'event', default: '-', description: '`detail` is `{ type, filename }` or `{ type, message }`.' },
+            { name: 'page-change / zoom-change', type: 'event', default: '-', description: '`detail` is the new page or the clamped zoom factor.' },
+            { name: 'prevPage() / nextPage() / zoomIn() / zoomOut() / setActiveSheet(i)', type: 'methods', default: '-', description: 'Drive it from code, for instance from a custom toolbar.' },
+        ],
+    },
 ];

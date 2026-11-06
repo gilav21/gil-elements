@@ -1457,6 +1457,16 @@
       "types": "./dist/field-mapper/define.d.ts",
       "development": "./src/field-mapper/define.ts",
       "default": "./dist/field-mapper/define.js"
+    },
+    "./file-viewer": {
+      "types": "./dist/file-viewer/index.d.ts",
+      "development": "./src/file-viewer/index.ts",
+      "default": "./dist/file-viewer/index.js"
+    },
+    "./file-viewer/define": {
+      "types": "./dist/file-viewer/define.d.ts",
+      "development": "./src/file-viewer/define.ts",
+      "default": "./dist/file-viewer/define.js"
     }
   },
   "scripts": {

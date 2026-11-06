@@ -206,6 +206,17 @@ for (const theme of ['light', 'dark']) {
                 }
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
                 for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
+                // `data-file` is JSON `{name, base64}`: a file-viewer is given that file and the run waits for it to load or fail.
+                for (const target of document.querySelectorAll('ge-file-viewer[data-file]')) {
+                    const { name, base64 } = JSON.parse(target.dataset.file);
+                    const done = new Promise((resolve) => {
+                        target.addEventListener('loaded', resolve, { once: true });
+                        target.addEventListener('load-error', resolve, { once: true });
+                    });
+                    target.file = new File([Uint8Array.from(atob(base64), (c) => c.codePointAt(0))], name);
+                    await done;
+                    await target.updateComplete;
+                }
                 // `data-link-tones` maps `startId>endId` to a tone for a field-mapper's `linkTone`, a function `data-props` cannot carry.
                 for (const target of document.querySelectorAll('[data-link-tones]')) {
                     const tones = JSON.parse(target.dataset.linkTones);

@@ -144,3 +144,4 @@ import '../packages/elements/src/shortcut-bindings-dialog/define.js';
 import { shortcutBindings } from '../packages/elements/src/shared/shortcut-bindings.js';
 (globalThis as { geShortcutBindings?: typeof shortcutBindings }).geShortcutBindings = shortcutBindings;
 import '../packages/elements/src/field-mapper/define.js';
+import '../packages/elements/src/file-viewer/define.js';
