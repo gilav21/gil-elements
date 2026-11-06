@@ -740,7 +740,7 @@ export class GeTour extends UiElement {
                 ?data-pending=${this.pending}
                 @keydown=${this.onKeydown}
             >
-                <div class="counter">${this.reachablePosition} / ${this.steps.length - this.unreachable.size}</div>
+                <div class="counter">${`${this.reachablePosition} / ${this.steps.length - this.unreachable.size}`}</div>
                 <h3 class="title">${step.title}</h3>
                 ${step.description ? html`<p class="description">${step.description}</p>` : nothing}
                 <div class="actions">
