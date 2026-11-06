@@ -174,6 +174,17 @@ for (const theme of ['light', 'dark']) {
                 for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
                 for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
+                // `data-hover-at` is `x,y` in a chart's user space: the pointer moves there, so the crosshair and tooltip show as a hover would.
+                for (const target of document.querySelectorAll('[data-hover-at]')) {
+                    await target.updateComplete;
+                    const el = target.shadowRoot.querySelector('svg');
+                    const rect = el.getBoundingClientRect();
+                    const [x, y] = target.dataset.hoverAt.split(',').map(Number);
+                    const scale = rect.width / el.viewBox.baseVal.width;
+                    el.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: rect.left + x * scale, clientY: rect.top + y * scale }));
+                    await target.updateComplete;
+                    for (const part of target.shadowRoot.querySelectorAll('ge-chart-tooltip')) await part.updateComplete;
+                }
                 // A kanban board takes its `columns` and `cards` as JSON; `data-dragged` is the id of the card shown mid-drag, `data-swimlane-by` the lane property.
                 for (const target of document.querySelectorAll('ge-kanban[data-columns]')) {
                     target.columns = JSON.parse(target.dataset.columns);

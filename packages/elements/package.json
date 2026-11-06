@@ -797,6 +797,16 @@
       "types": "./dist/chart-tooltip/define.d.ts",
       "development": "./src/chart-tooltip/define.ts",
       "default": "./dist/chart-tooltip/define.js"
+    },
+    "./line-chart": {
+      "types": "./dist/line-chart/index.d.ts",
+      "development": "./src/line-chart/index.ts",
+      "default": "./dist/line-chart/index.js"
+    },
+    "./line-chart/define": {
+      "types": "./dist/line-chart/define.d.ts",
+      "development": "./src/line-chart/define.ts",
+      "default": "./dist/line-chart/define.js"
     }
   },
   "scripts": {

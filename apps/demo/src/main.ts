@@ -74,6 +74,7 @@ import '@gilav21/elements/sortable/define';
 import '@gilav21/elements/kanban/define';
 import '@gilav21/elements/chart-legend/define';
 import '@gilav21/elements/chart-tooltip/define';
+import '@gilav21/elements/line-chart/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

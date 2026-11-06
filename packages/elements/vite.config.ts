@@ -163,6 +163,8 @@ export default defineConfig({
                 'chart-legend/define': 'src/chart-legend/define.ts',
                 'chart-tooltip/index': 'src/chart-tooltip/index.ts',
                 'chart-tooltip/define': 'src/chart-tooltip/define.ts',
+                'line-chart/index': 'src/line-chart/index.ts',
+                'line-chart/define': 'src/line-chart/define.ts',
             },
             formats: ['es'],
         },

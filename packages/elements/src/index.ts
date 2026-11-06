@@ -76,3 +76,4 @@ export * from './sortable/index.js';
 export * from './kanban/index.js';
 export * from './chart-legend/index.js';
 export * from './chart-tooltip/index.js';
+export * from './line-chart/index.js';
