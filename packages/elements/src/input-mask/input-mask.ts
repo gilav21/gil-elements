@@ -10,8 +10,35 @@ const DEFINITIONS: Record<string, RegExp | undefined> = {
     '*': /[a-zA-Z0-9]/,
 };
 
+/** The text `raw` (typed or pasted, literals allowed) becomes under `mask`: characters that do not fit are dropped. */
+export function applyMask(raw: string, mask: string, slotChar = '_', showMaskTyped = false): string {
+    const fillsEmpty = showMaskTyped && slotChar !== '';
+    let masked = '';
+    let rawIndex = 0;
+    let maskIndex = 0;
+    while (maskIndex < mask.length) {
+        const maskChar = mask[maskIndex]!;
+        const accepts = DEFINITIONS[maskChar];
+        if (!accepts) {
+            masked += maskChar;
+            maskIndex++;
+        } else if (rawIndex >= raw.length) {
+            if (!fillsEmpty) break;
+            masked += slotChar;
+            maskIndex++;
+        } else if (accepts.test(raw[rawIndex]!)) {
+            masked += raw[rawIndex];
+            rawIndex++;
+            maskIndex++;
+        } else {
+            rawIndex++;
+        }
+    }
+    return masked;
+}
+
 /**
- * Formats what is typed into a wrapped `ge-input` (or a native `input`) as it is typed. In the `mask`, `0` and `9` accept
+ * Formats what is typed into a wrapped `ge-input`, `ge-input-group-input` (or a native `input`) as it is typed. In the `mask`, `0` and `9` accept
  * a digit, `a` a letter and `*` a letter or digit; any other character is a literal, for example `(999) 999-9999`.
  * Characters that do not fit are dropped, so pasting `555.123.4567` into that mask gives `(555) 123-4567`. The element
  * draws no box of its own.
@@ -22,7 +49,7 @@ const DEFINITIONS: Record<string, RegExp | undefined> = {
  * @attr {string} mask - The pattern.
  * @attr {string} slot-char - Shown for a slot not yet filled when `show-mask-typed` is on. Defaults to `_`.
  * @attr {boolean} show-mask-typed - Keep the whole mask visible while typing: every unfilled slot shows `slot-char` and every literal stays, so `(000) 000-0000` with `123` typed reads `(123) ___-____`.
- * @slot - A `ge-input` or an `input`.
+ * @slot - A `ge-input`, a `ge-input-group-input` or an `input`.
  */
 export class GeInputMask extends UiElement {
     static override styles = [UiElement.styles, unsafeCSS(css)];
@@ -59,7 +86,7 @@ export class GeInputMask extends UiElement {
     }
 
     private async attach(): Promise<void> {
-        const host = this.querySelector('ge-input, input');
+        const host = this.querySelector('ge-input, ge-input-group-input, input');
         const field = host instanceof HTMLInputElement ? host : await this.innerOf(host);
         this.target?.removeEventListener('input', this.format);
         this.target = field;
@@ -97,29 +124,7 @@ export class GeInputMask extends UiElement {
     }
 
     private apply(raw: string): string {
-        const fillsEmpty = this.showMaskTyped && this.slotChar !== '';
-        let masked = '';
-        let rawIndex = 0;
-        let maskIndex = 0;
-        while (maskIndex < this.mask.length) {
-            const maskChar = this.mask[maskIndex]!;
-            const accepts = DEFINITIONS[maskChar];
-            if (!accepts) {
-                masked += maskChar;
-                maskIndex++;
-            } else if (rawIndex >= raw.length) {
-                if (!fillsEmpty) break;
-                masked += this.slotChar;
-                maskIndex++;
-            } else if (accepts.test(raw[rawIndex]!)) {
-                masked += raw[rawIndex];
-                rawIndex++;
-                maskIndex++;
-            } else {
-                rawIndex++;
-            }
-        }
-        return masked;
+        return applyMask(raw, this.mask, this.slotChar, this.showMaskTyped);
     }
 
     /**

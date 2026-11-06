@@ -1327,6 +1327,36 @@
       "types": "./dist/bento-grid/define.d.ts",
       "development": "./src/bento-grid/define.ts",
       "default": "./dist/bento-grid/define.js"
+    },
+    "./currency-input": {
+      "types": "./dist/currency-input/index.d.ts",
+      "development": "./src/currency-input/index.ts",
+      "default": "./dist/currency-input/index.js"
+    },
+    "./currency-input/define": {
+      "types": "./dist/currency-input/define.d.ts",
+      "development": "./src/currency-input/define.ts",
+      "default": "./dist/currency-input/define.js"
+    },
+    "./duration-input": {
+      "types": "./dist/duration-input/index.d.ts",
+      "development": "./src/duration-input/index.ts",
+      "default": "./dist/duration-input/index.js"
+    },
+    "./duration-input/define": {
+      "types": "./dist/duration-input/define.d.ts",
+      "development": "./src/duration-input/define.ts",
+      "default": "./dist/duration-input/define.js"
+    },
+    "./phone-input": {
+      "types": "./dist/phone-input/index.d.ts",
+      "development": "./src/phone-input/index.ts",
+      "default": "./dist/phone-input/index.js"
+    },
+    "./phone-input/define": {
+      "types": "./dist/phone-input/define.d.ts",
+      "development": "./src/phone-input/define.ts",
+      "default": "./dist/phone-input/define.js"
     }
   },
   "scripts": {

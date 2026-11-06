@@ -5096,6 +5096,159 @@ stats.renderItem = (item) => {
         ],
     },
     {
+        id: 'currency-input',
+        group: 'Rung 3 · Interactive',
+        name: 'Currency Input',
+        tag: 'ge-currency-input',
+        description: 'An amount of money written the way the reader\'s locale writes it. While you type it is a plain number; on blur it rounds to the currency\'s own decimals, clamps to the limits and shows the full formatting.',
+        examples: [
+            {
+                title: 'Locales and currencies',
+                note: '`value` is in major units (12.34 means twelve dollars thirty-four), `null` when empty. The decimals come from the currency: yen has none, dinar three. Pasted text such as `€1.234,50` or Arabic-Indic digits is read back.',
+                html: `<div style="display:grid;gap:.75rem;max-width:16rem">
+  <ge-currency-input value="12345.6" locale="en-US" aria-label="Dollars"></ge-currency-input>
+  <ge-currency-input value="12345.6" locale="de-DE" currency="EUR" aria-label="Euro"></ge-currency-input>
+  <ge-currency-input value="12345.6" locale="ja-JP" currency="JPY" aria-label="Yen"></ge-currency-input>
+  <ge-currency-input value="12.345" locale="en-US" currency="KWD" aria-label="Dinar"></ge-currency-input>
+</div>`,
+                block: true,
+            },
+            {
+                title: 'Limits and events',
+                note: '`min` and `max` apply on blur so typing is never interrupted. `input` fires while typing, `change` only when editing ends on a different value.',
+                html: `<ge-currency-input id="cur1" min="10" max="500" placeholder="$10 to $500" aria-label="Donation" style="display:block;max-width:16rem"></ge-currency-input>
+<p id="cur1-out" style="margin:.5rem 0 0;font-size:.875rem;color:var(--muted-foreground)">Type an amount, then tab away.</p>
+<script>
+const money = document.getElementById('cur1');
+money.addEventListener('change', () => {
+  document.getElementById('cur1-out').textContent = 'value ' + money.value + ' (' + money.minorUnits + ' minor units)';
+});
+</script>`,
+                block: true,
+            },
+            {
+                title: 'Variants',
+                html: `<div style="display:grid;gap:.75rem;max-width:16rem">
+  <ge-currency-input value="99.9" variant="underline" aria-label="Underline"></ge-currency-input>
+  <ge-currency-input value="99.9" variant="ghost" aria-label="Ghost"></ge-currency-input>
+  <ge-currency-input value="99.9" disabled aria-label="Disabled"></ge-currency-input>
+</div>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number | null', default: 'null', description: 'The amount in major units.' },
+            { name: 'currency', type: 'string', default: 'USD', description: 'ISO 4217 code: symbol, decimal places and parsing follow it.' },
+            { name: 'locale', type: 'string', default: 'page lang, then en', description: 'BCP 47 tag the amount is written in.' },
+            { name: 'min / max', type: 'number', default: '-', description: 'Bounds, enforced on blur.' },
+            { name: 'placeholder', type: 'string', default: '\'\'', description: 'Shown while empty.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks editing.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submits the value with a form.' },
+            { name: 'aria-label', type: 'string', default: 'Amount', description: 'Accessible name.' },
+            { name: 'minorUnits / scale', type: 'readonly', default: '-', description: 'The amount in cents, sen or fils, and the currency\'s decimal places.' },
+            { name: 'input / change', type: 'event', default: '-', description: 'See above.' },
+        ],
+    },
+    {
+        id: 'duration-input',
+        group: 'Rung 3 · Interactive',
+        name: 'Duration Input',
+        tag: 'ge-duration-input',
+        description: 'A length of time edited one unit at a time, as `h:mm`. Each unit is its own field, so there is never a guess about what `130` means. Arrow keys step the segment under the caret.',
+        examples: [
+            {
+                title: 'Units',
+                note: '`value` is in seconds. Only the leading segment is unbounded, and it absorbs the units that are not shown, so ninety minutes with `minutes,seconds` reads `90:00`. Minutes below hours stop at 59 and wrap.',
+                html: `<div style="display:grid;gap:.75rem;justify-items:start">
+  <ge-duration-input value="5400" aria-label="Hours and minutes"></ge-duration-input>
+  <ge-duration-input value="3725" units="hours,minutes,seconds" aria-label="Hours, minutes and seconds"></ge-duration-input>
+  <ge-duration-input value="5400" units="minutes,seconds" aria-label="Minutes and seconds"></ge-duration-input>
+  <ge-duration-input value="125" units="seconds" aria-label="Seconds"></ge-duration-input>
+</div>`,
+            },
+            {
+                title: 'Reading the value',
+                note: '`change` fires once when focus leaves the whole control, not when it moves between segments.',
+                html: `<ge-duration-input id="dur1" value="1800" units="hours,minutes,seconds" aria-label="Timer"></ge-duration-input>
+<p id="dur1-out" style="margin:.5rem 0 0;font-size:.875rem;color:var(--muted-foreground)">1800 seconds</p>
+<script>
+const timer = document.getElementById('dur1');
+timer.addEventListener('input', () => { document.getElementById('dur1-out').textContent = timer.value + ' seconds'; });
+</script>`,
+            },
+            {
+                title: 'Variants',
+                html: `<div style="display:grid;gap:.75rem;justify-items:start">
+  <ge-duration-input value="5400" variant="underline" aria-label="Underline"></ge-duration-input>
+  <ge-duration-input value="5400" variant="ghost" aria-label="Ghost"></ge-duration-input>
+  <ge-duration-input value="5400" disabled aria-label="Disabled"></ge-duration-input>
+</div>`,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'number | null', default: 'null', description: 'Seconds; empty shows empty segments.' },
+            { name: 'units', type: "'hours,minutes,seconds' subset", default: "'hours,minutes'", description: 'Comma-separated units to show, largest first.' },
+            { name: 'locale', type: 'string', default: 'page lang, then en', description: 'Language of the spoken value for screen readers.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Blocks editing.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submits the seconds with a form.' },
+            { name: 'aria-label', type: 'string', default: 'Duration', description: 'Accessible name of the group.' },
+            { name: 'input / change', type: 'event', default: '-', description: 'See above.' },
+        ],
+    },
+    {
+        id: 'phone-input',
+        group: 'Rung 3 · Interactive',
+        name: 'Phone Input',
+        tag: 'ge-phone-input',
+        description: 'An international phone number: a searchable country picker beside a masked number field. The value is E.164, so it can go straight to an API.',
+        examples: [
+            {
+                title: 'Basic',
+                note: 'The mask follows the country, so characters that do not fit cannot be typed. Picking another country clears the number, since digits typed under the old dial code are not valid under the new one.',
+                html: `<ge-phone-input id="ph1" default-country="US" style="display:block;max-width:22rem"></ge-phone-input>
+<p id="ph1-out" style="margin:.5rem 0 0;font-size:.875rem;color:var(--muted-foreground)">Type a number or choose a country.</p>
+<script>
+const phone = document.getElementById('ph1');
+phone.addEventListener('input', () => { document.getElementById('ph1-out').textContent = 'value: ' + (phone.value || '(empty)'); });
+</script>`,
+                block: true,
+            },
+            {
+                title: 'From an E.164 value',
+                note: 'Setting `value` picks the country from the longest matching dial code and shows the national part masked.',
+                html: `<div style="display:grid;gap:.75rem;max-width:22rem">
+  <ge-phone-input value="+442071234567"></ge-phone-input>
+  <ge-phone-input value="+33612345678" locale="fr"></ge-phone-input>
+  <ge-phone-input value="+972501234567" locale="he"></ge-phone-input>
+</div>`,
+                block: true,
+            },
+            {
+                title: 'Variants',
+                html: `<div style="display:grid;gap:.75rem;max-width:22rem">
+  <ge-phone-input variant="underline" default-country="DE"></ge-phone-input>
+  <ge-phone-input variant="ghost" default-country="JP"></ge-phone-input>
+  <ge-phone-input disabled value="+15551234567"></ge-phone-input>
+</div>`,
+                block: true,
+            },
+        ],
+        api: [
+            { name: 'value', type: 'string', default: "''", description: 'The number as E.164, for example `+15551234567`.' },
+            { name: 'default-country', type: 'string', default: 'US', description: 'ISO 3166-1 alpha-2 code of the initial country; ignored once the user has picked one.' },
+            { name: 'countries', type: 'PhoneCountry[]', default: '35 countries', description: '{ code, name, flag, dialCode, mask, placeholder? } entries for the list (property).' },
+            { name: 'placeholder', type: 'string', default: 'the country\'s example', description: 'Overrides the example number.' },
+            { name: 'variant', type: "'outline' | 'underline' | 'ghost'", default: "'outline'", description: 'Border treatment.' },
+            { name: 'disabled', type: 'boolean', default: 'false', description: 'Disables the picker and the field.' },
+            { name: 'name', type: 'string', default: '-', description: 'Submits the E.164 value with a form.' },
+            { name: 'locale', type: 'string | object', default: 'page lang, then en', description: 'Wording of the search box and empty result; Hebrew and Arabic lay out right to left.' },
+            { name: 'selectedCountry / nationalNumber', type: 'readonly', default: '-', description: 'The country in use and the digits typed after the dial code.' },
+            { name: 'input / change / open-change', type: 'event', default: '-', description: 'Edits, committed edits and country picks, and the list opening or closing.' },
+        ],
+    },
+    {
         id: 'input-mask',
         group: 'Rung 3 · Interactive',
         name: 'Input mask',

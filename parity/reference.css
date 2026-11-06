@@ -304,6 +304,26 @@ ui-number-input {
     }
 }
 
+/* shadcn-angular currency-input.component.css */
+ui-currency-input {
+    --_d: var(--density-input, var(--density, 1));
+}
+@layer components {
+    [data-slot="currency-input"][data-variant="outline"] {
+        height: calc(2.25rem * var(--_d));
+    }
+}
+
+/* shadcn-angular duration-input.component.css */
+ui-duration-input {
+    --_d: var(--density-input, var(--density, 1));
+}
+@layer components {
+    [data-slot="duration-input"][data-variant="outline"] {
+        min-height: calc(2.25rem * var(--_d));
+    }
+}
+
 /* shadcn-angular toggle-group-item.component.css */
 ui-toggle-group-item {
     --_d: var(--density-button, var(--density, 1));

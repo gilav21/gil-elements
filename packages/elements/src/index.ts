@@ -129,3 +129,6 @@ export * from './comparison-slider/index.js';
 export * from './masonry/index.js';
 export * from './virtual-scroll/index.js';
 export * from './bento-grid/index.js';
+export * from './currency-input/index.js';
+export * from './duration-input/index.js';
+export * from './phone-input/index.js';

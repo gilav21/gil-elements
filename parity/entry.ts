@@ -129,3 +129,6 @@ import '../packages/elements/src/comparison-slider/define.js';
 import '../packages/elements/src/masonry/define.js';
 import '../packages/elements/src/virtual-scroll/define.js';
 import '../packages/elements/src/bento-grid/define.js';
+import '../packages/elements/src/currency-input/define.js';
+import '../packages/elements/src/duration-input/define.js';
+import '../packages/elements/src/phone-input/define.js';

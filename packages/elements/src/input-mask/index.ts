@@ -1,1 +1,1 @@
-export { GeInputMask } from './input-mask.js';
+export { GeInputMask, applyMask } from './input-mask.js';
