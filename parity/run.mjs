@@ -347,6 +347,20 @@ for (const theme of ['light', 'dark']) {
         await page.evaluate(
             () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 400)))),
         );
+        // A loaded CI runner can still have an element mid-render or mid-measure (a hover tooltip positions itself a frame
+        // after it opens). Wait for every Lit element to finish its update, then give the frames that follow a second settle.
+        await page.evaluate(async () => {
+            const pending = [];
+            const walk = (root) => {
+                for (const el of root.querySelectorAll('*')) {
+                    if (el.updateComplete) pending.push(el.updateComplete);
+                    if (el.shadowRoot) walk(el.shadowRoot);
+                }
+            };
+            walk(document);
+            await Promise.all(pending);
+            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 200))));
+        });
         // Freeze every animation (shadow trees included) at the same instant, so keyframes, delays and
         // durations are compared instead of being cancelled away.
         await page.evaluate(() => {
