@@ -419,7 +419,7 @@ export class GeFileViewer extends UiElement {
                     ? html`${this.button('Previous page', ICON_PREV, this.currentPage <= 1, () => this.prevPage())}<span class="counter pages">${this.currentPage} / ${this.totalPages}</span>${this.button('Next page', ICON_NEXT, this.currentPage >= this.totalPages, () => this.nextPage())}`
                     : nothing}
                 ${ZOOMABLE.has(type)
-                    ? html`${this.button('Zoom out', ICON_ZOOM_OUT, this.currentZoom <= ZOOM_MIN, () => this.zoomOut())}<span class="counter zoom">${Math.round(this.currentZoom * 100)}%</span>${this.button('Zoom in', ICON_ZOOM_IN, this.currentZoom >= ZOOM_MAX, () => this.zoomIn())}`
+                    ? html`${this.button('Zoom out', ICON_ZOOM_OUT, this.currentZoom <= ZOOM_MIN, () => this.zoomOut())}<span class="counter zoom">${`${Math.round(this.currentZoom * 100)}%`}</span>${this.button('Zoom in', ICON_ZOOM_IN, this.currentZoom >= ZOOM_MAX, () => this.zoomIn())}`
                     : nothing}
                 ${download ? html`<a class="tool" href=${download} download=${this.displayFilename} title="Download">${ICON_DOWNLOAD}</a>` : nothing}
             </div>
