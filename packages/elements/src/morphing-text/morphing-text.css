@@ -1,0 +1,30 @@
+:host {
+    position: relative;
+    display: inline-block;
+}
+.text {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+.text[data-visible='true'] {
+    opacity: 1;
+    filter: blur(0);
+}
+.text[data-visible='false'] {
+    opacity: 0;
+    filter: blur(8px);
+}
+.size {
+    visibility: hidden;
+}
+@media (prefers-reduced-motion: reduce) {
+    .text {
+        transition: none !important;
+        filter: none !important;
+    }
+}

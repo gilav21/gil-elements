@@ -1,0 +1,18 @@
+:host {
+    display: contents;
+}
+.track {
+    position: fixed;
+    left: 0;
+    right: 0;
+    z-index: 50;
+}
+.track[data-position='bottom'] {
+    bottom: 0;
+}
+.track:not([data-position='bottom']) {
+    top: 0;
+}
+.bar {
+    transition: none;
+}

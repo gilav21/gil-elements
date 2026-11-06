@@ -4794,6 +4794,75 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
   <ge-number-ticker value="1234.5" decimal-places="1" locale="de"></ge-number-ticker>
 </div>`,
             },
+            {
+                title: 'Morphing text',
+                note: 'Cross-fades between `texts` with a blur; the box is the size of the longest one. `interval` is milliseconds per text.',
+                html: `<span style="font-size:1.75rem;font-weight:700">We ship <ge-morphing-text id="mt1" interval="2400"></ge-morphing-text></span>
+<script>document.getElementById('mt1').texts = ['faster', 'safer', 'everywhere'];</script>`,
+            },
+            {
+                title: 'Shine border',
+                note: 'A gradient that turns round the edge of whatever it wraps. Set the width on the host; `colors` is a property.',
+                html: `<ge-shine-border id="sb1" duration="4" border-width="3" border-radius="14" style="width:min(18rem,100%)">
+  <div style="padding:1.25rem"><strong>Pro plan</strong><p style="margin:.25rem 0 0;color:var(--muted-foreground)">Everything, unlimited.</p></div>
+</ge-shine-border>
+<ge-shine-border style="width:min(18rem,100%)"><div style="padding:1.25rem">Default colours</div></ge-shine-border>
+<script>document.getElementById('sb1').colors = ['#22c55e', '#38bdf8', '#a855f7'];</script>`,
+            },
+            {
+                title: 'Orbit',
+                note: 'Each `ge-orbit` fills the positioned box and carries one item round a circle of `radius` pixels. Give concentric rings different durations, or `reverse` one.',
+                html: `<div style="position:relative;width:min(17rem,100%);aspect-ratio:1;margin:auto;border-radius:9999px;border:1px dashed var(--border);display:grid;place-items:center">
+  <ge-badge>Core</ge-badge>
+  <ge-orbit radius="60" duration="8"><ge-badge variant="secondary">A</ge-badge></ge-orbit>
+  <ge-orbit radius="100" duration="14" reverse><ge-badge variant="outline">B</ge-badge></ge-orbit>
+  <ge-orbit radius="100" duration="14" delay="-7" reverse><ge-badge variant="outline">C</ge-badge></ge-orbit>
+</div>`,
+            },
+            {
+                title: 'Sparkles',
+                note: 'A four-point star that pings out and fades. Size and place it yourself; it takes the current text colour. Stagger several with `animation-delay`.',
+                html: `<div style="position:relative;display:inline-block;padding:0 1.5rem;font-size:1.75rem;font-weight:700">
+  Magic
+  <ge-sparkles style="top:-6px;left:0;width:16px;height:16px;color:#f59e0b"></ge-sparkles>
+  <ge-sparkles style="top:20px;right:0;width:22px;height:22px;color:#ec4899;animation-delay:.5s"></ge-sparkles>
+  <ge-sparkles style="top:-10px;right:30px;width:12px;height:12px;color:#38bdf8;animation-delay:1s"></ge-sparkles>
+</div>`,
+            },
+            {
+                title: 'Wobble card',
+                note: 'Tilts towards the pointer and settles flat when it leaves (mouse only). Supply the background and padding; `intensity` is the maximum degrees.',
+                html: `<ge-wobble-card intensity="12" style="width:min(18rem,100%);background:var(--card);border:1px solid var(--border);padding:1.5rem">
+  <strong>Hover me</strong><p style="margin:.25rem 0 0;color:var(--muted-foreground)">I lean towards your pointer.</p>
+</ge-wobble-card>`,
+            },
+            {
+                title: 'Stagger children',
+                note: 'The direct children rise in one after another when the block scrolls into view. `play()` runs it again.',
+                html: `<ge-stagger-children id="sc1" direction="up" stagger-delay="120" style="max-width:20rem">
+  <ge-card style="margin-bottom:.5rem"><div style="padding:.75rem 1rem">First</div></ge-card>
+  <ge-card style="margin-bottom:.5rem"><div style="padding:.75rem 1rem">Second</div></ge-card>
+  <ge-card><div style="padding:.75rem 1rem">Third</div></ge-card>
+</ge-stagger-children>
+<ge-button variant="outline" size="sm" style="margin-top:.75rem" id="sc1-again">Replay</ge-button>
+<script>document.getElementById('sc1-again').addEventListener('click', () => document.getElementById('sc1').play());</script>`,
+            },
+            {
+                title: 'Meteors',
+                note: 'Shooting stars on a canvas that fills the nearest positioned box. `count` is how many are alive at once; `speed` is `slow`, `medium` or `fast`.',
+                html: `<div style="position:relative;height:12rem;border-radius:var(--radius);background:#0b1020;color:#fff;overflow:hidden;display:grid;place-items:center">
+  <ge-meteors count="24" color="#a5b4fc"></ge-meteors>
+  <strong style="position:relative;font-size:1.25rem">Night sky</strong>
+</div>`,
+            },
+            {
+                title: 'Scroll progress',
+                note: 'A thin bar that fills as you scroll. It follows the scrolling box it sits in, or the page; `container` takes a CSS selector. `position="bottom"` moves it to the bottom edge.',
+                html: `<div id="sp-demo" style="position:relative;height:9rem;overflow:auto;border:1px solid var(--border);border-radius:var(--radius);padding:1rem;transform:translateZ(0)">
+  <ge-scroll-progress container="#sp-demo" height="4"></ge-scroll-progress>
+  <p style="height:20rem;margin:0">Scroll this box. The bar sits at the top of the box here because it is inside a transformed ancestor; on a normal page it pins to the viewport.</p>
+</div>`,
+            },
         ],
         api: [
             { name: 'text / delay (text reveal)', type: 'string / number', default: "'' / 50", description: 'Words split at whitespace runs; each starts `index * delay` ms after the first and animates for 1s. Plain text only.' },
@@ -4810,6 +4879,14 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             { name: 'words / duration (word rotate)', type: 'string[] / number', default: '- / 2000', description: 'Milliseconds each word stays. Changing either restarts the timer.' },
             { name: 'text / speed / show-cursor (streaming text)', type: 'string / number / boolean', default: "'' / 30 / true", description: 'Milliseconds per character. `complete` fires each time it catches up with `text`.' },
             { name: 'value / delay / duration / decimal-places / locale (number ticker)', type: 'number / number / number / number / string', default: "0 / 0 / 1 / 0 / page lang", description: 'Seconds. Every change of `value` counts from what is showing. Text takes the theme foreground; set `color` to override. `direction` is accepted and does nothing.' },
+            { name: 'texts / interval (morphing text)', type: 'string[] / number', default: '- / 3000', description: 'Milliseconds per text; the cross-fade takes a third of it, at most 500ms. Changing either restarts from the first text.' },
+            { name: 'colors / duration / border-width / border-radius (shine border)', type: 'string[] / number / number / number', default: "3 colours / 3 / 2 / 8", description: 'Seconds per turn, pixels. The host is inline-block and shrinks to its content; set its width.' },
+            { name: 'radius / duration / delay / reverse (orbit)', type: 'number / number / number / boolean', default: '100 / 10 / 0 / false', description: 'Pixels and seconds. The host is absolute, inset 0 and click-through; the item itself stays clickable.' },
+            { name: 'sparkles', type: 'element', default: '-', description: 'Absolute, click-through; size, place and colour it from outside. `animation-delay` on the host staggers it.' },
+            { name: 'intensity / perspective (wobble card)', type: 'number', default: '15 / 1000', description: 'Maximum tilt in degrees, and the CSS perspective distance. The card has no background of its own.' },
+            { name: 'delay / duration / stagger-delay / direction / play() (stagger children)', type: 'number / number / number / string / method', default: "0 / 400 / 80 / 'up'", description: 'Milliseconds. Only direct children animate. Starts when the block is 10% on screen.' },
+            { name: 'count / speed / color (meteors)', type: 'number / string / string', default: "20 / 'medium' / 'white'", description: 'Fills its nearest positioned ancestor and ignores clicks. Changing `count` starts a fresh sky.' },
+            { name: 'position / color / height / container (scroll progress)', type: 'string / string / number / string', default: "'top' / var(--primary) / 3 / auto", description: 'Fixed to the viewport edge, full width, z-index 50. Without `container` it follows the nearest scrolling ancestor, else the page.' },
             { name: '::part(base)', type: 'css part', default: '-', description: 'Text reveal\'s word container; set `justify-content` here.' },
             { name: '::part(viewport)', type: 'css part', default: '-', description: 'The marquee\'s clipping box.' },
         ],

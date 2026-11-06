@@ -1207,6 +1207,86 @@
       "types": "./dist/number-ticker/define.d.ts",
       "development": "./src/number-ticker/define.ts",
       "default": "./dist/number-ticker/define.js"
+    },
+    "./morphing-text": {
+      "types": "./dist/morphing-text/index.d.ts",
+      "development": "./src/morphing-text/index.ts",
+      "default": "./dist/morphing-text/index.js"
+    },
+    "./morphing-text/define": {
+      "types": "./dist/morphing-text/define.d.ts",
+      "development": "./src/morphing-text/define.ts",
+      "default": "./dist/morphing-text/define.js"
+    },
+    "./orbit": {
+      "types": "./dist/orbit/index.d.ts",
+      "development": "./src/orbit/index.ts",
+      "default": "./dist/orbit/index.js"
+    },
+    "./orbit/define": {
+      "types": "./dist/orbit/define.d.ts",
+      "development": "./src/orbit/define.ts",
+      "default": "./dist/orbit/define.js"
+    },
+    "./shine-border": {
+      "types": "./dist/shine-border/index.d.ts",
+      "development": "./src/shine-border/index.ts",
+      "default": "./dist/shine-border/index.js"
+    },
+    "./shine-border/define": {
+      "types": "./dist/shine-border/define.d.ts",
+      "development": "./src/shine-border/define.ts",
+      "default": "./dist/shine-border/define.js"
+    },
+    "./sparkles": {
+      "types": "./dist/sparkles/index.d.ts",
+      "development": "./src/sparkles/index.ts",
+      "default": "./dist/sparkles/index.js"
+    },
+    "./sparkles/define": {
+      "types": "./dist/sparkles/define.d.ts",
+      "development": "./src/sparkles/define.ts",
+      "default": "./dist/sparkles/define.js"
+    },
+    "./wobble-card": {
+      "types": "./dist/wobble-card/index.d.ts",
+      "development": "./src/wobble-card/index.ts",
+      "default": "./dist/wobble-card/index.js"
+    },
+    "./wobble-card/define": {
+      "types": "./dist/wobble-card/define.d.ts",
+      "development": "./src/wobble-card/define.ts",
+      "default": "./dist/wobble-card/define.js"
+    },
+    "./stagger-children": {
+      "types": "./dist/stagger-children/index.d.ts",
+      "development": "./src/stagger-children/index.ts",
+      "default": "./dist/stagger-children/index.js"
+    },
+    "./stagger-children/define": {
+      "types": "./dist/stagger-children/define.d.ts",
+      "development": "./src/stagger-children/define.ts",
+      "default": "./dist/stagger-children/define.js"
+    },
+    "./scroll-progress": {
+      "types": "./dist/scroll-progress/index.d.ts",
+      "development": "./src/scroll-progress/index.ts",
+      "default": "./dist/scroll-progress/index.js"
+    },
+    "./scroll-progress/define": {
+      "types": "./dist/scroll-progress/define.d.ts",
+      "development": "./src/scroll-progress/define.ts",
+      "default": "./dist/scroll-progress/define.js"
+    },
+    "./meteors": {
+      "types": "./dist/meteors/index.d.ts",
+      "development": "./src/meteors/index.ts",
+      "default": "./dist/meteors/index.js"
+    },
+    "./meteors/define": {
+      "types": "./dist/meteors/define.d.ts",
+      "development": "./src/meteors/define.ts",
+      "default": "./dist/meteors/define.js"
     }
   },
   "scripts": {
