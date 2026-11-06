@@ -311,7 +311,7 @@ export class GeShortcutBindingsDialog extends UiElement {
             <ge-accordion-trigger class="group-trigger">
                 <div class="group-heading">
                     <h3>${group.componentName}</h3>
-                    <p>${plural(group.activeBindings, 'active action')} / ${group.bindings.length} total</p>
+                    <p>${`${plural(group.activeBindings, 'active action')} / ${group.bindings.length} total`}</p>
                 </div>
             </ge-accordion-trigger>
             <ge-accordion-content class="group-content">
@@ -332,7 +332,7 @@ export class GeShortcutBindingsDialog extends UiElement {
                             ${binding.category ? html`<ge-badge variant="secondary">${binding.category}</ge-badge>` : nothing}
                             ${conflicts.has(binding.actionId) ? html`<ge-badge variant="destructive">${t.conflict}</ge-badge>` : nothing}
                         </div>
-                        <p class="meta"><span class="strong">Action:</span> ${binding.actionId}</p>
+                        <p class="meta"><span class="strong">Action:</span>${` ${binding.actionId}`}</p>
                         <p class="meta">${plural(binding.instances.length, 'active instance')}</p>
                     </div>
                     <div class="controls" tabindex="-1" @click=${stop} @keydown=${stop}>
@@ -372,7 +372,7 @@ export class GeShortcutBindingsDialog extends UiElement {
             <div class="instance-row">
                 <div class="instance-info">
                     <p class="instance-name">${instance.displayName}</p>
-                    <p class="instance-default">Default: ${this.format(instance.defaultShortcut)}</p>
+                    <p class="instance-default">${`Default: ${this.format(instance.defaultShortcut)}`}</p>
                 </div>
                 <div class="instance-controls">
                     <button

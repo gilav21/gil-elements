@@ -186,6 +186,8 @@ p {
     height: 2rem;
     padding-inline: 0.5rem;
     font-size: 11px;
+    /* Angular drops the size's text-xs here, so the button keeps its base text-sm line height at 11px. */
+    line-height: calc(1.25 / 0.875);
 }
 .instances > :not(:last-child) {
     margin-bottom: 0.5rem;
