@@ -777,6 +777,26 @@
       "types": "./dist/kanban/define.d.ts",
       "development": "./src/kanban/define.ts",
       "default": "./dist/kanban/define.js"
+    },
+    "./chart-legend": {
+      "types": "./dist/chart-legend/index.d.ts",
+      "development": "./src/chart-legend/index.ts",
+      "default": "./dist/chart-legend/index.js"
+    },
+    "./chart-legend/define": {
+      "types": "./dist/chart-legend/define.d.ts",
+      "development": "./src/chart-legend/define.ts",
+      "default": "./dist/chart-legend/define.js"
+    },
+    "./chart-tooltip": {
+      "types": "./dist/chart-tooltip/index.d.ts",
+      "development": "./src/chart-tooltip/index.ts",
+      "default": "./dist/chart-tooltip/index.js"
+    },
+    "./chart-tooltip/define": {
+      "types": "./dist/chart-tooltip/define.d.ts",
+      "development": "./src/chart-tooltip/define.ts",
+      "default": "./dist/chart-tooltip/define.js"
     }
   },
   "scripts": {

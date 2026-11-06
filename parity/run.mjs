@@ -172,6 +172,8 @@ for (const theme of ['light', 'dark']) {
                 await Promise.all(document.getAnimations().map((a) => a.finished));
                 // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
                 for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
+                // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
+                for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
                 // A kanban board takes its `columns` and `cards` as JSON; `data-dragged` is the id of the card shown mid-drag, `data-swimlane-by` the lane property.
                 for (const target of document.querySelectorAll('ge-kanban[data-columns]')) {
                     target.columns = JSON.parse(target.dataset.columns);

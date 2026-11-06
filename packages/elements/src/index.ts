@@ -74,3 +74,5 @@ export * from './tree-context-menu/index.js';
 export * from './tree-select/index.js';
 export * from './sortable/index.js';
 export * from './kanban/index.js';
+export * from './chart-legend/index.js';
+export * from './chart-tooltip/index.js';

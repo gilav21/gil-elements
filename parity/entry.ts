@@ -74,3 +74,5 @@ import '../packages/elements/src/tree-context-menu/define.js';
 import '../packages/elements/src/tree-select/define.js';
 import '../packages/elements/src/sortable/define.js';
 import '../packages/elements/src/kanban/define.js';
+import '../packages/elements/src/chart-legend/define.js';
+import '../packages/elements/src/chart-tooltip/define.js';
