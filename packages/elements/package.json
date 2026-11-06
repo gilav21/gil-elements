@@ -957,6 +957,16 @@
       "types": "./dist/combo-chart/define.d.ts",
       "development": "./src/combo-chart/define.ts",
       "default": "./dist/combo-chart/define.js"
+    },
+    "./bar-race-chart": {
+      "types": "./dist/bar-race-chart/index.d.ts",
+      "development": "./src/bar-race-chart/index.ts",
+      "default": "./dist/bar-race-chart/index.js"
+    },
+    "./bar-race-chart/define": {
+      "types": "./dist/bar-race-chart/define.d.ts",
+      "development": "./src/bar-race-chart/define.ts",
+      "default": "./dist/bar-race-chart/define.js"
     }
   },
   "scripts": {

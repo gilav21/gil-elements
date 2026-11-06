@@ -195,6 +195,8 @@ export default defineConfig({
                 'column-range-chart/define': 'src/column-range-chart/define.ts',
                 'combo-chart/index': 'src/combo-chart/index.ts',
                 'combo-chart/define': 'src/combo-chart/define.ts',
+                'bar-race-chart/index': 'src/bar-race-chart/index.ts',
+                'bar-race-chart/define': 'src/bar-race-chart/define.ts',
             },
             formats: ['es'],
         },

@@ -92,3 +92,4 @@ export * from './heatmap/index.js';
 export * from './calendar-heatmap/index.js';
 export * from './column-range-chart/index.js';
 export * from './combo-chart/index.js';
+export * from './bar-race-chart/index.js';
