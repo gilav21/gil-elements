@@ -4438,7 +4438,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
         group: 'Rung 3 · Interactive',
         name: 'Kanban',
         tag: 'ge-kanban',
-        description: 'A board of columns and cards. Drag a card between columns; right-click or long-press for menus; Mod+Z undoes. The board is controlled: it reports every change as an event and waits for you to apply it.',
+        description: 'A board of columns and cards. Drag a card between columns (on touch, hold a card until it lifts, then drag it; let go without moving for its menu); right-click or long-press elsewhere for menus; Mod+Z undoes. The board is controlled: it reports every change as an event and waits for you to apply it.',
         examples: [
             {
                 title: 'Data-driven',
