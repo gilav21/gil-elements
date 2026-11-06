@@ -141,6 +141,7 @@ import { registerIcons } from '@gilav21/elements/icon';
 import '@gilav21/elements/icon/define';
 import '@gilav21/elements/shortcut-bindings-dialog/define';
 import { shortcutBindings } from '@gilav21/elements/shortcut-bindings-dialog';
+import '@gilav21/elements/field-mapper/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

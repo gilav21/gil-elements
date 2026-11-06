@@ -293,6 +293,8 @@ export default defineConfig({
                 'icon/define': 'src/icon/define.ts',
                 'shortcut-bindings-dialog/index': 'src/shortcut-bindings-dialog/index.ts',
                 'shortcut-bindings-dialog/define': 'src/shortcut-bindings-dialog/define.ts',
+                'field-mapper/index': 'src/field-mapper/index.ts',
+                'field-mapper/define': 'src/field-mapper/define.ts',
             },
             formats: ['es'],
         },

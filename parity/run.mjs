@@ -206,6 +206,11 @@ for (const theme of ['light', 'dark']) {
                 }
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
                 for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
+                // `data-link-tones` maps `startId>endId` to a tone for a field-mapper's `linkTone`, a function `data-props` cannot carry.
+                for (const target of document.querySelectorAll('[data-link-tones]')) {
+                    const tones = JSON.parse(target.dataset.linkTones);
+                    target.linkTone = (link) => tones[`${link.startId}>${link.endId}`] ?? 'default';
+                }
                 // `data-render` names a row renderer for a virtual-scroll: functions cannot travel in `data-props`.
                 const cell = (style, text) => Object.assign(document.createElement('div'), { textContent: text, style });
                 const renderers = {
@@ -461,6 +466,7 @@ for (const theme of ['light', 'dark']) {
             const key = await handle.getAttribute('data-case');
             // A focused control paints its focus ring; focus it just before the shot, one case at a time.
             const focus = await handle.getAttribute('data-focus');
+            if (process.env.PARITY_RECTS && key.includes(process.env.PARITY_RECTS_CASE ?? '')) console.log(side, key, await handle.locator(process.env.PARITY_RECTS).evaluateAll((els) => els.map((e) => { const b = e.getBoundingClientRect(); return `${e.localName}[${[b.left, b.top, b.width, b.height].map((n) => n.toFixed(1)).join(',')}]`; })));
             if (focus) {
                 await handle.locator(focus).first().focus();
                 // Focus starts the ring and floating-label transitions; the reference page has nothing left to animate.

@@ -1447,6 +1447,16 @@
       "types": "./dist/shortcut-bindings-dialog/define.d.ts",
       "development": "./src/shortcut-bindings-dialog/define.ts",
       "default": "./dist/shortcut-bindings-dialog/define.js"
+    },
+    "./field-mapper": {
+      "types": "./dist/field-mapper/index.d.ts",
+      "development": "./src/field-mapper/index.ts",
+      "default": "./dist/field-mapper/index.js"
+    },
+    "./field-mapper/define": {
+      "types": "./dist/field-mapper/define.d.ts",
+      "development": "./src/field-mapper/define.ts",
+      "default": "./dist/field-mapper/define.js"
     }
   },
   "scripts": {

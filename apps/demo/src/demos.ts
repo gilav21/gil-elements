@@ -6084,4 +6084,77 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
             { name: 'shortcutBindings', type: 'singleton', default: '-', description: 'Import from `@gilav21/elements/shortcut-bindings-dialog`: `registerComponent(name, [{ actionId, description, defaultShortcut, handler, scope }])` to list your own action here.' },
         ],
     },
+    {
+        id: 'field-mapper',
+        group: 'Rung 3 · Interactive',
+        name: 'Field mapper',
+        tag: 'ge-field-mapper',
+        description: 'Two lists joined by lines that say which goes with which: import columns to fields, schema to schema. Draw a line three ways: drag from an item\'s dot, tap an item then one in the other list, or the keyboard (arrows move, Enter picks, Delete removes). Below about 28rem it becomes stacked rows with a picker for each item.',
+        examples: [
+            {
+                title: 'Map columns to fields',
+                note: 'Set `start`, `end` and `links`. The element updates its own `links` and fires `links-change`. By default each item holds one link, so a new line takes the old one with it; linked end items move level with their partner.',
+                block: true,
+                html: `<ge-field-mapper id="fm1" start-heading="Column in the file" end-heading="Field in the CRM"></ge-field-mapper>
+<pre id="fm1-out" style="margin:.75rem 0 0;font-size:.75rem;color:var(--muted-foreground)"></pre>
+<script>(() => {
+  const mapper = document.getElementById('fm1');
+  const out = document.getElementById('fm1-out');
+  mapper.start = ['customer_id', 'region', 'order_id', 'placed_at'].map((id) => ({ id, label: id }));
+  mapper.end = ['segment', 'id', 'name', 'area'].map((id) => ({ id, label: id }));
+  mapper.links = [{ startId: 'customer_id', endId: 'id' }];
+  const show = () => (out.textContent = JSON.stringify(mapper.links));
+  mapper.addEventListener('links-change', show);
+  show();
+})();</script>`,
+            },
+            {
+                title: 'Many links, filters, tones and labels',
+                note: '`maxLinks` is per side (`Infinity` for any number); `searchable` adds a filter over each list and runs a line to a hidden item to the list\'s edge; `linkTone` returns `default`, `muted` or `strong` (dash and weight, never colour alone); `renderLinkLabel` puts a short label at each line\'s middle; `renderItem` replaces an item\'s content.',
+                block: true,
+                html: `<ge-field-mapper id="fm2" searchable no-align></ge-field-mapper>
+<script>(() => {
+  const mapper = document.getElementById('fm2');
+  const fields = ['id', 'email', 'first_name', 'last_name', 'phone', 'company'];
+  mapper.start = ['Email', 'Name', 'Telephone', 'Organisation'].map((label) => ({ id: label.toLowerCase(), label }));
+  mapper.end = fields.map((id) => ({ id, label: id }));
+  mapper.maxLinks = { start: Infinity, end: 1 };
+  mapper.links = [{ startId: 'email', endId: 'email' }, { startId: 'name', endId: 'first_name' }, { startId: 'name', endId: 'last_name' }];
+  mapper.linkTone = (link) => (link.startId === 'name' ? 'muted' : 'strong');
+  mapper.renderLinkLabel = (link) => (link.startId === 'name' ? 'split' : 'exact');
+  mapper.renderItem = (item, { side, linked }) => side === 'end' && !linked ? item.label + ' (unmapped)' : item.label;
+})();</script>`,
+            },
+            {
+                title: 'Disabled items, rows layout, Hebrew',
+                note: '`disabled` items stay visible but never link. `layout="rows"` forces the stacked layout whatever the width; `locale="he"` mirrors the whole component.',
+                block: true,
+                html: `<div style="display:grid;gap:1.5rem;width:100%">
+  <ge-field-mapper id="fm3" layout="rows"></ge-field-mapper>
+  <ge-field-mapper id="fm4" locale="he"></ge-field-mapper>
+</div>
+<script>(() => {
+  for (const id of ['fm3', 'fm4']) {
+    const mapper = document.getElementById(id);
+    mapper.start = [{ id: 'a', label: 'שם' }, { id: 'b', label: 'עיר' }, { id: 'c', label: 'טלפון' }];
+    mapper.end = [{ id: 'x', label: 'name' }, { id: 'y', label: 'city' }, { id: 'z', label: 'phone', disabled: true }];
+    mapper.links = [{ startId: 'a', endId: 'x' }];
+  }
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'start / end', type: '{ id, label, disabled? }[]', default: '[]', description: 'Property: the two lists. Ids are unique within a list; the lists may reuse each other\'s ids.' },
+            { name: 'links', type: '{ startId, endId }[]', default: '[]', description: 'Property: the lines. The element sets it itself and fires `links-change`; the component never invents a link.' },
+            { name: 'maxLinks', type: '{ start?, end? }', default: '{ start: 1, end: 1 }', description: 'Property: links one item may hold per side. Over the limit, the item\'s oldest link moves out. `Infinity` allows any number.' },
+            { name: 'start-heading / end-heading', type: 'string', default: "'From' / 'To'", description: 'Headings over the lists; the locale supplies the defaults.' },
+            { name: 'no-align', type: 'boolean', default: 'false', description: 'Keep the end list in its own order instead of putting each linked item level with its partner.' },
+            { name: 'layout', type: "'auto' | 'columns' | 'rows'", default: "'auto'", description: '`auto` switches to rows below about 28rem of its own width.' },
+            { name: 'searchable', type: 'boolean', default: 'false', description: 'A filter box over each list.' },
+            { name: 'linkTone / renderItem / renderLinkLabel', type: 'functions', default: 'null', description: 'Properties: `(link) => tone`, `(item, { side, linked }) => content`, `(link, { start, end }) => content`.' },
+            { name: 'locale', type: 'string | object', default: "''", description: 'Locale id or object; defaults to the page `lang`, then English. Right-to-left locales mirror the component.' },
+            { name: 'links-change / link-select', type: 'event', default: '-', description: '`detail` is the new links, or the selected link (`null` when cleared).' },
+            { name: 'link() / unlink() / unlinkItem() / pick() / cancel() / selectLink()', type: 'methods', default: '-', description: 'Drive it from code; `link` honours `maxLinks` and refuses disabled items.' },
+        ],
+    },
 ];
