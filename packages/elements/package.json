@@ -1553,6 +1553,146 @@
       "types": "./dist/page-renderer/define.d.ts",
       "development": "./src/page-renderer/define.ts",
       "default": "./dist/page-renderer/define.js"
+    },
+    "./rich-text-editor/addons/actions": {
+      "types": "./dist/rich-text-editor/addons/actions/index.d.ts",
+      "development": "./src/rich-text-editor/addons/actions/index.ts",
+      "default": "./dist/rich-text-editor/addons/actions/index.js"
+    },
+    "./rich-text-editor/addons/actions/define": {
+      "types": "./dist/rich-text-editor/addons/actions/define.d.ts",
+      "development": "./src/rich-text-editor/addons/actions/define.ts",
+      "default": "./dist/rich-text-editor/addons/actions/define.js"
+    },
+    "./rich-text-editor/addons/ai": {
+      "types": "./dist/rich-text-editor/addons/ai/index.d.ts",
+      "development": "./src/rich-text-editor/addons/ai/index.ts",
+      "default": "./dist/rich-text-editor/addons/ai/index.js"
+    },
+    "./rich-text-editor/addons/ai/define": {
+      "types": "./dist/rich-text-editor/addons/ai/define.d.ts",
+      "development": "./src/rich-text-editor/addons/ai/define.ts",
+      "default": "./dist/rich-text-editor/addons/ai/define.js"
+    },
+    "./rich-text-editor/addons/colors": {
+      "types": "./dist/rich-text-editor/addons/colors/index.d.ts",
+      "development": "./src/rich-text-editor/addons/colors/index.ts",
+      "default": "./dist/rich-text-editor/addons/colors/index.js"
+    },
+    "./rich-text-editor/addons/colors/define": {
+      "types": "./dist/rich-text-editor/addons/colors/define.d.ts",
+      "development": "./src/rich-text-editor/addons/colors/define.ts",
+      "default": "./dist/rich-text-editor/addons/colors/define.js"
+    },
+    "./rich-text-editor/addons/emoji": {
+      "types": "./dist/rich-text-editor/addons/emoji/index.d.ts",
+      "development": "./src/rich-text-editor/addons/emoji/index.ts",
+      "default": "./dist/rich-text-editor/addons/emoji/index.js"
+    },
+    "./rich-text-editor/addons/emoji/define": {
+      "types": "./dist/rich-text-editor/addons/emoji/define.d.ts",
+      "development": "./src/rich-text-editor/addons/emoji/define.ts",
+      "default": "./dist/rich-text-editor/addons/emoji/define.js"
+    },
+    "./rich-text-editor/addons/file-import": {
+      "types": "./dist/rich-text-editor/addons/file-import/index.d.ts",
+      "development": "./src/rich-text-editor/addons/file-import/index.ts",
+      "default": "./dist/rich-text-editor/addons/file-import/index.js"
+    },
+    "./rich-text-editor/addons/file-import/define": {
+      "types": "./dist/rich-text-editor/addons/file-import/define.d.ts",
+      "development": "./src/rich-text-editor/addons/file-import/define.ts",
+      "default": "./dist/rich-text-editor/addons/file-import/define.js"
+    },
+    "./rich-text-editor/addons/full": {
+      "types": "./dist/rich-text-editor/addons/full/index.d.ts",
+      "development": "./src/rich-text-editor/addons/full/index.ts",
+      "default": "./dist/rich-text-editor/addons/full/index.js"
+    },
+    "./rich-text-editor/addons/full/define": {
+      "types": "./dist/rich-text-editor/addons/full/define.d.ts",
+      "development": "./src/rich-text-editor/addons/full/define.ts",
+      "default": "./dist/rich-text-editor/addons/full/define.js"
+    },
+    "./rich-text-editor/addons/history": {
+      "types": "./dist/rich-text-editor/addons/history/index.d.ts",
+      "development": "./src/rich-text-editor/addons/history/index.ts",
+      "default": "./dist/rich-text-editor/addons/history/index.js"
+    },
+    "./rich-text-editor/addons/history/define": {
+      "types": "./dist/rich-text-editor/addons/history/define.d.ts",
+      "development": "./src/rich-text-editor/addons/history/define.ts",
+      "default": "./dist/rich-text-editor/addons/history/define.js"
+    },
+    "./rich-text-editor/addons/images": {
+      "types": "./dist/rich-text-editor/addons/images/index.d.ts",
+      "development": "./src/rich-text-editor/addons/images/index.ts",
+      "default": "./dist/rich-text-editor/addons/images/index.js"
+    },
+    "./rich-text-editor/addons/images/define": {
+      "types": "./dist/rich-text-editor/addons/images/define.d.ts",
+      "development": "./src/rich-text-editor/addons/images/define.ts",
+      "default": "./dist/rich-text-editor/addons/images/define.js"
+    },
+    "./rich-text-editor/addons/links": {
+      "types": "./dist/rich-text-editor/addons/links/index.d.ts",
+      "development": "./src/rich-text-editor/addons/links/index.ts",
+      "default": "./dist/rich-text-editor/addons/links/index.js"
+    },
+    "./rich-text-editor/addons/links/define": {
+      "types": "./dist/rich-text-editor/addons/links/define.d.ts",
+      "development": "./src/rich-text-editor/addons/links/define.ts",
+      "default": "./dist/rich-text-editor/addons/links/define.js"
+    },
+    "./rich-text-editor/addons/mentions": {
+      "types": "./dist/rich-text-editor/addons/mentions/index.d.ts",
+      "development": "./src/rich-text-editor/addons/mentions/index.ts",
+      "default": "./dist/rich-text-editor/addons/mentions/index.js"
+    },
+    "./rich-text-editor/addons/mentions/define": {
+      "types": "./dist/rich-text-editor/addons/mentions/define.d.ts",
+      "development": "./src/rich-text-editor/addons/mentions/define.ts",
+      "default": "./dist/rich-text-editor/addons/mentions/define.js"
+    },
+    "./rich-text-editor/addons/outline": {
+      "types": "./dist/rich-text-editor/addons/outline/index.d.ts",
+      "development": "./src/rich-text-editor/addons/outline/index.ts",
+      "default": "./dist/rich-text-editor/addons/outline/index.js"
+    },
+    "./rich-text-editor/addons/outline/define": {
+      "types": "./dist/rich-text-editor/addons/outline/define.d.ts",
+      "development": "./src/rich-text-editor/addons/outline/define.ts",
+      "default": "./dist/rich-text-editor/addons/outline/define.js"
+    },
+    "./rich-text-editor/addons/slash-commands": {
+      "types": "./dist/rich-text-editor/addons/slash-commands/index.d.ts",
+      "development": "./src/rich-text-editor/addons/slash-commands/index.ts",
+      "default": "./dist/rich-text-editor/addons/slash-commands/index.js"
+    },
+    "./rich-text-editor/addons/slash-commands/define": {
+      "types": "./dist/rich-text-editor/addons/slash-commands/define.d.ts",
+      "development": "./src/rich-text-editor/addons/slash-commands/define.ts",
+      "default": "./dist/rich-text-editor/addons/slash-commands/define.js"
+    },
+    "./rich-text-editor/addons/tables": {
+      "types": "./dist/rich-text-editor/addons/tables/index.d.ts",
+      "development": "./src/rich-text-editor/addons/tables/index.ts",
+      "default": "./dist/rich-text-editor/addons/tables/index.js"
+    },
+    "./rich-text-editor/addons/tables/define": {
+      "types": "./dist/rich-text-editor/addons/tables/define.d.ts",
+      "development": "./src/rich-text-editor/addons/tables/define.ts",
+      "default": "./dist/rich-text-editor/addons/tables/define.js"
+    },
+    "./rich-text-editor/addons/typography": {
+      "types": "./dist/rich-text-editor/addons/typography/index.d.ts",
+      "development": "./src/rich-text-editor/addons/typography/index.ts",
+      "default": "./dist/rich-text-editor/addons/typography/index.js"
+    },
+    "./rich-text-editor/addons/typography/define": {
+      "types": "./dist/rich-text-editor/addons/typography/define.d.ts",
+      "development": "./src/rich-text-editor/addons/typography/define.ts",
+      "default": "./dist/rich-text-editor/addons/typography/define.js"
     }
   },
   "scripts": {

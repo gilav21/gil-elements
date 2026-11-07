@@ -121,7 +121,7 @@ const glyph = (inner: string) =>
  * @fires undo - The undo button was pressed.
  * @fires redo - The redo button was pressed.
  * @fires find-toggle - The find button was pressed.
- * @attr {boolean} compact - Floating-toolbar sizing: tighter padding, no border or background. Also set on `tag` slot elements.
+ * @attr {boolean} compact - Floating-toolbar sizing: tighter padding, no border or background. Also set on `create` slot elements.
  * @attr {boolean} disabled - Disables every control.
  * @attr {boolean} readonly - Same effect as `disabled`.
  * @attr {boolean} text-style-available - Whether the Text style select can change the caret's line; defaults to true.
@@ -152,7 +152,7 @@ export class GeRichTextToolbar extends UiElement {
     private rovingIndex = 0;
     private unsubscribeSlots: (() => void) | undefined;
     private observer: MutationObserver | undefined;
-    private readonly tagElements = new WeakMap<RichTextToolbarSlot, HTMLElement>();
+    private readonly createdElements = new WeakMap<RichTextToolbarSlot, HTMLElement>();
 
     constructor() {
         super();
@@ -346,7 +346,7 @@ export class GeRichTextToolbar extends UiElement {
 
     private renderSlot(slot: RichTextToolbarSlot): TemplateResult | typeof nothing {
         if (slot.render) return html`<span class="slot" data-addon-slot=${slot.id}>${slot.render()}</span>`;
-        if (slot.tag) return html`<span class="slot" data-addon-slot=${slot.id}>${this.tagElement(slot, slot.tag)}</span>`;
+        if (slot.create) return html`<span class="slot" data-addon-slot=${slot.id}>${this.createdElement(slot, slot.create)}</span>`;
         if (!slot.icon) return nothing;
         const active = slot.isActive?.() ?? false;
         return html`<button
@@ -361,11 +361,11 @@ export class GeRichTextToolbar extends UiElement {
         >${unsafeHTML(slot.icon)}</button>`;
     }
 
-    private tagElement(slot: RichTextToolbarSlot, tag: string): HTMLElement {
-        let element = this.tagElements.get(slot);
+    private createdElement(slot: RichTextToolbarSlot, create: () => HTMLElement): HTMLElement {
+        let element = this.createdElements.get(slot);
         if (!element) {
-            element = document.createElement(tag);
-            this.tagElements.set(slot, element);
+            element = create();
+            this.createdElements.set(slot, element);
         }
         element.toggleAttribute('compact', this.compact);
         return element;

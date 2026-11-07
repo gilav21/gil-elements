@@ -1,5 +1,6 @@
 import { html, type TemplateResult } from 'lit';
 import './toolbar-define.js';
+import { adoptSheet } from './rich-text-content.js';
 import type { RichTextControllerHost, RichTextRenderingController } from './rich-text-controllers.js';
 import { ZERO_WIDTH, setSelectionRange } from './rich-text-dom.js';
 import { isRichTextFormatCommand, type RichTextFormatCommand, type RichTextTopic } from './rich-text-host.js';
@@ -138,13 +139,7 @@ export class ToolbarController implements RichTextRenderingController {
 
     private adoptStyles(): () => void {
         const root = this.host.element.shadowRoot;
-        if (!root) return () => undefined;
-        const sheet = new CSSStyleSheet();
-        sheet.replaceSync(css);
-        root.adoptedStyleSheets = [...root.adoptedStyleSheets, sheet];
-        return () => {
-            root.adoptedStyleSheets = root.adoptedStyleSheets.filter((other) => other !== sheet);
-        };
+        return root ? adoptSheet(root, 'rich-text-floating-toolbar', css) : () => undefined;
     }
 
     // Commands run while the bubble is the active toolbar collapse the selection, so it never lingers over a formatted run.
