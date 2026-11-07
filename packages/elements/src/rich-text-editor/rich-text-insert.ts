@@ -1,13 +1,12 @@
 import { graphemeLength } from '../shared/grapheme.js';
 import { settleSplitList, splitListAfter, linesForRange } from './rich-text-blocks.js';
 import type { RichTextControllerHost } from './rich-text-controllers.js';
-import { BLOCK_CONTAINER_TAGS, BLOCK_TAGS, placeCaretAtStartOfBlock } from './rich-text-dom.js';
+import { BLOCK_CONTAINER_TAGS, BLOCK_TAGS, ZERO_WIDTH, placeCaretAtStartOfBlock } from './rich-text-dom.js';
 import type { RichTextController } from './rich-text-host.js';
 import { lineIsEmpty, structureAround, type Line } from './rich-text-lines.js';
 import type { RichTextInsertProvider } from './rich-text-providers.js';
 import { Disposables } from './rich-text-registry.js';
 
-const ZERO_WIDTH = '​';
 const KEYBOARD_GUARD_MS = 100;
 const BLOCK_LANDING = 'td, th, p, li, summary';
 

@@ -6,7 +6,7 @@ import { THEME_ATTRIBUTE, type ThemeName } from '../shared/theme-presets.js';
 import { RichTextCommandRegistry } from './rich-text-command-registry.js';
 import { RICH_TEXT_CONTROLLERS, type RichTextControllerFactory, type RichTextRenderingController } from './rich-text-controllers.js';
 import { adoptRichTextContentStyles } from './rich-text-content.js';
-import { offsetAfterSweep } from './rich-text-dom.js';
+import { ZERO_WIDTH, offsetAfterSweep } from './rich-text-dom.js';
 import type {
     CommitOptions,
     RichTextAddon,
@@ -74,7 +74,6 @@ export interface RichTextAllowElement extends HTMLElement {
     readonly allow: RichTextAllow;
 }
 
-const ZERO_WIDTH = '​';
 const CUSTOM_TOOLBAR_ITEM_ORDER = 500;
 const EMPTY_INLINE_STYLE: RichTextSelectionInlineStyle = { color: '', backgroundColor: '', fontSize: '', fontFamily: '' };
 const VALIDATION_MESSAGES = {
@@ -536,6 +535,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         listen('click', this.onClick);
         listen('mouseup', () => this.bus.emit('selection'));
         listen('keyup', () => this.bus.emit('selection'));
+        this.watchSelection(editable);
         listen('dragover', this.onDragOver);
         listen('dragleave', this.onDragLeave);
         listen('drop', this.onDrop);
@@ -543,10 +543,24 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         this.syncAddons();
     }
 
+    /** One 'selection' per frame while the selection moves inside the editable. */
+    private watchSelection(editable: HTMLElement): void {
+        let frame = 0;
+        this.life.listen(this.doc, 'selectionchange', () => {
+            const anchor = this.getSelection()?.anchorNode;
+            if (frame || !anchor || !editable.contains(anchor)) return;
+            frame = requestAnimationFrame(() => {
+                frame = 0;
+                this.bus.emit('selection');
+            });
+        });
+        this.life.add(() => cancelAnimationFrame(frame));
+    }
+
     private stop(): void {
         if (!this.started) return;
         this.started = false;
-        for (const controller of this.controllers) controller.detach();
+        for (const controller of [...this.controllers].reverse()) controller.detach();
         for (const teardown of this.activeAddons.values()) teardown?.();
         this.activeAddons.clear();
     }
@@ -861,7 +875,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         if (!root) return null;
         const markup = this.undecorated(root);
         const content = this.sanitizer.sanitize(markup).replaceAll(ZERO_WIDTH, '');
-        this.setModel(content);
+        if (this.setModel(content)) this.bus.emit('content');
         return content;
     }
 
@@ -938,15 +952,21 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     private applyExternalHtml(value: string | null | undefined): void {
         const text = value ?? '';
         const converted = this.mode === 'markdown' && text ? this.markdown.toHtml(text) : this.sanitizer.sanitize(text);
-        this.setModel(converted);
-        this.replaceEditorHtml(this.htmlContent);
+        this.swapContent(converted);
     }
 
-    private setModel(content: string): void {
-        if (content === this.htmlContent) return;
+    /** Stores the model, puts it in the editable, then announces it, so 'content' listeners see the new DOM. */
+    private swapContent(content: string): void {
+        const changed = this.setModel(content);
+        this.replaceEditorHtml(this.htmlContent);
+        if (changed) this.bus.emit('content');
+    }
+
+    private setModel(content: string): boolean {
+        if (content === this.htmlContent) return false;
         this.htmlContent = content;
-        this.bus.emit('content');
         this.requestUpdate();
+        return true;
     }
 
     private memo<T>(compute: (source: string) => T): () => T {
@@ -982,8 +1002,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     /** Re-judges the document under the current resource policy and shows the result. */
     private rejudge(): void {
         if (!this.editable) return;
-        this.setModel(this.sanitizer.sanitize(this.htmlContent));
-        this.replaceEditorHtml(this.htmlContent);
+        this.swapContent(this.sanitizer.sanitize(this.htmlContent));
     }
 
     private placeCaretAtEnd(): void {

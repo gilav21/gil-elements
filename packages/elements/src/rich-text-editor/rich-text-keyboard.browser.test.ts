@@ -227,8 +227,40 @@ describe('keyboard: Enter edges', () => {
     });
 });
 
-describe('keyboard: owned by markdown-shortcuts', () => {
-    it.skip('turns ``` plus Enter into a plain pre > code and prevents the Enter', () => undefined); // needs markdown-shortcuts (spec 9672)
-    it.skip('removes only the fence characters when Enter completes it', () => undefined); // needs markdown-shortcuts (spec 9954)
-    it.skip('leaves a code block created by the rule on Enter, dropping its seed newline', () => undefined); // needs markdown-shortcuts (spec 9977)
+describe('keyboard: Enter on a code fence', () => {
+    async function fenceSetup(typed: string, caret: number) {
+        const { root } = await setup('<p><br></p>');
+        const paragraph = root.querySelector('p')!;
+        const text = paragraph.insertBefore(document.createTextNode(typed), paragraph.firstChild);
+        placeCaret(text, caret);
+        return root;
+    }
+
+    it('turns ``` plus Enter into a plain pre > code and prevents the Enter', async () => {
+        const root = await fenceSetup('```', 3);
+        const event = press(root, 'Enter');
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(root.querySelector<HTMLElement>('pre > code')?.dataset['language']).toBeUndefined();
+    });
+
+    it('removes only the fence characters when Enter completes it', async () => {
+        const root = await fenceSetup('```code', 3);
+        press(root, 'Enter');
+
+        expect(root.querySelector('pre > code')?.textContent).toBe('code');
+    });
+
+    it('leaves a code block created by the rule on Enter, dropping its seed newline', async () => {
+        const root = await fenceSetup('``` ', 4);
+        root.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ' ' }));
+        const code = root.querySelector('code')!;
+        placeCaret(code.firstChild!, (code.firstChild as Text).data.length);
+
+        const event = press(root, 'Enter');
+
+        expect(event.defaultPrevented).toBe(true);
+        expect(code.textContent).toBe('');
+        expect(root.querySelector('pre + p')?.contains(document.getSelection()?.anchorNode ?? null)).toBe(true);
+    });
 });

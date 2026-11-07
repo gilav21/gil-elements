@@ -23,6 +23,8 @@ export const KEY_PRIORITY = Object.freeze({
     verticalArrow: 220,
     /** Delete / Backspace across a table boundary (reserved: tables controller). */
     tableDelete: 300,
+    /** Escape hiding the floating toolbar; never consumes the key. */
+    hideFloatingToolbar: 350,
     /** Tab and Shift+Tab: list nesting, a literal tab elsewhere. */
     tab: 400,
     /** Enter completing a ``` fence (reserved: markdown-shortcuts controller). */

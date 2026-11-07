@@ -137,7 +137,7 @@ describe('history keyboard', () => {
         await write(editor, '<p>two</p>');
         editor.pushHistory();
 
-        for (const init of [{ key: 'z' }, { key: 'b', ctrlKey: true }, { key: 'z', ctrlKey: true, altKey: true }]) {
+        for (const init of [{ key: 'z' }, { key: 'q', ctrlKey: true }, { key: 'z', ctrlKey: true, altKey: true }]) {
             expect(keydown(editable, init).defaultPrevented).toBe(false);
         }
         expect(editable.textContent).toBe('two');
@@ -539,17 +539,130 @@ describe('history with inserts', () => {
     });
 });
 
+describe('history and code highlighting', () => {
+    it('code highlighting never enters history (Angular spec 11712+)', async () => {
+        const editor = await editorIn('<ge-rich-text-editor mode="html" code-highlight-debounce-ms="0" value="<pre><code data-language=&quot;ts&quot;>const a = 1;</code></pre>"></ge-rich-text-editor>');
+        const editable = editableOf(editor);
+        const code = editable.querySelector('code')!;
+        const before = length(editor);
+
+        placeCaret(code, code.childNodes.length);
+        editable.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: 'x' }));
+
+        expect(code.querySelector('.token-keyword')?.textContent).toBe('const');
+        expect(length(editor)).toBe(before);
+    });
+});
+
+describe('history with pastes', () => {
+    const pasteInto = (editable: HTMLElement, text: string) =>
+        editable.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: plainTransfer(text) }));
+
+    function plainTransfer(text: string): DataTransfer {
+        const data = new DataTransfer();
+        data.setData('text/plain', text);
+        return data;
+    }
+
+    async function pasteEditor(markup: string, caretAt: number) {
+        return historyIn(markup, caretAt);
+    }
+
+    it('supports undo after a truncated paste (Angular spec 1102-1135)', async () => {
+        const { editor, editable } = await pasteEditor('<ge-rich-text-editor mode="html" max-length="5" value="<p>abc</p>"></ge-rich-text-editor>', 3);
+
+        pasteInto(editable, 'defgh');
+        expect(editable.textContent).toBe('abcde');
+
+        undoKey(editable);
+        expect(editable.textContent).toBe('abc');
+        expect(editor.canRedo).toBe(true);
+    });
+
+    it('restores the caret across a real paste (Angular spec 1286-1314)', async () => {
+        const { editable } = await pasteEditor('<ge-rich-text-editor mode="html" value="<p>abc</p>"></ge-rich-text-editor>', 1);
+        const text = editable.querySelector('p')!.firstChild as Text;
+        placeCaret(text, text.length);
+        const caretOffset = () => {
+            const selection = document.getSelection()!;
+            const range = new Range();
+            range.selectNodeContents(editable);
+            range.setEnd(selection.anchorNode!, selection.anchorOffset);
+            return range.toString().length;
+        };
+
+        pasteInto(editable, 'XYZ');
+        const pasted = editable.textContent;
+        const pastedCaret = caretOffset();
+        expect(pasted).toBe('abcXYZ');
+
+        undoKey(editable);
+        expect(editable.textContent).toBe('abc');
+        expect(document.getSelection()!.anchorOffset).toBe(1);
+
+        keydown(editable, { key: 'y', ctrlKey: true });
+        expect(editable.textContent).toBe(pasted);
+        expect(caretOffset()).toBe(pastedCaret);
+    });
+});
+
 describe('history cases that need other controllers', () => {
-    // needs clipboard (L) (Angular spec 1102-1135): undo after a truncated paste
-    it.skip('supports undo after a truncated paste', () => undefined);
-    // needs clipboard (L) (Angular spec 1286-1314): caret restore around a paste; the caret half runs above
-    it.skip('restores the caret across a real paste', () => undefined);
-    // needs find (Angular spec 4999-5030): replaceAll flushes pending typing and records exactly one entry
-    it.skip('replaceAll is one undo step', () => undefined);
-    // needs markdown-shortcuts (Angular spec 10137-10181): transform is one undo step, Backspace reverts
-    it.skip('a markdown shortcut transform is one undo step and Backspace reverts it', () => undefined);
-    // needs code-highlight (Angular spec 4865-4880): highlighting never enters history
-    it.skip('code highlighting never enters history', () => undefined);
-    // needs table-interaction (Angular spec 4365): a menu action whose target was detached by an undo
-    it.skip('ignores a table menu action whose target was detached by undo', () => undefined);
+    it('replaceAll flushes pending typing and records exactly one entry; one undo restores all (Angular spec 4999-5030)', async () => {
+        const editor = await editorIn('<ge-rich-text-editor mode="html" find-debounce-ms="0" value="<p>cat cat cat</p>"></ge-rich-text-editor>');
+        const find = editor.provider('find')!;
+        const editable = editableOf(editor);
+        await typeHtml(editor, '<p>cat cat cat!</p>');
+        const typed = editable.textContent;
+        const before = length(editor);
+
+        find.setQuery('cat');
+        find.setReplacement('dog');
+        find.replaceAll();
+
+        expect(length(editor) - before).toBe(2);
+        expect(editable.textContent).toBe('dog dog dog!');
+        undoKey(editable);
+        expect(editable.textContent).toBe(typed);
+    });
+    // Angular spec 10137-10181: transform is one undo step, Backspace reverts
+    it('a markdown shortcut transform is one undo step and Backspace reverts it', async () => {
+        const { editor, editable } = await historyIn();
+        editable.innerHTML = '<p><br></p>';
+        const text = editable.querySelector('p')!.appendChild(document.createTextNode('# '));
+        placeCaret(text, 2);
+        const before = length(editor);
+        editable.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: ' ' }));
+
+        expect(editable.querySelector('h1')).not.toBeNull();
+        expect(length(editor) - before).toBe(2);
+
+        const backspace = keydown(editable, { key: 'Backspace' });
+        expect(backspace.defaultPrevented).toBe(true);
+        expect(editable.querySelector('h1')).toBeNull();
+        expect(editable.textContent).toContain('#');
+
+        editor.redo();
+        expect(editable.querySelector('h1')).not.toBeNull();
+    });
+    it('ignores a table menu action whose target was detached by undo (Angular spec 4365)', async () => {
+        const { editor, editable } = await historyIn('<ge-rich-text-editor mode="html" value="<table><tbody><tr><td>cell</td></tr></tbody></table>"></ge-rich-text-editor>');
+        const tables = editor.provider('tableCommands')!;
+        const merged = editable.querySelector('td')!;
+        merged.colSpan = 2;
+        editor.provide('tableSelection', {
+            selectedCells: () => [],
+            select: () => undefined,
+            clear: () => undefined,
+            target: () => merged,
+            setTarget: () => undefined,
+        });
+        editable.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: 'x' }));
+        editor.value = '<p>replaced</p>';
+        await editor.updateComplete;
+
+        expect(merged.isConnected).toBe(false);
+        expect(tables.canSplitCell()).toBe(false);
+        tables.splitCell();
+        expect(merged.getAttribute('colspan')).toBe('2');
+    });
 });

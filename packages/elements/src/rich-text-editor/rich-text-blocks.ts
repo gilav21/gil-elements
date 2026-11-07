@@ -1,4 +1,4 @@
-import { clampNodeOffset, findAncestorByTag, placeCaretAtEndOfBlock, placeCaretAtStartOfBlock, setSelectionRange } from './rich-text-dom.js';
+import { ZERO_WIDTH, clampNodeOffset, findAncestorByTag, placeCaretAtEndOfBlock, placeCaretAtStartOfBlock, setSelectionRange } from './rich-text-dom.js';
 import { isRichTextFormatCommand, type RichTextController, type RichTextFormatCommand } from './rich-text-host.js';
 import {
     MAX_NESTING_DEPTH,
@@ -22,7 +22,6 @@ import {
 import type { RichTextControllerHost } from './rich-text-controllers.js';
 import { Disposables } from './rich-text-registry.js';
 
-const ZERO_WIDTH = '​';
 const EMPTY_LINE = '<br>';
 const HORIZONTAL_RULE = '<hr><p><br></p>';
 const TOGGLE_BLOCK = '<details open><summary>Toggle title</summary><p>Content here...</p></details>';

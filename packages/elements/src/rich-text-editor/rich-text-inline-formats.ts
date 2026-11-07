@@ -1,13 +1,12 @@
-import { INLINE_WRAPPER_TAGS, LINE_OWNING_TAGS, findAncestorByTag, setSelectionRange } from './rich-text-dom.js';
+import { INLINE_WRAPPER_SELECTOR, INLINE_WRAPPER_TAGS, LINE_OWNING_TAGS, ZERO_WIDTH, findAncestorByTag, setSelectionRange } from './rich-text-dom.js';
 import type { RichTextControllerHost } from './rich-text-controllers.js';
 import type { RichTextController, RichTextFormatCommand, RichTextInlineStyle } from './rich-text-host.js';
 import { lineOf } from './rich-text-lines.js';
 import { Disposables } from './rich-text-registry.js';
 import type { RichTextCaretStyle, RichTextSelectionProvider } from './rich-text-selection.js';
 
-const ZERO_WIDTH = '​';
 const MENTION_SELECTOR = '[data-mention], [data-tag]';
-const INLINE_WRAPPER_SELECTOR = `${[...INLINE_WRAPPER_TAGS].join(',').toLowerCase()}, font`;
+const FORMAT_WRAPPER_SELECTOR = `${INLINE_WRAPPER_SELECTOR}, font`;
 const MENTION_STYLE_PROPS = [
     'fontWeight', 'fontStyle', 'textDecoration', 'color', 'backgroundColor', 'fontSize', 'fontFamily',
 ] as const;
@@ -44,7 +43,7 @@ function replaceWithSpan(font: HTMLElement, prop: 'fontSize' | 'fontFamily', val
 
 /** Lifts the text out of every formatting wrapper in the run; links and mention chips stay, minus their styles. */
 function unwrapInlineFormatting(run: HTMLElement): void {
-    const wrappers = [run, ...run.querySelectorAll<HTMLElement>(INLINE_WRAPPER_SELECTOR)].reverse();
+    const wrappers = [run, ...run.querySelectorAll<HTMLElement>(FORMAT_WRAPPER_SELECTOR)].reverse();
     for (const wrapper of wrappers) {
         if (wrapper.tagName === 'A' || wrapper.dataset['mention'] !== undefined) {
             wrapper.removeAttribute('style');

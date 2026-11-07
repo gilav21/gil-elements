@@ -1,8 +1,10 @@
 import type { RichTextSanitizer } from './rich-text-sanitizer.js';
 import type { RichTextMarkdown } from './rich-text-markdown.js';
 import type { RichTextLocale } from './rich-text-locales.js';
-import type { RichTextHistoryEntrySnapshot, RichTextInlineStyle } from './rich-text-host.js';
+import type { RichTextFormatCommand, RichTextHistoryEntrySnapshot, RichTextInlineStyle } from './rich-text-host.js';
+import type { FindController } from './rich-text-find.js';
 import type { RichTextSelectionProvider } from './rich-text-selection.js';
+import type { TableCommands, TableSelection } from './rich-text-table-commands.js';
 
 /** Undo-history tuning; every field optional. */
 export interface RichTextHistoryOptions {
@@ -75,6 +77,10 @@ export interface RichTextProviders {
     inlineStyle: RichTextInlineStyleProvider;
     blocks: RichTextBlockProvider;
     selection: RichTextSelectionProvider;
+    find: FindController;
+    inputRules: { resetRevertWindow(): void };
+    tableSelection: TableSelection;
+    tableCommands: TableCommands;
 }
 
 /**
@@ -103,4 +109,6 @@ export interface RichTextShellHost {
     labelBlockedImages(): void;
     canRunShortcutAction(id: string): boolean;
     runShortcutAction(id: string): void;
+    /** Runs a toolbar command exactly as a toolbar click would. */
+    format(command: RichTextFormatCommand): void;
 }

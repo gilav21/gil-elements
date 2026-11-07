@@ -129,8 +129,13 @@ describe('bold, italic, underline, strikethrough', () => {
         expect(document.activeElement).toBe(root);
     });
 
-    it.skip('Ctrl+B, Ctrl+I, Ctrl+U format the selection', () => {
-        // needs shortcuts (O): spec 7145-7167
+    it('Ctrl+B, Ctrl+I, Ctrl+U format the selection (Angular spec 7145-7167)', async () => {
+        const { editor, root } = await editorWith('<p>format me</p>');
+        for (const [key, selector] of [['b', 'b, strong'], ['i', 'i, em'], ['u', 'u']] as const) {
+            selectContents(root.querySelector('p')!);
+            root.dispatchEvent(new KeyboardEvent('keydown', { key, ctrlKey: true, bubbles: true, cancelable: true }));
+            expect(root.querySelector(selector)).toBeTruthy();
+        }
     });
 
     it('records exactly one history entry and updates activeFormats (Angular spec 11013-11026)', async () => {
@@ -146,12 +151,46 @@ describe('bold, italic, underline, strikethrough', () => {
         expect(document.activeElement).toBe(root);
     });
 
-    it.skip('a format inside existing bold parks the caret past the innermost formatting node', () => {
-        // needs floating toolbar (N): spec 7581-7604
+    it('a format inside existing bold parks the caret past the innermost formatting node (Angular spec 7581-7604)', async () => {
+        const editor = await editorIn('<ge-rich-text-editor mode="html" toolbar="floating"></ge-rich-text-editor>');
+        editor.value = '<p><b>already bold</b></p>';
+        await editor.updateComplete;
+        const root = editableOf(editor);
+        root.focus();
+        const boldText = root.querySelector('b')!.firstChild!;
+        select(boldText, 2, boldText, 6);
+        selectionMoved(root);
+        await editor.updateComplete;
+        const bubble = () => editor.shadowRoot!.querySelector('[data-slot="rich-text-floating-toolbar"]');
+        expect(bubble()).not.toBeNull();
+
+        editor.format('italic');
+        await editor.updateComplete;
+
+        const inner = root.querySelector('b i')!;
+        expect(inner.textContent).toBe('read');
+        const selection = document.getSelection()!;
+        expect(selection.isCollapsed).toBe(true);
+        expect(selection.anchorNode).toBe(inner.parentNode);
+        expect(selection.anchorOffset).toBe(Array.from(inner.parentNode!.childNodes).indexOf(inner) + 1);
+        expect(bubble()).toBeNull();
     });
 
-    it.skip('the clear command on the floating toolbar removes formatting', () => {
-        // needs floating toolbar (N): spec 7622-7635
+    it('the clear command on the floating toolbar removes formatting (Angular spec 7622-7635)', async () => {
+        const editor = await editorIn('<ge-rich-text-editor mode="html" toolbar="floating"></ge-rich-text-editor>');
+        editor.value = '<p><b>bold</b></p>';
+        await editor.updateComplete;
+        const root = editableOf(editor);
+        selectContents(root.querySelector('b')!);
+        selectionMoved(root);
+        await editor.updateComplete;
+        const bar = editor.shadowRoot!.querySelector('[data-slot="rich-text-floating-toolbar"] ge-rich-text-toolbar')!;
+        await (bar as { updateComplete: Promise<unknown> }).updateComplete;
+
+        bar.shadowRoot!.querySelector<HTMLButtonElement>('[data-toolbar-item="clear"]')!.click();
+
+        expect(root.querySelector('b')).toBeNull();
+        expect(root.textContent).toBe('bold');
     });
 });
 

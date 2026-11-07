@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { editableOf, editorIn, placeCaret } from './rich-text-editor.fixture.test.js';
+import type { GeRichTextToolbar } from './toolbar-index.js';
 
 async function setup() {
     const editor = await editorIn('<ge-rich-text-editor mode="html"></ge-rich-text-editor>');
@@ -249,8 +250,29 @@ describe('SelectionController text style availability', () => {
         expect(s.editable.innerHTML !== before).toBe(available);
     });
 
-    // needs the toolbar wired into the shell: Angular spec 10449-10516
-    it.skip('presses the heading button matching the caret block and shows it in the select', () => undefined);
+    it('presses the heading button matching the caret block and shows it in the select (Angular spec 10449-10516)', async () => {
+        const s = await setup();
+        s.load('<h2>a</h2>');
+        s.editor.toolbarItems = ['paragraph', 'heading1', 'heading2', 'heading3'];
+        await s.editor.updateComplete;
+        const bar = s.editor.shadowRoot!.querySelector<GeRichTextToolbar>('.toolbar ge-rich-text-toolbar')!;
+        const select = () => bar.shadowRoot!.querySelector<HTMLSelectElement>('[data-slot="rich-text-toolbar-text-style"]');
+
+        expect(bar.shadowRoot!.querySelectorAll('button')).toHaveLength(4);
+        expect(select()).toBeNull();
+        placeCaret(s.editable.querySelector('h2')!.firstChild!, 1);
+        s.moved();
+        await s.editor.updateComplete;
+        await bar.updateComplete;
+
+        const pressed = [...bar.shadowRoot!.querySelectorAll('button[aria-pressed="true"]')];
+        expect(pressed.map((button) => button.getAttribute('title'))).toEqual([expect.stringContaining('Heading 2')]);
+
+        s.editor.toolbarItems = undefined;
+        await s.editor.updateComplete;
+        await bar.updateComplete;
+        expect(select()!.value).toBe('heading2');
+    });
 });
 
 describe('SelectionController inline style', () => {

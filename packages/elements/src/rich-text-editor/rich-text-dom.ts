@@ -1,6 +1,6 @@
 import { holdsNothing, lastOwnInlineNode } from './rich-text-lines.js';
 
-const ZERO_WIDTH = '​';
+export const ZERO_WIDTH = '​';
 const NBSP = ' ';
 const PLACEHOLDER_ONLY = /^[ ​]*$/;
 
@@ -25,6 +25,8 @@ export const LINE_OWNING_TAGS: ReadonlySet<string> = new Set([...BLOCK_TAGS, ...
 export const INLINE_WRAPPER_TAGS: ReadonlySet<string> = new Set([
     'B', 'STRONG', 'I', 'EM', 'U', 'S', 'DEL', 'INS', 'CODE', 'SPAN', 'MARK', 'SUB', 'SUP', 'SMALL', 'A',
 ]);
+
+export const INLINE_WRAPPER_SELECTOR = [...INLINE_WRAPPER_TAGS].join(',').toLowerCase();
 
 /** A blank paragraph a caret can sit in. */
 export function createEmptyParagraph(doc: Document): HTMLParagraphElement {
