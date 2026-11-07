@@ -1,6 +1,6 @@
 // Visual parity: shadcn-angular's real Tailwind output vs the elements, per case item, in light and
 // dark, compared pixel by pixel. Usage: node parity/run.mjs [caseName ...]
-import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -11,6 +11,8 @@ import pixelmatch from 'pixelmatch';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = `${here}out`;
+// Only failing cases write images, so anything left from an earlier run would read as a failure that still stands.
+rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 const wanted = process.argv.slice(2);
@@ -119,8 +121,8 @@ const state = Object.fromEntries(THEMES.map((theme) => [theme, { shots: { ref: n
 async function renderJob(browser, theme, group, side) {
     const { shots, rects } = state[theme];
     const mine = [];
-    {
-        const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: group[0].width ?? 700, height: 900 } });
+    const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: group[0].width ?? 700, height: 900 } });
+    try {
         // Every case sits on one tall page, below the 900px viewport, where collision handling would flip the panels. The
         // viewport height the elements read is raised so the case's own `overflow: hidden` wrapper is the box they stay in.
         const unbounded = `<script>Object.defineProperty(window, 'innerHeight', { get: () => 100000 });</script>`;
@@ -523,8 +525,9 @@ async function renderJob(browser, theme, group, side) {
             mine.push(key);
             if (show) await handle.evaluate((c) => c.querySelector('ge-context-menu').close());
         }
-        await page.close();
         return mine;
+    } finally {
+        await page.close();
     }
 }
 
@@ -534,6 +537,7 @@ function compareKeys(theme, keys) {
     const { shots, rects } = state[theme];
     for (const key of keys) {
         const refShot = shots.ref.get(key);
+        if (!shots.el.has(key)) throw new Error(`no element screenshot for ${theme} ${key}`);
         const a = PNG.sync.read(refShot);
         const b = PNG.sync.read(shots.el.get(key));
         const same = a.width === b.width && a.height === b.height;
@@ -554,6 +558,8 @@ function compareKeys(theme, keys) {
         }
         shots.ref.delete(key);
         shots.el.delete(key);
+        delete rects.ref[key];
+        delete rects.el[key];
         if (diff !== 0) {
             failures++;
             if (process.env.PARITY_DEBUG && rects.ref[key] && rects.el[key]) {
@@ -568,15 +574,24 @@ function compareKeys(theme, keys) {
 const queue = THEMES.flatMap((theme) => groups.map((group) => ({ theme, group, left: 2, keys: [] })));
 const work = queue.flatMap((page) => ['ref', 'el'].map((side) => ({ page, side })));
 let next = 0;
-await Promise.all(browsers.map(async (browser) => {
-    for (let job = work[next++]; job; job = work[next++]) {
-        const { page, side } = job;
-        const keys = await renderJob(browser, page.theme, page.group, side);
-        if (side === 'ref') page.keys = keys;
-        if (--page.left === 0) compareKeys(page.theme, page.keys);
-    }
-}));
-await Promise.all(browsers.map((browser) => browser.close()));
+let failed = false;
+try {
+    await Promise.all(browsers.map(async (browser) => {
+        for (let job = work[next++]; job && !failed; job = work[next++]) {
+            const { page, side } = job;
+            try {
+                const keys = await renderJob(browser, page.theme, page.group, side);
+                if (side === 'ref') page.keys = keys;
+                if (--page.left === 0) compareKeys(page.theme, page.keys);
+            } catch (error) {
+                failed = true;
+                throw new Error(`${page.theme} ${side} page [${page.group.map((c) => c.name).join(', ')}]: ${error.message}`, { cause: error });
+            }
+        }
+    }));
+} finally {
+    await Promise.all(browsers.map((browser) => browser.close()));
+}
 console.log(`${compared} comparisons, ${failures} differing`);
-if (report.length) console.log(report.sort().join('\n'));
+if (report.length) console.log(report.sort((a, b) => THEMES.findIndex((t) => a.startsWith(t)) - THEMES.findIndex((t) => b.startsWith(t)) || a.localeCompare(b)).join('\n'));
 process.exit(failures === 0 ? 0 : 1);
