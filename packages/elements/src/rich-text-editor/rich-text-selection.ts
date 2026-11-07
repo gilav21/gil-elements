@@ -63,8 +63,16 @@ const EMPTY_STYLE: RichTextSelectionInlineStyle = { color: '', backgroundColor: 
 
 /** `left` and `right` are physical, so an RTL locale presses the opposite, already mirrored, item. */
 function alignmentFormat(textAlign: string, rtl: boolean): string | undefined {
-    if (textAlign === 'left' || textAlign === 'right') return (textAlign === 'left') !== rtl ? 'alignLeft' : 'alignRight';
+    if (textAlign === 'left' || textAlign === 'right') return (textAlign === 'left') === rtl ? 'alignRight' : 'alignLeft';
     return LOGICAL_ALIGNMENT.get(textAlign);
+}
+
+function addElementFormats(node: HTMLElement, root: Node, formats: Set<string>): void {
+    const tag = node.tagName;
+    const blockFormat = BLOCK_FORMAT_TAGS.get(tag);
+    if (blockFormat) formats.add(blockFormat);
+    if (tag === 'UL' && node.dataset['taskList'] !== undefined) formats.add('taskList');
+    if (tag === 'LI' && listDepth(node, root) >= 2) formats.add('indent');
 }
 
 function listDepth(item: Element, root: Node): number {
@@ -198,10 +206,7 @@ export class SelectionController implements RichTextController, RichTextSelectio
             code ||= tag === 'CODE';
             pre ||= tag === 'PRE';
             nonParagraph ||= NON_PARAGRAPH_TAGS.has(tag);
-            const blockFormat = BLOCK_FORMAT_TAGS.get(tag);
-            if (blockFormat) formats.add(blockFormat);
-            if (tag === 'UL' && node.dataset['taskList'] !== undefined) formats.add('taskList');
-            if (tag === 'LI' && listDepth(node, root) >= 2) formats.add('indent');
+            addElementFormats(node, root, formats);
         }
         // A `CODE` is inline code only when no `PRE` was passed on the way up.
         if (code && !pre) formats.add('code');

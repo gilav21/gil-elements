@@ -279,7 +279,7 @@ export class GeRichTextToolbar extends UiElement {
 
     private onKeydown(event: KeyboardEvent): void {
         const stops = this.rovingStops();
-        const current = stops.findIndex((el) => el === event.target);
+        const current = stops.indexOf(event.target as HTMLElement);
         if (current === -1) return;
         const forward = this.locale.rtl ? 'ArrowLeft' : 'ArrowRight';
         const backward = this.locale.rtl ? 'ArrowRight' : 'ArrowLeft';
@@ -299,7 +299,7 @@ export class GeRichTextToolbar extends UiElement {
 
     private onFocusin(event: FocusEvent): void {
         const stops = this.rovingStops();
-        const index = stops.findIndex((el) => el === event.target);
+        const index = stops.indexOf(event.target as HTMLElement);
         if (index === -1) return;
         this.rovingIndex = index;
         this.applyRovingTabIndex(stops);

@@ -111,7 +111,7 @@ export function applyDelta(base: string, delta: string): string {
  * against their predecessor. Pure, so it needs no DOM.
  */
 export class HistoryStack {
-    private entries: HistoryEntry[] = [];
+    private readonly entries: HistoryEntry[] = [];
     private position = -1;
     private cache = { index: -1, html: '' };
 
