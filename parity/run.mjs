@@ -2,6 +2,7 @@
 // dark, compared pixel by pixel. Usage: node parity/run.mjs [caseName ...]
 import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { availableParallelism } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
 import { chromium } from 'playwright';
@@ -89,29 +90,36 @@ const deltaStats = (a, b) => {
     return `pixels ${count}, max channel delta ${max}, mean ${(sum / Math.max(count, 1)).toFixed(1)}`;
 };
 
-const browser = await chromium.launch();
+// Jobs (one page of one theme and side) are independent, so they run on a pool of Chromium processes: separate processes, not
+// contexts, so one worker's rasterisation cannot touch another's. PARITY_WORKERS=1 gives the old serial run.
+const WORKERS = Math.max(1, Number(process.env.PARITY_WORKERS) || Math.min(12, availableParallelism() - 2));
+const browsers = await Promise.all(Array.from({ length: WORKERS }, () => chromium.launch()));
 let failures = 0;
 let compared = 0;
 const report = [];
-for (const theme of ['light', 'dark']) {
-    const shots = { ref: new Map(), el: new Map() };
-    const rects = { ref: {}, el: {} };
-    // A case file marked `isolated` gets a page of its own: opening a menu moves focus into it, which scrolls the shared
-    // page, and every other case that measures itself on open would then measure at the wrong scroll position.
-    // The shared pages are also capped in size: past a few thousand pixels of height the same markup rasterises differently
-    // (a full run differed in text on whole components that pass alone, and a half run in the one that sits deepest), so
-    // cases are packed into pages of at most `PAGE_ITEMS` items.
-    const PAGE_ITEMS = 80;
-    const shared = [];
-    for (const c of cases.filter((c) => !c.isolated)) {
-        const last = shared.at(-1);
-        if (last && last.items + c.items.length <= PAGE_ITEMS) {
-            last.cases.push(c);
-            last.items += c.items.length;
-        } else shared.push({ cases: [c], items: c.items.length });
-    }
-    const groups = [...shared.map((g) => g.cases), ...cases.filter((c) => c.isolated).map((c) => [c])].filter((g) => g.length > 0);
-    for (const group of groups) for (const side of ['ref', 'el']) {
+// A case file marked `isolated` gets a page of its own: opening a menu moves focus into it, which scrolls the shared
+// page, and every other case that measures itself on open would then measure at the wrong scroll position.
+// The shared pages are also capped in size: past a few thousand pixels of height the same markup rasterises differently
+// (a full run differed in text on whole components that pass alone, and a half run in the one that sits deepest), so
+// cases are packed into pages of at most `PAGE_ITEMS` items.
+const PAGE_ITEMS = 80;
+const shared = [];
+for (const c of cases.filter((c) => !c.isolated)) {
+    const last = shared.at(-1);
+    if (last && last.items + c.items.length <= PAGE_ITEMS) {
+        last.cases.push(c);
+        last.items += c.items.length;
+    } else shared.push({ cases: [c], items: c.items.length });
+}
+const groups = [...shared.map((g) => g.cases), ...cases.filter((c) => c.isolated).map((c) => [c])].filter((g) => g.length > 0);
+
+const THEMES = ['light', 'dark'];
+const state = Object.fromEntries(THEMES.map((theme) => [theme, { shots: { ref: new Map(), el: new Map() }, rects: { ref: {}, el: {} } }]));
+
+async function renderJob(browser, theme, group, side) {
+    const { shots, rects } = state[theme];
+    const mine = [];
+    {
         const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: group[0].width ?? 700, height: 900 } });
         // Every case sits on one tall page, below the 900px viewport, where collision handling would flip the panels. The
         // viewport height the elements read is raised so the case's own `overflow: hidden` wrapper is the box they stay in.
@@ -512,11 +520,20 @@ for (const theme of ['light', 'dark']) {
                 await page.waitForTimeout(400);
             }
             shots[side].set(key, await handle.screenshot({ animations: 'allow' }));
+            mine.push(key);
             if (show) await handle.evaluate((c) => c.querySelector('ge-context-menu').close());
         }
         await page.close();
+        return mine;
     }
-    for (const [key, refShot] of shots.ref) {
+}
+
+// Both sides of a page are compared as soon as the second is done, while the other workers keep rendering; the shots are
+// dropped after, since a full run holds thousands of 2x PNGs.
+function compareKeys(theme, keys) {
+    const { shots, rects } = state[theme];
+    for (const key of keys) {
+        const refShot = shots.ref.get(key);
         const a = PNG.sync.read(refShot);
         const b = PNG.sync.read(shots.el.get(key));
         const same = a.width === b.width && a.height === b.height;
@@ -530,9 +547,13 @@ for (const theme of ['light', 'dark']) {
             if (diff > 0) where = boundsOfDiff(d);
             if (diff > 0 && process.env.PARITY_DEBUG) console.log(`${theme} ${key} ${deltaStats(a, b)}`);
         }
-        writeFileSync(`${out}/${theme}-${safe}-ref.png`, refShot);
-        writeFileSync(`${out}/${theme}-${safe}-el.png`, shots.el.get(key));
         compared++;
+        if (diff !== 0 || process.env.PARITY_KEEP) {
+            writeFileSync(`${out}/${theme}-${safe}-ref.png`, refShot);
+            writeFileSync(`${out}/${theme}-${safe}-el.png`, shots.el.get(key));
+        }
+        shots.ref.delete(key);
+        shots.el.delete(key);
         if (diff !== 0) {
             failures++;
             if (process.env.PARITY_DEBUG && rects.ref[key] && rects.el[key]) {
@@ -543,7 +564,19 @@ for (const theme of ['light', 'dark']) {
         }
     }
 }
-await browser.close();
+
+const queue = THEMES.flatMap((theme) => groups.map((group) => ({ theme, group, left: 2, keys: [] })));
+const work = queue.flatMap((page) => ['ref', 'el'].map((side) => ({ page, side })));
+let next = 0;
+await Promise.all(browsers.map(async (browser) => {
+    for (let job = work[next++]; job; job = work[next++]) {
+        const { page, side } = job;
+        const keys = await renderJob(browser, page.theme, page.group, side);
+        if (side === 'ref') page.keys = keys;
+        if (--page.left === 0) compareKeys(page.theme, page.keys);
+    }
+}));
+await Promise.all(browsers.map((browser) => browser.close()));
 console.log(`${compared} comparisons, ${failures} differing`);
-if (report.length) console.log(report.join('\n'));
+if (report.length) console.log(report.sort().join('\n'));
 process.exit(failures === 0 ? 0 : 1);
