@@ -2,7 +2,7 @@ import { html, nothing } from 'lit';
 import { ref } from 'lit/directives/ref.js';
 import { defineAddon, resolveAddonLocale } from '../../rich-text-addon-kit.js';
 import type { RichTextAddonOptions } from '../../rich-text-host.js';
-import { registerPopoverButton, triggerButton, type PopoverButtonView } from '../../rich-text-popover-button.js';
+import { registerPopoverButton, triggerButton, type PopoverButtonView } from '../shared-popover-button.js';
 import { RICH_TEXT_TABLES_LOCALES, type RichTextTablesLocale } from './tables-locale.js';
 import css from './tables.css?inline';
 

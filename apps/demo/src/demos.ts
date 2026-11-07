@@ -135,6 +135,142 @@ export const demos: Demo[] = [
         ],
     },
     {
+        id: 'rich-text-addons',
+        group: 'Form inputs',
+        name: 'Rich text editor: addons',
+        tag: 'ge-rich-text-editor',
+        description: 'Addons are opt-in modules that add toolbar buttons, slash commands and panels to the rich text editor. Import only the ones you use, or `@gilav21/elements/rich-text-editor/addons/full/define` for all thirteen, then list them in `addons`. Options are one object per addon id in `addonOptions`.',
+        examples: [
+            {
+                title: 'Every addon: addons="full"',
+                note: 'Enables history, slash commands, mentions, AI, typography, colors, links, images, tables, file import, emoji, actions and outline. Type `/` for the menu, `@` for people, select text and use Ask AI, or open the history panel with `Ctrl+Shift+H`. Mentions, AI, image upload and actions stay inactive until configured; all of that is wired below and runs offline.',
+                block: true,
+                html: `<ge-rich-text-editor id="rta1" mode="html" addons="full" min-height="12rem" style="display:block;max-width:56rem"></ge-rich-text-editor>
+<script>(() => {
+  const rte = document.getElementById('rta1');
+  const people = [
+    { value: 'ada', label: 'Ada Lovelace', description: 'Mathematician' },
+    { value: 'alan', label: 'Alan Turing', description: 'Computer scientist' },
+    { value: 'grace', label: 'Grace Hopper', description: 'Admiral' },
+  ];
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  rte.addonOptions = {
+    mentions: {
+      search: (query) => people.filter((p) => p.label.toLowerCase().includes(query.toLowerCase())),
+    },
+    ai: {
+      provider: async function* (request) {
+        const words = ('This is a canned ' + request.task + ' reply for: ' + request.input).split(' ');
+        let text = '';
+        for (const word of words) {
+          await wait(60);
+          if (request.signal && request.signal.aborted) return;
+          text = text ? text + ' ' + word : word;
+          yield text;
+        }
+      },
+    },
+    images: {
+      upload: {
+        uploader: (file, signal) => new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(file);
+          }, 800);
+          signal.addEventListener('abort', () => {
+            clearTimeout(timer);
+            reject(new DOMException('Aborted', 'AbortError'));
+          });
+        }),
+      },
+    },
+    actions: {
+      definitions: [
+        {
+          id: 'say-hello',
+          label: 'Say hello',
+          triggers: ['click'],
+          fields: [{ key: 'name', label: 'Name', type: 'text', required: true }],
+        },
+      ],
+    },
+  };
+  rte.value = '<h2>Everything switched on</h2><p>Try <strong>/table</strong>, <strong>/link</strong> or <strong>/outline</strong>, mention @ada, or paste an image.</p>';
+})();</script>`,
+            },
+            {
+                title: 'Just two addons',
+                note: '`addons="links slash-commands"` loads only those two. `Ctrl+K` and the toolbar button open the link form; `/` opens the command menu with the built-in block commands plus `/link`.',
+                block: true,
+                html: `<ge-rich-text-editor id="rta2" mode="html" addons="links slash-commands" min-height="8rem" style="display:block;max-width:44rem"></ge-rich-text-editor>
+<script>document.getElementById('rta2').value = '<p>Select a word and press Ctrl+K, or type / on an empty line.</p>';</script>`,
+            },
+            {
+                title: 'Floating toolbar with colors and typography',
+                note: 'The bubble toolbar carries the addon buttons too. The panels keep the selection while they are open, so a color applies to what you selected.',
+                block: true,
+                html: `<ge-rich-text-editor id="rta3" mode="html" toolbar="floating" addons="colors typography" min-height="8rem" style="display:block;max-width:44rem"></ge-rich-text-editor>
+<script>document.getElementById('rta3').value = '<p>Select some words, then pick a text color, a highlight, a font family or a size.</p>';</script>`,
+            },
+            {
+                title: 'Mentions and tags',
+                note: 'Type `@` to mention a person and `#` for a tag. `search` and `tagsSearch` may return an array or a Promise; `debounceMs` waits after the last keystroke. The inserted items carry `data-mention` and `data-tag`.',
+                block: true,
+                html: `<ge-rich-text-editor id="rta4" mode="html" addons="mentions" min-height="8rem" style="display:block;max-width:44rem"></ge-rich-text-editor>
+<pre id="rta4-out" style="margin-top:.75rem;max-height:9rem;overflow:auto;font-size:.8rem"></pre>
+<script>(() => {
+  const rte = document.getElementById('rta4');
+  const out = document.getElementById('rta4-out');
+  const people = [
+    { value: 'ada', label: 'Ada Lovelace' },
+    { value: 'alan', label: 'Alan Turing' },
+    { value: 'grace', label: 'Grace Hopper' },
+  ];
+  const tags = [
+    { value: 'urgent', label: 'urgent', color: '#dc2626' },
+    { value: 'idea', label: 'idea', color: '#16a34a' },
+    { value: 'later', label: 'later', color: '#2563eb' },
+  ];
+  const match = (items) => (query) => items.filter((item) => item.label.toLowerCase().includes(query.toLowerCase()));
+  rte.addonOptions = { mentions: { search: match(people), tags: true, tagsSearch: match(tags), debounceMs: 100 } };
+  rte.addEventListener('value-change', () => { out.textContent = rte.htmlOutput; });
+  rte.value = '<p>Ping @ada about this and tag it #idea.</p>';
+  out.textContent = rte.htmlOutput;
+})();</script>`,
+            },
+            {
+                title: 'Rendered content with actions',
+                note: 'Content saved by the actions addon carries `data-action-*` attributes. `bindRichTextActions(container, { handlers })` makes them work on any page, with no editor: here the span below fires a handler on click and another while hovered.',
+                block: true,
+                html: `<div id="rta5" style="max-width:44rem;padding:1rem;border:1px solid var(--border);border-radius:var(--radius)">
+  <p>Rendered HTML: <span data-action-click="say-hello" data-action-click-params='{"name":"Ada"}' style="text-decoration:underline;cursor:pointer">click me</span>, or hover <span data-action-hover="hint" data-action-hover-params='{"text":"A hover hint"}' style="text-decoration:underline dotted;cursor:help">this phrase</span>.</p>
+</div>
+<p id="rta5-out" style="margin-top:.5rem;font-size:.875rem;color:var(--muted-foreground)">Nothing happened yet.</p>
+<script>(() => {
+  const out = document.getElementById('rta5-out');
+  globalThis.geBindRichTextActions(document.getElementById('rta5'), {
+    handlers: {
+      'say-hello': (event) => { out.textContent = 'Hello, ' + event.params.name + '!'; },
+      hint: (event) => { out.textContent = event.phase === 'start' ? event.params.text : 'Nothing happened yet.'; },
+    },
+  });
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'addons', type: 'string', default: "''", description: 'Space or comma separated addon ids to enable: `history slash-commands mentions ai typography colors links images tables file-import emoji actions outline`, or `full` for all. An id needs its `define` module imported first.' },
+            { name: 'addonOptions', type: 'Record<string, unknown>', default: '{}', description: 'One entry per addon id. `false` switches that addon off, `true` or no entry uses defaults, an object overrides: every addon accepts `toolbar`, `slashCommand` and `order`. Replace the object to change options.' },
+            { name: 'mentions', type: '{ search, tags, tagsSearch, debounceMs, render }', default: '-', description: '`search(query)` returns people (array or Promise); `tags: true` turns on `#`.' },
+            { name: 'ai', type: '{ provider }', default: '-', description: 'A function returning a string, a Promise or an async iterable; the Ask AI chip and `/ai` appear only with a provider.' },
+            { name: 'images', type: '{ upload: { uploader, auto, sources }, layout }', default: '-', description: '`uploader(file, signal)` resolves to the URL stored in the document; without it images become data URLs.' },
+            { name: 'actions', type: '{ definitions }', default: '-', description: 'What a click or hover can do; the attach button appears once definitions exist. `bindRichTextActions` runs them on rendered HTML.' },
+            { name: 'use(addon, options)', type: 'method', default: '-', description: 'Enables an addon object on one editor; returns the function that removes it.' },
+            { name: 'emoji-insert / history-restore / ai-request / ai-result / ai-error / image-upload-start / image-upload-complete / image-upload-error / file-import-start / file-import-complete / file-import-error', type: 'events', default: '-', description: 'What the addons report through the editor, among others.' },
+        ],
+    },
+    {
         id: 'badge',
         group: 'Display',
         name: 'Badge',

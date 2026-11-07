@@ -110,6 +110,8 @@ import '@gilav21/elements/chat-input/define';
 import '@gilav21/elements/tour/define';
 import '@gilav21/elements/rich-text-editor/define';
 import '@gilav21/elements/rich-text-editor/locales/he';
+import '@gilav21/elements/rich-text-editor/addons/full/define';
+import { bindRichTextActions } from '@gilav21/elements/rich-text-editor/addons/actions';
 import '@gilav21/elements/blur-fade/define';
 import '@gilav21/elements/flip-text/define';
 import '@gilav21/elements/gradient-text/define';
@@ -162,6 +164,7 @@ const demos = [...allDemos].sort((a, b) => groupRank(a) - groupRank(b) || a.name
 
 (globalThis as { geToast?: typeof toast }).geToast = toast;
 (globalThis as { geRegisterIcons?: typeof registerIcons }).geRegisterIcons = registerIcons;
+(globalThis as { geBindRichTextActions?: typeof bindRichTextActions }).geBindRichTextActions = bindRichTextActions;
 
 // The sample actions the "Shortcut bindings dialog" page lists; any `ge-command-dialog` or `ge-kanban` on screen joins them.
 shortcutBindings.registerComponent(

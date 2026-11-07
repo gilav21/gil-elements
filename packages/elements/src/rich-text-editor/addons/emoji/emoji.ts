@@ -2,7 +2,7 @@ import { html } from 'lit';
 import { ref } from 'lit/directives/ref.js';
 import { defineAddon, resolveAddonLocale } from '../../rich-text-addon-kit.js';
 import type { RichTextAddonOptions } from '../../rich-text-host.js';
-import { registerPopoverButton, triggerButton } from '../../rich-text-popover-button.js';
+import { registerPopoverButton, triggerButton } from '../shared-popover-button.js';
 import { RICH_TEXT_EMOJI_LOCALES, type RichTextEmojiLocale } from './emoji-locale.js';
 
 export const EMOJI_SLOT_ID = 'emoji.insert';

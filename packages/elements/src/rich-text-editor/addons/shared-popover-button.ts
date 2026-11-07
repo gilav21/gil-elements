@@ -1,8 +1,8 @@
 import { html, nothing, render, type TemplateResult } from 'lit';
 import { createRef, type Ref } from 'lit/directives/ref.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
-import type { RichTextAddonHost, RichTextExclusivePopover } from './rich-text-host.js';
-import type { Disposables } from './rich-text-registry.js';
+import type { RichTextAddonHost, RichTextExclusivePopover } from '../rich-text-host.js';
+import type { Disposables } from '../rich-text-registry.js';
 
 type PopoverElement = HTMLElement & { hide(): void };
 

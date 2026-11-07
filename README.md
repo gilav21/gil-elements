@@ -26,6 +26,23 @@ A headless `core` package is added when the first component needs shared behavio
 
 Importing a class (`@gilav21/elements/badge`) never registers a tag; importing `.../define` does.
 
+## Rich text editor
+
+`ge-rich-text-editor` is a form-associated editor with Markdown or sanitized HTML `value`, a toolbar (top or floating), find and replace, tables, lists, code blocks and Markdown shortcuts. Its editable area is in the **light DOM**, so the element must live in the document tree (not inside another shadow root).
+
+```html
+<script type="module">
+  import '@gilav21/elements/rich-text-editor/define';
+  import '@gilav21/elements/rich-text-editor/addons/links/define';
+  import '@gilav21/elements/rich-text-editor/addons/slash-commands/define';
+</script>
+<ge-rich-text-editor mode="html" addons="links slash-commands"></ge-rich-text-editor>
+```
+
+- **Addons are opt-in modules.** Import an addon's `define` module, then list its id in `addons` (or call `editor.use(addon, options)`). Ids: `history slash-commands mentions ai typography colors links images tables file-import emoji actions outline`. Import `@gilav21/elements/rich-text-editor/addons/full/define` and write `addons="full"` to enable all of them. Options are keyed by addon id in `.addonOptions` (`{ mentions: { search }, ai: { provider }, images: { upload: { uploader } } }`); `false` switches an addon off. Addons that need configuration stay inactive until they get it. Write your own with `defineAddon` from `@gilav21/elements/rich-text-editor`.
+- **Locales are opt-in modules.** Import `@gilav21/elements/rich-text-editor/locales/he` (also `ar de fr es ja zh ru pt`), then set `locale="he"`; `dir` follows. Every addon carries its own translations.
+- **Events:** `value-change`, `word-count-change`, `history-change`, `image-blocked`, `custom-toolbar-action`, plus native `input`, `change`, `focus`, `blur`. Addons add `emoji-insert`, `history-restore`, `ai-request`, `ai-result`, `ai-error`, `image-upload-start`, `image-upload-complete`, `image-upload-error`, `file-import-start`, `file-import-complete`, `file-import-error`, `action-attached`, `action-removed`, `font-family-select`, `font-size-select`, `link-remove`. Rendered content saved with actions comes alive with `bindRichTextActions(container, { handlers })` from `.../rich-text-editor/addons/actions`.
+
 ## Develop
 
 ```bash

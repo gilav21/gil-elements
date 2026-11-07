@@ -671,19 +671,21 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         }
         for (const [id, active] of [...this.activeAddons]) {
             const entry = wanted.get(id);
-            if (entry && this.optionsFor(id, entry.options) === active.options) continue;
+            if (entry && this.optionsFor(id, entry) === active.options) continue;
             active.teardown?.();
             this.activeAddons.delete(id);
         }
         for (const [id, { addon, options }] of wanted) {
-            const resolved = this.optionsFor(id, options);
+            const resolved = this.optionsFor(id, { addon, options });
             if (resolved === false || this.activeAddons.has(id)) continue;
             this.activeAddons.set(id, { teardown: addon.setup(this, resolved), options: resolved });
         }
     }
 
-    private optionsFor(id: string, own: unknown): unknown {
-        return this.addonOptions[id] === false ? false : (own ?? this.addonOptions[id]);
+    private optionsFor(id: string, { addon, options }: { addon: RichTextAddon; options?: unknown }): unknown {
+        if (this.addonOptions[id] === false) return false;
+        if (addon.bundle) return this.addonOptions;
+        return options ?? this.addonOptions[id];
     }
 
     private registerCustomItems(): void {

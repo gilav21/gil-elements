@@ -3,7 +3,7 @@ import { ref } from 'lit/directives/ref.js';
 import { defineAddon, resolveAddonLocale } from '../../rich-text-addon-kit.js';
 import type { RichTextAddonHost, RichTextAddonOptions } from '../../rich-text-host.js';
 import type { Disposables } from '../../rich-text-registry.js';
-import { registerPopoverButton, triggerButton, type PopoverButtonView } from '../../rich-text-popover-button.js';
+import { registerPopoverButton, triggerButton, type PopoverButtonView } from '../shared-popover-button.js';
 import { RICH_TEXT_TYPOGRAPHY_LOCALES, type RichTextTypographyLocale } from './typography-locale.js';
 import css from './typography.css?inline';
 

@@ -5,7 +5,7 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { formatHex, parseColor } from '../../../shared/color.js';
 import { defineAddon, resolveAddonLocale } from '../../rich-text-addon-kit.js';
 import type { RichTextAddonHost, RichTextAddonOptions, RichTextInlineStyle } from '../../rich-text-host.js';
-import { registerPopoverButton, triggerButton, type PopoverButtonView } from '../../rich-text-popover-button.js';
+import { registerPopoverButton, triggerButton, type PopoverButtonView } from '../shared-popover-button.js';
 import type { Disposables } from '../../rich-text-registry.js';
 import {
     DEFAULT_COLOR_PALETTE,
