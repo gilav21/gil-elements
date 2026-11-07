@@ -108,6 +108,8 @@ import '@gilav21/elements/chat-message/define';
 import '@gilav21/elements/chat-list/define';
 import '@gilav21/elements/chat-input/define';
 import '@gilav21/elements/tour/define';
+import '@gilav21/elements/rich-text-editor/define';
+import '@gilav21/elements/rich-text-editor/locales/he';
 import '@gilav21/elements/blur-fade/define';
 import '@gilav21/elements/flip-text/define';
 import '@gilav21/elements/gradient-text/define';

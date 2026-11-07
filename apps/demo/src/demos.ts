@@ -51,6 +51,90 @@ const SB_TILE = (variant: string, collapsible: string, name: string) => `<div st
 
 export const demos: Demo[] = [
     {
+        id: 'rich-text-editor',
+        group: 'Form inputs',
+        name: 'Rich text editor',
+        tag: 'ge-rich-text-editor',
+        description: 'A form-associated rich text editor. `value` is Markdown (or HTML with `mode="html"`); the toolbar, find and replace, tables, lists, task lists, code blocks and Markdown shortcuts (type `# `, `- `, `> `, `**bold**`) are built in. Addons plug in as separate modules.',
+        examples: [
+            {
+                title: 'Markdown with a toolbar',
+                note: 'Edits fire `value-change` with `{ value, html, markdown }`. Writing `value` yourself never does. Try `Ctrl+B`, `Ctrl+F`, `Ctrl+Z`, a table from the toolbar, or typing `## ` at the start of a line.',
+                block: true,
+                html: `<ge-rich-text-editor id="rte1" counter="both" placeholder="Write something..." style="display:block;max-width:44rem"></ge-rich-text-editor>
+<pre id="rte1-out" style="margin-top:.75rem;max-height:9rem;overflow:auto;font-size:.8rem"></pre>
+<script>(() => {
+  const rte = document.getElementById('rte1');
+  const out = document.getElementById('rte1-out');
+  rte.value = '# Hello\\n\\nThis is **bold**, *italic* and \`code\`.\\n\\n- one\\n- two\\n\\n- [ ] a task\\n- [x] a done task';
+  const show = () => { out.textContent = rte.markdownOutput; };
+  rte.addEventListener('value-change', show);
+  show();
+})();</script>`,
+            },
+            {
+                title: 'Floating toolbar, HTML mode',
+                note: '`toolbar="floating"` shows a compact bar next to a selection. `mode="html"` makes `value` HTML (sanitized). Select some text.',
+                block: true,
+                html: `<ge-rich-text-editor id="rte2" mode="html" toolbar="floating" min-height="8rem" style="display:block;max-width:44rem"></ge-rich-text-editor>
+<script>document.getElementById('rte2').value = '<p>Select a few words to format them.</p><blockquote><p>A quote</p></blockquote><p>Press Enter twice in a list to leave it.</p>';</script>`,
+            },
+            {
+                title: 'In a form: required, word and length limits',
+                note: 'The editor is form-associated: `required`, `min-words` and `max-length` set its validity, and its value is submitted under `name`.',
+                block: true,
+                html: `<form id="rte3-form" style="display:grid;gap:.75rem;max-width:44rem">
+  <ge-rich-text-editor name="story" required min-words="5" max-length="200" counter="characters" placeholder="At least five words, at most 200 characters"></ge-rich-text-editor>
+  <div style="display:flex;gap:.5rem;align-items:center">
+    <ge-button type="submit">Submit</ge-button>
+    <ge-button type="reset" variant="outline">Reset</ge-button>
+    <span id="rte3-status" style="font-size:.875rem;color:var(--muted-foreground)"></span>
+  </div>
+</form>
+<script>(() => {
+  const form = document.getElementById('rte3-form');
+  const status = document.getElementById('rte3-status');
+  const rte = form.querySelector('ge-rich-text-editor');
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    status.textContent = rte.checkValidity() ? 'Submitted ' + String(new FormData(form).get('story')).length + ' characters' : rte.validationMessage;
+  });
+})();</script>`,
+            },
+            {
+                title: 'Right-to-left, with a locale',
+                note: 'Locales are opt-in modules: this page imports `@gilav21/elements/rich-text-editor/locales/he`. `dir` follows the locale.',
+                block: true,
+                html: `<ge-rich-text-editor locale="he" placeholder="כתבו משהו..." style="display:block;max-width:44rem"></ge-rich-text-editor>`,
+            },
+            {
+                title: 'Read-only and disabled',
+                note: '`readonly` keeps the text selectable and hides the toolbar; `disabled` blocks everything and dims it.',
+                block: true,
+                html: `<div style="display:grid;gap:.75rem;max-width:44rem">
+  <ge-rich-text-editor id="rte5a" readonly></ge-rich-text-editor>
+  <ge-rich-text-editor id="rte5b" disabled></ge-rich-text-editor>
+</div>
+<script>document.getElementById('rte5a').value = document.getElementById('rte5b').value = '**Read only.** You can select this text but not change it.';</script>`,
+            },
+        ],
+        api: [
+            { name: 'value / mode', type: "string / 'markdown' | 'html'", default: "'' / 'markdown'", description: 'The content, in the `mode` format. Writing `value` replaces the content without firing `value-change`.' },
+            { name: 'toolbar', type: "'top' | 'floating' | 'none'", default: "'top'", description: 'Where the formatting toolbar goes. `readonly` hides it.' },
+            { name: 'counter', type: "'characters' | 'words' | 'both'", default: '-', description: 'A live counter below the editor.' },
+            { name: 'name / required / min-words / max-length', type: 'form', default: '-', description: 'Form field name and validity rules. `max-length` is advisory while typing and enforced by validity.' },
+            { name: 'placeholder / min-height / max-height', type: 'string', default: "- / '120px' / '400px'", description: 'Hint while empty and the editable area size limits.' },
+            { name: 'readonly / disabled', type: 'boolean', default: 'false', description: 'Selectable but not editable / blocked and dimmed.' },
+            { name: 'markdown-shortcuts', type: 'boolean', default: 'true', description: '`false` turns typed Markdown markers off.' },
+            { name: 'locale / dir', type: 'string', default: "'en'", description: 'A locale id (import its module first) or a `RichTextLocale` object through the property; `dir` follows the locale unless set.' },
+            { name: 'allowed-image-hosts / allowed-link-schemes', type: 'string', default: '-', description: 'Resource policy: hosts remote images may load from, extra link schemes.' },
+            { name: 'toolbarItems / customToolbarItems / history / addons', type: 'properties', default: '-', description: 'Toolbar contents, custom buttons, undo-stack options and the ids of registered addons to enable.' },
+            { name: 'focus() / insertText() / insertHtml() / format(cmd) / undo() / redo() / setContent() / markClean() / isEmpty()', type: 'methods', default: '-', description: 'The imperative API. Inserts are sanitized and each is one undo step.' },
+            { name: 'htmlOutput / markdownOutput / characterCount / wordCount / isDirty / canUndo / canRedo', type: 'getters', default: '-', description: 'Derived state, current right after any write.' },
+            { name: 'value-change / word-count-change / history-change / image-blocked / custom-toolbar-action', type: 'events', default: '-', description: '`value-change` carries `{ value, html, markdown }`. Native `input`, `change`, `focus` and `blur` fire too.' },
+        ],
+    },
+    {
         id: 'badge',
         group: 'Rung 1 · Static',
         name: 'Badge',
