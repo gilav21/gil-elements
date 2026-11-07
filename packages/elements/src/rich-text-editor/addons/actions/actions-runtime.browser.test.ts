@@ -64,6 +64,29 @@ describe('bindRichTextActions', () => {
         expect(phases).toEqual(['start']);
     });
 
+    it('never runs names inherited from Object.prototype as handlers, and still reaches the catch-all', () => {
+        const catchAll = vi.fn();
+        for (const id of ['__proto__', '__defineGetter__', 'constructor', 'toString']) {
+            const el = container(`<span data-action-click="${id}">t</span>`);
+            bind(el, { handlers: { '*': catchAll } });
+            expect(() => first(el).click()).not.toThrow();
+        }
+        expect(catchAll).toHaveBeenCalledTimes(4);
+    });
+
+    it('keeps decorating after the content is swapped repeatedly (elements that left are dropped from the bookkeeping)', async () => {
+        const el = container('<span data-action-click="a">one</span>');
+        bind(el, { handlers: {} });
+        const gone = first(el);
+        el.innerHTML = '<span data-action-click="b">two</span>';
+        await new Promise((resolve) => setTimeout(resolve));
+        expect(first(el).getAttribute('tabindex')).toBe('0');
+        el.innerHTML = '<span data-action-click="c">three</span>';
+        await new Promise((resolve) => setTimeout(resolve));
+        expect(gone.isConnected).toBe(false);
+        expect(first(el).getAttribute('tabindex')).toBe('0');
+    });
+
     it('fires specific handler before catch-all', () => {
         const el = container('<span data-action-click="a">t</span>');
         const order: string[] = [];

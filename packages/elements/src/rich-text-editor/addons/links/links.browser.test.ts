@@ -184,6 +184,19 @@ describe('links addon: inserting', () => {
         expect(editableOf(editor).querySelector('a')?.textContent).toBe('https://only-url.com');
     });
 
+    it('clears the invalid-url message as soon as the url is edited', async () => {
+        const editor = await linkEditor('<p>safe</p>');
+        select(editableOf(editor).firstElementChild!);
+        await openFromToolbar(editor);
+        await fill(editor, 'evil', 'javascript:alert(1)');
+        await confirm(editor);
+        expect(errorOf(editor)).toBe(EN.invalidUrl);
+
+        await fill(editor, 'evil', 'https://safe.test');
+        expect(errorOf(editor)).toBe('');
+        expect(fieldOf(editor, 'url').hasAttribute('aria-describedby')).toBe(false);
+    });
+
     it('rejects a javascript: url, inserts nothing and says so', async () => {
         const editor = await linkEditor('<p>safe</p>');
         const inserted = record(editor, 'link-insert');

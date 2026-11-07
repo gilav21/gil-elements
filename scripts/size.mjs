@@ -24,7 +24,8 @@ function* walk(dir) {
 }
 
 function loadedBy(file, seen = new Set()) {
-    if (seen.has(file)) return seen;
+    // The text match also catches `from './x'` inside strings and comments: only real files count.
+    if (seen.has(file) || !statSync(file, { throwIfNoEntry: false })?.isFile()) return seen;
     seen.add(file);
     for (const match of readFileSync(file, 'utf8').matchAll(STATIC_IMPORT)) loadedBy(resolve(dirname(file), match[1]), seen);
     return seen;

@@ -178,7 +178,13 @@ export class LinkEditor {
                     placeholder=${locale.urlPlaceholder}
                     .value=${form.url}
                     ${ref(this.focusField)}
-                    @input=${(event: Event) => { form.url = (event.currentTarget as GeInput).value; }}
+                    @input=${(event: Event) => {
+                        form.url = (event.currentTarget as GeInput).value;
+                        if (form.error) {
+                            form.error = '';
+                            this.host.invalidate();
+                        }
+                    }}
                     @keydown=${submitOnEnter}
                 ></ge-input>
             </label>
@@ -201,7 +207,7 @@ export class LinkEditor {
 
     private readonly focusField = (element?: Element): void => {
         const field = element as GeInput | undefined;
-        field?.updateComplete.then(() => field.focus()).catch(() => undefined);
+        field?.updateComplete.then(() => field.focus()).catch((error: unknown) => console.error('[ge-rich-text-editor] could not focus the link field', error));
     };
 
     private show(seed: Pick<LinkForm, 'text' | 'url' | 'anchor'>, placement: Placement): void {

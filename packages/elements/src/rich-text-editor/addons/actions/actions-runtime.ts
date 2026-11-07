@@ -51,6 +51,7 @@ export function bindRichTextActions(container: HTMLElement, options: BindRichTex
     let tapHoverEl: HTMLElement | null = null;
 
     const decorate = (): void => {
+        for (const el of decorated) if (!container.contains(el)) decorated.delete(el);
         for (const el of container.querySelectorAll<HTMLElement>(ACTIONED)) {
             if (!decorated.has(el)) decorateElement(el, a11y, decorateClass);
             decorated.add(el);
@@ -125,7 +126,8 @@ function emit(
     if (!actionId) return;
     const params = readActions(el).find((a) => a.trigger === trigger)?.params ?? {};
     const event: RichTextActionEvent = { actionId, trigger, params, element: el, domEvent, phase };
-    options.handlers[actionId]?.(event);
+    // The id comes from content: only the app's own handlers count, never names inherited from Object.prototype.
+    if (Object.hasOwn(options.handlers, actionId)) options.handlers[actionId]?.(event);
     options.handlers['*']?.(event);
 }
 

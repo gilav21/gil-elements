@@ -259,6 +259,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     private readonly replacedHooks = new Set<() => void>();
     private readonly providers: Partial<RichTextProviders> = {};
     private readonly usedAddons = new Map<string, { addon: RichTextAddon; options?: unknown }>();
+    private addonSettings: Readonly<Record<string, unknown>> = {};
     private readonly activeAddons = new Map<string, { teardown: void | (() => void); options: unknown }>();
     private readonly markdownMemo = this.memo((source) => this.markdown.toMarkdown(source));
     private readonly countsMemo = this.memo((source) => {
@@ -506,6 +507,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         this.syncEditable();
         if (changed.has('theme')) setAttribute(this, THEME_ATTRIBUTE, this.theme ?? null);
         if (changed.has('customToolbarItems')) this.registerCustomItems();
+        if (changed.has('addonOptions')) this.mergeAddonSettings();
         if (changed.has('addons') || changed.has('addonOptions')) this.syncAddons();
         if (this.ready && (changed.has('allowedImageHosts') || changed.has('allowedLinkSchemes'))) this.rejudge();
         if (this.ready && changed.has('locale')) this.bus.emit('locale');
@@ -551,6 +553,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         listen('dragleave', this.onDragLeave);
         listen('drop', this.onDrop);
         for (const controller of this.controllers) controller.attach();
+        this.mergeAddonSettings();
         this.syncAddons();
     }
 
@@ -654,46 +657,53 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     /** Enables an addon on this editor, now and on every reconnect; the returned function removes it. */
     use(addon: RichTextAddon, options?: unknown): () => void {
         this.usedAddons.set(addon.id, { addon, options });
+        this.mergeAddonSettings();
         this.syncAddons();
         return () => {
             this.usedAddons.delete(addon.id);
+            this.mergeAddonSettings();
             this.syncAddons();
         };
+    }
+
+    /** `addonOptions` with the options given to `use()` on top. Rebuilt only when either changes, so an addon keeps the identity of its options between syncs. */
+    private mergeAddonSettings(): void {
+        const used = [...this.usedAddons].flatMap(([id, { options }]) => (options === undefined ? [] : [[id, options] as const]));
+        this.addonSettings = { ...this.addonOptions, ...Object.fromEntries(used) };
     }
 
     private syncAddons(): void {
         if (!this.started) return;
         const wanted = this.wantedAddons();
         for (const [id, active] of this.activeAddons) {
-            const entry = wanted.get(id);
-            if (entry && this.optionsFor(id, entry) === active.options) continue;
+            const addon = wanted.get(id);
+            if (addon && this.optionsFor(id, addon) === active.options) continue;
             active.teardown?.();
             this.activeAddons.delete(id);
         }
-        for (const [id, { addon, options }] of wanted) {
-            const resolved = this.optionsFor(id, { addon, options });
-            if (resolved === false || this.activeAddons.has(id)) continue;
-            this.activeAddons.set(id, { teardown: addon.setup(this, resolved), options: resolved });
+        for (const [id, addon] of wanted) {
+            const options = this.optionsFor(id, addon);
+            if (options === false || this.activeAddons.has(id)) continue;
+            this.activeAddons.set(id, { teardown: addon.setup(this, options), options });
         }
     }
 
     /** The used and listed addons, once per id; an enabled bundle stands in for the ids it covers. */
-    private wantedAddons(): Map<string, { addon: RichTextAddon; options?: unknown }> {
-        const wanted = new Map(this.usedAddons);
+    private wantedAddons(): Map<string, RichTextAddon> {
+        const wanted = new Map([...this.usedAddons].map(([id, { addon }]) => [id, addon]));
         for (const id of new Set(this.addons.split(/[\s,]+/).filter(Boolean))) {
             const addon = GeRichTextEditor.addonRegistry.get(id);
-            if (addon) wanted.set(id, { addon });
+            if (addon) wanted.set(id, addon);
             else console.warn(`[ge-rich-text-editor] unknown addon "${id}": import its define module first.`);
         }
-        const bundles = [...wanted].filter(([id, entry]) => entry.addon.covers && this.optionsFor(id, entry) !== false);
-        for (const [, { addon }] of bundles) for (const covered of addon.covers ?? []) wanted.delete(covered);
+        const bundles = [...wanted.entries()].filter(([id, addon]) => addon.covers && this.optionsFor(id, addon) !== false);
+        for (const [, bundle] of bundles) for (const covered of bundle.covers ?? []) wanted.delete(covered);
         return wanted;
     }
 
-    private optionsFor(id: string, { addon, options }: { addon: RichTextAddon; options?: unknown }): unknown {
-        if (this.addonOptions[id] === false) return false;
-        if (addon.covers) return this.addonOptions;
-        return options ?? this.addonOptions[id];
+    private optionsFor(id: string, addon: RichTextAddon): unknown {
+        if (this.addonSettings[id] === false) return false;
+        return addon.covers ? this.addonSettings : this.addonSettings[id];
     }
 
     private registerCustomItems(): void {

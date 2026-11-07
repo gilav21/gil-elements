@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { editorIn } from '../../rich-text-editor.fixture.test.js';
 import type { GeRichTextEditor } from '../../rich-text-editor.js';
+import { aiAddon } from '../ai/ai.js';
 import { linksAddon } from '../links/links.js';
 import './define.js';
 import { RICH_TEXT_FULL_ADDONS } from './index.js';
@@ -100,6 +101,18 @@ describe('the full addon bundle', () => {
             await editor.updateComplete;
             expect(linkSlots(editor)).toHaveLength(1);
             expect(slotsOf(editor)).toHaveLength(SLOTS.length);
+        });
+
+        it('keeps the options given to use() when the same id is also listed', async () => {
+            const editor = await mount('addons="links"');
+            editor.use(linksAddon, { toolbar: false });
+            expect(linkSlots(editor)).toHaveLength(0);
+        });
+
+        it('hands a bundle the options given to use() for an addon it covers', async () => {
+            const editor = await mount('addons="full"');
+            editor.use(aiAddon, { provider: () => 'reply' });
+            expect(editor.commands.listCommands().map((command) => command.id)).toContain('insert.ai');
         });
 
         it('keeps a listed addon when full itself is switched off', async () => {
