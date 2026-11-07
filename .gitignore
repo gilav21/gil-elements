@@ -11,3 +11,4 @@ parity/out
 packages/.env
 .scannerwork
 .playwright-mcp
+parity/.cache
