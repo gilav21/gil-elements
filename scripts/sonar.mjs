@@ -21,7 +21,8 @@ if (!token) {
 
 // vitest writes `SF:packages\base\...` on Windows; the Linux scanner container needs forward slashes.
 // A failing test is reported but does not stop the analysis: the scan reads code, tests only feed its coverage number.
-if (!process.argv.includes('--skip-tests') && spawnSync('pnpm', ['run', 'test:coverage'], { stdio: 'inherit', shell: true }).status !== 0) {
+const vitest = ['node_modules/vitest/vitest.mjs', '--run', '--coverage', '--coverage.reportOnFailure'];
+if (!process.argv.includes('--skip-tests') && spawnSync(process.execPath, vitest, { stdio: 'inherit' }).status !== 0) {
     console.warn('Tests failed: scanning anyway, coverage may be partial. Fix the tests before merging.');
 }
 
