@@ -941,3 +941,29 @@ ui-field-mapper {
         padding-inline: 1.75rem calc(0.75rem * var(--_d));
     }
 }
+
+/* shadcn-angular sheet/sub/sheet-content.component.css and alert-dialog/sub/alert-dialog-content.component.css (selectors adapted from :host to data-slot) */
+[data-slot="sheet-content"] {
+    --_d: var(--density-sheet, var(--density, 1));
+}
+[data-slot="alert-dialog-content"] {
+    --_d: var(--density-alert-dialog, var(--density, 1));
+}
+@layer components {
+    [data-slot="sheet-content"] {
+        padding: calc(1rem * var(--_d));
+    }
+    [data-slot="alert-dialog-content"] {
+        gap: calc(0.75rem * var(--_d));
+        padding: calc(1rem * var(--_d));
+    }
+    @media (min-width: 640px) {
+        [data-slot="sheet-content"] {
+            padding: calc(1.5rem * var(--_d));
+        }
+        [data-slot="alert-dialog-content"] {
+            gap: calc(1rem * var(--_d));
+            padding: calc(1.5rem * var(--_d));
+        }
+    }
+}

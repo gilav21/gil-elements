@@ -22,6 +22,7 @@ export type SheetSide = 'top' | 'bottom' | 'left' | 'right';
  * @attr {string} description - Simple-mode text under the title; only shown when `heading` is set.
  * @attr {string} close-label - Accessible name of the close button. Defaults to "Close".
  * @csspart panel - The panel.
+ * @cssprop --density-sheet - Spacing multiplier for the panel's padding; falls back to `--density`.
  */
 export class GeSheetContent extends UiElement {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];

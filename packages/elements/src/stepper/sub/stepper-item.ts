@@ -17,7 +17,8 @@ export interface StepperItemHost {
 
 /**
  * One step. Holds a `ge-stepper-trigger` and, optionally, a `ge-stepper-content` that shows while this step is
- * current. Between steps it draws the connecting line itself.
+ * current. Between steps it draws the connecting line itself, unless a `ge-stepper-separator` is placed in the item:
+ * that is then the line, drawn wherever it sits, and the item draws none.
  *
  * @slot - A `ge-stepper-trigger`, a `ge-stepper-separator` and a `ge-stepper-content`.
  * @attr {string} value - Identifies the step. Required.
@@ -63,10 +64,13 @@ export class GeStepperItem extends UiElement implements StepperItemHost {
     register(part: StepperPart): void {
         this.parts.add(part);
         part.requestUpdate();
+        // A separator among the parts changes whether the item draws its own connector.
+        if (part.localName === 'ge-stepper-separator') this.requestUpdate();
     }
 
     unregister(part: StepperPart): void {
         this.parts.delete(part);
+        if (part.localName === 'ge-stepper-separator') this.requestUpdate();
     }
 
     protected override updated(): void {
@@ -76,6 +80,8 @@ export class GeStepperItem extends UiElement implements StepperItemHost {
     protected override render() {
         const orientation = this.stepper?.orientation ?? 'horizontal';
         const last = this.index === (this.stepper?.count() ?? 1) - 1;
-        return html`<div class="item" data-slot="stepper-item" data-status=${this.status} data-orientation=${orientation}><slot></slot></div>${last ? nothing : html`<div class="connector" data-orientation=${orientation} data-status=${this.status}></div>`}`;
+        // A projected separator is the consumer drawing the line, so the auto connector steps aside: one bar per gap.
+        const noConnector = last || [...this.parts].some((part) => part.localName === 'ge-stepper-separator');
+        return html`<div class="item" data-slot="stepper-item" data-status=${this.status} data-orientation=${orientation}><slot></slot></div>${noConnector ? nothing : html`<div class="connector" data-orientation=${orientation} data-status=${this.status}></div>`}`;
     }
 }

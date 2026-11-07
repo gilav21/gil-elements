@@ -1,6 +1,6 @@
 // shadcn-angular sheet.component.ts (sheetVariants), sub/sheet-content.component.ts and the sub/ parts.
 // The case wrapper has will-change: transform, so the fixed overlay fills the wrapper instead of the viewport.
-const BASE = 'fixed z-50 gap-4 bg-background p-4 sm:p-6 shadow-lg transition ease-in-out overflow-y-auto';
+const BASE = 'fixed z-50 bg-background shadow-lg transition ease-in-out overflow-y-auto';
 const SIDE = {
     top: 'inset-x-0 top-0 border-b',
     bottom: 'inset-x-0 bottom-0 border-t',

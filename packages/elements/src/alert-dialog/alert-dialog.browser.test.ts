@@ -28,6 +28,22 @@ const open = async (page: HTMLElement) => {
     await settle(page);
 };
 
+describe('ge-alert-dialog density', () => {
+    it('scales the box padding and gap with --density, and --density-alert-dialog wins', async () => {
+        const measure = async (style: string) => {
+            const page = await mount(SIMPLE.replace('<ge-alert-dialog-content ', `<ge-alert-dialog-content style="${style}" `));
+            await open(page);
+            const css = getComputedStyle(inner(page, '.panel')!);
+            return [Number.parseFloat(css.paddingTop), Number.parseFloat(css.rowGap)];
+        };
+        const [padding, gap] = await measure('');
+        const [doubled, doubledGap] = await measure('--density:2');
+        const [halved, halvedGap] = await measure('--density:2;--density-alert-dialog:0.5');
+        expect([doubled, doubledGap]).toEqual([padding * 2, gap * 2]);
+        expect([halved, halvedGap]).toEqual([padding / 2, gap / 2]);
+    });
+});
+
 describe('ge-alert-dialog', () => {
     it('opens as an alertdialog with generated Cancel and Continue and no close button, and focuses the first choice', async () => {
         const page = await mount(SIMPLE);

@@ -22,6 +22,7 @@ import css from './alert-dialog-content.css?inline';
  * @fires action-click - The generated confirm button was clicked (the dialog closes too).
  * @fires cancel-click - The generated cancel button was clicked (the dialog closes too).
  * @csspart panel - The box.
+ * @cssprop --density-alert-dialog - Spacing multiplier for the box's padding and gap; falls back to `--density`.
  */
 export class GeAlertDialogContent extends UiElement {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];

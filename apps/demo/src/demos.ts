@@ -1736,6 +1736,7 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
             { name: 'content: heading / description', type: 'string', default: "''", description: 'Simple mode header; setting `heading` also generates the footer.' },
             { name: 'content: action-text / cancel-text', type: 'string', default: "'Continue' / 'Cancel'", description: 'Labels of the generated buttons.' },
             { name: 'content: action-click / cancel-click', type: 'event', default: '-', description: 'The generated button was clicked; the dialog closes too. Slotted `ge-alert-dialog-action` and `-cancel` close it as well: listen to `click` on them.' },
+            { name: '--density-alert-dialog', type: 'css', default: '--density', description: 'Spacing multiplier for the box padding and gap.' },
         ],
     },
     {
@@ -1791,6 +1792,7 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
             { name: 'content: side', type: "'top' | 'bottom' | 'left' | 'right'", default: "'right'", description: 'Edge it slides from. Left and right follow the text direction.' },
             { name: 'content: heading / description / close-label', type: 'string', default: "'' / '' / 'Close'", description: 'Simple mode header and the close button name.' },
             { name: 'ge-sheet-close', type: 'element', default: '-', description: 'Closes the sheet when clicked; wrap a button of your own.' },
+            { name: '--density-sheet', type: 'css', default: '--density', description: 'Spacing multiplier for the panel padding.' },
         ],
     },
     {
@@ -2410,6 +2412,8 @@ for (const [id, label, range] of [['rz-a', 'Left', '20–60%'], ['rz-b', 'Right'
             { name: 'content: no-restore-focus', type: 'boolean', default: 'false', description: 'Does not return focus to the trigger on close.' },
             { name: 'content: strategy', type: "'absolute' | 'fixed'", default: "'absolute'", description: '`fixed` renders in the browser top layer.' },
             { name: '--density-popover', type: 'css', default: '--density', description: 'Spacing multiplier for the panel padding.' },
+            { name: '--popover-offset', type: 'css', default: 'side-offset', description: 'Gap between trigger and panel. `side-offset` supplies it; set it on `ge-popover-content::part(panel)` to override. Not inherited.' },
+            { name: '--trigger-width', type: 'css', default: '-', description: 'Set on the open panel to the trigger\'s width, so it can match it with `width: var(--trigger-width)`.' },
         ],
     },
     {

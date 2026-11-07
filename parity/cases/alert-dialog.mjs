@@ -1,6 +1,6 @@
 // shadcn-angular alert-dialog.component.ts, sub/alert-dialog-content.component.ts and the sub/ parts.
 // The case wrapper has will-change: transform, so the fixed overlay fills the wrapper instead of the viewport.
-const PANEL = 'fixed z-50 grid w-full max-w-[calc(100vw-2rem)] sm:max-w-lg gap-3 sm:gap-4 border bg-background p-4 sm:p-6 shadow-lg duration-200 sm:rounded-lg';
+const PANEL = 'fixed z-50 grid w-full max-w-[calc(100vw-2rem)] sm:max-w-lg border bg-background shadow-lg duration-200 sm:rounded-lg';
 const CANCEL = 'inline-flex items-center justify-center rounded-md border border-input bg-background text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 mt-2 sm:mt-0';
 const ACTION = 'inline-flex items-center justify-center rounded-md bg-primary text-sm font-medium text-primary-foreground ring-offset-background transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
 

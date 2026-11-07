@@ -57,3 +57,25 @@ export function flippedSide(side: 'top' | 'bottom', panel: DOMRect, anchor: DOMR
     if (side === 'top' && panel.top < bounds.top && bounds.bottom - anchor.bottom >= panel.height) return 'bottom';
     return side;
 }
+
+/** How far to move an overflowing panel along y to leave {@link EDGE_GAP} to the edge; the top edge wins when it cannot fit. A panel that fits is left alone. */
+export function verticalNudge(panel: DOMRect, bounds: DOMRect): number {
+    const down = bounds.top + EDGE_GAP - panel.top;
+    if (panel.top < bounds.top) return down;
+    // Moving up never goes past the point where the top edge meets the gap: a panel taller than the screen keeps its start.
+    return panel.bottom > bounds.bottom ? Math.min(0, Math.max(bounds.bottom - EDGE_GAP - panel.bottom, down)) : 0;
+}
+
+/**
+ * {@link flippedSide} for a panel hung from a point in the viewport. When it overflows it also flips if neither side
+ * fits but the opposite one is roomier, because the clamp that follows would otherwise pin it over its trigger.
+ * `offset` is the gap between the trigger and the panel.
+ */
+export function flippedSideByRoom(side: 'top' | 'bottom', panel: DOMRect, anchor: DOMRect, bounds: DOMRect, offset: number): 'top' | 'bottom' {
+    const overflows = side === 'bottom' ? panel.bottom > bounds.bottom : panel.top < bounds.top;
+    if (!overflows) return side;
+    const below = bounds.bottom - anchor.bottom;
+    const above = anchor.top - bounds.top;
+    const [here, there] = side === 'bottom' ? [below, above] : [above, below];
+    return there >= panel.height + offset || there > here ? (side === 'bottom' ? 'top' : 'bottom') : side;
+}
