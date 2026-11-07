@@ -58,11 +58,12 @@ export function flippedSide(side: 'top' | 'bottom', panel: DOMRect, anchor: DOMR
     return side;
 }
 
-/** How far to move a panel along y so it ends up inside `bounds`, with {@link EDGE_GAP} to spare. */
+/** How far to move a panel along y so it ends up inside `bounds`, with {@link EDGE_GAP} to spare; the top edge wins when it cannot fit. */
 export function verticalNudge(panel: DOMRect, bounds: DOMRect): number {
-    if (panel.bottom > bounds.bottom) return bounds.bottom - panel.bottom - EDGE_GAP;
-    if (panel.top < bounds.top) return bounds.top - panel.top + EDGE_GAP;
-    return 0;
+    const down = bounds.top + EDGE_GAP - panel.top;
+    if (panel.top < bounds.top) return down;
+    // Moving up never goes past the point where the top edge meets the gap: a panel taller than the screen keeps its start.
+    return panel.bottom > bounds.bottom ? Math.max(bounds.bottom - EDGE_GAP - panel.bottom, down) : 0;
 }
 
 /**

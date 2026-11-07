@@ -30,7 +30,7 @@ interface Placement {
  * @attr {boolean} no-restore-focus - Does not return focus to the trigger on close.
  * @attr {string} strategy - `absolute` (default) or `fixed`.
  * @csspart panel - The panel.
- * @cssprop --popover-offset - The gap to the trigger. Set from `side-offset`; a rule of yours can override it, and 4px applies when it is unset.
+ * @cssprop --popover-offset - The gap to the trigger. `side-offset` supplies it; setting this property on the content or its `panel` part overrides that.
  * @cssprop --trigger-width - The trigger's width, set on the open panel so it can match it (`width: var(--trigger-width)`).
  * @cssprop --density-popover - Spacing multiplier for this component; falls back to `--density`.
  */
@@ -94,8 +94,8 @@ export class GePopoverContent extends UiElement {
         this.wasOpen = open;
         if (opened) this.onOpened();
         else if (closed) this.onClosed();
-        else if (open && changed.has('placement') && (changed.get('placement') as Placement | undefined)?.side !== this.placement.side) this.place();
         else if (open && (changed.has('side') || changed.has('align') || changed.has('strategy') || changed.has('sideOffset'))) this.reset();
+        else if (open && changed.has('placement') && (changed.get('placement') as Placement | undefined)?.side !== this.placement.side) this.place();
     }
 
     private onOpened(): void {
@@ -131,13 +131,14 @@ export class GePopoverContent extends UiElement {
         this.frame = requestAnimationFrame(() => {
             const panel = this.panel;
             const anchor = this.owner?.triggerRect();
-            if (!panel || !anchor || this.noCollisions) return;
+            if (!panel || !anchor) return;
+            panel.style.setProperty('--trigger-width', `${anchor.width}px`);
+            if (this.noCollisions) return;
             const bounds = this.strategy === 'fixed' ? new DOMRect(0, 0, innerWidth, innerHeight) : clippingRect(panel);
             const rect = panel.getBoundingClientRect();
-            const vertical = this.side === 'top' || this.side === 'bottom';
             const fixed = this.strategy === 'fixed';
             const current = this.placement.side;
-            const side = !vertical ? current : fixed ? flippedSideByRoom(current as 'top' | 'bottom', rect, anchor, bounds, this.sideOffset) : flippedSide(current as 'top' | 'bottom', rect, anchor, bounds);
+            const side = this.nextSide(current, rect, anchor, bounds);
             const next: Placement = {
                 side,
                 nudge: this.placement.nudge + horizontalNudge(rect, bounds),
@@ -145,6 +146,12 @@ export class GePopoverContent extends UiElement {
             };
             if (next.side !== current || next.nudge !== this.placement.nudge || next.nudgeY !== this.placement.nudgeY) this.placement = next;
         });
+    }
+
+    /** The side to be on: a top or bottom panel flips when it overflows; a left or right one stays. */
+    private nextSide(current: Side, rect: DOMRect, anchor: DOMRect, bounds: DOMRect): Side {
+        if (current !== 'top' && current !== 'bottom') return current;
+        return this.strategy === 'fixed' ? flippedSideByRoom(current, rect, anchor, bounds, this.sideOffset) : flippedSide(current, rect, anchor, bounds);
     }
 
     /** A top-layer panel is positioned in viewport coordinates, so it has to follow the trigger when the page moves. */
@@ -183,7 +190,7 @@ export class GePopoverContent extends UiElement {
 
     private panelStyle(side: Side, nudge: number, nudgeY: number): string {
         const width = this.owner?.triggerRect()?.width;
-        const vars = `--popover-offset:${this.sideOffset}px;` + (width === undefined ? '' : `--trigger-width:${width}px;`);
+        const vars = `--_offset:${this.sideOffset}px;` + (width === undefined ? '' : `--trigger-width:${width}px;`);
         const shift = nudge === 0 && nudgeY === 0 ? '' : `transform:translate(${nudge}px,${nudgeY}px);`;
         return vars + shift + (this.strategy === 'fixed' ? this.fixedAnchor(side) : '');
     }

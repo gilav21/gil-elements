@@ -184,7 +184,11 @@ describe('ge-popover', () => {
         expect(p.top).toBeGreaterThanOrEqual(t.bottom);
         close(p.top, t.bottom + 10);
         expect(el.dataset['side']).toBe('bottom');
-        expect(el.style.getPropertyValue('--popover-offset')).toBe('10px');
+        expect(el.style.getPropertyValue('--_offset')).toBe('10px');
+        // The public property wins over the attribute: setting it on the content moves the panel.
+        page.querySelector<HTMLElement>('ge-popover-content')!.style.setProperty('--popover-offset', '30px');
+        await settle(page);
+        close(el.getBoundingClientRect().top, t.bottom + 30);
         close(Number.parseFloat(el.style.getPropertyValue('--trigger-width')), t.width);
     });
 
@@ -194,7 +198,8 @@ describe('ge-popover', () => {
         expect(flippedSideByRoom('top', new DOMRect(100, -520, 200, 700), anchor, bounds, 4)).toBe('bottom');
         expect(flippedSideByRoom('bottom', new DOMRect(100, 184, 200, 700), anchor, bounds, 4)).toBe('bottom');
         expect(flippedSideByRoom('top', new DOMRect(100, 20, 200, 100), anchor, bounds, 4)).toBe('top');
-        expect(verticalNudge(new DOMRect(0, 100, 10, 600), bounds)).toBe(-108);
+        expect(verticalNudge(new DOMRect(0, 300, 10, 400), bounds)).toBe(-108);
+        expect(verticalNudge(new DOMRect(0, 100, 10, 700), bounds)).toBe(-92);
         expect(verticalNudge(new DOMRect(0, -30, 10, 100), bounds)).toBe(38);
         expect(verticalNudge(new DOMRect(0, 10, 10, 100), bounds)).toBe(0);
     });

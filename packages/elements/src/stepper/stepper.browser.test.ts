@@ -198,8 +198,9 @@ describe('ge-stepper', () => {
         const connector = col.querySelector('ge-stepper-item')!.shadowRoot!.querySelector<HTMLElement>('.connector')!;
         expect(getComputedStyle(connector).marginInlineStart).toBe('15px');
         const bar = connector.getBoundingClientRect();
-        const indicator = col.querySelector('ge-stepper-trigger')!.shadowRoot!.querySelector('[class*="indicator"], .indicator')?.getBoundingClientRect();
-        if (indicator) expect(bar.left + bar.width / 2).toBeCloseTo(indicator.left + indicator.width / 2, 0);
+        const indicator = col.querySelector('ge-stepper-trigger')!.shadowRoot!.querySelector('.indicator')!.getBoundingClientRect();
+        expect(indicator.width).toBeCloseTo(32, 0);
+        expect(bar.left + bar.width / 2).toBeCloseTo(indicator.left + indicator.width / 2, 0);
     });
 
     it('moves by keyboard: Tab to a trigger and Enter activates it', async () => {

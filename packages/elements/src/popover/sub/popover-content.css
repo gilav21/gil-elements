@@ -21,21 +21,21 @@
 /* Absolute: `top`/`bottom` panels centre or align against the host's edge; `left`/`right` panels sit level with its top. */
 .panel[data-strategy="absolute"][data-side="top"] {
     bottom: 100%;
-    margin-bottom: var(--popover-offset, 4px);
+    margin-bottom: var(--popover-offset, var(--_offset, 4px));
 }
 .panel[data-strategy="absolute"][data-side="bottom"] {
     top: 100%;
-    margin-top: var(--popover-offset, 4px);
+    margin-top: var(--popover-offset, var(--_offset, 4px));
 }
 .panel[data-strategy="absolute"][data-side="left"] {
     top: 0;
     right: 100%;
-    margin-inline-end: var(--popover-offset, 4px);
+    margin-inline-end: var(--popover-offset, var(--_offset, 4px));
 }
 .panel[data-strategy="absolute"][data-side="right"] {
     top: 0;
     left: 100%;
-    margin-inline-start: var(--popover-offset, 4px);
+    margin-inline-start: var(--popover-offset, var(--_offset, 4px));
 }
 .panel[data-strategy="absolute"]:is([data-side="top"], [data-side="bottom"])[data-align="start"] {
     left: 0;
@@ -62,14 +62,14 @@
     --_x: -100%;
 }
 .panel[data-strategy="fixed"][data-side="top"] {
-    --_y: calc(-100% - var(--popover-offset, 4px));
+    --_y: calc(-100% - var(--popover-offset, var(--_offset, 4px)));
 }
 .panel[data-strategy="fixed"][data-side="bottom"] {
-    --_y: var(--popover-offset, 4px);
+    --_y: var(--popover-offset, var(--_offset, 4px));
 }
 .panel[data-strategy="fixed"][data-side="left"] {
-    --_x: calc(-100% - var(--popover-offset, 4px));
+    --_x: calc(-100% - var(--popover-offset, var(--_offset, 4px)));
 }
 .panel[data-strategy="fixed"][data-side="right"] {
-    --_x: var(--popover-offset, 4px);
+    --_x: var(--popover-offset, var(--_offset, 4px));
 }
