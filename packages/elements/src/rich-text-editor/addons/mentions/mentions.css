@@ -1,0 +1,17 @@
+/* Mention and tag chips inside the editable; adopted at document scope. */
+ge-rich-text-editor > [data-slot='editor'] span[data-mention],
+ge-rich-text-editor > [data-slot='editor'] span[data-tag] {
+    padding-inline: 0.25rem;
+    border-radius: calc(var(--radius) - 4px);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+}
+
+ge-rich-text-editor > [data-slot='editor'] a[data-mention],
+ge-rich-text-editor > [data-slot='editor'] a[data-tag] {
+    padding-inline: 0.25rem;
+    border-radius: calc(var(--radius) - 4px);
+    color: var(--primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}

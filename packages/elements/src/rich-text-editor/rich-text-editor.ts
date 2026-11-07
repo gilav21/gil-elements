@@ -5,16 +5,18 @@ import { highlightCodeBlocks, stripCodeHighlighting } from '../shared/code-highl
 import { THEME_ATTRIBUTE, type ThemeName } from '../shared/theme-presets.js';
 import { RichTextCommandRegistry } from './rich-text-command-registry.js';
 import { RICH_TEXT_CONTROLLERS, type RichTextControllerFactory, type RichTextRenderingController } from './rich-text-controllers.js';
-import { adoptRichTextContentStyles } from './rich-text-content.js';
+import { adoptRichTextContentStyles, adoptSheet } from './rich-text-content.js';
 import { ZERO_WIDTH, offsetAfterSweep } from './rich-text-dom.js';
 import type {
     CommitOptions,
     RichTextAddon,
+    RichTextAddonHost,
     RichTextCoreHost,
     RichTextExclusivePopover,
     RichTextFormatCommand,
     RichTextHistoryEntrySnapshot,
     RichTextInlineStyle,
+    RichTextOverlay,
     RichTextSelectionInlineStyle,
     RichTextSelectionSnapshot,
     RichTextToolbarSlot,
@@ -150,7 +152,7 @@ function closestWithAttrs(node: Node | null, attrs: readonly string[], boundary:
  * @csspart container - The bordered box around the editable.
  * @csspart toolbar - The toolbar region.
  */
-export class GeRichTextEditor extends UiElement implements RichTextCoreHost, RichTextShellHost, RichTextConfig {
+export class GeRichTextEditor extends UiElement implements RichTextCoreHost, RichTextShellHost, RichTextConfig, RichTextAddonHost {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     static readonly formAssociated = true;
     static override readonly properties = {
@@ -192,10 +194,12 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     };
 
     private static readonly addonRegistry = new Map<string, RichTextAddon>();
+    private static readonly startedEditors = new Set<GeRichTextEditor>();
 
-    /** Makes an addon available by id to every editor, for the `addons` attribute. */
+    /** Makes an addon available by id to every editor, for the `addons` attribute; editors already running pick it up. */
     static registerAddon(addon: RichTextAddon): void {
         GeRichTextEditor.addonRegistry.set(addon.id, addon);
+        for (const editor of GeRichTextEditor.startedEditors) editor.syncAddons();
     }
 
     declare name: string;
@@ -237,6 +241,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     readonly markdown = new RichTextMarkdown(this.sanitizer);
     readonly commands = new RichTextCommandRegistry();
     readonly toolbarSlots = new SlotRegistry<RichTextToolbarSlot>();
+    readonly overlays = new SlotRegistry<RichTextOverlay>();
     readonly commandTable = new Map<RichTextFormatCommand, () => void>();
 
     private readonly internals?: ElementInternals;
@@ -254,7 +259,8 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     private readonly replacedHooks = new Set<() => void>();
     private readonly providers: Partial<RichTextProviders> = {};
     private readonly usedAddons = new Map<string, { addon: RichTextAddon; options?: unknown }>();
-    private readonly activeAddons = new Map<string, void | (() => void)>();
+    private addonSettings: Readonly<Record<string, unknown>> = {};
+    private readonly activeAddons = new Map<string, { teardown: void | (() => void); options: unknown }>();
     private readonly markdownMemo = this.memo((source) => this.markdown.toMarkdown(source));
     private readonly countsMemo = this.memo((source) => {
         const text = this.sanitizer.stripTags(source);
@@ -314,6 +320,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         this.dragOver = false;
         this.fieldsetDisabled = false;
         this.suggestionPopup = null;
+        this.overlays.subscribe(() => this.requestUpdate());
         // Read at the moment each sanitize pass runs, so the first pass already sees the policy.
         this.sanitizer.setRemoteHostPolicy(() => this.allowedImageHosts.length > 0 ? this.allowedImageHosts : (this.allowHost?.allow.imageHosts ?? []));
         this.sanitizer.setLinkSchemePolicy(() => this.allowedLinkSchemes.length > 0 ? this.allowedLinkSchemes : (this.allowHost?.allow.linkSchemes ?? []));
@@ -500,8 +507,11 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         this.syncEditable();
         if (changed.has('theme')) setAttribute(this, THEME_ATTRIBUTE, this.theme ?? null);
         if (changed.has('customToolbarItems')) this.registerCustomItems();
+        if (changed.has('addonOptions')) this.mergeAddonSettings();
         if (changed.has('addons') || changed.has('addonOptions')) this.syncAddons();
         if (this.ready && (changed.has('allowedImageHosts') || changed.has('allowedLinkSchemes'))) this.rejudge();
+        if (this.ready && changed.has('locale')) this.bus.emit('locale');
+        if (this.ready && changed.has('readonly')) this.bus.emit('state');
         this.ready = true;
         this.announce();
     }
@@ -515,6 +525,8 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
                 <slot name="editable"></slot>
                 ${this.dragOver ? html`<div class="drop-zone" aria-hidden="true"></div>` : nothing}
                 ${this.controllers.map((controller) => controller.renderOverlay?.())}
+                ${this.overlays.slots.map((overlay) => overlay.render())}
+                <slot name="popup"></slot>
             </div>
             <slot name="counter"></slot>
         `;
@@ -524,6 +536,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         const editable = this.editable;
         if (!editable || this.started) return;
         this.started = true;
+        GeRichTextEditor.startedEditors.add(this);
         const listen = <E extends Event>(type: string, fn: (event: E) => void) => this.life.listen(editable, type, fn);
         listen('input', this.onInput);
         listen('keydown', (event: KeyboardEvent) => {
@@ -540,6 +553,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         listen('dragleave', this.onDragLeave);
         listen('drop', this.onDrop);
         for (const controller of this.controllers) controller.attach();
+        this.mergeAddonSettings();
         this.syncAddons();
     }
 
@@ -560,8 +574,9 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     private stop(): void {
         if (!this.started) return;
         this.started = false;
+        GeRichTextEditor.startedEditors.delete(this);
         for (const controller of [...this.controllers].reverse()) controller.detach();
-        for (const teardown of this.activeAddons.values()) teardown?.();
+        for (const { teardown } of this.activeAddons.values()) teardown?.();
         this.activeAddons.clear();
     }
 
@@ -618,7 +633,23 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     }
 
     setSelectedImage(image: HTMLImageElement | null): void {
+        if (this.selected === image) return;
         this.selected = image;
+        this.bus.emit('selection');
+        this.bus.emit('state');
+        this.requestUpdate();
+    }
+
+    mountPopup(element: HTMLElement): () => void {
+        element.slot = 'popup';
+        this.append(element);
+        return () => element.remove();
+    }
+
+    adoptStyles(source: string, scope: 'shadow' | 'document'): () => void {
+        const root = scope === 'shadow' ? this.shadowRoot : this.getRootNode();
+        if (root instanceof ShadowRoot) return adoptSheet(root, source, source);
+        return scope === 'document' ? adoptSheet(this.doc, source, source) : () => undefined;
     }
 
     // Addons
@@ -626,29 +657,53 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     /** Enables an addon on this editor, now and on every reconnect; the returned function removes it. */
     use(addon: RichTextAddon, options?: unknown): () => void {
         this.usedAddons.set(addon.id, { addon, options });
+        this.mergeAddonSettings();
         this.syncAddons();
         return () => {
             this.usedAddons.delete(addon.id);
+            this.mergeAddonSettings();
             this.syncAddons();
         };
     }
 
+    /** `addonOptions` with the options given to `use()` on top. Rebuilt only when either changes, so an addon keeps the identity of its options between syncs. */
+    private mergeAddonSettings(): void {
+        const used = [...this.usedAddons].flatMap(([id, { options }]) => (options === undefined ? [] : [[id, options] as const]));
+        this.addonSettings = { ...this.addonOptions, ...Object.fromEntries(used) };
+    }
+
     private syncAddons(): void {
         if (!this.started) return;
-        const wanted = new Map(this.usedAddons);
-        for (const id of this.addons.split(/[\s,]+/).filter(Boolean)) {
-            const addon = GeRichTextEditor.addonRegistry.get(id);
-            if (addon) wanted.set(id, { addon, options: this.addonOptions[id] });
-            else console.warn(`[ge-rich-text-editor] unknown addon "${id}": import its define module first.`);
-        }
-        for (const [id, teardown] of this.activeAddons) {
-            if (wanted.has(id)) continue;
-            teardown?.();
+        const wanted = this.wantedAddons();
+        for (const [id, active] of this.activeAddons) {
+            const addon = wanted.get(id);
+            if (addon && this.optionsFor(id, addon) === active.options) continue;
+            active.teardown?.();
             this.activeAddons.delete(id);
         }
-        for (const [id, { addon, options }] of wanted) {
-            if (!this.activeAddons.has(id)) this.activeAddons.set(id, addon.setup(this, options));
+        for (const [id, addon] of wanted) {
+            const options = this.optionsFor(id, addon);
+            if (options === false || this.activeAddons.has(id)) continue;
+            this.activeAddons.set(id, { teardown: addon.setup(this, options), options });
         }
+    }
+
+    /** The used and listed addons, once per id; an enabled bundle stands in for the ids it covers. */
+    private wantedAddons(): Map<string, RichTextAddon> {
+        const wanted = new Map([...this.usedAddons].map(([id, { addon }]) => [id, addon]));
+        for (const id of new Set(this.addons.split(/[\s,]+/).filter(Boolean))) {
+            const addon = GeRichTextEditor.addonRegistry.get(id);
+            if (addon) wanted.set(id, addon);
+            else console.warn(`[ge-rich-text-editor] unknown addon "${id}": import its define module first.`);
+        }
+        const bundles = [...wanted.entries()].filter(([id, addon]) => addon.covers && this.optionsFor(id, addon) !== false);
+        for (const [, bundle] of bundles) for (const covered of bundle.covers ?? []) wanted.delete(covered);
+        return wanted;
+    }
+
+    private optionsFor(id: string, addon: RichTextAddon): unknown {
+        if (this.addonSettings[id] === false) return false;
+        return addon.covers ? this.addonSettings : this.addonSettings[id];
     }
 
     private registerCustomItems(): void {
@@ -1154,7 +1209,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     };
 
     private readonly onClick = (event: MouseEvent): void => {
-        this.selected = event.target instanceof HTMLImageElement ? event.target : null;
+        this.setSelectedImage(event.target instanceof HTMLImageElement ? event.target : null);
     };
 
     private readonly onDragOver = (event: DragEvent): void => {

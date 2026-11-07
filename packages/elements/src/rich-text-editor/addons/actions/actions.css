@@ -1,0 +1,210 @@
+/* Attach/edit dialog and edit popover of the actions addon; adopted into the editor's shadow root. */
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-block: 1rem;
+}
+
+.search,
+.form input[type='text'],
+.form input[type='number'],
+.form textarea,
+.form select {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid var(--input);
+    border-radius: var(--radius);
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.search {
+    height: 2.25rem;
+}
+
+.form textarea {
+    min-height: 4.5rem;
+}
+
+.picker {
+    max-height: 14rem;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+
+.picker[data-busy] {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+.picker button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    text-align: start;
+    cursor: pointer;
+}
+
+.picker button:hover,
+.picker button[aria-pressed='true'] {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+}
+
+.label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.hint {
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+}
+
+.empty {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+}
+
+.triggers {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.875rem;
+}
+
+.triggers label {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.badge {
+    align-self: flex-start;
+    padding: 0.125rem 0.5rem;
+    border-radius: calc(var(--radius) - 4px);
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    font-size: 0.75rem;
+}
+
+.groups,
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.section-header {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.field label {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.field .hint,
+.field .error {
+    margin: 0;
+}
+
+.required,
+.error {
+    color: var(--destructive);
+}
+
+.error {
+    font-size: 0.75rem;
+}
+
+.popover {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    box-sizing: border-box;
+    min-width: 14rem;
+    max-width: calc(100vw - 2rem);
+    padding: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    font-size: 0.875rem;
+}
+
+.popover .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.375rem 0.5rem;
+}
+
+.popover .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.popover .buttons {
+    display: flex;
+    flex-shrink: 0;
+    gap: 0.75rem;
+}
+
+.popover .buttons button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.75rem;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.popover .buttons .remove {
+    color: var(--destructive);
+}
+
+.popover .add {
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    border: 0;
+    border-radius: calc(var(--radius) - 4px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+
+.popover .add:hover {
+    background-color: var(--accent);
+}

@@ -1,0 +1,101 @@
+import type { RichTextAddonLocaleTable } from '../../rich-text-addon-kit.js';
+
+export interface FileImportLocale {
+    code: string;
+    rtl?: boolean;
+    /** Toolbar button tooltip and hidden input label. */
+    tooltip: string;
+    /** Shown in the overlay while a file is being parsed. */
+    importing: string;
+    /** Shown when parsing fails or produces no content. */
+    importFailed: string;
+    /** Shown when the file is not a valid PDF, DOCX or supported image. */
+    importInvalidFile: string;
+    /** Shown when the chosen file is larger than the addon will read into memory. */
+    importTooLarge: string;
+}
+
+export const FILE_IMPORT_LOCALES: RichTextAddonLocaleTable<FileImportLocale> = {
+    en: {
+        code: 'en',
+        tooltip: 'Import File',
+        importing: 'Importing file...',
+        importFailed: 'Failed to import file. The file may be unsupported or corrupted.',
+        importInvalidFile: 'The selected file is not a supported document or image.',
+        importTooLarge: 'That file is too large to import.',
+    },
+    he: {
+        code: 'he',
+        rtl: true,
+        tooltip: 'ייבוא קובץ',
+        importing: '...מייבא קובץ',
+        importFailed: 'ייבוא הקובץ נכשל. הקובץ עשוי להיות לא נתמך או פגום.',
+        importInvalidFile: 'הקובץ שנבחר אינו מסמך או תמונה נתמכים.',
+        importTooLarge: 'הקובץ גדול מדי לייבוא.',
+    },
+    ar: {
+        code: 'ar',
+        rtl: true,
+        tooltip: 'استيراد ملف',
+        importing: '...جارٍ استيراد الملف',
+        importFailed: 'فشل استيراد الملف. قد يكون الملف غير مدعوم أو تالفاً.',
+        importInvalidFile: 'الملف المحدد ليس مستنداً أو صورة مدعومة.',
+        importTooLarge: 'هذا الملف كبير جدًا للاستيراد.',
+    },
+    de: {
+        code: 'de',
+        tooltip: 'Datei importieren',
+        importing: 'Datei wird importiert...',
+        importFailed: 'Datei-Import fehlgeschlagen. Die Datei wird möglicherweise nicht unterstützt oder ist beschädigt.',
+        importInvalidFile: 'Die ausgewählte Datei ist kein unterstütztes Dokument oder Bild.',
+        importTooLarge: 'Diese Datei ist zu groß für den Import.',
+    },
+    fr: {
+        code: 'fr',
+        tooltip: 'Importer un fichier',
+        importing: 'Importation du fichier...',
+        importFailed: "Échec de l'importation du fichier. Le fichier est peut-être non pris en charge ou corrompu.",
+        importInvalidFile: "Le fichier sélectionné n'est pas un document ou une image pris en charge.",
+        importTooLarge: 'Ce fichier est trop volumineux pour être importé.',
+    },
+    es: {
+        code: 'es',
+        tooltip: 'Importar archivo',
+        importing: 'Importando archivo...',
+        importFailed: 'Error al importar archivo. El archivo puede no ser compatible o estar dañado.',
+        importInvalidFile: 'El archivo seleccionado no es un documento o imagen compatible.',
+        importTooLarge: 'Ese archivo es demasiado grande para importar.',
+    },
+    ja: {
+        code: 'ja',
+        tooltip: 'ファイルをインポート',
+        importing: 'ファイルをインポート中...',
+        importFailed: 'ファイルのインポートに失敗しました。ファイルがサポートされていないか破損している可能性があります。',
+        importInvalidFile: '選択されたファイルはサポートされている文書または画像ではありません。',
+        importTooLarge: 'このファイルはインポートするには大きすぎます。',
+    },
+    zh: {
+        code: 'zh',
+        tooltip: '导入文件',
+        importing: '正在导入文件...',
+        importFailed: '文件导入失败。文件可能不受支持或已损坏。',
+        importInvalidFile: '所选文件不是受支持的文档或图片。',
+        importTooLarge: '该文件太大，无法导入。',
+    },
+    ru: {
+        code: 'ru',
+        tooltip: 'Импорт файла',
+        importing: 'Импорт файла...',
+        importFailed: 'Не удалось импортировать файл. Файл может быть неподдерживаемым или повреждённым.',
+        importInvalidFile: 'Выбранный файл не является поддерживаемым документом или изображением.',
+        importTooLarge: 'Этот файл слишком велик для импорта.',
+    },
+    pt: {
+        code: 'pt',
+        tooltip: 'Importar arquivo',
+        importing: 'Importando arquivo...',
+        importFailed: 'Falha ao importar arquivo. O arquivo pode não ser suportado ou estar corrompido.',
+        importInvalidFile: 'O arquivo selecionado não é um documento ou imagem compatível.',
+        importTooLarge: 'Esse arquivo é grande demais para importar.',
+    },
+};

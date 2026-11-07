@@ -1,0 +1,14 @@
+/* Marks actioned runs inside the editable; adopted onto the document, so every rule is scoped to the editor's editable.
+   The affordance is a dotted bottom border, not text-decoration: a decorated run would read as already underlined and
+   the underline command would toggle it off instead of applying it. */
+ge-rich-text-editor > [data-slot='editor'] [data-action-click],
+ge-rich-text-editor > [data-slot='editor'] [data-action-hover] {
+    border-bottom: 1px dotted currentColor;
+    background: color-mix(in srgb, currentColor 6%, transparent);
+}
+
+ge-rich-text-editor > [data-slot='editor'] img[data-action-click],
+ge-rich-text-editor > [data-slot='editor'] img[data-action-hover] {
+    outline: 2px dashed currentColor;
+    outline-offset: 2px;
+}

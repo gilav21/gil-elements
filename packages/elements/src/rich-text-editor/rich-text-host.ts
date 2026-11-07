@@ -1,5 +1,6 @@
 import type { TemplateResult } from 'lit';
 import type { RichTextCommandRegistry } from './rich-text-command-registry.js';
+import type { RichTextShellHost } from './rich-text-providers.js';
 import type { SlotRegistry } from './rich-text-registry.js';
 
 /** Every toolbar command `format()` accepts; the single source for the type and for runtime checks. */
@@ -33,12 +34,12 @@ export function isRichTextFormatCommand(value: string): value is RichTextFormatC
     return (RICH_TEXT_FORMAT_COMMANDS as readonly string[]).includes(value);
 }
 
-export type RichTextTopic = 'state' | 'selection' | 'history' | 'disabled' | 'content';
+export type RichTextTopic = 'state' | 'selection' | 'history' | 'disabled' | 'content' | 'locale';
 
 /**
  * An addon-contributed toolbar item, rendered after the built-ins.
  * Either a button slot (`icon` + `tooltip` + `onClick`) or a component slot
- * (`render` or `tag`, which wins over the button fields and owns its trigger UI).
+ * (`render` or `create`, which wins over the button fields and owns its trigger UI).
  */
 export interface RichTextToolbarSlot {
     /** Stable id, also the `data-addon-slot` value. */
@@ -53,8 +54,8 @@ export interface RichTextToolbarSlot {
     readonly onClick?: (event: Event) => void;
     /** Rendered in place of a button. */
     readonly render?: () => TemplateResult;
-    /** Custom element tag created in place of a button; receives a `compact` attribute in the floating toolbar. */
-    readonly tag?: string;
+    /** Builds the element shown in place of a button, once per toolbar instance; it gets a `compact` attribute in the floating toolbar. */
+    readonly create?: () => HTMLElement;
 }
 
 /** Read-only projection of one history entry; the delta and serialized selection stay private. */
@@ -205,10 +206,36 @@ export interface RichTextController {
     detach(): void;
 }
 
+/** A panel or layer an addon draws inside the editor's positioned container, after the controllers' own overlays. */
+export interface RichTextOverlay {
+    readonly id: string;
+    render(): TemplateResult;
+}
+
+/** What an addon is given: the editor host plus the shell services, content events and drawing seams. */
+export type RichTextAddonHost = RichTextEditorHost
+    & Pick<RichTextShellHost, 'sanitizer' | 'markdown' | 'resolvedLocale' | 'selectedImage' | 'setSelectedImage' | 'activeFormats' | 'format'>
+    & {
+        emit<T>(name: string, detail: T): void;
+        /** Publishes 'state' and re-renders. */
+        invalidate(): void;
+        undo(): void;
+        redo(): void;
+        readonly canUndo: boolean;
+        readonly canRedo: boolean;
+        readonly overlays: SlotRegistry<RichTextOverlay>;
+        /** Puts `element` in the light DOM `popup` slot, so `aria-controls` on the editable can name it; the teardown removes it. */
+        mountPopup(element: HTMLElement): () => void;
+        /** Adopts `css` once per root and scope; document-scope rules must be scoped under `ge-rich-text-editor > [data-slot='editor']`-style selectors. The teardown releases it. */
+        adoptStyles(css: string, scope: 'shadow' | 'document'): () => void;
+    };
+
 export interface RichTextAddon {
     readonly id: string;
+    /** The ids this addon sets up itself. Makes it a bundle: `setup` receives the editor's whole `addonOptions` map, and those ids are never set up a second time on their own. */
+    readonly covers?: readonly string[];
     /** May return a teardown. */
-    setup(host: RichTextEditorHost, options?: unknown): void | (() => void);
+    setup(host: RichTextAddonHost, options?: unknown): void | (() => void);
 }
 
 /** Switches every toolbar-contributing addon accepts. */

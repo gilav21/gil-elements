@@ -26,6 +26,7 @@ const first = (el: GeRichTextToolbar) => root(el).querySelector<HTMLButtonElemen
 const selectOf = (el: GeRichTextToolbar) => root(el).querySelector<HTMLSelectElement>('[data-slot="rich-text-toolbar-text-style"]')!;
 const bar = (el: GeRichTextToolbar) => root(el).querySelector<HTMLElement>('[role="toolbar"]')!;
 const slotEl = (el: GeRichTextToolbar, id: string) => root(el).querySelector<HTMLElement>(`[data-addon-slot="${id}"]`);
+const makeProbe = () => document.createElement('x-probe');
 
 const innerOf = (markup: string) => {
     const probe = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -312,8 +313,8 @@ describe('ge-rich-text-toolbar', () => {
             expect(slot.querySelector('button')).toBeNull();
         });
 
-        it('renders a tag slot as that element and keeps it across re-renders', async () => {
-            const el = await toolbar({ items: [], slots: [{ id: 'a.tag', tag: 'x-probe' }] });
+        it('renders a create slot as that element and keeps it across re-renders', async () => {
+            const el = await toolbar({ items: [], slots: [{ id: 'a.tag', create: makeProbe }] });
             const probe = slotEl(el, 'a.tag')!.firstElementChild!;
             expect(probe.tagName).toBe('X-PROBE');
             el.refresh();
@@ -321,13 +322,13 @@ describe('ge-rich-text-toolbar', () => {
             expect(slotEl(el, 'a.tag')!.firstElementChild).toBe(probe);
         });
 
-        it('renders nothing for a malformed slot with neither render, tag nor icon', async () => {
+        it('renders nothing for a malformed slot with neither render, create nor icon', async () => {
             const el = await toolbar({ items: [], slots: [{ id: 'a.broken', tooltip: 'broken', onClick: () => void 0 }] });
             expect(slotEl(el, 'a.broken')).toBeNull();
         });
 
-        it('tells tag slots when the toolbar is compact', async () => {
-            const el = await toolbar({ items: [], slots: [{ id: 'a.ctx', tag: 'x-probe' }] });
+        it('tells create slots when the toolbar is compact', async () => {
+            const el = await toolbar({ items: [], slots: [{ id: 'a.ctx', create: makeProbe }] });
             const probe = slotEl(el, 'a.ctx')!.firstElementChild!;
             expect(probe.hasAttribute('compact')).toBe(false);
             el.compact = true;

@@ -1,0 +1,18 @@
+/* Auto-upload progress on images inside the editable (a light-DOM child, so it is adopted onto the document). */
+@keyframes ge-rte-auto-upload-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+ge-rich-text-editor > [data-slot='editor'] img[data-auto-upload-status='uploading'] {
+    background: linear-gradient(90deg, var(--muted) 25%, color-mix(in oklab, var(--muted-foreground) 10%, transparent) 50%, var(--muted) 75%);
+    background-size: 200% 100%;
+    animation: ge-rte-auto-upload-shimmer 1.5s ease-in-out infinite;
+    border-radius: 0.375rem;
+}
+
+ge-rich-text-editor > [data-slot='editor'] img[data-auto-upload-status='error'] {
+    opacity: 0.4;
+    border: 2px dashed var(--destructive);
+    border-radius: 0.375rem;
+}

@@ -2,6 +2,9 @@
 // Token: SONAR_TOKEN in the environment, or in a gitignored .env / packages/.env file.
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+process.chdir(fileURLToPath(new URL('..', import.meta.url)));
 
 function resolveToken() {
     if (process.env.SONAR_TOKEN) return process.env.SONAR_TOKEN;
@@ -17,6 +20,12 @@ const token = resolveToken();
 if (!token) {
     console.error('SONAR_TOKEN is not set (environment, .env or packages/.env).');
     process.exit(1);
+}
+
+// A failing test is reported but does not stop the analysis: the scan reads code, tests only feed its coverage number.
+if (!process.argv.includes('--skip-tests')) {
+    const tests = spawnSync(process.execPath, ['node_modules/vitest/vitest.mjs', '--run', '--coverage', '--coverage.reportOnFailure'], { stdio: 'inherit' });
+    if (tests.error || tests.status !== 0) console.warn(`Tests ${tests.error ? 'could not run' : 'failed'}: scanning anyway, coverage may be partial or stale. Fix this before merging.`);
 }
 
 // vitest writes `SF:packages\base\...` on Windows; the Linux scanner container needs forward slashes.

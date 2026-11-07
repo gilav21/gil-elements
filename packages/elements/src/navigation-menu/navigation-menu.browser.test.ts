@@ -1,5 +1,5 @@
 import axe from 'axe-core';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import '@gilav21/elements-base/tokens.css';
 import './define.js';
@@ -55,6 +55,15 @@ const hover = async (page: HTMLElement, id: string) => {
 };
 const leave = (id: string, page: HTMLElement) => el(page, id).dispatchEvent(new MouseEvent('mouseleave'));
 
+// The browser's mouse keeps its position across test files. A pointer left over the trigger opens the menu by hover as soon as it
+// mounts, and the click that follows then closes it again, so park the pointer in a far corner before every test.
+beforeEach(async () => {
+    const corner = document.createElement('div');
+    corner.style.cssText = 'position:fixed;right:0;bottom:0;width:20px;height:20px';
+    document.body.append(corner);
+    await userEvent.hover(corner);
+    corner.remove();
+});
 afterEach(() => vi.useRealTimers());
 
 describe('ge-navigation-menu', () => {
