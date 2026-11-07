@@ -14,10 +14,15 @@ const MENTION_STYLE_PROPS = [
 type MentionStyleProp = (typeof MENTION_STYLE_PROPS)[number];
 type CaretTextPosition = { block: HTMLElement; offset: number };
 
-const toggledOn = (on: string) => (current: string) => (current === on ? 'normal' : on);
+/** How a toggling format reads and writes a chip's inline style: `set` turns it on or off, keeping unrelated values. */
+interface ChipFormat { isOn(current: string): boolean; set(current: string, on: boolean): string }
 
-const toggledDecoration = (decoration: string) => (current: string) =>
-    current.includes(decoration) ? current.replace(decoration, '').trim() : `${current} ${decoration}`.trim();
+const weightLike = (on: string): ChipFormat => ({ isOn: (current) => current === on, set: (_, want) => (want ? on : 'normal') });
+
+const decoration = (name: string): ChipFormat => ({
+    isOn: (current) => current.includes(name),
+    set: (current, want) => (want ? (current.includes(name) ? current : `${current} ${name}`.trim()) : current.replace(name, '').trim()),
+});
 
 function setMentionStyle(chips: readonly HTMLElement[], prop: MentionStyleProp, value: string): void {
     for (const chip of chips) chip.style[prop] = value;
@@ -28,6 +33,9 @@ function clearMentionStyles(chips: readonly HTMLElement[]): void {
         for (const prop of MENTION_STYLE_PROPS) chip.style[prop] = '';
     }
 }
+
+const familyKey = (family: string | null) => (family ?? '').replaceAll(/["']/g, '').toLowerCase();
+const sameFamily = (a: string | null, b: string) => familyKey(a) === familyKey(b);
 
 function cssPixels(size: string): string {
     return size.endsWith('px') ? size : `${size}px`;
@@ -119,10 +127,10 @@ export class InlineFormatsController implements RichTextController {
     attach(): void {
         const { host, life } = this;
         const commands: [RichTextFormatCommand, () => void][] = [
-            ['bold', () => this.execToggling('bold', 'fontWeight', toggledOn('bold'))],
-            ['italic', () => this.execToggling('italic', 'fontStyle', toggledOn('italic'))],
-            ['underline', () => this.execToggling('underline', 'textDecoration', toggledDecoration('underline'))],
-            ['strikethrough', () => this.execToggling('strikeThrough', 'textDecoration', toggledDecoration('line-through'))],
+            ['bold', () => this.execToggling('bold', 'fontWeight', weightLike('bold'))],
+            ['italic', () => this.execToggling('italic', 'fontStyle', weightLike('italic'))],
+            ['underline', () => this.execToggling('underline', 'textDecoration', decoration('underline'))],
+            ['strikethrough', () => this.execToggling('strikeThrough', 'textDecoration', decoration('line-through'))],
             ['code', () => this.toggleInlineCode()],
             ['clear', () => this.clearFormatting()],
         ];
@@ -165,13 +173,32 @@ export class InlineFormatsController implements RichTextController {
         return positions.flatMap((position) => all[position] ?? []);
     }
 
+    /** True when no text outside a chip is selected, so the command has no text state to follow. */
+    private selectsChipsOnly(range: Range): boolean {
+        const walker = this.host.doc.createTreeWalker(this.host.contentRoot, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            if (!range.intersectsNode(node) || node.parentElement?.closest(MENTION_SELECTOR)) continue;
+            const start = node === range.startContainer ? range.startOffset : 0;
+            const end = node === range.endContainer ? range.endOffset : (node as Text).length;
+            if (end > start) return false;
+        }
+        return true;
+    }
+
     /**
-     * Runs a toggling command, then flips the same style on the chips it skips. The new value is decided before the
-     * command, because the browser itself strips a chip's matching inline style when it turns the format off.
+     * Runs a toggling command, then gives the chips it skips the same result. A chip follows what the command does
+     * to the text, read before it runs (the browser strips a chip's matching inline style itself when it turns the
+     * format off); a selection of chips alone has no text to follow, so each flips its own style.
      */
-    private execToggling(command: string, prop: MentionStyleProp, next: (current: string) => string): void {
+    private execToggling(command: string, prop: MentionStyleProp, format: ChipFormat): void {
         const positions = this.selectedMentions();
-        const targets = this.mentionsAt(positions).map((chip) => next(chip.style[prop]));
+        const range = this.liveRange();
+        const chipsOnly = range !== null && this.selectsChipsOnly(range);
+        const textOn = !this.host.doc.queryCommandState(command);
+        const targets = this.mentionsAt(positions).map((chip) => {
+            const current = chip.style[prop];
+            return format.set(current, chipsOnly ? !format.isOn(current) : textOn);
+        });
         this.exec(command);
         this.mentionsAt(positions).forEach((chip, index) => {
             chip.style[prop] = targets[index] ?? '';
@@ -296,7 +323,8 @@ export class InlineFormatsController implements RichTextController {
     /**
      * Runs a `fontSize`/`fontName` command, rewrites the `<font>` elements it produced into spans the sanitizer
      * keeps, and styles the mention chips the command skipped. The elements are the ones whose attribute the
-     * command set or changed, since the browser normalises the value (it drops the quotes of a family name).
+     * command set or changed, since the browser normalises the value (it drops the quotes of a family name), plus
+     * selected ones already in the requested face.
      * The text stays selected so a second pick from the still-open picker restyles it.
      */
     private restyleFonts(run: () => void, attr: 'size' | 'face', prop: 'fontSize' | 'fontFamily', value: string): void {
@@ -306,8 +334,11 @@ export class InlineFormatsController implements RichTextController {
         const positions = this.selectedMentions();
         const before = new Map(fonts().map((font) => [font, font.getAttribute(attr)]));
         run();
+        const range = this.liveRange();
+        // A font the browser left alone because it already had this face still counts, but only where it is selected.
+        const requested = (font: HTMLElement) => attr === 'face' && sameFamily(font.getAttribute('face'), value) && !!range?.intersectsNode(font);
         const spans = fonts()
-            .filter((font) => before.get(font) !== font.getAttribute(attr))
+            .filter((font) => before.get(font) !== font.getAttribute(attr) || requested(font))
             .map((font) => replaceWithSpan(font, prop, value));
         setMentionStyle(this.mentionsAt(positions), prop, value);
         this.selection?.reSaveLiveSelection(spans);

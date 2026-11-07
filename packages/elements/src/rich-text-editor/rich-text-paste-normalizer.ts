@@ -39,9 +39,10 @@ const BLOCK_TAGS = new Set([
 
 const SEMANTIC_TAGS = new Set(['STRONG', 'EM', 'U', 'DEL', 'S', 'B', 'I']);
 
-const FONT_SIZES: Readonly<Record<string, string>> = {
-    '1': '10px', '2': '13px', '3': '16px', '4': '18px', '5': '24px', '6': '32px', '7': '48px',
-};
+// A Map: pasted markup picks the key, and an object would answer `constructor` or `__proto__` with an inherited member.
+const FONT_SIZES: ReadonlyMap<string, string> = new Map([
+    ['1', '10px'], ['2', '13px'], ['3', '16px'], ['4', '18px'], ['5', '24px'], ['6', '32px'], ['7', '48px'],
+]);
 
 const RELEVANT_CSS_PROPERTIES = new Set([
     'color', 'background-color', 'background',
@@ -802,7 +803,7 @@ export class RichTextPasteNormalizer {
             const face = font.getAttribute('face');
             if (face) styles.push(`font-family: ${face}`);
 
-            const size = FONT_SIZES[font.getAttribute('size') ?? ''];
+            const size = FONT_SIZES.get(font.getAttribute('size') ?? '');
             if (size) styles.push(`font-size: ${size}`);
 
             if (styles.length > 0) span.setAttribute('style', styles.join('; '));

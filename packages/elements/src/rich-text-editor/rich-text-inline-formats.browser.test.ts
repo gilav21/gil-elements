@@ -292,6 +292,27 @@ describe('mention chips', () => {
         expect(root.querySelector<HTMLElement>('[data-mention]')!.style.fontWeight).toBe('normal');
     });
 
+    it('a chip follows the text: bold text and a bold chip turn plain together', async () => {
+        const { editor, root } = await editorWith('<p><b>bold </b><span data-mention="jane" contenteditable="false" style="font-weight: bold">@Jane</span></p>');
+        selectContents(root);
+        editor.format('bold');
+        expect(getComputedStyle(root.querySelector('[data-mention]')!).fontWeight).toBe('400');
+    });
+
+    it('a chip follows the text: bold text next to a plain chip turns both bold', async () => {
+        const { editor, root } = await editorWith('<p><b>bold </b><span data-mention="jane" contenteditable="false">@Jane</span></p>');
+        selectContents(root);
+        editor.format('bold');
+        expect(root.querySelector<HTMLElement>('[data-mention]')!.style.fontWeight).toBe('bold');
+    });
+
+    it('a chip follows the text: plain text next to a bold chip turns both bold', async () => {
+        const { editor, root } = await editorWith('<p>plain <span data-mention="jane" contenteditable="false" style="font-weight: bold">@Jane</span></p>');
+        selectContents(root);
+        editor.format('bold');
+        expect(root.querySelector<HTMLElement>('[data-mention]')!.style.fontWeight).toBe('bold');
+    });
+
     it('italic toggles fontStyle', async () => {
         const { editor, root } = await editorWith(CHIP);
         selectContents(root);
@@ -347,6 +368,17 @@ describe('mention chips', () => {
         const chip = root.querySelector<HTMLElement>('[data-mention]')!;
         expect(chip.style.fontSize).toBe('30px');
         expect(chip.style.fontFamily).toContain('Georgia');
+    });
+
+    it('font family restyles a selected font already in that face, not the part left unselected', async () => {
+        const { editor, root } = await editorWith('<p>x</p>');
+        // Set directly: the sanitizer would turn a <font> into a span on the way in.
+        root.innerHTML = '<p><font face="Arial">hello world</font></p>';
+        const text = root.querySelector('font')!.firstChild!;
+        select(text, 0, text, 5);
+        editor.applyInlineStyle({ fontFamily: 'Arial' });
+        expect(root.querySelector('font[face]')?.textContent ?? '').not.toContain('hello');
+        expect(root.textContent).toBe('hello world');
     });
 
     it('clear formatting removes the inline styles from chips', async () => {

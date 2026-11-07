@@ -194,6 +194,13 @@ describe('rich-text-mentions.utils', () => {
             expect(url).toBeUndefined();
         });
 
+        it('marks text and link mentions so the stock chip look stays off them', () => {
+            const text = buildEntityInsertNode(document, contextFor(), { mode: 'text' }, passthroughUrl).element;
+            const link = buildEntityInsertNode(document, contextFor(), { mode: 'link', urlTemplate: 'https://x.test/:userId' }, passthroughUrl).element;
+            const chip = buildEntityInsertNode(document, contextFor(), {}, passthroughUrl).element;
+            expect([text.dataset['entityMode'], link.dataset['entityMode'], chip.dataset['entityMode']]).toEqual(['text', 'link', undefined]);
+        });
+
         it('falls back to a chip span when a link mode supplies no url source', () => {
             const { element } = buildEntityInsertNode(document, contextFor(), { mode: 'link' }, passthroughUrl);
             expect(element.tagName).toBe('SPAN');
