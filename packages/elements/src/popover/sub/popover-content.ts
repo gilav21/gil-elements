@@ -44,7 +44,6 @@ export class GePopoverContent extends UiElement {
         noRestoreFocus: { type: Boolean, attribute: 'no-restore-focus' },
         strategy: { reflect: true },
         placement: { state: true },
-        triggerWidth: { state: true },
     };
 
     declare side: Side;
@@ -54,7 +53,7 @@ export class GePopoverContent extends UiElement {
     declare noRestoreFocus: boolean;
     declare strategy: Strategy;
     declare placement: Placement;
-    declare triggerWidth: number | undefined;
+    private renderedWidth?: number;
     protected owner?: PopoverHost;
     private wasOpen = false;
     private frame = 0;
@@ -115,7 +114,6 @@ export class GePopoverContent extends UiElement {
 
     private onClosed(): void {
         cancelAnimationFrame(this.frame);
-        this.triggerWidth = undefined;
         this.stopTracking?.();
         this.stopTracking = undefined;
         // Focus that moved to another control belongs to the user; only reclaim it when it was lost with the panel.
@@ -140,7 +138,7 @@ export class GePopoverContent extends UiElement {
             const panel = this.panel;
             const anchor = this.owner?.triggerRect();
             if (!panel || !anchor) return;
-            this.triggerWidth = anchor.width;
+            if (anchor.width !== this.renderedWidth) this.requestUpdate();
             if (this.noCollisions) return;
             const bounds = this.strategy === 'fixed' ? new DOMRect(0, 0, innerWidth, innerHeight) : clippingRect(panel);
             const rect = panel.getBoundingClientRect();
@@ -200,7 +198,8 @@ export class GePopoverContent extends UiElement {
 
     private panelStyle(side: Side, nudge: number, nudgeY: number): string {
         const anchor = this.owner?.triggerRect();
-        const width = this.triggerWidth ?? anchor?.width;
+        const width = anchor?.width;
+        this.renderedWidth = width;
         const vars = `--_offset:${this.sideOffset}px;` + (width === undefined ? '' : `--trigger-width:${width}px;`);
         const shift = nudge === 0 && nudgeY === 0 ? '' : `transform:translate(${nudge}px,${nudgeY}px);`;
         return vars + shift + (this.strategy === 'fixed' && anchor ? this.fixedAnchor(side, anchor) : '');
