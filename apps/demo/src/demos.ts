@@ -4827,8 +4827,8 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             },
             {
                 title: 'Word rotate',
-                note: 'Slides through `words` in place; the box is the size of the longest word.',
-                html: `<span style="font-size:1.5rem;font-weight:700">Made for <ge-word-rotate id="wr1" duration="1800"></ge-word-rotate></span>
+                note: 'Slides through `words` in place. The words are stacked, so the element has no size of its own: give it a width and height.',
+                html: `<span style="font-size:1.5rem;font-weight:700">Made for <ge-word-rotate id="wr1" duration="1800" style="width:8rem;height:2.25rem;vertical-align:bottom"></ge-word-rotate></span>
 <script>document.getElementById('wr1').words = ['designers', 'developers', 'everyone'];</script>`,
             },
             {
