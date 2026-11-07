@@ -10,3 +10,4 @@ parity/out
 .env
 packages/.env
 .scannerwork
+.playwright-mcp

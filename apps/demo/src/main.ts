@@ -153,7 +153,12 @@ import '@gilav21/elements/skeleton/define';
 import '@gilav21/elements/spinner/define';
 import { toast } from '@gilav21/elements/toast';
 import type { GeSlider } from '@gilav21/elements/slider';
-import { demos, type Demo, type Example } from './demos.js';
+import { demos as allDemos, type Demo, type Example } from './demos.js';
+
+// One order for the page, the sidebar and the Ctrl+K palette: groups as listed here, pages A-Z inside each.
+const GROUP_ORDER = ['Display', 'Actions', 'Form inputs', 'Layout', 'Navigation', 'Overlays', 'Charts & motion', 'Apps & tools'];
+const groupRank = (d: Demo) => GROUP_ORDER.indexOf(d.group);
+const demos = [...allDemos].sort((a, b) => groupRank(a) - groupRank(b) || a.name.localeCompare(b.name));
 
 (globalThis as { geToast?: typeof toast }).geToast = toast;
 (globalThis as { geRegisterIcons?: typeof registerIcons }).geRegisterIcons = registerIcons;

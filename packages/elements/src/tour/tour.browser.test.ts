@@ -609,6 +609,18 @@ describe('ge-tour branching', () => {
         expect(log).toEqual(['0 forward', '1 backward']);
     });
 
+    it('spotlights a display: contents target (a ge-button) around the box it draws, not the page corner', async () => {
+        const targets = '<div style="position:fixed;top:120px;left:60px"><ge-button id="save" variant="outline">Save</ge-button></div>';
+        const { el } = await tour({ targets, steps: [{ target: '#save', title: 'Save' }] });
+        const host = document.getElementById('save')!;
+        const drawn = host.shadowRoot!.querySelector('button')!.getBoundingClientRect();
+        const spot = q(el, '[data-slot="tour-spotlight"]')!.getBoundingClientRect();
+
+        expect(getComputedStyle(host).display).toBe('contents');
+        expect(drawn.width).toBeGreaterThan(0);
+        expect([spot.left, spot.top, spot.width, spot.height]).toEqual([drawn.left - 6, drawn.top - 6, drawn.width + 12, drawn.height + 12]);
+    });
+
     it('falls back to the next step when the predicate throws or answers out of range', async () => {
         for (const next of [() => { throw new Error('x'); }, () => 9, () => 3, () => -1, () => 1.5]) {
             const { el } = await branch(next);
