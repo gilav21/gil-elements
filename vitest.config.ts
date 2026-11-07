@@ -8,6 +8,13 @@ export default defineConfig({
     // Pre-bundled up front: discovering a dependency mid-run makes Vite reload the page under a test.
     optimizeDeps: { include: ['lit/static-html.js', 'lit/directives/if-defined.js', 'lit/directives/ref.js'] },
     test: {
+        // Only used by `pnpm run test:coverage`; lcov is what the Sonar scan reads.
+        coverage: {
+            provider: 'v8',
+            reporter: ['lcov', 'text-summary'],
+            include: ['packages/*/src/**/*.ts'],
+            exclude: ['**/*.test.ts', '**/*.d.ts', '**/*-fixtures.ts'],
+        },
         projects: [
             {
                 extends: true,
