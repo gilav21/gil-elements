@@ -29,6 +29,20 @@ const open = async (page: HTMLElement) => {
     await settle(page);
 };
 
+describe('ge-sheet density', () => {
+    it('scales the panel padding with --density, and --density-sheet wins', async () => {
+        const padding = async (style: string) => {
+            const page = await mount(MARKUP.replace('<ge-sheet-content ', `<ge-sheet-content style="${style}" `));
+            page.querySelector<HTMLElement>('#open')!.click();
+            for (let round = 0; round < 3; round++) for (const el of page.querySelectorAll<HTMLElement & { updateComplete?: Promise<boolean> }>('*')) await el.updateComplete;
+            return Number.parseFloat(getComputedStyle(content(page).shadowRoot!.querySelector('.panel')!).paddingTop);
+        };
+        const plain = await padding('');
+        expect(await padding('--density:2')).toBeCloseTo(plain * 2, 1);
+        expect(await padding('--density:2;--density-sheet:0.5')).toBeCloseTo(plain / 2, 1);
+    });
+});
+
 describe('ge-sheet', () => {
     it('opens from the trigger as a named modal dialog, locks the page, and puts focus on the first control', async () => {
         const page = await mount(MARKUP);

@@ -1,6 +1,6 @@
 import { html, nothing, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
-import { type Align, type Side, clippingRect, flippedSide, horizontalNudge } from '../../shared/anchor.js';
+import { type Align, type Side, clippingRect, flippedSide, flippedSideByRoom, horizontalNudge, verticalNudge } from '../../shared/anchor.js';
 import { findParent } from '../../shared/compound.js';
 import { deepActive } from '../../shared/overlay.js';
 import { POPOVER_REGISTER, type PopoverHost } from '../popover.js';
@@ -11,6 +11,8 @@ type Strategy = 'absolute' | 'fixed';
 interface Placement {
     side: Side;
     nudge: number;
+    /** Only a fixed panel is moved along y: an absolute one stays against its host. */
+    nudgeY: number;
 }
 
 /**
@@ -28,6 +30,8 @@ interface Placement {
  * @attr {boolean} no-restore-focus - Does not return focus to the trigger on close.
  * @attr {string} strategy - `absolute` (default) or `fixed`.
  * @csspart panel - The panel.
+ * @cssprop --popover-offset - The gap to the trigger. Set from `side-offset`; a rule of yours can override it, and 4px applies when it is unset.
+ * @cssprop --trigger-width - The trigger's width, set on the open panel so it can match it (`width: var(--trigger-width)`).
  * @cssprop --density-popover - Spacing multiplier for this component; falls back to `--density`.
  */
 export class GePopoverContent extends UiElement {
@@ -62,7 +66,7 @@ export class GePopoverContent extends UiElement {
         this.noCollisions = false;
         this.noRestoreFocus = false;
         this.strategy = 'absolute';
-        this.placement = { side: 'bottom', nudge: 0 };
+        this.placement = { side: 'bottom', nudge: 0, nudgeY: 0 };
     }
 
     override connectedCallback(): void {
@@ -90,6 +94,7 @@ export class GePopoverContent extends UiElement {
         this.wasOpen = open;
         if (opened) this.onOpened();
         else if (closed) this.onClosed();
+        else if (open && changed.has('placement') && (changed.get('placement') as Placement | undefined)?.side !== this.placement.side) this.place();
         else if (open && (changed.has('side') || changed.has('align') || changed.has('strategy') || changed.has('sideOffset'))) this.reset();
     }
 
@@ -113,11 +118,14 @@ export class GePopoverContent extends UiElement {
 
     /** Back to the preferred placement, then measured again once layout has settled. */
     private reset(): void {
-        this.placement = { side: this.side, nudge: 0 };
+        this.placement = { side: this.side, nudge: 0, nudgeY: 0 };
         this.place();
     }
 
-    /** Nudges and flips the panel back inside its clipping box. */
+    /**
+     * Nudges and flips the panel back inside its clipping box. A flip re-renders the panel on the other side, so it is
+     * measured again from `updated`; that second pass starts from the side it is on and trims what still overflows.
+     */
     private place(): void {
         cancelAnimationFrame(this.frame);
         this.frame = requestAnimationFrame(() => {
@@ -127,11 +135,15 @@ export class GePopoverContent extends UiElement {
             const bounds = this.strategy === 'fixed' ? new DOMRect(0, 0, innerWidth, innerHeight) : clippingRect(panel);
             const rect = panel.getBoundingClientRect();
             const vertical = this.side === 'top' || this.side === 'bottom';
+            const fixed = this.strategy === 'fixed';
+            const current = this.placement.side;
+            const side = !vertical ? current : fixed ? flippedSideByRoom(current as 'top' | 'bottom', rect, anchor, bounds, this.sideOffset) : flippedSide(current as 'top' | 'bottom', rect, anchor, bounds);
             const next: Placement = {
-                side: vertical ? flippedSide(this.side as 'top' | 'bottom', rect, anchor, bounds) : this.side,
+                side,
                 nudge: this.placement.nudge + horizontalNudge(rect, bounds),
+                nudgeY: this.placement.nudgeY + (fixed && side === current ? verticalNudge(rect, bounds) : 0),
             };
-            if (next.side !== this.placement.side || next.nudge !== this.placement.nudge) this.placement = next;
+            if (next.side !== current || next.nudge !== this.placement.nudge || next.nudgeY !== this.placement.nudgeY) this.placement = next;
         });
     }
 
@@ -150,6 +162,7 @@ export class GePopoverContent extends UiElement {
         if (!this.owner?.open) return nothing;
         const side = this.noCollisions ? this.side : this.placement.side;
         const nudge = this.noCollisions ? 0 : this.placement.nudge;
+        const nudgeY = this.noCollisions ? 0 : this.placement.nudgeY;
         return html`<div
             class="panel"
             part="panel"
@@ -159,7 +172,7 @@ export class GePopoverContent extends UiElement {
             data-side=${side}
             data-align=${this.align}
             data-strategy=${this.strategy}
-            style=${this.panelStyle(side, nudge)}
+            style=${this.panelStyle(side, nudge, nudgeY)}
           >${this.renderPanelBody()}</div>`;
     }
 
@@ -168,10 +181,11 @@ export class GePopoverContent extends UiElement {
         return html`<slot></slot>`;
     }
 
-    private panelStyle(side: Side, nudge: number): string {
-        const gap = `--_gap:${this.sideOffset}px;`;
-        const shift = nudge === 0 ? '' : `transform:translateX(${nudge}px);`;
-        return gap + shift + (this.strategy === 'fixed' ? this.fixedAnchor(side) : '');
+    private panelStyle(side: Side, nudge: number, nudgeY: number): string {
+        const width = this.owner?.triggerRect()?.width;
+        const vars = `--popover-offset:${this.sideOffset}px;` + (width === undefined ? '' : `--trigger-width:${width}px;`);
+        const shift = nudge === 0 && nudgeY === 0 ? '' : `transform:translate(${nudge}px,${nudgeY}px);`;
+        return vars + shift + (this.strategy === 'fixed' ? this.fixedAnchor(side) : '');
     }
 
     /** Viewport coordinates the panel hangs from; the CSS `translate` for `data-side` and `data-align` moves it off that point. */

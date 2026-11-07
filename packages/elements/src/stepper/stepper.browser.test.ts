@@ -181,6 +181,27 @@ describe('ge-stepper', () => {
         expect(v.last).toBeNull();
     });
 
+    it('draws one bar per gap: a projected separator replaces the auto connector, in both orientations', async () => {
+        const WITH = FORM.replace('<ge-stepper-content>Account form', '<ge-stepper-separator></ge-stepper-separator><ge-stepper-content>Account form');
+        const connectors = (page: Element) => [...page.querySelectorAll('ge-stepper-item')].map((i) => i.shadowRoot!.querySelectorAll('.connector').length);
+        for (const orientation of ['horizontal', 'vertical']) {
+            const page = await mount(WITH.replace('<ge-stepper ', `<ge-stepper orientation="${orientation}" `));
+            await settle(page);
+            expect(connectors(page)).toEqual([0, 1, 0]);
+            expect(page.querySelectorAll('ge-stepper-separator')).toHaveLength(1);
+        }
+    });
+
+    it('centres the vertical bar on the 2rem indicator: 15px start margin, 2px wide', async () => {
+        const col = await mount(FORM.replace('<ge-stepper ', '<ge-stepper orientation="vertical" '));
+        await settle(col);
+        const connector = col.querySelector('ge-stepper-item')!.shadowRoot!.querySelector<HTMLElement>('.connector')!;
+        expect(getComputedStyle(connector).marginInlineStart).toBe('15px');
+        const bar = connector.getBoundingClientRect();
+        const indicator = col.querySelector('ge-stepper-trigger')!.shadowRoot!.querySelector('[class*="indicator"], .indicator')?.getBoundingClientRect();
+        if (indicator) expect(bar.left + bar.width / 2).toBeCloseTo(indicator.left + indicator.width / 2, 0);
+    });
+
     it('moves by keyboard: Tab to a trigger and Enter activates it', async () => {
         const page = await mount(FORM);
         await settle(page);

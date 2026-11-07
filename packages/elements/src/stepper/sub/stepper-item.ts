@@ -63,10 +63,13 @@ export class GeStepperItem extends UiElement implements StepperItemHost {
     register(part: StepperPart): void {
         this.parts.add(part);
         part.requestUpdate();
+        // A separator among the parts changes whether the item draws its own connector.
+        this.requestUpdate();
     }
 
     unregister(part: StepperPart): void {
         this.parts.delete(part);
+        this.requestUpdate();
     }
 
     protected override updated(): void {
@@ -76,6 +79,8 @@ export class GeStepperItem extends UiElement implements StepperItemHost {
     protected override render() {
         const orientation = this.stepper?.orientation ?? 'horizontal';
         const last = this.index === (this.stepper?.count() ?? 1) - 1;
-        return html`<div class="item" data-slot="stepper-item" data-status=${this.status} data-orientation=${orientation}><slot></slot></div>${last ? nothing : html`<div class="connector" data-orientation=${orientation} data-status=${this.status}></div>`}`;
+        // A projected separator is the consumer drawing the line, so the auto connector steps aside: one bar per gap.
+        const noConnector = last || this.querySelector('ge-stepper-separator') !== null;
+        return html`<div class="item" data-slot="stepper-item" data-status=${this.status} data-orientation=${orientation}><slot></slot></div>${noConnector ? nothing : html`<div class="connector" data-orientation=${orientation} data-status=${this.status}></div>`}`;
     }
 }

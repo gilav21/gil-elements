@@ -57,3 +57,24 @@ export function flippedSide(side: 'top' | 'bottom', panel: DOMRect, anchor: DOMR
     if (side === 'top' && panel.top < bounds.top && bounds.bottom - anchor.bottom >= panel.height) return 'bottom';
     return side;
 }
+
+/** How far to move a panel along y so it ends up inside `bounds`, with {@link EDGE_GAP} to spare. */
+export function verticalNudge(panel: DOMRect, bounds: DOMRect): number {
+    if (panel.bottom > bounds.bottom) return bounds.bottom - panel.bottom - EDGE_GAP;
+    if (panel.top < bounds.top) return bounds.top - panel.top + EDGE_GAP;
+    return 0;
+}
+
+/**
+ * {@link flippedSide} for a panel hung from a point in the viewport. When it overflows it also flips if neither side
+ * fits but the opposite one is roomier, because the clamp that follows would otherwise pin it over its trigger.
+ * `offset` is the gap between the trigger and the panel.
+ */
+export function flippedSideByRoom(side: 'top' | 'bottom', panel: DOMRect, anchor: DOMRect, bounds: DOMRect, offset: number): 'top' | 'bottom' {
+    const overflows = side === 'bottom' ? panel.bottom > bounds.bottom : panel.top < bounds.top;
+    if (!overflows) return side;
+    const below = bounds.bottom - anchor.bottom;
+    const above = anchor.top - bounds.top;
+    const [here, there] = side === 'bottom' ? [below, above] : [above, below];
+    return there >= panel.height + offset || there > here ? (side === 'bottom' ? 'top' : 'bottom') : side;
+}

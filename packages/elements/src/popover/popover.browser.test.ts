@@ -5,6 +5,7 @@ import '@gilav21/elements-base/tokens.css';
 import '../button/define.js';
 import './define.js';
 import { mount, useTheme } from '../test-utils.js';
+import { flippedSideByRoom, verticalNudge } from '../shared/anchor.js';
 import { deepActive } from '../shared/overlay.js';
 import type { GePopover } from './index.js';
 
@@ -155,6 +156,8 @@ describe('ge-popover', () => {
         close(p.top, t.bottom + 4);
         close(p.left + p.width / 2, t.left + t.width / 2);
         expect(getComputedStyle(el).position).toBe('fixed');
+        // One case at a time: a trigger pushed below the fold would have its panel pinned inside the viewport.
+        page.remove();
 
         const top = await mount(MARKUP('strategy="fixed" side="top" align="end"', 'padding:300px'));
         await open(top);
@@ -162,6 +165,7 @@ describe('ge-popover', () => {
         const tt = trigger(top).getBoundingClientRect();
         close(tp.bottom, tt.top - 4);
         close(tp.right, tt.right);
+        top.remove();
 
         const side = await mount(MARKUP('strategy="fixed" side="right"', 'padding:300px'));
         await open(side);
@@ -169,6 +173,30 @@ describe('ge-popover', () => {
         const st = trigger(side).getBoundingClientRect();
         close(sp.left, st.right + 4);
         close(sp.top, st.top);
+    });
+
+    it('a fixed panel flips below a trigger near the top instead of covering it, and exposes its offset and the trigger width', async () => {
+        const page = await mount(MARKUP('strategy="fixed" side="top" side-offset="10"', 'padding:8px 300px 400px'));
+        await open(page);
+        const el = panel(page)!;
+        const t = trigger(page).getBoundingClientRect();
+        const p = el.getBoundingClientRect();
+        expect(p.top).toBeGreaterThanOrEqual(t.bottom);
+        close(p.top, t.bottom + 10);
+        expect(el.dataset['side']).toBe('bottom');
+        expect(el.style.getPropertyValue('--popover-offset')).toBe('10px');
+        close(Number.parseFloat(el.style.getPropertyValue('--trigger-width')), t.width);
+    });
+
+    it('a fixed panel that fits on neither side is flipped to the roomier one and clamped 8px inside the viewport', () => {
+        const bounds = new DOMRect(0, 0, 800, 600);
+        const anchor = new DOMRect(100, 150, 80, 30);
+        expect(flippedSideByRoom('top', new DOMRect(100, -520, 200, 700), anchor, bounds, 4)).toBe('bottom');
+        expect(flippedSideByRoom('bottom', new DOMRect(100, 184, 200, 700), anchor, bounds, 4)).toBe('bottom');
+        expect(flippedSideByRoom('top', new DOMRect(100, 20, 200, 100), anchor, bounds, 4)).toBe('top');
+        expect(verticalNudge(new DOMRect(0, 100, 10, 600), bounds)).toBe(-108);
+        expect(verticalNudge(new DOMRect(0, -30, 10, 100), bounds)).toBe(38);
+        expect(verticalNudge(new DOMRect(0, 10, 10, 100), bounds)).toBe(0);
     });
 
     it('fires open-change for user changes only, and close-on-scroll closes it when the page scrolls', async () => {
