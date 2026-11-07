@@ -1,14 +1,13 @@
 /* Mention and tag chips inside the editable; adopted at document scope. */
-ge-rich-text-editor > [data-slot='editor'] span[data-mention],
-ge-rich-text-editor > [data-slot='editor'] span[data-tag] {
+/* The stock look is a default: an element with its own class or a text/link mode keeps whatever the consumer styles. */
+ge-rich-text-editor > [data-slot='editor'] span:is([data-mention], [data-tag]):not([class], [data-entity-mode]) {
     padding-inline: 0.25rem;
     border-radius: calc(var(--radius) - 4px);
     background-color: var(--accent);
     color: var(--accent-foreground);
 }
 
-ge-rich-text-editor > [data-slot='editor'] a[data-mention],
-ge-rich-text-editor > [data-slot='editor'] a[data-tag] {
+ge-rich-text-editor > [data-slot='editor'] a:is([data-mention], [data-tag]):not([class], [data-entity-mode]) {
     padding-inline: 0.25rem;
     border-radius: calc(var(--radius) - 4px);
     color: var(--primary);

@@ -791,6 +791,10 @@ describe('RichTextSanitizer', () => {
             expect(result).toContain('data-mention-id="123"');
         });
 
+        it('should preserve data-entity-mode', () => {
+            expect(service.sanitize('<span data-mention="john" data-entity-mode="text">@john</span>')).toContain('data-entity-mode="text"');
+        });
+
         it('should preserve data-tag attributes', () => {
             const html = '<span data-tag="angular" data-tag-id="456">#angular</span>';
             const result = service.sanitize(html);

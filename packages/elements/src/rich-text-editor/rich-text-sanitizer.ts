@@ -217,7 +217,7 @@ export class RichTextSanitizer {
         'li': new Set(['data-task', 'data-checked']),
         'details': new Set(['open']),
         'col': new Set(['span', 'width']),
-        '*': new Set(['data-mention', 'data-mention-id', 'data-tag', 'data-tag-id', 'style', 'dir']),
+        '*': new Set(['data-mention', 'data-mention-id', 'data-tag', 'data-tag-id', 'data-entity-mode', 'style', 'dir']),
     };
 
     /** Allowed CSS properties for inline styles */

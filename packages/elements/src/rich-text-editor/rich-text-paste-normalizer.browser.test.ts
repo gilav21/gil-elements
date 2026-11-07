@@ -319,6 +319,12 @@ describe('RichTextPasteNormalizer', () => {
             expect(result).toContain('Big Blue');
         });
 
+        it.each(['constructor', '__proto__', 'toString'])('ignores an inherited name as a font size: %s', (size) => {
+            const result = service.normalize(`<p class="MsoNormal"><font size="${size}">Text</font></p>`, '');
+            expect(result).toContain('Text');
+            expect(result).not.toContain('font-size');
+        });
+
         it('should strip Windows system color values', () => {
             const html = '<p class="MsoNormal" style="color:windowtext; mso-fareast-font-family:Calibri">Text</p>';
             const result = service.normalize(html, '');

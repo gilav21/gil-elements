@@ -108,7 +108,8 @@ function createEntitySpanElement(
 ): HTMLElement {
     const span = doc.createElement('span');
     applyEntityBaseAttributes(span, context);
-    span.className = customClassName ?? '';
+    // No class attribute at all unless asked: the stock chip look applies to elements without one.
+    if (customClassName) span.className = customClassName;
     span.textContent = text;
     return span;
 }
@@ -129,7 +130,7 @@ function createEntityLinkElement(
     link.href = safeUrl;
     link.target = options.target ?? '_blank';
     link.rel = options.rel ?? 'noopener noreferrer';
-    link.className = options.className ?? '';
+    if (options.className) link.className = options.className;
     link.textContent = text;
     return link;
 }
@@ -146,6 +147,8 @@ export function buildEntityInsertNode(
     const element = mode === 'link'
         ? createEntityLinkElement(doc, context, text, options, sanitizeUrl)
         : createEntitySpanElement(doc, context, text, options.className);
+    // Text and link mentions are not chips: the mark keeps the stock chip look off them, after a reload too.
+    if (mode !== 'chip') element.dataset['entityMode'] = mode;
     const url = element.tagName === 'A' ? (element.getAttribute('href') ?? undefined) : undefined;
     return { element, url };
 }
