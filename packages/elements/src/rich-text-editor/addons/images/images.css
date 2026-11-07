@@ -1,0 +1,152 @@
+/* Images layer: resize frame, align toolbar, uploading scrim and failure badges; adopted into the editor's shadow root. */
+.image-frame {
+    position: absolute;
+    box-sizing: border-box;
+    border: 2px solid var(--primary);
+    pointer-events: none;
+}
+
+.image-handle {
+    position: absolute;
+    box-sizing: border-box;
+    width: 0.75rem;
+    height: 0.75rem;
+    padding: 0;
+    border: 1px solid #fff;
+    border-radius: 2px;
+    background-color: var(--primary);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    pointer-events: auto;
+    touch-action: none;
+}
+
+/* A larger invisible target around the small square. */
+.image-handle::before {
+    content: '';
+    position: absolute;
+    inset: -1rem;
+}
+
+.image-handle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--ring);
+}
+
+.image-handle[data-handle='nw'] { top: -0.375rem; left: -0.375rem; cursor: nw-resize; }
+.image-handle[data-handle='ne'] { top: -0.375rem; right: -0.375rem; cursor: ne-resize; }
+.image-handle[data-handle='sw'] { bottom: -0.375rem; left: -0.375rem; cursor: sw-resize; }
+.image-handle[data-handle='se'] { bottom: -0.375rem; right: -0.375rem; cursor: se-resize; }
+.image-handle[data-handle='n'] { top: -0.375rem; left: 50%; translate: -50% 0; cursor: ns-resize; }
+.image-handle[data-handle='s'] { bottom: -0.375rem; left: 50%; translate: -50% 0; cursor: ns-resize; }
+.image-handle[data-handle='w'] { left: -0.375rem; top: 50%; translate: 0 -50%; cursor: ew-resize; }
+.image-handle[data-handle='e'] { right: -0.375rem; top: 50%; translate: 0 -50%; cursor: ew-resize; }
+
+.image-toolbar {
+    position: absolute;
+    top: -2.5rem;
+    left: 50%;
+    translate: -50% 0;
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.125rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    pointer-events: auto;
+}
+
+.image-toolbar-divider {
+    width: 1px;
+    height: 1.25rem;
+    margin-inline: 0.125rem;
+    background-color: var(--border);
+}
+
+.image-action {
+    display: inline-flex;
+    padding: 0.375rem;
+    border: 0;
+    border-radius: calc(var(--radius) - 4px);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    transition: background-color 150ms;
+}
+
+.image-action:hover,
+.image-action[data-active] {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+}
+
+.image-action:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--ring);
+}
+
+.image-delete:hover {
+    background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+    color: var(--destructive);
+}
+
+.image-uploading {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: color-mix(in oklab, var(--background) 70%, transparent);
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    backdrop-filter: blur(1px);
+}
+
+.image-error {
+    position: absolute;
+    z-index: 20;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border: 1px solid color-mix(in oklab, var(--destructive) 30%, transparent);
+    border-radius: 0.25rem;
+    background-color: color-mix(in oklab, var(--destructive) 10%, transparent);
+    backdrop-filter: blur(1px);
+}
+
+.image-error-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--destructive);
+}
+
+.image-error-text {
+    color: var(--destructive);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.image-error-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.image-error-actions button {
+    padding: 0.125rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    background-color: var(--background);
+    color: var(--foreground);
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
+.image-error-actions button:hover {
+    background-color: var(--accent);
+}

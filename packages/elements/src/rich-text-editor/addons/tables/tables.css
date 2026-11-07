@@ -1,0 +1,30 @@
+.rte-tables-panel {
+    display: grid;
+    gap: 0.5rem;
+}
+.rte-tables-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 0.125rem;
+}
+.rte-tables-grid button.cell {
+    box-sizing: border-box;
+    width: 1.25rem;
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: 1;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    background-color: var(--background);
+}
+.rte-tables-grid button.cell[data-on] {
+    border-color: var(--primary);
+    background-color: var(--primary);
+}
+.rte-tables-hint {
+    margin: 0;
+    font-size: 0.75rem;
+    text-align: center;
+    color: var(--muted-foreground);
+}

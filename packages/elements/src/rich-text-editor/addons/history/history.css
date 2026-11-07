@@ -1,0 +1,218 @@
+/* Revision history corner button, list, preview and browser dialogs; adopted into the editor's shadow root by the history addon. */
+.history-corner {
+    position: absolute;
+    inset-block-start: 0.5rem;
+    inset-inline-end: 0.5rem;
+    z-index: 30;
+}
+
+ge-popover-content.history-popover::part(panel) {
+    width: 20rem;
+    padding: 0;
+}
+
+ge-dialog-content.history-preview::part(panel) {
+    max-width: 48rem;
+    padding: 0;
+    overflow: hidden;
+}
+
+ge-dialog-content.history-browser::part(panel) {
+    max-width: 36rem;
+    padding: 0;
+    overflow: hidden;
+}
+
+.history-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    border-block-end: 1px solid var(--border);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.history-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.history-close svg {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+
+@media (pointer: coarse) {
+    .history-close {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+}
+
+.history-list {
+    display: grid;
+    gap: 0.25rem;
+    height: 18rem;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.history-list[data-history-list='dialog'] {
+    gap: 0.5rem;
+    height: 60vh;
+    padding: 0.75rem 1rem;
+}
+
+.history-entry {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    text-align: start;
+    cursor: pointer;
+}
+
+.history-entry:hover {
+    background-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.history-entry[data-active] {
+    border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+    background-color: var(--accent);
+}
+
+.history-entry:focus-visible,
+.history-close:focus-visible,
+.history-preview-button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: -2px;
+}
+
+.history-entry-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.history-entry-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.history-revision {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.history-applied {
+    color: var(--primary);
+    font-size: 0.6875rem;
+    font-weight: 500;
+}
+
+.history-time {
+    color: var(--muted-foreground);
+    font-size: 0.6875rem;
+}
+
+.history-preview-button {
+    padding: 0.125rem 0.5rem;
+    border: 0;
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.6875rem;
+    cursor: pointer;
+}
+
+.history-preview-button:hover {
+    background-color: var(--accent);
+}
+
+.history-lines {
+    margin-block-start: 0.25rem;
+}
+
+.history-lines p {
+    margin: 0;
+    overflow: hidden;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.history-lines p.history-more {
+    font-size: 0.6875rem;
+}
+
+.history-header {
+    padding: 1.25rem 1.25rem 0.75rem;
+    border-block-end: 1px solid var(--border);
+}
+
+.history-body {
+    display: grid;
+    gap: 1rem;
+    max-height: 70vh;
+    overflow-y: auto;
+    padding: 1rem 1.25rem;
+}
+
+.history-section {
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+}
+
+.history-section > h3 {
+    margin: 0;
+    padding: 0.5rem 0.75rem;
+    border-block-end: 1px solid var(--border);
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.history-rendered {
+    padding: 0.75rem;
+    overflow-wrap: anywhere;
+}
+
+.history-rendered > :first-child {
+    margin-block-start: 0;
+}
+
+.history-rendered > :last-child {
+    margin-block-end: 0;
+}
+
+.history-markdown {
+    margin: 0;
+    padding: 0.75rem;
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+}
+
+.history-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    border-block-start: 1px solid var(--border);
+}

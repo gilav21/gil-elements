@@ -1,0 +1,15 @@
+ge-popover-content.size::part(panel) {
+    width: 12rem;
+}
+ge-popover-content.family::part(panel) {
+    width: 14rem;
+}
+.rte-typography-panel {
+    display: grid;
+    gap: 0.5rem;
+}
+.rte-typography-heading {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
