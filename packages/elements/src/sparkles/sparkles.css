@@ -1,0 +1,30 @@
+:host {
+    position: absolute;
+    display: block;
+    pointer-events: none;
+}
+svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    animation-delay: inherit;
+}
+.star {
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: ge-sparkles-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+    animation-delay: inherit;
+}
+@keyframes ge-sparkles-ping {
+    75%,
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .star {
+        animation: none;
+    }
+}

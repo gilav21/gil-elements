@@ -1,0 +1,19 @@
+:host {
+    position: relative;
+    display: inline-block;
+    overflow: hidden;
+    width: 0.6em;
+    height: 1em;
+    vertical-align: top;
+}
+.column {
+    display: flex;
+    flex-direction: column;
+    will-change: transform;
+}
+.cell {
+    display: flex;
+    height: 1em;
+    align-items: center;
+    justify-content: center;
+}

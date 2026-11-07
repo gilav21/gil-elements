@@ -30,8 +30,8 @@ const GLYPHS: Readonly<Record<ResultStatus, string>> = {
  * @csspart panel - The `<output>` box.
  */
 export class GeResult extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         status: { reflect: true },
         heading: {},
         description: {},

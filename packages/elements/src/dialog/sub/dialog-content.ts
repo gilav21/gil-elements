@@ -24,8 +24,8 @@ import css from './dialog-content.css?inline';
  * @cssprop --density-dialog - Spacing multiplier for this component; falls back to `--density`.
  */
 export class GeDialogContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         heading: {},
         description: {},
         closeLabel: { attribute: 'close-label' },

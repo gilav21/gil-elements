@@ -12,8 +12,8 @@ export type SkeletonVariant = 'pulse' | 'shimmer';
  * @cssprop --skeleton-shimmer-highlight - Shimmer highlight colour.
  */
 export class GeSkeleton extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { variant: { reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { variant: { reflect: true } };
 
     declare variant: SkeletonVariant;
 

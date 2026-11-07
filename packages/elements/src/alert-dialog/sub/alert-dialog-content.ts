@@ -24,8 +24,8 @@ import css from './alert-dialog-content.css?inline';
  * @csspart panel - The box.
  */
 export class GeAlertDialogContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         heading: {},
         description: {},
         actionText: { attribute: 'action-text' },

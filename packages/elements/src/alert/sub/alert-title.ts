@@ -9,7 +9,7 @@ import css from './alert-title.css?inline';
  * @slot - Title text.
  */
 export class GeAlertTitle extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

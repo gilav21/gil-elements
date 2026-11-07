@@ -1,0 +1,152 @@
+/* shadcn-angular chip-list.component.html/.css: a flex-wrapping box of badges ending in a ghost input. */
+:host {
+    --_d: var(--density-chip-list, var(--density-badge, var(--density, 1)));
+    display: contents;
+}
+/*
+ * One variable, --_chip-h, is the height of a chip, of the field's row, and of each row the max-rows cap counts.
+ * It is a fraction (--_k, set by size) of a stock 2.25rem input, times density, so the cap holds at any size,
+ * density or root font size without measuring anything.
+ */
+.chips {
+    --_k: 0.6111;
+    --_bw: 0.0625rem;
+    --_borders: 2;
+    --_pad-y: calc(0.25rem * var(--_d));
+    --_gap: calc(0.375rem * var(--_d));
+    --_chip-h: calc(2.25rem * var(--_k) * var(--_d));
+    --_field-d: calc(var(--_k) * var(--_d));
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--_gap);
+    min-height: calc(2.25rem * var(--_d));
+    margin: 0;
+    padding-block: var(--_pad-y);
+    padding-inline: 0.25rem;
+    border: 0 solid var(--input);
+    outline: none;
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.chips[data-size="sm"] {
+    --_k: 0.5556;
+}
+.chips[data-size="lg"] {
+    --_k: 0.7222;
+}
+.chips[data-variant="outline"] {
+    border-width: var(--_bw);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.chips[data-variant="outline"]:has(ge-input:focus-within) {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent), 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.chips[data-variant="underline"] {
+    --_borders: 1;
+    border-bottom-width: var(--_bw);
+    border-radius: 0;
+    padding-inline: 0;
+}
+.chips[data-variant="underline"]:has(ge-input:focus-within) {
+    border-color: var(--ring);
+}
+.chips[data-variant="ghost"] {
+    --_borders: 0;
+}
+.chips[data-disabled] {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+/* The box holds exactly --_rows rows of chips, its padding and its border. */
+.chips[data-max-rows] {
+    overflow-y: auto;
+    max-height: calc(
+        var(--_rows) * var(--_chip-h) + (var(--_rows) - 1) * var(--_gap) + 2 * var(--_pad-y) + var(--_borders) * var(--_bw)
+    );
+}
+
+.chip {
+    flex-shrink: 0;
+    gap: 0.25rem;
+    height: var(--_chip-h);
+    padding-block: 0;
+}
+.chips:not([data-disabled]) .chip {
+    padding-inline-end: 0.25rem;
+}
+.chips[data-size="sm"] .chip {
+    font-size: 0.6875rem;
+    line-height: 0.875rem;
+}
+.chips[data-size="lg"] .chip {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+.chip-text {
+    max-width: 7.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+@media (min-width: 640px) {
+    .chip-text {
+        max-width: 12.5rem;
+    }
+}
+.remove {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 9999px;
+    background-color: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+.remove:hover {
+    background-color: var(--chip-remove-hover);
+}
+/* WCAG 2.5.8: a 44px tap target on touch, without making the chip taller. */
+@media (pointer: coarse) {
+    .remove {
+        position: relative;
+    }
+    .remove::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 2.75rem;
+        height: 2.75rem;
+        transform: translate(-50%, -50%);
+    }
+}
+.remove-icon {
+    display: block;
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+/* The field's row is as tall as a chip row: a stock input is 2.25rem * its density. */
+ge-input {
+    --density-input: var(--_field-d);
+}
+ge-input::part(input) {
+    flex: 1 1 0%;
+    min-width: 5rem;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    box-shadow: none;
+    outline: none;
+}

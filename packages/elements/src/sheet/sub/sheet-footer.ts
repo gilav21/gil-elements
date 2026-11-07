@@ -8,7 +8,7 @@ import css from './sheet-footer.css?inline';
  * @slot - The buttons.
  */
 export class GeSheetFooter extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

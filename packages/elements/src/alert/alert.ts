@@ -21,8 +21,8 @@ export type AlertVariant = 'default' | 'destructive';
  * @attr {string} description - Simple-mode text under the heading; only shown when `heading` is set.
  */
 export class GeAlert extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         variant: { reflect: true },
         heading: {},
         description: {},

@@ -1,0 +1,41 @@
+:host {
+    display: contents;
+}
+.base {
+    pointer-events: none;
+    position: absolute;
+    z-index: 50;
+    max-width: calc(100vw - 2rem);
+    border-radius: calc(var(--radius) - 2px);
+    border: 1px solid var(--border);
+    background: var(--popover);
+    color: var(--popover-foreground);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+.heading {
+    margin-bottom: 0.25rem;
+    font-weight: 500;
+}
+.row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.dot {
+    display: inline-block;
+    width: 0.5rem;
+    height: 0.5rem;
+    flex-shrink: 0;
+    border-radius: 9999px;
+}
+.label {
+    color: var(--muted-foreground);
+}
+.value {
+    margin-inline-start: auto;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+}

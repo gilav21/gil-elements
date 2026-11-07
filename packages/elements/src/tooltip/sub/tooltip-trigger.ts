@@ -13,7 +13,7 @@ import css from './tooltip-trigger.css?inline';
  * @csspart base - The wrapper.
  */
 export class GeTooltipTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     private tooltip?: TooltipHost;
     private delayTimer?: ReturnType<typeof setTimeout>;
     private dismissTimer?: ReturnType<typeof setTimeout>;

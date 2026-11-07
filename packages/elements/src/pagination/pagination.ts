@@ -32,8 +32,8 @@ export function pageNumbers(current: number, total: number, siblings: number): n
  * @attr {string} more-label - Screen-reader text of an ellipsis. Defaults to "More pages".
  */
 export class GePagination extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         currentPage: { type: Number, attribute: 'current-page', reflect: true },
         totalPages: { type: Number, attribute: 'total-pages', reflect: true },
         siblingCount: { type: Number, attribute: 'sibling-count' },

@@ -17,7 +17,7 @@ const MENU_PANEL = 'ge-context-menu-content, ge-context-menu-sub-content';
  * @slot - Items, labels, separators and submenus.
  */
 export class GeContextMenuContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private owner?: ContextMenuHost;
     private wasOpen = false;

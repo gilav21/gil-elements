@@ -43,8 +43,8 @@ export interface DataListHost extends HTMLElement {
  * @csspart value - A `<dd>`.
  */
 export class GeDataList extends UiElement implements DataListHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         items: { attribute: false },
         orientation: { reflect: true },
     };

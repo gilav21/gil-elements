@@ -5,6 +5,7 @@ import '@gilav21/elements-base/tokens.css';
 import './define.js';
 import { mount, useTheme } from '../test-utils.js';
 import { deepActive } from '../shared/overlay.js';
+import { shortcutBindings } from '../shared/shortcut-bindings.js';
 import type { CommandSource, GeCommand } from './index.js';
 
 const MARKUP = (attrs = '') => `<div style="padding:20px;width:400px">
@@ -327,6 +328,33 @@ describe('ge-command-dialog', () => {
         await userEvent.keyboard('{Control>}k{/Control}');
         await settle(off);
         expect(dialog(off).open).toBe(false);
+    });
+
+    it('is remappable through the shared shortcut registry, follows a changed shortcut attribute, and lets go on removal', async () => {
+        const page = await mount(DIALOG());
+        await settle(page);
+        shortcutBindings.setShortcutOverride('command-dialog.toggle', 'Alt+K');
+        try {
+            await userEvent.keyboard('{Control>}k{/Control}');
+            await settle(page);
+            expect(dialog(page).open).toBe(false);
+            await userEvent.keyboard('{Alt>}k{/Alt}');
+            await settle(page);
+            expect(dialog(page).open).toBe(true);
+        } finally {
+            shortcutBindings.clearAllShortcutOverrides();
+        }
+        await userEvent.keyboard('{Escape}');
+        dialog(page).setAttribute('shortcut', 'Mod+J');
+        await settle(page);
+        await userEvent.keyboard('{Control>}k{/Control}');
+        expect(dialog(page).open).toBe(false);
+        await userEvent.keyboard('{Control>}j{/Control}');
+        await settle(page);
+        expect(dialog(page).open).toBe(true);
+        await userEvent.keyboard('{Escape}');
+        dialog(page).remove();
+        expect(shortcutBindings.getShortcutBindingViews().filter((view) => view.actionId.startsWith('command-dialog.'))).toEqual([]);
     });
 
     it('takes several comma-separated shortcuts, and a bare key never fires while typing in a field', async () => {

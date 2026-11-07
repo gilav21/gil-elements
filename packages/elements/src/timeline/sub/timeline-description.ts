@@ -8,7 +8,7 @@ import css from './timeline-description.css?inline';
  * @slot - The text.
  */
 export class GeTimelineDescription extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<p part="base" data-slot="timeline-description"><slot></slot></p>`;

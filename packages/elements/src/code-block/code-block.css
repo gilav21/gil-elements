@@ -1,0 +1,139 @@
+/* shadcn-angular code-block: a dark surface in both themes, Tailwind's zinc palette as constants. */
+:host {
+    display: block;
+    margin-block: 1rem;
+    --_zinc-50: oklch(98.5% 0 none);
+    --_zinc-400: oklch(70.5% 0.015 286.067);
+    --_zinc-500: oklch(55.2% 0.016 285.938);
+    --_zinc-800: oklch(27.4% 0.006 286.033);
+    --_zinc-900: oklch(21% 0.006 285.885);
+    --_zinc-950: oklch(14.1% 0.005 285.823);
+}
+.root {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--_zinc-800);
+    border-radius: var(--radius);
+    background-color: var(--_zinc-950);
+    text-align: left;
+}
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--_zinc-800);
+    background-color: var(--_zinc-900);
+}
+.language {
+    color: var(--_zinc-400);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.75rem;
+    line-height: calc(1 / 0.75);
+}
+ge-button::part(base) {
+    width: 1.5rem;
+    height: 1.5rem;
+    color: var(--_zinc-400);
+}
+ge-button svg {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+ge-button svg.done {
+    color: oklch(72.3% 0.219 149.579);
+}
+@media (hover: hover) {
+    ge-button::part(base):hover {
+        background-color: var(--_zinc-800);
+        color: oklch(96.7% 0.001 286.375);
+    }
+}
+@media (pointer: coarse) {
+    ge-button::part(base) {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+}
+.body {
+    overflow: auto;
+    padding: 1rem;
+    background-color: var(--_zinc-950);
+    color: var(--_zinc-50);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+}
+pre,
+code {
+    margin: 0;
+    font: inherit;
+    /* Rows are separated by template whitespace; only the text span below keeps its spaces. */
+    white-space: normal;
+}
+.line {
+    display: flex;
+    align-items: flex-start;
+}
+.number,
+.chevron {
+    display: inline-block;
+    flex-shrink: 0;
+    line-height: 1.25rem;
+    text-align: center;
+    user-select: none;
+}
+.number {
+    margin-inline-end: 0.75rem;
+    color: var(--_zinc-400);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+.chevron {
+    width: 1rem;
+    margin-inline-end: 0.5rem;
+    color: var(--_zinc-500);
+}
+.chevron.fold {
+    position: relative;
+    cursor: pointer;
+}
+@media (hover: hover) {
+    .chevron.fold:hover {
+        color: oklch(87.1% 0.006 286.286);
+    }
+}
+@media (pointer: coarse) {
+    .chevron {
+        width: 2.75rem;
+    }
+    /* Stretches the tap area 12px above and below without making the 20px line taller. */
+    .chevron.fold::after {
+        content: '';
+        position: absolute;
+        inset-inline: 0;
+        inset-block: -0.75rem;
+    }
+}
+.text {
+    flex: 1;
+    white-space: pre;
+}
+.marker {
+    margin-inline-start: 0.25rem;
+    color: var(--_zinc-500);
+}
+.tok-keyword { color: oklch(71.8% 0.202 349.761); font-weight: 700; }
+.tok-string { color: oklch(79.2% 0.209 151.711); }
+.tok-comment { color: oklch(70.7% 0.022 261.325); font-style: italic; }
+.tok-number { color: oklch(75% 0.183 55.934); }
+.tok-function { color: oklch(70.7% 0.165 254.624); }
+.tok-decorator { color: oklch(85.2% 0.199 91.936); }
+.tok-tag { color: oklch(71.8% 0.202 349.761); }
+.tok-attr { color: oklch(70.7% 0.165 254.624); font-style: italic; }
+.tok-selector { color: oklch(71.8% 0.202 349.761); font-weight: 700; }
+.tok-property { color: oklch(70.7% 0.165 254.624); }
+/* The browser's own focus ring, tinted the way the shadcn base layer tints every outline. */
+.chevron:focus-visible {
+    outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
+}

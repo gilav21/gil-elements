@@ -1,21 +1,9 @@
 import { html, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
+import { isEditable } from '../../shared/shortcut.js';
+import { shortcutBindings, type ShortcutComponentHandle } from '../../shared/shortcut-bindings.js';
 
-/** Whether `event` is the key combination `shortcut` names, such as `Mod+K`; `Mod` is Command on a Mac and Control elsewhere. */
-export function matchesShortcut(event: KeyboardEvent, shortcut: string, mac: boolean): boolean {
-    const parts = shortcut.toLowerCase().split('+').map((part) => part.trim());
-    const key = parts.pop();
-    const wants = (name: string) => parts.includes(name);
-    const mod = wants('mod');
-    const meta = wants('meta') || (mod && mac);
-    const ctrl = wants('ctrl') || wants('control') || (mod && !mac);
-    return event.key.toLowerCase() === key && event.metaKey === meta && event.ctrlKey === ctrl && event.altKey === wants('alt') && event.shiftKey === wants('shift');
-}
-
-function isEditable(target: EventTarget | null): boolean {
-    const el = (target as HTMLElement | null)?.closest?.('input,textarea,select,[contenteditable]');
-    return !!el || (target as HTMLElement | null)?.isContentEditable === true;
-}
+export { matchesShortcut } from '../../shared/shortcut.js';
 
 /**
  * A command palette in a modal dialog. Project a `ge-command` into it. A global key combination toggles it, and
@@ -30,12 +18,12 @@ function isEditable(target: EventTarget | null): boolean {
  * @attr {boolean} no-shortcut - Drops the key binding; drive `open` yourself.
  */
 export class GeCommandDialog extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(`:host{display:contents;--command-group-px:0.5rem;--command-group-weight:500;--command-group-color:var(--muted-foreground);--command-item-px:0.5rem;--command-item-py:0.75rem}
 ge-dialog-content::part(panel){overflow:hidden;padding:0;box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1),0 4px 6px -4px rgb(0 0 0 / 0.1)}`),
     ];
-    static override properties = {
+    static override readonly properties = {
         open: { type: Boolean, reflect: true },
         shortcut: {},
         noShortcut: { type: Boolean, attribute: 'no-shortcut' },
@@ -52,27 +40,42 @@ ge-dialog-content::part(panel){overflow:hidden;padding:0;box-shadow:0 10px 15px 
         this.noShortcut = false;
     }
 
+    private binding?: ShortcutComponentHandle;
+
     override connectedCallback(): void {
         super.connectedCallback();
         this.dataset.slot = 'command-dialog';
-        document.addEventListener('keydown', this.onKeydown);
+        this.bindShortcut();
     }
 
     override disconnectedCallback(): void {
         super.disconnectedCallback();
-        document.removeEventListener('keydown', this.onKeydown);
+        this.binding?.unregister();
+        this.binding = undefined;
     }
 
-    private readonly onKeydown = (event: KeyboardEvent) => {
-        if (this.noShortcut || !this.shortcut.trim() || event.defaultPrevented) return;
-        const mac = /mac|iphone|ipad/i.test(navigator.platform);
-        const hit = this.shortcut.split(',').find((combo) => matchesShortcut(event, combo, mac));
-        if (!hit) return;
-        // A bare key such as `/` must not steal typing from a field.
-        if (!/[+]/.test(hit.trim()) && isEditable(event.target)) return;
-        event.preventDefault();
-        this.open = !this.open;
-    };
+    /** One registration per comma-separated alternative, so each can be remapped on its own in the shortcuts dialog. */
+    private bindShortcut(): void {
+        this.binding?.unregister();
+        this.binding = undefined;
+        const combos = this.noShortcut ? [] : this.shortcut.split(',').map((combo) => combo.trim()).filter(Boolean);
+        if (combos.length === 0) return;
+        this.binding = shortcutBindings.registerComponent(
+            'command-dialog',
+            combos.map((combo, index) => ({
+                actionId: index === 0 ? 'command-dialog.toggle' : `command-dialog.toggle-${index + 1}`,
+                description: 'Open or close the command palette',
+                defaultShortcut: combo,
+                category: 'Navigation',
+                scope: 'global',
+                // A bare key such as `/` must not steal typing from a field.
+                when: (event) => combo.includes('+') || !isEditable(event.target),
+                handler: () => {
+                    this.open = !this.open;
+                },
+            })),
+        );
+    }
 
     private readonly onOpenChange = (event: Event) => {
         event.stopPropagation();
@@ -81,6 +84,7 @@ ge-dialog-content::part(panel){overflow:hidden;padding:0;box-shadow:0 10px 15px 
     };
 
     protected override updated(changed: Map<PropertyKey, unknown>): void {
+        if (this.isConnected && (changed.has('shortcut') || changed.has('noShortcut'))) this.bindShortcut();
         // After the dialog has rendered its content, so the field exists to be focused.
         if (changed.has('open') && this.open) setTimeout(() => this.querySelector<HTMLElement>('ge-command-input')?.focus());
     }

@@ -567,6 +567,926 @@
       "types": "./dist/autocomplete/define.d.ts",
       "development": "./src/autocomplete/define.ts",
       "default": "./dist/autocomplete/define.js"
+    },
+    "./drawer": {
+      "types": "./dist/drawer/index.d.ts",
+      "development": "./src/drawer/index.ts",
+      "default": "./dist/drawer/index.js"
+    },
+    "./drawer/define": {
+      "types": "./dist/drawer/define.d.ts",
+      "development": "./src/drawer/define.ts",
+      "default": "./dist/drawer/define.js"
+    },
+    "./chip-list": {
+      "types": "./dist/chip-list/index.d.ts",
+      "development": "./src/chip-list/index.ts",
+      "default": "./dist/chip-list/index.js"
+    },
+    "./chip-list/define": {
+      "types": "./dist/chip-list/define.d.ts",
+      "development": "./src/chip-list/define.ts",
+      "default": "./dist/chip-list/define.js"
+    },
+    "./input-otp": {
+      "types": "./dist/input-otp/index.d.ts",
+      "development": "./src/input-otp/index.ts",
+      "default": "./dist/input-otp/index.js"
+    },
+    "./input-otp/define": {
+      "types": "./dist/input-otp/define.d.ts",
+      "development": "./src/input-otp/define.ts",
+      "default": "./dist/input-otp/define.js"
+    },
+    "./split-button": {
+      "types": "./dist/split-button/index.d.ts",
+      "development": "./src/split-button/index.ts",
+      "default": "./dist/split-button/index.js"
+    },
+    "./split-button/define": {
+      "types": "./dist/split-button/define.d.ts",
+      "development": "./src/split-button/define.ts",
+      "default": "./dist/split-button/define.js"
+    },
+    "./resizable": {
+      "types": "./dist/resizable/index.d.ts",
+      "development": "./src/resizable/index.ts",
+      "default": "./dist/resizable/index.js"
+    },
+    "./resizable/define": {
+      "types": "./dist/resizable/define.d.ts",
+      "development": "./src/resizable/define.ts",
+      "default": "./dist/resizable/define.js"
+    },
+    "./carousel": {
+      "types": "./dist/carousel/index.d.ts",
+      "development": "./src/carousel/index.ts",
+      "default": "./dist/carousel/index.js"
+    },
+    "./carousel/define": {
+      "types": "./dist/carousel/define.d.ts",
+      "development": "./src/carousel/define.ts",
+      "default": "./dist/carousel/define.js"
+    },
+    "./table": {
+      "types": "./dist/table/index.d.ts",
+      "development": "./src/table/index.ts",
+      "default": "./dist/table/index.js"
+    },
+    "./table/define": {
+      "types": "./dist/table/define.d.ts",
+      "development": "./src/table/define.ts",
+      "default": "./dist/table/define.js"
+    },
+    "./time-picker": {
+      "types": "./dist/time-picker/index.d.ts",
+      "development": "./src/time-picker/index.ts",
+      "default": "./dist/time-picker/index.js"
+    },
+    "./time-picker/define": {
+      "types": "./dist/time-picker/define.d.ts",
+      "development": "./src/time-picker/define.ts",
+      "default": "./dist/time-picker/define.js"
+    },
+    "./toast": {
+      "types": "./dist/toast/index.d.ts",
+      "development": "./src/toast/index.ts",
+      "default": "./dist/toast/index.js"
+    },
+    "./toast/define": {
+      "types": "./dist/toast/define.d.ts",
+      "development": "./src/toast/define.ts",
+      "default": "./dist/toast/define.js"
+    },
+    "./tree": {
+      "types": "./dist/tree/index.d.ts",
+      "development": "./src/tree/index.ts",
+      "default": "./dist/tree/index.js"
+    },
+    "./tree/define": {
+      "types": "./dist/tree/define.d.ts",
+      "development": "./src/tree/define.ts",
+      "default": "./dist/tree/define.js"
+    },
+    "./sidebar": {
+      "types": "./dist/sidebar/index.d.ts",
+      "development": "./src/sidebar/index.ts",
+      "default": "./dist/sidebar/index.js"
+    },
+    "./sidebar/define": {
+      "types": "./dist/sidebar/define.d.ts",
+      "development": "./src/sidebar/define.ts",
+      "default": "./dist/sidebar/define.js"
+    },
+    "./eyedropper": {
+      "types": "./dist/eyedropper/index.d.ts",
+      "development": "./src/eyedropper/index.ts",
+      "default": "./dist/eyedropper/index.js"
+    },
+    "./eyedropper/define": {
+      "types": "./dist/eyedropper/define.d.ts",
+      "development": "./src/eyedropper/define.ts",
+      "default": "./dist/eyedropper/define.js"
+    },
+    "./color-picker": {
+      "types": "./dist/color-picker/index.d.ts",
+      "development": "./src/color-picker/index.ts",
+      "default": "./dist/color-picker/index.js"
+    },
+    "./color-picker/define": {
+      "types": "./dist/color-picker/define.d.ts",
+      "development": "./src/color-picker/define.ts",
+      "default": "./dist/color-picker/define.js"
+    },
+    "./code-block": {
+      "types": "./dist/code-block/index.d.ts",
+      "development": "./src/code-block/index.ts",
+      "default": "./dist/code-block/index.js"
+    },
+    "./code-block/define": {
+      "types": "./dist/code-block/define.d.ts",
+      "development": "./src/code-block/define.ts",
+      "default": "./dist/code-block/define.js"
+    },
+    "./speed-dial": {
+      "types": "./dist/speed-dial/index.d.ts",
+      "development": "./src/speed-dial/index.ts",
+      "default": "./dist/speed-dial/index.js"
+    },
+    "./speed-dial/define": {
+      "types": "./dist/speed-dial/define.d.ts",
+      "development": "./src/speed-dial/define.ts",
+      "default": "./dist/speed-dial/define.js"
+    },
+    "./dock": {
+      "types": "./dist/dock/index.d.ts",
+      "development": "./src/dock/index.ts",
+      "default": "./dist/dock/index.js"
+    },
+    "./dock/define": {
+      "types": "./dist/dock/define.d.ts",
+      "development": "./src/dock/define.ts",
+      "default": "./dist/dock/define.js"
+    },
+    "./file-upload": {
+      "types": "./dist/file-upload/index.d.ts",
+      "development": "./src/file-upload/index.ts",
+      "default": "./dist/file-upload/index.js"
+    },
+    "./file-upload/define": {
+      "types": "./dist/file-upload/define.d.ts",
+      "development": "./src/file-upload/define.ts",
+      "default": "./dist/file-upload/define.js"
+    },
+    "./tree-context-menu": {
+      "types": "./dist/tree-context-menu/index.d.ts",
+      "development": "./src/tree-context-menu/index.ts",
+      "default": "./dist/tree-context-menu/index.js"
+    },
+    "./tree-context-menu/define": {
+      "types": "./dist/tree-context-menu/define.d.ts",
+      "development": "./src/tree-context-menu/define.ts",
+      "default": "./dist/tree-context-menu/define.js"
+    },
+    "./tree-select": {
+      "types": "./dist/tree-select/index.d.ts",
+      "development": "./src/tree-select/index.ts",
+      "default": "./dist/tree-select/index.js"
+    },
+    "./tree-select/define": {
+      "types": "./dist/tree-select/define.d.ts",
+      "development": "./src/tree-select/define.ts",
+      "default": "./dist/tree-select/define.js"
+    },
+    "./sortable": {
+      "types": "./dist/sortable/index.d.ts",
+      "development": "./src/sortable/index.ts",
+      "default": "./dist/sortable/index.js"
+    },
+    "./sortable/define": {
+      "types": "./dist/sortable/define.d.ts",
+      "development": "./src/sortable/define.ts",
+      "default": "./dist/sortable/define.js"
+    },
+    "./kanban": {
+      "types": "./dist/kanban/index.d.ts",
+      "development": "./src/kanban/index.ts",
+      "default": "./dist/kanban/index.js"
+    },
+    "./kanban/define": {
+      "types": "./dist/kanban/define.d.ts",
+      "development": "./src/kanban/define.ts",
+      "default": "./dist/kanban/define.js"
+    },
+    "./chart-legend": {
+      "types": "./dist/chart-legend/index.d.ts",
+      "development": "./src/chart-legend/index.ts",
+      "default": "./dist/chart-legend/index.js"
+    },
+    "./chart-legend/define": {
+      "types": "./dist/chart-legend/define.d.ts",
+      "development": "./src/chart-legend/define.ts",
+      "default": "./dist/chart-legend/define.js"
+    },
+    "./chart-tooltip": {
+      "types": "./dist/chart-tooltip/index.d.ts",
+      "development": "./src/chart-tooltip/index.ts",
+      "default": "./dist/chart-tooltip/index.js"
+    },
+    "./chart-tooltip/define": {
+      "types": "./dist/chart-tooltip/define.d.ts",
+      "development": "./src/chart-tooltip/define.ts",
+      "default": "./dist/chart-tooltip/define.js"
+    },
+    "./line-chart": {
+      "types": "./dist/line-chart/index.d.ts",
+      "development": "./src/line-chart/index.ts",
+      "default": "./dist/line-chart/index.js"
+    },
+    "./line-chart/define": {
+      "types": "./dist/line-chart/define.d.ts",
+      "development": "./src/line-chart/define.ts",
+      "default": "./dist/line-chart/define.js"
+    },
+    "./bar-chart": {
+      "types": "./dist/bar-chart/index.d.ts",
+      "development": "./src/bar-chart/index.ts",
+      "default": "./dist/bar-chart/index.js"
+    },
+    "./bar-chart/define": {
+      "types": "./dist/bar-chart/define.d.ts",
+      "development": "./src/bar-chart/define.ts",
+      "default": "./dist/bar-chart/define.js"
+    },
+    "./pie-chart": {
+      "types": "./dist/pie-chart/index.d.ts",
+      "development": "./src/pie-chart/index.ts",
+      "default": "./dist/pie-chart/index.js"
+    },
+    "./pie-chart/define": {
+      "types": "./dist/pie-chart/define.d.ts",
+      "development": "./src/pie-chart/define.ts",
+      "default": "./dist/pie-chart/define.js"
+    },
+    "./area-chart": {
+      "types": "./dist/area-chart/index.d.ts",
+      "development": "./src/area-chart/index.ts",
+      "default": "./dist/area-chart/index.js"
+    },
+    "./area-chart/define": {
+      "types": "./dist/area-chart/define.d.ts",
+      "development": "./src/area-chart/define.ts",
+      "default": "./dist/area-chart/define.js"
+    },
+    "./stacked-bar-chart": {
+      "types": "./dist/stacked-bar-chart/index.d.ts",
+      "development": "./src/stacked-bar-chart/index.ts",
+      "default": "./dist/stacked-bar-chart/index.js"
+    },
+    "./stacked-bar-chart/define": {
+      "types": "./dist/stacked-bar-chart/define.d.ts",
+      "development": "./src/stacked-bar-chart/define.ts",
+      "default": "./dist/stacked-bar-chart/define.js"
+    },
+    "./scatter-chart": {
+      "types": "./dist/scatter-chart/index.d.ts",
+      "development": "./src/scatter-chart/index.ts",
+      "default": "./dist/scatter-chart/index.js"
+    },
+    "./scatter-chart/define": {
+      "types": "./dist/scatter-chart/define.d.ts",
+      "development": "./src/scatter-chart/define.ts",
+      "default": "./dist/scatter-chart/define.js"
+    },
+    "./bubble-chart": {
+      "types": "./dist/bubble-chart/index.d.ts",
+      "development": "./src/bubble-chart/index.ts",
+      "default": "./dist/bubble-chart/index.js"
+    },
+    "./bubble-chart/define": {
+      "types": "./dist/bubble-chart/define.d.ts",
+      "development": "./src/bubble-chart/define.ts",
+      "default": "./dist/bubble-chart/define.js"
+    },
+    "./radar-chart": {
+      "types": "./dist/radar-chart/index.d.ts",
+      "development": "./src/radar-chart/index.ts",
+      "default": "./dist/radar-chart/index.js"
+    },
+    "./radar-chart/define": {
+      "types": "./dist/radar-chart/define.d.ts",
+      "development": "./src/radar-chart/define.ts",
+      "default": "./dist/radar-chart/define.js"
+    },
+    "./gauge-chart": {
+      "types": "./dist/gauge-chart/index.d.ts",
+      "development": "./src/gauge-chart/index.ts",
+      "default": "./dist/gauge-chart/index.js"
+    },
+    "./gauge-chart/define": {
+      "types": "./dist/gauge-chart/define.d.ts",
+      "development": "./src/gauge-chart/define.ts",
+      "default": "./dist/gauge-chart/define.js"
+    },
+    "./funnel-chart": {
+      "types": "./dist/funnel-chart/index.d.ts",
+      "development": "./src/funnel-chart/index.ts",
+      "default": "./dist/funnel-chart/index.js"
+    },
+    "./funnel-chart/define": {
+      "types": "./dist/funnel-chart/define.d.ts",
+      "development": "./src/funnel-chart/define.ts",
+      "default": "./dist/funnel-chart/define.js"
+    },
+    "./waterfall-chart": {
+      "types": "./dist/waterfall-chart/index.d.ts",
+      "development": "./src/waterfall-chart/index.ts",
+      "default": "./dist/waterfall-chart/index.js"
+    },
+    "./waterfall-chart/define": {
+      "types": "./dist/waterfall-chart/define.d.ts",
+      "development": "./src/waterfall-chart/define.ts",
+      "default": "./dist/waterfall-chart/define.js"
+    },
+    "./bullet-chart": {
+      "types": "./dist/bullet-chart/index.d.ts",
+      "development": "./src/bullet-chart/index.ts",
+      "default": "./dist/bullet-chart/index.js"
+    },
+    "./bullet-chart/define": {
+      "types": "./dist/bullet-chart/define.d.ts",
+      "development": "./src/bullet-chart/define.ts",
+      "default": "./dist/bullet-chart/define.js"
+    },
+    "./heatmap": {
+      "types": "./dist/heatmap/index.d.ts",
+      "development": "./src/heatmap/index.ts",
+      "default": "./dist/heatmap/index.js"
+    },
+    "./heatmap/define": {
+      "types": "./dist/heatmap/define.d.ts",
+      "development": "./src/heatmap/define.ts",
+      "default": "./dist/heatmap/define.js"
+    },
+    "./calendar-heatmap": {
+      "types": "./dist/calendar-heatmap/index.d.ts",
+      "development": "./src/calendar-heatmap/index.ts",
+      "default": "./dist/calendar-heatmap/index.js"
+    },
+    "./calendar-heatmap/define": {
+      "types": "./dist/calendar-heatmap/define.d.ts",
+      "development": "./src/calendar-heatmap/define.ts",
+      "default": "./dist/calendar-heatmap/define.js"
+    },
+    "./column-range-chart": {
+      "types": "./dist/column-range-chart/index.d.ts",
+      "development": "./src/column-range-chart/index.ts",
+      "default": "./dist/column-range-chart/index.js"
+    },
+    "./column-range-chart/define": {
+      "types": "./dist/column-range-chart/define.d.ts",
+      "development": "./src/column-range-chart/define.ts",
+      "default": "./dist/column-range-chart/define.js"
+    },
+    "./combo-chart": {
+      "types": "./dist/combo-chart/index.d.ts",
+      "development": "./src/combo-chart/index.ts",
+      "default": "./dist/combo-chart/index.js"
+    },
+    "./combo-chart/define": {
+      "types": "./dist/combo-chart/define.d.ts",
+      "development": "./src/combo-chart/define.ts",
+      "default": "./dist/combo-chart/define.js"
+    },
+    "./bar-race-chart": {
+      "types": "./dist/bar-race-chart/index.d.ts",
+      "development": "./src/bar-race-chart/index.ts",
+      "default": "./dist/bar-race-chart/index.js"
+    },
+    "./bar-race-chart/define": {
+      "types": "./dist/bar-race-chart/define.d.ts",
+      "development": "./src/bar-race-chart/define.ts",
+      "default": "./dist/bar-race-chart/define.js"
+    },
+    "./histogram": {
+      "types": "./dist/histogram/index.d.ts",
+      "development": "./src/histogram/index.ts",
+      "default": "./dist/histogram/index.js"
+    },
+    "./histogram/define": {
+      "types": "./dist/histogram/define.d.ts",
+      "development": "./src/histogram/define.ts",
+      "default": "./dist/histogram/define.js"
+    },
+    "./chart-brush": {
+      "types": "./dist/chart-brush/index.d.ts",
+      "development": "./src/chart-brush/index.ts",
+      "default": "./dist/chart-brush/index.js"
+    },
+    "./chart-brush/define": {
+      "types": "./dist/chart-brush/define.d.ts",
+      "development": "./src/chart-brush/define.ts",
+      "default": "./dist/chart-brush/define.js"
+    },
+    "./pie-chart-drilldown": {
+      "types": "./dist/pie-chart-drilldown/index.d.ts",
+      "development": "./src/pie-chart-drilldown/index.ts",
+      "default": "./dist/pie-chart-drilldown/index.js"
+    },
+    "./pie-chart-drilldown/define": {
+      "types": "./dist/pie-chart-drilldown/define.d.ts",
+      "development": "./src/pie-chart-drilldown/define.ts",
+      "default": "./dist/pie-chart-drilldown/define.js"
+    },
+    "./bar-chart-drilldown": {
+      "types": "./dist/bar-chart-drilldown/index.d.ts",
+      "development": "./src/bar-chart-drilldown/index.ts",
+      "default": "./dist/bar-chart-drilldown/index.js"
+    },
+    "./bar-chart-drilldown/define": {
+      "types": "./dist/bar-chart-drilldown/define.d.ts",
+      "development": "./src/bar-chart-drilldown/define.ts",
+      "default": "./dist/bar-chart-drilldown/define.js"
+    },
+    "./org-chart": {
+      "types": "./dist/org-chart/index.d.ts",
+      "development": "./src/org-chart/index.ts",
+      "default": "./dist/org-chart/index.js"
+    },
+    "./org-chart/define": {
+      "types": "./dist/org-chart/define.d.ts",
+      "development": "./src/org-chart/define.ts",
+      "default": "./dist/org-chart/define.js"
+    },
+    "./text-reveal": {
+      "types": "./dist/text-reveal/index.d.ts",
+      "development": "./src/text-reveal/index.ts",
+      "default": "./dist/text-reveal/index.js"
+    },
+    "./text-reveal/define": {
+      "types": "./dist/text-reveal/define.d.ts",
+      "development": "./src/text-reveal/define.ts",
+      "default": "./dist/text-reveal/define.js"
+    },
+    "./marquee": {
+      "types": "./dist/marquee/index.d.ts",
+      "development": "./src/marquee/index.ts",
+      "default": "./dist/marquee/index.js"
+    },
+    "./marquee/define": {
+      "types": "./dist/marquee/define.d.ts",
+      "development": "./src/marquee/define.ts",
+      "default": "./dist/marquee/define.js"
+    },
+    "./particles": {
+      "types": "./dist/particles/index.d.ts",
+      "development": "./src/particles/index.ts",
+      "default": "./dist/particles/index.js"
+    },
+    "./particles/define": {
+      "types": "./dist/particles/define.d.ts",
+      "development": "./src/particles/define.ts",
+      "default": "./dist/particles/define.js"
+    },
+    "./ripple": {
+      "types": "./dist/ripple/index.d.ts",
+      "development": "./src/ripple/index.ts",
+      "default": "./dist/ripple/index.js"
+    },
+    "./ripple/define": {
+      "types": "./dist/ripple/define.d.ts",
+      "development": "./src/ripple/define.ts",
+      "default": "./dist/ripple/define.js"
+    },
+    "./magnetic": {
+      "types": "./dist/magnetic/index.d.ts",
+      "development": "./src/magnetic/index.ts",
+      "default": "./dist/magnetic/index.js"
+    },
+    "./magnetic/define": {
+      "types": "./dist/magnetic/define.d.ts",
+      "development": "./src/magnetic/define.ts",
+      "default": "./dist/magnetic/define.js"
+    },
+    "./copy-to": {
+      "types": "./dist/copy-to/index.d.ts",
+      "development": "./src/copy-to/index.ts",
+      "default": "./dist/copy-to/index.js"
+    },
+    "./copy-to/define": {
+      "types": "./dist/copy-to/define.d.ts",
+      "development": "./src/copy-to/define.ts",
+      "default": "./dist/copy-to/define.js"
+    },
+    "./confetti": {
+      "types": "./dist/confetti/index.d.ts",
+      "development": "./src/confetti/index.ts",
+      "default": "./dist/confetti/index.js"
+    },
+    "./confetti/define": {
+      "types": "./dist/confetti/define.d.ts",
+      "development": "./src/confetti/define.ts",
+      "default": "./dist/confetti/define.js"
+    },
+    "./input-mask": {
+      "types": "./dist/input-mask/index.d.ts",
+      "development": "./src/input-mask/index.ts",
+      "default": "./dist/input-mask/index.js"
+    },
+    "./input-mask/define": {
+      "types": "./dist/input-mask/define.d.ts",
+      "development": "./src/input-mask/define.ts",
+      "default": "./dist/input-mask/define.js"
+    },
+    "./chat-message": {
+      "types": "./dist/chat-message/index.d.ts",
+      "development": "./src/chat-message/index.ts",
+      "default": "./dist/chat-message/index.js"
+    },
+    "./chat-message/define": {
+      "types": "./dist/chat-message/define.d.ts",
+      "development": "./src/chat-message/define.ts",
+      "default": "./dist/chat-message/define.js"
+    },
+    "./chat-list": {
+      "types": "./dist/chat-list/index.d.ts",
+      "development": "./src/chat-list/index.ts",
+      "default": "./dist/chat-list/index.js"
+    },
+    "./chat-list/define": {
+      "types": "./dist/chat-list/define.d.ts",
+      "development": "./src/chat-list/define.ts",
+      "default": "./dist/chat-list/define.js"
+    },
+    "./chat-input": {
+      "types": "./dist/chat-input/index.d.ts",
+      "development": "./src/chat-input/index.ts",
+      "default": "./dist/chat-input/index.js"
+    },
+    "./chat-input/define": {
+      "types": "./dist/chat-input/define.d.ts",
+      "development": "./src/chat-input/define.ts",
+      "default": "./dist/chat-input/define.js"
+    },
+    "./tour": {
+      "types": "./dist/tour/index.d.ts",
+      "development": "./src/tour/index.ts",
+      "default": "./dist/tour/index.js"
+    },
+    "./tour/define": {
+      "types": "./dist/tour/define.d.ts",
+      "development": "./src/tour/define.ts",
+      "default": "./dist/tour/define.js"
+    },
+    "./blur-fade": {
+      "types": "./dist/blur-fade/index.d.ts",
+      "development": "./src/blur-fade/index.ts",
+      "default": "./dist/blur-fade/index.js"
+    },
+    "./blur-fade/define": {
+      "types": "./dist/blur-fade/define.d.ts",
+      "development": "./src/blur-fade/define.ts",
+      "default": "./dist/blur-fade/define.js"
+    },
+    "./flip-text": {
+      "types": "./dist/flip-text/index.d.ts",
+      "development": "./src/flip-text/index.ts",
+      "default": "./dist/flip-text/index.js"
+    },
+    "./flip-text/define": {
+      "types": "./dist/flip-text/define.d.ts",
+      "development": "./src/flip-text/define.ts",
+      "default": "./dist/flip-text/define.js"
+    },
+    "./gradient-text": {
+      "types": "./dist/gradient-text/index.d.ts",
+      "development": "./src/gradient-text/index.ts",
+      "default": "./dist/gradient-text/index.js"
+    },
+    "./gradient-text/define": {
+      "types": "./dist/gradient-text/define.d.ts",
+      "development": "./src/gradient-text/define.ts",
+      "default": "./dist/gradient-text/define.js"
+    },
+    "./typing-animation": {
+      "types": "./dist/typing-animation/index.d.ts",
+      "development": "./src/typing-animation/index.ts",
+      "default": "./dist/typing-animation/index.js"
+    },
+    "./typing-animation/define": {
+      "types": "./dist/typing-animation/define.d.ts",
+      "development": "./src/typing-animation/define.ts",
+      "default": "./dist/typing-animation/define.js"
+    },
+    "./word-rotate": {
+      "types": "./dist/word-rotate/index.d.ts",
+      "development": "./src/word-rotate/index.ts",
+      "default": "./dist/word-rotate/index.js"
+    },
+    "./word-rotate/define": {
+      "types": "./dist/word-rotate/define.d.ts",
+      "development": "./src/word-rotate/define.ts",
+      "default": "./dist/word-rotate/define.js"
+    },
+    "./streaming-text": {
+      "types": "./dist/streaming-text/index.d.ts",
+      "development": "./src/streaming-text/index.ts",
+      "default": "./dist/streaming-text/index.js"
+    },
+    "./streaming-text/define": {
+      "types": "./dist/streaming-text/define.d.ts",
+      "development": "./src/streaming-text/define.ts",
+      "default": "./dist/streaming-text/define.js"
+    },
+    "./number-ticker": {
+      "types": "./dist/number-ticker/index.d.ts",
+      "development": "./src/number-ticker/index.ts",
+      "default": "./dist/number-ticker/index.js"
+    },
+    "./number-ticker/define": {
+      "types": "./dist/number-ticker/define.d.ts",
+      "development": "./src/number-ticker/define.ts",
+      "default": "./dist/number-ticker/define.js"
+    },
+    "./morphing-text": {
+      "types": "./dist/morphing-text/index.d.ts",
+      "development": "./src/morphing-text/index.ts",
+      "default": "./dist/morphing-text/index.js"
+    },
+    "./morphing-text/define": {
+      "types": "./dist/morphing-text/define.d.ts",
+      "development": "./src/morphing-text/define.ts",
+      "default": "./dist/morphing-text/define.js"
+    },
+    "./orbit": {
+      "types": "./dist/orbit/index.d.ts",
+      "development": "./src/orbit/index.ts",
+      "default": "./dist/orbit/index.js"
+    },
+    "./orbit/define": {
+      "types": "./dist/orbit/define.d.ts",
+      "development": "./src/orbit/define.ts",
+      "default": "./dist/orbit/define.js"
+    },
+    "./shine-border": {
+      "types": "./dist/shine-border/index.d.ts",
+      "development": "./src/shine-border/index.ts",
+      "default": "./dist/shine-border/index.js"
+    },
+    "./shine-border/define": {
+      "types": "./dist/shine-border/define.d.ts",
+      "development": "./src/shine-border/define.ts",
+      "default": "./dist/shine-border/define.js"
+    },
+    "./sparkles": {
+      "types": "./dist/sparkles/index.d.ts",
+      "development": "./src/sparkles/index.ts",
+      "default": "./dist/sparkles/index.js"
+    },
+    "./sparkles/define": {
+      "types": "./dist/sparkles/define.d.ts",
+      "development": "./src/sparkles/define.ts",
+      "default": "./dist/sparkles/define.js"
+    },
+    "./wobble-card": {
+      "types": "./dist/wobble-card/index.d.ts",
+      "development": "./src/wobble-card/index.ts",
+      "default": "./dist/wobble-card/index.js"
+    },
+    "./wobble-card/define": {
+      "types": "./dist/wobble-card/define.d.ts",
+      "development": "./src/wobble-card/define.ts",
+      "default": "./dist/wobble-card/define.js"
+    },
+    "./stagger-children": {
+      "types": "./dist/stagger-children/index.d.ts",
+      "development": "./src/stagger-children/index.ts",
+      "default": "./dist/stagger-children/index.js"
+    },
+    "./stagger-children/define": {
+      "types": "./dist/stagger-children/define.d.ts",
+      "development": "./src/stagger-children/define.ts",
+      "default": "./dist/stagger-children/define.js"
+    },
+    "./scroll-progress": {
+      "types": "./dist/scroll-progress/index.d.ts",
+      "development": "./src/scroll-progress/index.ts",
+      "default": "./dist/scroll-progress/index.js"
+    },
+    "./scroll-progress/define": {
+      "types": "./dist/scroll-progress/define.d.ts",
+      "development": "./src/scroll-progress/define.ts",
+      "default": "./dist/scroll-progress/define.js"
+    },
+    "./meteors": {
+      "types": "./dist/meteors/index.d.ts",
+      "development": "./src/meteors/index.ts",
+      "default": "./dist/meteors/index.js"
+    },
+    "./meteors/define": {
+      "types": "./dist/meteors/define.d.ts",
+      "development": "./src/meteors/define.ts",
+      "default": "./dist/meteors/define.js"
+    },
+    "./comparison-slider": {
+      "types": "./dist/comparison-slider/index.d.ts",
+      "development": "./src/comparison-slider/index.ts",
+      "default": "./dist/comparison-slider/index.js"
+    },
+    "./comparison-slider/define": {
+      "types": "./dist/comparison-slider/define.d.ts",
+      "development": "./src/comparison-slider/define.ts",
+      "default": "./dist/comparison-slider/define.js"
+    },
+    "./masonry": {
+      "types": "./dist/masonry/index.d.ts",
+      "development": "./src/masonry/index.ts",
+      "default": "./dist/masonry/index.js"
+    },
+    "./masonry/define": {
+      "types": "./dist/masonry/define.d.ts",
+      "development": "./src/masonry/define.ts",
+      "default": "./dist/masonry/define.js"
+    },
+    "./virtual-scroll": {
+      "types": "./dist/virtual-scroll/index.d.ts",
+      "development": "./src/virtual-scroll/index.ts",
+      "default": "./dist/virtual-scroll/index.js"
+    },
+    "./virtual-scroll/define": {
+      "types": "./dist/virtual-scroll/define.d.ts",
+      "development": "./src/virtual-scroll/define.ts",
+      "default": "./dist/virtual-scroll/define.js"
+    },
+    "./bento-grid": {
+      "types": "./dist/bento-grid/index.d.ts",
+      "development": "./src/bento-grid/index.ts",
+      "default": "./dist/bento-grid/index.js"
+    },
+    "./bento-grid/define": {
+      "types": "./dist/bento-grid/define.d.ts",
+      "development": "./src/bento-grid/define.ts",
+      "default": "./dist/bento-grid/define.js"
+    },
+    "./currency-input": {
+      "types": "./dist/currency-input/index.d.ts",
+      "development": "./src/currency-input/index.ts",
+      "default": "./dist/currency-input/index.js"
+    },
+    "./currency-input/define": {
+      "types": "./dist/currency-input/define.d.ts",
+      "development": "./src/currency-input/define.ts",
+      "default": "./dist/currency-input/define.js"
+    },
+    "./duration-input": {
+      "types": "./dist/duration-input/index.d.ts",
+      "development": "./src/duration-input/index.ts",
+      "default": "./dist/duration-input/index.js"
+    },
+    "./duration-input/define": {
+      "types": "./dist/duration-input/define.d.ts",
+      "development": "./src/duration-input/define.ts",
+      "default": "./dist/duration-input/define.js"
+    },
+    "./phone-input": {
+      "types": "./dist/phone-input/index.d.ts",
+      "development": "./src/phone-input/index.ts",
+      "default": "./dist/phone-input/index.js"
+    },
+    "./phone-input/define": {
+      "types": "./dist/phone-input/define.d.ts",
+      "development": "./src/phone-input/define.ts",
+      "default": "./dist/phone-input/define.js"
+    },
+    "./signature-pad": {
+      "types": "./dist/signature-pad/index.d.ts",
+      "development": "./src/signature-pad/index.ts",
+      "default": "./dist/signature-pad/index.js"
+    },
+    "./signature-pad/define": {
+      "types": "./dist/signature-pad/define.d.ts",
+      "development": "./src/signature-pad/define.ts",
+      "default": "./dist/signature-pad/define.js"
+    },
+    "./emoji-picker": {
+      "types": "./dist/emoji-picker/index.d.ts",
+      "development": "./src/emoji-picker/index.ts",
+      "default": "./dist/emoji-picker/index.js"
+    },
+    "./emoji-picker/define": {
+      "types": "./dist/emoji-picker/define.d.ts",
+      "development": "./src/emoji-picker/define.ts",
+      "default": "./dist/emoji-picker/define.js"
+    },
+    "./treemap": {
+      "types": "./dist/treemap/index.d.ts",
+      "development": "./src/treemap/index.ts",
+      "default": "./dist/treemap/index.js"
+    },
+    "./treemap/define": {
+      "types": "./dist/treemap/define.d.ts",
+      "development": "./src/treemap/define.ts",
+      "default": "./dist/treemap/define.js"
+    },
+    "./boxplot": {
+      "types": "./dist/boxplot/index.d.ts",
+      "development": "./src/boxplot/index.ts",
+      "default": "./dist/boxplot/index.js"
+    },
+    "./boxplot/define": {
+      "types": "./dist/boxplot/define.d.ts",
+      "development": "./src/boxplot/define.ts",
+      "default": "./dist/boxplot/define.js"
+    },
+    "./candlestick": {
+      "types": "./dist/candlestick/index.d.ts",
+      "development": "./src/candlestick/index.ts",
+      "default": "./dist/candlestick/index.js"
+    },
+    "./candlestick/define": {
+      "types": "./dist/candlestick/define.d.ts",
+      "development": "./src/candlestick/define.ts",
+      "default": "./dist/candlestick/define.js"
+    },
+    "./card-accordion": {
+      "types": "./dist/card-accordion/index.d.ts",
+      "development": "./src/card-accordion/index.ts",
+      "default": "./dist/card-accordion/index.js"
+    },
+    "./card-accordion/define": {
+      "types": "./dist/card-accordion/define.d.ts",
+      "development": "./src/card-accordion/define.ts",
+      "default": "./dist/card-accordion/define.js"
+    },
+    "./error-page": {
+      "types": "./dist/error-page/index.d.ts",
+      "development": "./src/error-page/index.ts",
+      "default": "./dist/error-page/index.js"
+    },
+    "./error-page/define": {
+      "types": "./dist/error-page/define.d.ts",
+      "development": "./src/error-page/define.ts",
+      "default": "./dist/error-page/define.js"
+    },
+    "./icon": {
+      "types": "./dist/icon/index.d.ts",
+      "development": "./src/icon/index.ts",
+      "default": "./dist/icon/index.js"
+    },
+    "./icon/define": {
+      "types": "./dist/icon/define.d.ts",
+      "development": "./src/icon/define.ts",
+      "default": "./dist/icon/define.js"
+    },
+    "./shortcut-bindings-dialog": {
+      "types": "./dist/shortcut-bindings-dialog/index.d.ts",
+      "development": "./src/shortcut-bindings-dialog/index.ts",
+      "default": "./dist/shortcut-bindings-dialog/index.js"
+    },
+    "./shortcut-bindings-dialog/define": {
+      "types": "./dist/shortcut-bindings-dialog/define.d.ts",
+      "development": "./src/shortcut-bindings-dialog/define.ts",
+      "default": "./dist/shortcut-bindings-dialog/define.js"
+    },
+    "./field-mapper": {
+      "types": "./dist/field-mapper/index.d.ts",
+      "development": "./src/field-mapper/index.ts",
+      "default": "./dist/field-mapper/index.js"
+    },
+    "./field-mapper/define": {
+      "types": "./dist/field-mapper/define.d.ts",
+      "development": "./src/field-mapper/define.ts",
+      "default": "./dist/field-mapper/define.js"
+    },
+    "./file-viewer": {
+      "types": "./dist/file-viewer/index.d.ts",
+      "development": "./src/file-viewer/index.ts",
+      "default": "./dist/file-viewer/index.js"
+    },
+    "./file-viewer/define": {
+      "types": "./dist/file-viewer/define.d.ts",
+      "development": "./src/file-viewer/define.ts",
+      "default": "./dist/file-viewer/define.js"
+    },
+    "./page-builder": {
+      "types": "./dist/page-builder/index.d.ts",
+      "development": "./src/page-builder/index.ts",
+      "default": "./dist/page-builder/index.js"
+    },
+    "./page-builder/define": {
+      "types": "./dist/page-builder/define.d.ts",
+      "development": "./src/page-builder/define.ts",
+      "default": "./dist/page-builder/define.js"
+    },
+    "./page-renderer": {
+      "types": "./dist/page-renderer/index.d.ts",
+      "development": "./src/page-renderer/index.ts",
+      "default": "./dist/page-renderer/index.js"
+    },
+    "./page-renderer/define": {
+      "types": "./dist/page-renderer/define.d.ts",
+      "development": "./src/page-renderer/define.ts",
+      "default": "./dist/page-renderer/define.js"
     }
   },
   "scripts": {

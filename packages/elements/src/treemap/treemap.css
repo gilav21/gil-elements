@@ -1,0 +1,47 @@
+:host {
+    display: block;
+}
+.base {
+    position: relative;
+    width: 100%;
+}
+svg {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+}
+.cell {
+    cursor: pointer;
+    outline: none;
+}
+.cell.dim {
+    opacity: 0.6;
+}
+.cell rect {
+    transition: filter 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+.cell rect.hot {
+    filter: brightness(1.1);
+}
+.label {
+    pointer-events: none;
+    fill: var(--foreground);
+    font-size: 10px;
+    font-weight: 500;
+}
+.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    border: 1px dashed var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+@media (min-width: 640px) {
+    .empty {
+        padding: 1.5rem;
+    }
+}

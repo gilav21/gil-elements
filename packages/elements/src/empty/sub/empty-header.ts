@@ -8,7 +8,7 @@ import css from './empty-header.css?inline';
  * @slot - `ge-empty-media`, `ge-empty-title`, `ge-empty-description`.
  */
 export class GeEmptyHeader extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

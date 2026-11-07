@@ -1,0 +1,36 @@
+:host {
+    display: block;
+}
+.base {
+    position: relative;
+    width: fit-content;
+    max-width: 100%;
+    margin-right: auto;
+}
+svg {
+    display: block;
+    height: auto;
+    max-width: 100%;
+}
+.weekday {
+    fill: var(--muted-foreground);
+    font-size: 9px;
+}
+.day {
+    cursor: pointer;
+}
+.legend {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--muted-foreground);
+}
+.swatch {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 2px;
+}

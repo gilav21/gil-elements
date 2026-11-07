@@ -9,8 +9,8 @@ import css from './button-group-separator.css?inline';
  * @attr {'horizontal' | 'vertical'} orientation - Direction of the line. Defaults to vertical.
  */
 export class GeButtonGroupSeparator extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { orientation: { reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { orientation: { reflect: true } };
 
     declare orientation: 'horizontal' | 'vertical';
 

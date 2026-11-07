@@ -1,0 +1,48 @@
+:host {
+    display: block;
+}
+.base {
+    position: relative;
+    width: 100%;
+}
+.reset {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    z-index: 10;
+    padding: 0.125rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 0.25rem;
+    background: color-mix(in oklab, var(--background) 90%, transparent);
+    color: var(--muted-foreground);
+    font-family: inherit;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    cursor: pointer;
+}
+.reset:hover {
+    color: var(--foreground);
+}
+svg {
+    display: block;
+    width: 100%;
+    user-select: none;
+}
+.track,
+.band,
+.handle {
+    touch-action: none;
+}
+.track {
+    fill: color-mix(in oklab, var(--muted) 40%, transparent);
+    cursor: crosshair;
+}
+.band {
+    fill: color-mix(in oklab, var(--primary) 20%, transparent);
+    stroke: var(--primary);
+    cursor: move;
+}
+.handle {
+    fill: var(--primary);
+    cursor: ew-resize;
+}

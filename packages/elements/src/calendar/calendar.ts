@@ -48,8 +48,8 @@ const selectedConverter = {
  * @cssprop --density-picker - Spacing multiplier for the picker family; falls back to `--density`.
  */
 export class GeCalendar extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         mode: { reflect: true },
         showMonthSelect: { type: Boolean, attribute: 'show-month-select', reflect: true },
         showYearSelect: { type: Boolean, attribute: 'show-year-select', reflect: true },

@@ -1,0 +1,350 @@
+:host {
+    display: block;
+    --_d: var(--density-field-mapper, var(--density, 1));
+}
+
+.root {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.truncate {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.note {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+/*
+ * Both lists share one grid so a linked pair can sit on one row, level; the middle column is the gutter the lines are
+ * drawn in. Wide enough for a 44px handle to overhang each list by half and still leave room for a label.
+ */
+.scroll {
+    position: relative;
+    overflow: auto;
+    overscroll-behavior: contain;
+    max-height: var(--field-mapper-max-height, min(70vh, 36rem));
+}
+
+.grid {
+    position: relative;
+    display: grid;
+    padding: 0.25rem;
+    grid-template-columns: minmax(0, 1fr) var(--field-mapper-gutter, clamp(4rem, 24%, 10rem)) minmax(0, 1fr);
+    grid-auto-rows: auto;
+    row-gap: calc(0.5rem * var(--_d));
+}
+
+.grid[data-dragging] {
+    cursor: grabbing;
+    user-select: none;
+}
+
+/* The header band spans the whole grid and reuses its three columns. */
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: subgrid;
+    padding-bottom: 0.5rem;
+    background: var(--background);
+}
+
+.heading {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.heading-text {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.list {
+    display: contents;
+}
+
+.item {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    min-width: 0;
+    min-height: 2.75rem;
+    align-items: center;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--card);
+    padding-block: calc(0.5rem * var(--_d));
+    padding-inline: calc(0.75rem * var(--_d)) 1.75rem;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 150ms, box-shadow 150ms, background-color 150ms;
+}
+
+/* The side facing the gutter keeps room for the half of the handle that sits inside. */
+.item[data-side='end'] {
+    padding-inline: 1.75rem calc(0.75rem * var(--_d));
+}
+
+.item:hover {
+    border-color: var(--ring);
+}
+
+.item:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+
+.item[data-state='choosing'],
+.item[data-state='dragging'] {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary);
+}
+
+.item[aria-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.content {
+    min-width: 0;
+    flex: 1 1 0%;
+}
+
+/*
+ * The handle is a 44x44 target (WCAG 2.5.8) centred on the item's inner edge, so half of it overhangs into the gutter and
+ * its centre is where the line starts. `touch-action: none` lets a finger drag from it instead of scrolling.
+ */
+.handle {
+    position: absolute;
+    top: 50%;
+    display: flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    transform: translateY(-50%);
+    touch-action: none;
+    cursor: grab;
+}
+
+.handle[data-side='start'] {
+    inset-inline-end: -1.375rem;
+}
+
+.handle[data-side='end'] {
+    inset-inline-start: -1.375rem;
+}
+
+.item[aria-disabled='true'] .handle {
+    cursor: not-allowed;
+}
+
+.dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    box-sizing: border-box;
+    border-radius: 9999px;
+    border: 2px solid var(--primary);
+    background: var(--background);
+}
+
+.item[data-linked] .dot {
+    background: var(--primary);
+}
+
+/* A 44px-wide invisible stroke, so a thin line is still a finger-sized target. */
+.hit {
+    fill: none;
+    stroke: transparent;
+    stroke-width: 44px;
+    pointer-events: stroke;
+    cursor: pointer;
+}
+
+/* Tones differ in weight and dash as well as colour, never colour alone. */
+.line {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 2px;
+    stroke-linecap: round;
+}
+
+.line[data-tone='muted'] {
+    stroke: var(--muted-foreground);
+    stroke-width: 1.5px;
+    stroke-dasharray: 6 4;
+}
+
+.line[data-tone='strong'] {
+    stroke-width: 3px;
+}
+
+.line[data-to-edge] {
+    stroke-dasharray: 2 4;
+    opacity: 0.7;
+}
+
+/* Selected reads as heavier and solid, whatever its tone, with a ring-coloured halo. */
+.line[data-selected] {
+    stroke: var(--primary);
+    stroke-width: 4px;
+    stroke-dasharray: none;
+    opacity: 1;
+    filter: drop-shadow(0 0 3px var(--ring));
+}
+
+.label {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.label-text {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    border-radius: calc(var(--radius) - 6px);
+    background: var(--background);
+    padding-inline: 0.25rem;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+.label ge-button {
+    pointer-events: auto;
+}
+
+.label ge-button::part(base) {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: 9999px;
+}
+
+.hidden-note {
+    padding-inline: 0.25rem;
+}
+
+/* Stacked rows, below about 28rem. */
+.rows,
+.rows-head,
+.rows-list,
+.row,
+.chips {
+    display: flex;
+}
+
+.rows,
+.rows-head,
+.rows-list {
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.rows-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rows-head ge-input::part(input) {
+    height: 2.75rem;
+}
+
+.row {
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.5rem;
+    box-sizing: border-box;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--card);
+    padding: 0.75rem;
+}
+
+.row-other {
+    margin-bottom: -0.25rem;
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+.row ge-native-select {
+    width: 100%;
+}
+
+.row ge-native-select::part(select) {
+    height: 2.75rem;
+}
+
+.chips {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.chip {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+    align-items: center;
+    gap: 0.25rem;
+    border-radius: calc(var(--radius) - 2px);
+    background: var(--muted);
+    padding-inline-start: 0.75rem;
+}
+
+.chip ge-button::part(base) {
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-shrink: 0;
+}

@@ -8,7 +8,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - The text, such as `⌘K`.
  */
 export class GeContextMenuShortcut extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(':host{margin-inline-start:auto;font-size:0.75rem;line-height:1rem;letter-spacing:0.1em;color:var(--muted-foreground)}'),
     ];

@@ -1,6 +1,6 @@
 import axe from 'axe-core';
-import { describe, expect, it } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { afterEach, describe, expect, it } from 'vitest';
+import { cdp, userEvent } from 'vitest/browser';
 import '@gilav21/elements-base/tokens.css';
 import './define.js';
 import { mount, useTheme } from '../test-utils.js';
@@ -37,7 +37,29 @@ const press = async (page: HTMLElement, key: string) => {
     await settle(page);
 };
 
+const emulateTouch = (enabled: boolean) => cdp().send('Emulation.setTouchEmulationEnabled', { enabled, maxTouchPoints: 1 });
+
 describe('ge-autocomplete', () => {
+    afterEach(() => emulateTouch(false));
+
+    it('keeps the chip height on touch but widens the remove tap target to 44px', async () => {
+        const { page, ac } = await box('<ge-autocomplete multiple></ge-autocomplete>', FRUIT, { value: ['Apple', 'Cherry'] });
+        const geometry = async (touch: boolean) => {
+            await emulateTouch(touch);
+            await settle(page);
+            const chip = ac.shadowRoot!.querySelector('ge-badge')!.getBoundingClientRect();
+            const remove = ac.shadowRoot!.querySelector('.chip-remove')!.getBoundingClientRect();
+            const probe = ac.shadowRoot!.elementFromPoint(remove.left + remove.width / 2 + 20, remove.top + remove.height / 2);
+            return { chipHeight: chip.height, removeSize: [remove.width, remove.height], hitsRemove: probe?.closest('.chip-remove') != null };
+        };
+        const fine = await geometry(false);
+        const coarse = await geometry(true);
+        expect(coarse.chipHeight).toBe(fine.chipHeight);
+        expect(coarse.removeSize).toEqual(fine.removeSize);
+        expect(fine.hitsRemove).toBe(false);
+        expect(coarse.hitsRemove).toBe(true);
+    });
+
     it('opens on focus, filters as the user types and highlights what matched', async () => {
         const { page, ac } = await box('<div style="width:300px"><ge-autocomplete></ge-autocomplete></div>');
         const searches: string[] = [];

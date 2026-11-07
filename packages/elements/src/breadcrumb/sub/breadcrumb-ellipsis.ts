@@ -9,8 +9,8 @@ import css from './breadcrumb-ellipsis.css?inline';
  * @cssprop --density-button - Size multiplier; falls back to `--density`.
  */
 export class GeBreadcrumbEllipsis extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         label: {},
     };
 

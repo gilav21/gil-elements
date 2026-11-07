@@ -8,7 +8,7 @@ import css from './dialog-header.css?inline';
  * @slot - A `ge-dialog-title` and a `ge-dialog-description`.
  */
 export class GeDialogHeader extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

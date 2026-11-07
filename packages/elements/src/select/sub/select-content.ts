@@ -31,8 +31,8 @@ function reveal(list: HTMLElement, option: HTMLElement): void {
  * @attr {'top' | 'bottom'} side - Preferred side for `popper`. Only a preference: it flips when the other side has more room.
  */
 export class GeSelectContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         position: { reflect: true },
         side: { reflect: true },
     };

@@ -1,7 +1,7 @@
 // shadcn-angular input.component.ts (inputVariants, classes, containerClasses, innerClasses, floatingLabelClasses) and .html.
 // cn() is tailwind-merge over cva: where a variant repeats a base utility the later one wins.
-const BASE = 'border-input aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-transparent text-base transition-colors md:text-sm placeholder:text-muted-foreground w-full min-w-0 outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50';
-const VARIANT = {
+export const BASE = 'border-input aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive bg-transparent text-base transition-colors md:text-sm placeholder:text-muted-foreground w-full min-w-0 outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50';
+export const VARIANT = {
     outline: 'dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 rounded-lg border focus-visible:ring-[3px] aria-invalid:ring-[3px]',
     underline: 'rounded-none border-b focus-visible:border-ring px-0 shadow-none',
     ghost: 'border-none shadow-none focus-visible:ring-0 px-0',

@@ -1,0 +1,27 @@
+:host {
+    display: block;
+}
+.base {
+    display: block;
+}
+svg {
+    display: block;
+    overflow: visible;
+}
+.track {
+    fill: var(--muted);
+}
+.fill {
+    transition: d 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.value {
+    fill: var(--foreground);
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+    font-weight: 600;
+}
+.label {
+    fill: var(--muted-foreground);
+    font-size: 0.75rem;
+    line-height: 1rem;
+}

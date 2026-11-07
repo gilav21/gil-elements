@@ -1,0 +1,26 @@
+/* shadcn-angular bento-grid-item: a flex-column card, `rounded-xl border bg-white p-4 overflow-hidden`, with `space-y-4` between its children. */
+:host {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: 1rem;
+    border: 1px solid var(--bento-item-border, var(--border));
+    border-radius: calc(var(--radius) + 4px);
+    background: var(--bento-item-surface);
+    transition-property: color, background-color, border-color, box-shadow, transform, opacity;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+:host(:hover) {
+    box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+::slotted(:not(:last-child)) {
+    margin-block-end: 1rem;
+}
+@media (prefers-reduced-motion: reduce) {
+    :host {
+        transition: none;
+    }
+}

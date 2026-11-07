@@ -1,3 +1,7 @@
 :host {
     display: contents;
 }
+/* The browser's own focus ring, tinted the way the shadcn base layer tints every outline. */
+[part='base']:focus-visible {
+    outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
+}

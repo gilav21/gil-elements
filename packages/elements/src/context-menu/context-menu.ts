@@ -15,6 +15,8 @@ export interface ContextMenuItem {
     /** The rows of a `sub` submenu. */
     children?: ContextMenuItem[];
     inset?: boolean;
+    /** `default`, or `destructive` to paint the row in the destructive colour. */
+    variant?: 'default' | 'destructive';
     /** Runs when the row is activated by pointer or keyboard. */
     click?: (item: ContextMenuItem) => void;
 }
@@ -45,8 +47,8 @@ export interface ContextMenuPart extends HTMLElement {
  * @attr {boolean} open - Whether the menu is showing.
  */
 export class GeContextMenu extends UiElement implements ContextMenuHost {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
+    static override readonly properties = {
         open: { type: Boolean, reflect: true },
         items: { attribute: false },
         x: { state: true },
@@ -137,6 +139,7 @@ export class GeContextMenu extends UiElement implements ContextMenuHost {
         return html`<ge-context-menu-item
             ?inset=${item.inset}
             ?disabled=${item.disabled}
+            variant=${item.variant ?? 'default'}
             shortcut=${item.shortcut ?? ''}
             @click=${() => item.click?.(item)}
             >${item.label}</ge-context-menu-item

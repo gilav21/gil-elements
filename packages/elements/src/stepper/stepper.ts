@@ -46,8 +46,8 @@ export interface StepperHost {
  * @attr {boolean} linear - Blocks jumping ahead of the current step.
  */
 export class GeStepper extends UiElement implements StepperHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         activeStep: { type: Number, attribute: 'active-step', reflect: true },
         orientation: { reflect: true },
         linear: { type: Boolean, reflect: true },
@@ -135,7 +135,8 @@ export class GeStepper extends UiElement implements StepperHost {
         }
         if (typeof outcome === 'boolean') {
             this.guardPending = false;
-            this.settle(outcome, from, index);
+            if (outcome) this.commit(index);
+            else this.block(from, index);
             return;
         }
         this.guardPending = true;
@@ -158,12 +159,12 @@ export class GeStepper extends UiElement implements StepperHost {
     private settleAsync(token: number, allowed: boolean, from: number, to: number): void {
         if (token !== this.guardToken) return;
         this.guardPending = false;
-        this.settle(allowed, from, to);
+        if (allowed) this.commit(to);
+        else this.block(from, to);
     }
 
-    private settle(allowed: boolean, from: number, to: number): void {
-        if (allowed) this.commit(to);
-        else this.dispatchEvent(new CustomEvent('step-blocked', { detail: { from, to }, bubbles: true, composed: true }));
+    private block(from: number, to: number): void {
+        this.dispatchEvent(new CustomEvent('step-blocked', { detail: { from, to }, bubbles: true, composed: true }));
     }
 
     private commit(index: number): void {

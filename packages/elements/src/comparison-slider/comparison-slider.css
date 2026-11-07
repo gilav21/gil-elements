@@ -1,0 +1,148 @@
+/* shadcn-angular comparison-slider: `relative w-full overflow-hidden select-none aspect-video touch-none` around two stacked images and a divider. */
+:host {
+    position: relative;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    user-select: none;
+    aspect-ratio: 16 / 9;
+    touch-action: none;
+}
+.root {
+    position: absolute;
+    inset: 0;
+}
+img {
+    position: absolute;
+    display: block;
+    object-fit: cover;
+}
+.after {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+.before {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+.clip {
+    position: absolute;
+    overflow: hidden;
+}
+.root[data-orientation='vertical'] .clip {
+    inset: 0 0 auto;
+}
+.root:not([data-orientation='vertical']) .clip {
+    inset: 0 auto 0 0;
+}
+.inner {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+.root:not([data-orientation='vertical']) .inner {
+    height: 100%;
+}
+.root[data-orientation='vertical'] .inner {
+    width: 100%;
+}
+.divider {
+    position: absolute;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+.root:not([data-orientation='vertical']) .divider {
+    inset: 0 auto;
+    width: 0.25rem;
+    flex-direction: column;
+    transform: translateX(-50%);
+}
+.root[data-orientation='vertical'] .divider {
+    inset: auto 0;
+    height: 0.25rem;
+    flex-direction: row;
+    transform: translateY(-50%);
+}
+.line {
+    flex: 1 1 0%;
+    background: rgb(255 255 255 / 0.9);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+.root:not([data-orientation='vertical']) .line {
+    width: 0.125rem;
+}
+.root[data-orientation='vertical'] .line {
+    height: 0.125rem;
+}
+.range {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+.handle {
+    box-sizing: border-box;
+    z-index: 20;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 0.125rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 2px solid rgb(255 255 255 / 0.8);
+    border-radius: 9999px;
+    background: #fff;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    cursor: grab;
+    pointer-events: auto;
+    touch-action: none;
+}
+.handle:active {
+    cursor: grabbing;
+}
+.root[data-orientation='vertical'] .handle {
+    flex-direction: column;
+}
+.range:focus-visible + .handle {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+}
+.label {
+    position: absolute;
+    top: 0.5rem;
+    z-index: 20;
+    max-width: 120px;
+    padding: 0.25rem 0.5rem;
+    overflow: hidden;
+    border-radius: 0.25rem;
+    background: rgb(0 0 0 / 0.6);
+    color: #fff;
+    font-size: 0.75rem;
+    line-height: 1.3333333;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    pointer-events: none;
+}
+.label.start {
+    left: 0.5rem;
+}
+.label.end {
+    right: 0.5rem;
+}
+@media (min-width: 640px) {
+    .label {
+        max-width: 200px;
+    }
+}

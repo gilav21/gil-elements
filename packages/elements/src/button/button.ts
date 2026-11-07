@@ -31,11 +31,11 @@ export type ButtonType = 'button' | 'submit' | 'reset';
  * @cssprop --density-button - Height and padding multiplier for this component; falls back to `--density`.
  */
 export class GeButton extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     // Focus enters the host's inner button, so Tab, `focus()` and a click on a label all work.
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static formAssociated = true;
-    static override properties = {
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static readonly formAssociated = true;
+    static override readonly properties = {
         variant: { reflect: true },
         size: { reflect: true },
         type: { reflect: true },

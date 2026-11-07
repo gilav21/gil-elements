@@ -1,0 +1,129 @@
+:host {
+    display: block;
+}
+.base {
+    position: relative;
+    display: inline-flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+    max-width: 100%;
+}
+:host([legend-position='top']) .base {
+    flex-direction: column-reverse;
+}
+svg {
+    display: block;
+    overflow: visible;
+    flex-shrink: 0;
+}
+.empty {
+    color: var(--border);
+}
+.slice {
+    cursor: pointer;
+    outline: none;
+}
+.slice[data-dim] {
+    opacity: 0.5;
+}
+.slice path {
+    transition: all 200ms cubic-bezier(0, 0, 0.2, 1);
+    filter: none;
+}
+.slice path[data-hover] {
+    scale: 1.05;
+    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15));
+}
+.percent {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    fill: #fff;
+    pointer-events: none;
+}
+.percent[data-light] {
+    fill: var(--foreground);
+}
+.legend {
+    display: flex;
+    gap: 0.5rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.entry {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    cursor: default;
+    transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.entry:hover {
+    opacity: 0.8;
+}
+.entry[data-dim] {
+    opacity: 0.5;
+}
+.swatch {
+    width: 0.75rem;
+    height: 0.75rem;
+    flex-shrink: 0;
+    border-radius: calc(var(--radius) - 4px);
+}
+.name {
+    color: var(--muted-foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.amount {
+    color: var(--foreground);
+    font-weight: 500;
+}
+.tooltip {
+    position: absolute;
+    z-index: 50;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    border: 1px solid var(--border);
+    pointer-events: none;
+    max-width: calc(100vw - 2rem);
+    overflow-wrap: break-word;
+}
+.tip-name {
+    font-weight: 500;
+}
+.tip-amount {
+    color: var(--muted-foreground);
+}
+@media (min-width: 640px) {
+    :host([legend-position='right']) .base,
+    :host(:not([legend-position])) .base,
+    :host([legend-position='left']) .base {
+        flex-direction: row;
+    }
+    :host([legend-position='left']) .base {
+        flex-direction: row-reverse;
+    }
+    :host([legend-position='right']) .legend,
+    :host(:not([legend-position])) .legend,
+    :host([legend-position='left']) .legend {
+        flex-direction: column;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+    }
+}

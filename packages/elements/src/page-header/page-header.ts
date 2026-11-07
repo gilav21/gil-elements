@@ -27,8 +27,8 @@ function clampLevel(value: unknown): PageHeadingLevel {
  * @attr {number} heading-level - Which heading element to render, 1 to 6. Defaults to 1.
  */
 export class GePageHeader extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         heading: {},
         description: {},
         headingLevel: { attribute: 'heading-level', converter: clampLevel },

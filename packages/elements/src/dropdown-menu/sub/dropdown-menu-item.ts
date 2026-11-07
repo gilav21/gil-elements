@@ -10,7 +10,7 @@ import css from './dropdown-menu-item.css?inline';
  * @cssprop --density-menu - Spacing multiplier for this component; falls back to `--density`.
  */
 export class GeDropdownMenuItem extends GeMenuItem<DropdownMenuHost> {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     protected readonly registerEvent = DROPDOWN_MENU_REGISTER;
     protected readonly slotName = 'dropdown-item';
 

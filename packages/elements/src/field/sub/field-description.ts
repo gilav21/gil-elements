@@ -13,7 +13,7 @@ let nextId = 0;
  * @attr {string} id - Element id; generated when empty.
  */
 export class GeFieldDescription extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private field?: FieldHost;
 

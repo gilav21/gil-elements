@@ -1,0 +1,37 @@
+:host {
+    display: contents;
+}
+.wrap {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows 300ms cubic-bezier(0, 0, 0.2, 1);
+}
+.wrap[data-state='open'] {
+    grid-template-rows: 1fr;
+}
+.clip {
+    overflow: hidden;
+}
+ul {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin: 0;
+    margin-inline-start: 0.875rem;
+    padding: 0;
+    padding-inline-start: 1rem;
+    border-inline-start: 1px solid var(--sidebar-border);
+    list-style: none;
+    opacity: 0;
+    transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.wrap[data-state='open'] ul {
+    opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+    .wrap,
+    ul {
+        transition: none;
+    }
+}

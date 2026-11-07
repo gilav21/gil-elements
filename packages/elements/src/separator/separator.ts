@@ -11,8 +11,8 @@ export type SeparatorOrientation = 'horizontal' | 'vertical';
  * @csspart line - The painted line.
  */
 export class GeSeparator extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { orientation: { reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { orientation: { reflect: true } };
 
     declare orientation: SeparatorOrientation;
 

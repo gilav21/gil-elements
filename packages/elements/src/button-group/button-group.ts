@@ -16,8 +16,8 @@ export type ButtonGroupOrientation = 'horizontal' | 'vertical';
  * @attr {'horizontal' | 'vertical'} orientation - Direction of the group. Defaults to horizontal.
  */
 export class GeButtonGroup extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { orientation: { reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { orientation: { reflect: true } };
 
     declare orientation: ButtonGroupOrientation;
 

@@ -1,0 +1,15 @@
+/* shadcn-angular speed-dial-item: hidden (scaled to nothing) until the dial opens; transition and arc position are set inline. */
+:host {
+    display: contents;
+}
+.item {
+    opacity: 0;
+    scale: 0;
+}
+.item[data-state='open'] {
+    opacity: 1;
+    scale: 1;
+}
+.item[data-circular] {
+    position: absolute;
+}

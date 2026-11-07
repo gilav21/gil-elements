@@ -13,9 +13,9 @@ import css from './navigation-menu-link.css?inline';
  * @attr {boolean} active - Tints the row as the current one. Purely visual: it sets no `aria-current`.
  */
 export class GeNavigationMenuLink extends UiElement {
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         href: {},
         active: { type: Boolean, reflect: true },
     };

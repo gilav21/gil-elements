@@ -1,0 +1,64 @@
+:host {
+    display: contents;
+}
+.scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    background: rgb(0 0 0 / 0.55);
+}
+.spotlight {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    border-radius: calc(var(--radius) - 2px);
+    box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.55);
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card {
+    position: fixed;
+    z-index: 10000;
+    box-sizing: border-box;
+    width: 20rem;
+    max-width: calc(100vw - 2rem);
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    outline: none;
+}
+.counter {
+    margin-bottom: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--muted-foreground);
+}
+.title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.5rem;
+}
+.description {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--muted-foreground);
+}
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.pending {
+    margin-inline-end: auto;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--muted-foreground);
+}

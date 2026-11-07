@@ -21,8 +21,8 @@ import css from './progress.css?inline';
  * @csspart fill - The filled part.
  */
 export class GeProgress extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { type: Number },
         max: { type: Number },
         ariaLabel: { attribute: 'aria-label' },

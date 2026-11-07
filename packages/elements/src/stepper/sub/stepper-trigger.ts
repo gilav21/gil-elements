@@ -12,8 +12,8 @@ import css from './stepper-trigger.css?inline';
  * @csspart base - The `<button>`.
  */
 export class GeStepperTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
 
     private item?: StepperItemHost;
 

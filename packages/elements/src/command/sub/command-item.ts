@@ -16,8 +16,8 @@ import css from './command-item.css?inline';
  * @attr {boolean} selected - Sets `aria-selected`. An ARIA hint for a persistent choice, separate from the highlight.
  */
 export class GeCommandItem extends UiElement implements CommandRow {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: {},
         shortcut: {},
         disabled: { type: Boolean, reflect: true },

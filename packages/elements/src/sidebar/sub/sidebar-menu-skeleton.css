@@ -1,0 +1,35 @@
+:host {
+    display: contents;
+}
+.row {
+    display: flex;
+    height: 2.25rem;
+    box-sizing: border-box;
+    align-items: center;
+    gap: 0.5rem;
+    padding-inline: 0.5rem;
+    border-radius: calc(var(--radius) - 2px);
+}
+.row[data-collapsed] {
+    justify-content: center;
+}
+.icon {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+}
+.bar {
+    height: 1rem;
+}
+.bar[data-width='0'] {
+    width: 70%;
+}
+.bar[data-width='1'] {
+    width: 55%;
+}
+.bar[data-width='2'] {
+    width: 85%;
+}
+.bar[data-width='3'] {
+    width: 45%;
+}

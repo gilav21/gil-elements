@@ -4,6 +4,9 @@ import { adoptChildren } from '../shared/compound.js';
 import { deepActive, registerLayer } from '../shared/overlay.js';
 import css from './select.css?inline';
 
+/** The text a value stands for: objects as JSON rather than `[object Object]`. */
+const valueText = (value: unknown): string => (typeof value === 'object' ? (JSON.stringify(value) ?? '') : `${value as string | number | boolean}`);
+
 export const SELECT_REGISTER = 'ge-select-register';
 
 export type SelectPosition = 'item-aligned' | 'popper';
@@ -57,9 +60,9 @@ export interface SelectHost {
  * @cssprop --density-select - Size multiplier for the trigger and rows; falls back to `--density`.
  */
 export class GeSelect extends UiElement implements SelectHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static readonly formAssociated = true;
+    static override readonly properties = {
         name: { reflect: true },
         value: {},
         defaultValue: { attribute: 'default-value' },
@@ -128,7 +131,7 @@ export class GeSelect extends UiElement implements SelectHost {
     get shownText(): string | undefined {
         if (this.value === undefined || this.value === null) return undefined;
         const option = this.options?.find((candidate) => this.valueOfOption(candidate) === this.value);
-        return option === undefined ? String(this.value) : this.displayWith(option);
+        return option === undefined ? valueText(this.value) : this.displayWith(option);
     }
 
     get host(): HTMLElement {
@@ -174,7 +177,7 @@ export class GeSelect extends UiElement implements SelectHost {
     }
 
     isSelected(key: string): boolean {
-        return this.value !== undefined && this.value !== null && String(this.value) === key;
+        return this.value !== undefined && this.value !== null && valueText(this.value) === key;
     }
 
     show(): void {
@@ -240,7 +243,7 @@ export class GeSelect extends UiElement implements SelectHost {
     protected override willUpdate(changed: PropertyValues<this>): void {
         if (this.value === undefined && this.defaultValue !== undefined) this.value = this.defaultValue;
         if (changed.has('value') || changed.has('defaultValue')) {
-            this.internals?.setFormValue(this.value === undefined || this.value === null ? null : String(this.value));
+            this.internals?.setFormValue(this.value === undefined || this.value === null ? null : valueText(this.value));
         }
     }
 

@@ -1,0 +1,56 @@
+:host {
+    display: contents;
+}
+.handle {
+    position: relative;
+    box-sizing: border-box;
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    touch-action: none;
+    background-color: var(--border);
+    outline: none;
+}
+.handle.horizontal {
+    cursor: col-resize;
+}
+.handle.vertical {
+    cursor: row-resize;
+}
+.handle:hover {
+    background-color: color-mix(in oklab, var(--primary) 30%, transparent);
+}
+.handle:active,
+.handle.dragging {
+    background-color: color-mix(in oklab, var(--primary) 50%, transparent);
+}
+.handle:focus-visible {
+    box-shadow: 0 0 0 1px #fff, 0 0 0 2px var(--ring);
+}
+.grip {
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 4px);
+    background-color: var(--border);
+}
+.handle.horizontal .grip {
+    width: 0.75rem;
+    height: 1rem;
+}
+.handle.vertical .grip {
+    width: 1rem;
+    height: 0.75rem;
+}
+.dots {
+    width: 0.625rem;
+    height: 0.625rem;
+    color: var(--muted-foreground);
+}
+.vertical .dots {
+    transform: rotate(90deg);
+}

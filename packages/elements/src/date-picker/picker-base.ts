@@ -9,9 +9,9 @@ const CALENDAR_ICON = svg`<svg class="icon" xmlns="http://www.w3.org/2000/svg" w
  * state and the form plumbing. Not registered as an element on its own.
  */
 export abstract class PickerBase extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static readonly formAssociated = true;
+    static override readonly properties = {
         name: { reflect: true },
         placeholder: {},
         disabled: { type: Boolean, reflect: true },

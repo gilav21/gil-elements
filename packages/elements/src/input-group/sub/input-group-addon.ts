@@ -13,8 +13,8 @@ export type InputGroupAddonAlign = 'inline-start' | 'inline-end';
  * @csspart addon - The addon box.
  */
 export class GeInputGroupAddon extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { align: { reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { align: { reflect: true } };
 
     declare align: InputGroupAddonAlign;
 

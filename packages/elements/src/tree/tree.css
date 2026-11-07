@@ -1,0 +1,11 @@
+/* shadcn-angular tree: the host carries role="tree", the tab stop and the focus ring, because the items are its light children and aria-activedescendant can only reach ids in the same tree. */
+:host {
+    display: block;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    border-radius: calc(var(--radius) - 2px);
+    outline: none;
+}
+:host(:focus) {
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--ring);
+}

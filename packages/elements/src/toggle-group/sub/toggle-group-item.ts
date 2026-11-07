@@ -15,9 +15,9 @@ import css from './toggle-group-item.css?inline';
  * @cssprop --density-button - Height and padding multiplier; falls back to `--density`.
  */
 export class GeToggleGroupItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly properties = {
         value: { reflect: true },
         disabled: { type: Boolean, reflect: true },
         ariaLabel: { attribute: 'aria-label' },

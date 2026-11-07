@@ -1,0 +1,32 @@
+:host {
+    display: block;
+}
+.base {
+    display: flex;
+    flex-wrap: wrap;
+}
+.word {
+    display: inline-block;
+    opacity: 0;
+    will-change: transform, opacity, filter;
+    animation: blur-in 1s forwards cubic-bezier(0.2, 0.2, 0, 1);
+}
+@keyframes blur-in {
+    0% {
+        opacity: 0;
+        filter: blur(10px);
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+        transform: translateY(0);
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .word {
+        animation: none;
+        opacity: 1;
+        filter: none;
+    }
+}

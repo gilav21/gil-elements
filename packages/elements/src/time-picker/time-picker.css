@@ -1,0 +1,101 @@
+/*
+ * shadcn-angular time-picker: an inline-flex fieldset of segments (number boxes and a meridiem button) in a
+ * bordered wrapper that lights up while any segment has focus. The wrapper is pinned left-to-right.
+ */
+:host {
+    --_d: var(--density-input, var(--density, 1));
+    display: inline-block;
+}
+fieldset {
+    display: inline-flex;
+    box-sizing: border-box;
+    width: fit-content;
+    align-items: center;
+    gap: 0.125rem;
+    margin: 0;
+    padding-block: 0;
+    padding-inline: 0.5rem;
+    min-inline-size: 0;
+    border: 1px solid var(--input);
+    border-radius: var(--radius);
+    background-color: transparent;
+    color: inherit;
+    transition: color 150ms, background-color 150ms, border-color 150ms, box-shadow 150ms;
+}
+fieldset:focus-within {
+    border-color: var(--ring);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+fieldset[aria-disabled='true'] {
+    pointer-events: none;
+    opacity: 0.5;
+}
+fieldset[data-variant='outline'] {
+    min-height: calc(2.25rem * var(--_d));
+    background-color: color-mix(in oklab, var(--input) var(--input-surface-mix), transparent);
+}
+fieldset[data-variant='underline'] {
+    border-width: 0 0 1px;
+    border-radius: 0;
+    box-shadow: none;
+}
+fieldset[data-variant='ghost'] {
+    border: none;
+    box-shadow: none;
+}
+fieldset[data-variant='underline']:focus-within,
+fieldset[data-variant='ghost']:focus-within {
+    box-shadow: none;
+}
+input {
+    box-sizing: content-box;
+    width: 3ch;
+    margin: 0;
+    padding: 0.25rem 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    outline: none;
+}
+input::placeholder {
+    color: color-mix(in oklab, currentColor 50%, transparent);
+    opacity: 1;
+}
+input:disabled,
+button:disabled {
+    cursor: not-allowed;
+}
+button {
+    margin: 0;
+    padding: 0.25rem;
+    border: 0;
+    border-radius: 0.25rem;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    outline: none;
+}
+button:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
+}
+.separator {
+    color: var(--muted-foreground);
+    user-select: none;
+}
+@media (pointer: coarse) {
+    input {
+        padding-block: 0.625rem;
+    }
+    button {
+        min-height: 2.75rem;
+        padding-inline: 0.5rem;
+    }
+}

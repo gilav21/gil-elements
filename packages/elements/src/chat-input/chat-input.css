@@ -1,0 +1,28 @@
+:host {
+    display: contents;
+}
+.wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+ge-textarea::part(textarea) {
+    min-height: 44px;
+    width: 100%;
+    resize: none;
+    background-color: var(--background);
+    padding-inline-end: 3rem;
+    padding-block: 0.75rem;
+    border-radius: var(--radius);
+}
+ge-button::part(base) {
+    position: absolute;
+    inset-inline-end: 0.5rem;
+    bottom: 0.5rem;
+    width: 2rem;
+    height: 2rem;
+}
+.icon {
+    width: 1rem;
+    height: 1rem;
+}

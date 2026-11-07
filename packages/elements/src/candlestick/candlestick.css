@@ -1,0 +1,49 @@
+:host {
+    display: block;
+}
+.base {
+    position: relative;
+    width: 100%;
+}
+svg {
+    display: block;
+    width: 100%;
+    overflow: visible;
+    touch-action: none;
+}
+.grid {
+    stroke: var(--border);
+}
+.tick {
+    fill: var(--muted-foreground);
+    font-size: 10px;
+}
+.candle {
+    cursor: pointer;
+    outline: none;
+}
+.candle.dim {
+    opacity: 0.5;
+}
+.candle rect {
+    transition: filter 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+.candle rect.hot {
+    filter: brightness(1.1);
+}
+.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    border: 1px dashed var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--muted-foreground);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+@media (min-width: 640px) {
+    .empty {
+        padding: 1.5rem;
+    }
+}

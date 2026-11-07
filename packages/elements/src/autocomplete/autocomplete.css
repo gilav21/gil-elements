@@ -95,10 +95,19 @@ svg {
 .chip-remove:hover {
     background-color: color-mix(in oklab, var(--secondary-foreground) 20%, transparent);
 }
+/* WCAG 2.5.8: a 44px tap target on touch, without making the chip taller. */
 @media (pointer: coarse) {
     .chip-remove {
+        position: relative;
+    }
+    .chip-remove::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
         width: 2.75rem;
         height: 2.75rem;
+        transform: translate(-50%, -50%);
     }
 }
 .chip-icon {

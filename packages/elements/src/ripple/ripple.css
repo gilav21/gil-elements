@@ -1,0 +1,14 @@
+:host {
+    display: block;
+    position: relative;
+    overflow: hidden;
+}
+:host([disabled]) {
+    position: static;
+    overflow: visible;
+}
+.wave {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+}

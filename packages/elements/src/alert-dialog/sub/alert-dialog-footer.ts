@@ -8,7 +8,7 @@ import css from './alert-dialog-footer.css?inline';
  * @slot - A `ge-alert-dialog-cancel` and a `ge-alert-dialog-action`.
  */
 export class GeAlertDialogFooter extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

@@ -1,0 +1,72 @@
+:host {
+    display: block;
+    user-select: none;
+}
+.header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: calc(var(--radius) - 2px);
+    cursor: pointer;
+    outline: none;
+    transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (hover: hover) {
+    .header:hover {
+        background-color: color-mix(in oklab, var(--accent) 50%, transparent);
+        color: var(--foreground);
+    }
+}
+:host([data-selected='true']) > .header {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    font-weight: 500;
+}
+:host([data-focused='true']) > .header::after {
+    content: '';
+    position: absolute;
+    bottom: 1px;
+    left: 0.5rem;
+    right: 0.5rem;
+    height: 1px;
+    background-color: var(--border);
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+.expand {
+    display: block;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 1rem;
+    height: 1rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--muted-foreground);
+    font: inherit;
+    cursor: pointer;
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.expand svg {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+}
+:host([data-expanded='true']) .expand {
+    transform: rotate(90deg);
+}
+:host([data-rtl]:not([data-expanded='true'])) .expand {
+    transform: rotate(180deg);
+}
+.spacer {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+}
+.group {
+    padding-inline-start: 1rem;
+}
+.group[hidden] {
+    display: none;
+}

@@ -11,7 +11,7 @@ let nextId = 0;
  * @slot - The legend text.
  */
 export class GeFieldLegend extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

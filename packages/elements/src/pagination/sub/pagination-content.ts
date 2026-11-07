@@ -8,7 +8,7 @@ import css from './pagination-content.css?inline';
  * @slot - The content's children.
  */
 export class GePaginationContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

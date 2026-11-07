@@ -22,8 +22,8 @@ const CHEVRON = html`<svg class="chevron" fill="none" viewBox="0 0 24 24" stroke
  * @attr {number} skeleton-count - How many placeholders. Defaults to 3.
  */
 export class GeBreadcrumbList extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         items: { attribute: false },
         skeleton: { type: Boolean, reflect: true },
         skeletonCount: { type: Number, attribute: 'skeleton-count' },

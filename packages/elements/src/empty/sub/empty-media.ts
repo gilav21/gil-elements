@@ -11,8 +11,8 @@ export type EmptyMediaVariant = 'default' | 'icon';
  * @attr {'default' | 'icon'} variant - `icon` draws a 2.5rem muted tile and sizes a slotted `<svg>` to 1.5rem.
  */
 export class GeEmptyMedia extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { variant: { reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { variant: { reflect: true } };
 
     declare variant: EmptyMediaVariant;
 

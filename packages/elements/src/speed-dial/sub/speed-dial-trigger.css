@@ -1,0 +1,16 @@
+/* The wrapper is inline-flex and turns a quarter when the dial is open: the usual "+ becomes ×". */
+[part='base'] {
+    display: inline-flex;
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* Open, it stands above the mask (z-index 40) so the dial can still be seen and closed from its own button. */
+[part='base'][data-state='open'] {
+    transform: rotate(45deg);
+    position: relative;
+    z-index: 50;
+}
+@media (prefers-reduced-motion: reduce) {
+    [part='base'] {
+        transition: none;
+    }
+}

@@ -30,10 +30,10 @@ export type TextareaVariant = 'outline' | 'underline' | 'ghost';
  * @cssprop --density-input - Padding and minimum height multiplier; falls back to `--density`.
  */
 export class GeTextarea extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static readonly formAssociated = true;
+    static override readonly properties = {
         name: { reflect: true },
         value: {},
         placeholder: {},

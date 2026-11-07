@@ -1,0 +1,11 @@
+/*
+ * shadcn-angular table: not a native <table> but a flex column of row groups, so the header can stick and the body
+ * can scroll. The wrapper scrolls horizontally; rows are min-width: max-content, so a wide row scrolls it.
+ */
+:host {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 0;
+    overflow-x: auto;
+}

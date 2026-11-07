@@ -6,3 +6,7 @@ coverage
 __screenshots__/**/__diff_output__
 parity/out
 .vitest
+
+.env
+packages/.env
+.scannerwork

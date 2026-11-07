@@ -15,9 +15,9 @@ import { CONTEXT_MENU_REGISTER, type ContextMenuHost } from '../context-menu.js'
  * @attr {string} for - The id of the `ge-context-menu` to open, for a menu that is not around this element.
  */
 export class GeContextMenuTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
 
-    static override properties = {
+    static override readonly properties = {
         forMenu: { attribute: 'for' },
     };
 

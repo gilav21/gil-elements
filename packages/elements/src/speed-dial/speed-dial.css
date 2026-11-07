@@ -1,0 +1,5 @@
+/* shadcn-angular speed-dial: `relative inline-flex`, so the menu anchors to the dial and a utility can pin it as a FAB. */
+:host {
+    position: relative;
+    display: inline-flex;
+}

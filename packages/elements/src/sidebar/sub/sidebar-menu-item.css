@@ -1,0 +1,15 @@
+:host {
+    position: relative;
+    display: block;
+    list-style: none;
+}
+/* A hover-only action is hidden through a variable its own shadow tree reads, because its host has no box to fade. */
+@media (hover: hover) {
+    ::slotted(ge-sidebar-menu-action[show-on-hover]) {
+        --ge-sidebar-action-opacity: 0;
+    }
+    :host(:hover) ::slotted(ge-sidebar-menu-action[show-on-hover]),
+    ::slotted(ge-sidebar-menu-action[show-on-hover]:focus-within) {
+        --ge-sidebar-action-opacity: 1;
+    }
+}

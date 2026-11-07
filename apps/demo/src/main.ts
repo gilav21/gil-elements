@@ -51,12 +51,131 @@ import '@gilav21/elements/field/define';
 import '@gilav21/elements/calendar/define';
 import '@gilav21/elements/date-picker/define';
 import '@gilav21/elements/autocomplete/define';
+import '@gilav21/elements/drawer/define';
+import '@gilav21/elements/chip-list/define';
+import '@gilav21/elements/input-otp/define';
+import '@gilav21/elements/split-button/define';
+import '@gilav21/elements/resizable/define';
+import '@gilav21/elements/carousel/define';
+import '@gilav21/elements/table/define';
+import '@gilav21/elements/time-picker/define';
+import '@gilav21/elements/toast/define';
+import '@gilav21/elements/tree/define';
+import '@gilav21/elements/sidebar/define';
+import '@gilav21/elements/eyedropper/define';
+import '@gilav21/elements/color-picker/define';
+import '@gilav21/elements/code-block/define';
+import '@gilav21/elements/speed-dial/define';
+import '@gilav21/elements/dock/define';
+import '@gilav21/elements/file-upload/define';
+import '@gilav21/elements/tree-context-menu/define';
+import '@gilav21/elements/tree-select/define';
+import '@gilav21/elements/sortable/define';
+import '@gilav21/elements/kanban/define';
+import '@gilav21/elements/chart-legend/define';
+import '@gilav21/elements/chart-tooltip/define';
+import '@gilav21/elements/line-chart/define';
+import '@gilav21/elements/bar-chart/define';
+import '@gilav21/elements/pie-chart/define';
+import '@gilav21/elements/area-chart/define';
+import '@gilav21/elements/stacked-bar-chart/define';
+import '@gilav21/elements/scatter-chart/define';
+import '@gilav21/elements/bubble-chart/define';
+import '@gilav21/elements/radar-chart/define';
+import '@gilav21/elements/gauge-chart/define';
+import '@gilav21/elements/funnel-chart/define';
+import '@gilav21/elements/waterfall-chart/define';
+import '@gilav21/elements/bullet-chart/define';
+import '@gilav21/elements/heatmap/define';
+import '@gilav21/elements/calendar-heatmap/define';
+import '@gilav21/elements/column-range-chart/define';
+import '@gilav21/elements/combo-chart/define';
+import '@gilav21/elements/bar-race-chart/define';
+import '@gilav21/elements/histogram/define';
+import '@gilav21/elements/chart-brush/define';
+import '@gilav21/elements/pie-chart-drilldown/define';
+import '@gilav21/elements/bar-chart-drilldown/define';
+import '@gilav21/elements/org-chart/define';
+import '@gilav21/elements/text-reveal/define';
+import '@gilav21/elements/marquee/define';
+import '@gilav21/elements/particles/define';
+import '@gilav21/elements/ripple/define';
+import '@gilav21/elements/magnetic/define';
+import '@gilav21/elements/copy-to/define';
+import '@gilav21/elements/confetti/define';
+import '@gilav21/elements/input-mask/define';
+import '@gilav21/elements/chat-message/define';
+import '@gilav21/elements/chat-list/define';
+import '@gilav21/elements/chat-input/define';
+import '@gilav21/elements/tour/define';
+import '@gilav21/elements/blur-fade/define';
+import '@gilav21/elements/flip-text/define';
+import '@gilav21/elements/gradient-text/define';
+import '@gilav21/elements/typing-animation/define';
+import '@gilav21/elements/word-rotate/define';
+import '@gilav21/elements/streaming-text/define';
+import '@gilav21/elements/number-ticker/define';
+import '@gilav21/elements/morphing-text/define';
+import '@gilav21/elements/orbit/define';
+import '@gilav21/elements/shine-border/define';
+import '@gilav21/elements/sparkles/define';
+import '@gilav21/elements/wobble-card/define';
+import '@gilav21/elements/stagger-children/define';
+import '@gilav21/elements/scroll-progress/define';
+import '@gilav21/elements/meteors/define';
+import '@gilav21/elements/comparison-slider/define';
+import '@gilav21/elements/masonry/define';
+import '@gilav21/elements/virtual-scroll/define';
+import '@gilav21/elements/bento-grid/define';
+import '@gilav21/elements/currency-input/define';
+import '@gilav21/elements/duration-input/define';
+import '@gilav21/elements/phone-input/define';
+import '@gilav21/elements/signature-pad/define';
+import '@gilav21/elements/emoji-picker/define';
+import '@gilav21/elements/treemap/define';
+import '@gilav21/elements/boxplot/define';
+import '@gilav21/elements/candlestick/define';
+import '@gilav21/elements/card-accordion/define';
+import '@gilav21/elements/error-page/define';
+import { registerIcons } from '@gilav21/elements/icon';
+import '@gilav21/elements/icon/define';
+import '@gilav21/elements/shortcut-bindings-dialog/define';
+import { shortcutBindings } from '@gilav21/elements/shortcut-bindings-dialog';
+import '@gilav21/elements/field-mapper/define';
+import '@gilav21/elements/file-viewer/define';
+import '@gilav21/elements/page-builder/define';
+import '@gilav21/elements/page-renderer/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';
 import '@gilav21/elements/spinner/define';
+import { toast } from '@gilav21/elements/toast';
 import type { GeSlider } from '@gilav21/elements/slider';
 import { demos, type Demo, type Example } from './demos.js';
+
+(globalThis as { geToast?: typeof toast }).geToast = toast;
+(globalThis as { geRegisterIcons?: typeof registerIcons }).geRegisterIcons = registerIcons;
+
+// The sample actions the "Shortcut bindings dialog" page lists; any `ge-command-dialog` or `ge-kanban` on screen joins them.
+shortcutBindings.registerComponent(
+    'demo-notes',
+    (
+        [
+            ['Bold', 'Mod+B', 'Format'],
+            ['Save', 'Mod+S', 'File'],
+        ] as const
+    ).map(([description, defaultShortcut, category]) => ({
+        actionId: `notes.${description.toLowerCase()}`,
+        description,
+        defaultShortcut,
+        category,
+        scope: 'global' as const,
+        handler: () => {
+            toast.info(`${description} pressed`);
+        },
+    })),
+);
+document.body.append(document.createElement('ge-toaster'));
 
 const escapeHtml = (s: string) => s.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 // Prose may mark code with `backticks`; it is escaped first, so only these tags can appear.
@@ -129,7 +248,10 @@ content.append(...demos.map(renderSection));
 const nav = document.getElementById('nav')!;
 let group = '';
 for (const d of demos) {
-    if (d.group !== group) nav.append(el('div', { class: 'nav-group' }, (group = d.group)));
+    if (d.group !== group) {
+        group = d.group;
+        nav.append(el('div', { class: 'nav-group' }, group));
+    }
     nav.append(el('a', { class: 'nav-link', href: `#${d.id}` }, d.name));
 }
 
@@ -193,3 +315,26 @@ density.addEventListener('input', () => {
     root.style.setProperty('--density', String(density.value));
     densityOut.textContent = String(density.value);
 });
+
+/**
+ * The kanban board never changes its own data: it reports each change and waits for you to apply it. The demo pages
+ * share this wiring, which is what an app does with those events (mint an id, replace an entry, reparent cards).
+ */
+type KanbanBoard = HTMLElement & { columns: { id: string; order: number }[]; cards: { id: string; columnId: string }[] };
+(globalThis as { geKanbanWire?: (board: KanbanBoard) => void }).geKanbanWire = (board) => {
+    const on = <T>(name: string, handler: (detail: T) => void) => board.addEventListener(name, (event) => handler((event as CustomEvent<T>).detail));
+    on<KanbanBoard['cards']>('cards-change', (cards) => (board.cards = cards));
+    on<KanbanBoard['columns']>('columns-change', (columns) => (board.columns = columns));
+    on<{ columnId: string }>('card-added', (card) => {
+        const order = board.cards.filter((c) => c.columnId === card.columnId).length;
+        board.cards = [...board.cards, { ...card, id: `card-${Date.now()}`, order } as KanbanBoard['cards'][number]];
+    });
+    on<{ id: string }>('card-updated', (card) => (board.cards = board.cards.map((c) => (c.id === card.id ? (card as KanbanBoard['cards'][number]) : c))));
+    on<{ order: number }>('column-added', (column) => (board.columns = [...board.columns, { ...column, id: `col-${Date.now()}` }]));
+    on<{ id: string }>('column-updated', (column) => (board.columns = board.columns.map((c) => (c.id === column.id ? (column as KanbanBoard['columns'][number]) : c))));
+    on<{ columnId: string; moveCardsTo?: string }>('column-deleted', ({ columnId, moveCardsTo }) => {
+        board.columns = board.columns.filter((c) => c.id !== columnId);
+        const rest = board.cards.filter((c) => c.columnId !== columnId);
+        board.cards = moveCardsTo ? board.cards.map((c) => (c.columnId === columnId ? { ...c, columnId: moveCardsTo } : c)) : rest;
+    });
+};

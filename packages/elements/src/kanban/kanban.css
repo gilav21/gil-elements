@@ -1,0 +1,175 @@
+:host {
+    display: block;
+    --ge-context-menu-min-width: 13rem;
+}
+.strip {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding: 0.5rem;
+}
+@media (min-width: 640px) {
+    .strip {
+        gap: 1rem;
+        padding: 1rem;
+    }
+}
+.lanes {
+    display: flex;
+    flex-direction: column;
+}
+.lane {
+    border-bottom: 1px solid var(--border);
+}
+.lane:last-child {
+    border-bottom: 0;
+}
+.lane-header {
+    display: flex;
+    width: 100%;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    box-sizing: border-box;
+    padding: 0.5rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+}
+@media (min-width: 640px) {
+    .lane-header {
+        padding-inline: 1rem;
+    }
+}
+.lane-header:hover {
+    background-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.lane-header:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px var(--ring);
+}
+.lane-header svg {
+    flex-shrink: 0;
+    transition: transform 150ms;
+}
+.lane-header[aria-expanded='false'] svg {
+    transform: rotate(-90deg);
+}
+.lane-name {
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+}
+@media (min-width: 640px) {
+    .lane-name {
+        max-width: 280px;
+    }
+}
+.lane-count {
+    font-size: 0.75rem;
+}
+.toast {
+    position: fixed;
+    top: 1rem;
+    left: 50%;
+    z-index: 100;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 420px;
+    padding-inline: 1rem;
+    transform: translateX(-50%);
+}
+.toast-card {
+    position: relative;
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    overflow: hidden;
+    padding: 1rem;
+    padding-inline-end: 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--background);
+    color: var(--foreground);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+@media (pointer: coarse) {
+    .toast-card {
+        padding-inline-end: 2.75rem;
+    }
+}
+.toast-text {
+    display: grid;
+    flex: 1 1 0%;
+    gap: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+.toast-title {
+    font-weight: 600;
+}
+.toast-body {
+    opacity: 0.9;
+}
+.toast-close {
+    position: absolute;
+    inset-inline-end: 0.25rem;
+    top: 0.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: 0;
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: color-mix(in srgb, var(--foreground) 50%, transparent);
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity 150ms;
+}
+.toast-card:hover .toast-close,
+.toast-close:focus {
+    opacity: 1;
+}
+.toast-close:hover {
+    color: var(--foreground);
+}
+@media (hover: none) {
+    .toast-close {
+        opacity: 1;
+    }
+}
+@media (pointer: coarse) {
+    .toast-close {
+        inset-inline-end: 0;
+        top: 0;
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+}
+.toast-progress {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 0.25rem;
+    background: rgb(0 0 0 / 0.1);
+}
+.toast-progress > div {
+    height: 100%;
+    background: color-mix(in srgb, var(--foreground) 30%, transparent);
+    transition: width 1s linear;
+}
+.countdown {
+    margin-inline-start: 0.25rem;
+}

@@ -11,8 +11,8 @@ import css from './select-value.css?inline';
  * @attr {string} display-value - Shown instead of the select's value (for an id that reads badly). The placeholder still shows while nothing is selected.
  */
 export class GeSelectValue extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         placeholder: {},
         displayValue: { attribute: 'display-value' },
     };

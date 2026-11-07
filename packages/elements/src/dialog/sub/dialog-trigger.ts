@@ -15,9 +15,9 @@ const INTERACTIVE = 'button, a[href], input, select, textarea, [role="button"], 
  * @csspart base - The wrapper.
  */
 export class GeDialogTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly properties = {
         ownsControl: { state: true },
     };
 

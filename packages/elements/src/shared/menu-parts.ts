@@ -35,8 +35,8 @@ export interface MenuSubPart extends HTMLElement {
  * @slot - The trigger row and the content.
  */
 export class GeMenuSub extends UiElement implements MenuSubHost {
-    static override styles = [UiElement.styles, unsafeCSS(':host{position:relative;display:block;width:100%}')];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{position:relative;display:block;width:100%}')];
+    static override readonly properties = {
         open: { state: true },
     };
 
@@ -130,8 +130,8 @@ const CHEVRON = svg`<path d="m9 18 6-6-6-6" />`;
  * @attr {boolean} inset - Indents the label to line up with rows that carry an icon.
  */
 export abstract class GeMenuSubTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(subTriggerCss)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(subTriggerCss)];
+    static override readonly properties = {
         disabled: { type: Boolean, reflect: true },
         inset: { type: Boolean, reflect: true },
     };
@@ -225,7 +225,7 @@ export abstract class GeMenuSubTrigger extends UiElement {
  * @attr {string} shortcut - Hint text on the right, such as `⌘K`. Decorative: it binds no key.
  */
 export abstract class GeMenuItem<Root> extends UiElement {
-    static override properties = {
+    static override readonly properties = {
         disabled: { type: Boolean, reflect: true },
         inset: { type: Boolean, reflect: true },
         shortcut: {},

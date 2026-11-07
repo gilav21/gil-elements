@@ -34,8 +34,8 @@ export const RADIO_REGISTER = 'ge-radio-register';
  * @cssprop --density-radio - Size multiplier for this component; falls back to `--density`.
  */
 export class GeRadioGroupItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { reflect: true },
         disabled: { type: Boolean, reflect: true },
         label: { reflect: true },
@@ -61,7 +61,7 @@ export class GeRadioGroupItem extends UiElement {
 
     /** True when this item belongs to a group and the group's value is this item's value. */
     get checked(): boolean {
-        return this.group !== undefined && this.group.value === this.value;
+        return this.group?.value === this.value;
     }
 
     /** True when it cannot be selected: disabled itself, or by its group or an ancestor fieldset. */

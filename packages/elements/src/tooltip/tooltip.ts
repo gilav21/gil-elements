@@ -38,8 +38,8 @@ export interface TooltipPart extends HTMLElement {
  * @attr {boolean} open - Whether the bubble is showing. Hover, focus and touch drive it; `show()` and `hide()` do too.
  */
 export class GeTooltip extends UiElement implements TooltipHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         content: {},
         side: { reflect: true },
         delayDuration: { type: Number, attribute: 'delay-duration' },

@@ -8,7 +8,7 @@ import css from './breadcrumb-item.css?inline';
  * @slot - The crumb's content.
  */
 export class GeBreadcrumbItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

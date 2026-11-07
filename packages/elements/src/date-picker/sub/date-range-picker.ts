@@ -24,7 +24,7 @@ const isoTime = (d: Date) => `${isoDay(d)}T${pad(d.getHours())}:${pad(d.getMinut
  * @cssprop --density-picker - Spacing multiplier for the picker family; falls back to `--density`.
  */
 export class GeDateRangePicker extends PickerBase {
-    static override properties = { ...PickerBase.properties, range: { attribute: false }, timeRange: { attribute: false } };
+    static override readonly properties = { ...PickerBase.properties, range: { attribute: false }, timeRange: { attribute: false } };
 
     declare range: DateRange;
     declare timeRange: TimeRange;

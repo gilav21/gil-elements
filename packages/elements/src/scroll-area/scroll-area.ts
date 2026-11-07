@@ -39,8 +39,8 @@ const offsetPercent = (position: number, scroll: number, client: number, thumb: 
  * @csspart thumb - A scrollbar thumb.
  */
 export class GeScrollArea extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         orientation: { reflect: true },
         metrics: { state: true },
     };
@@ -155,8 +155,8 @@ export class GeScrollArea extends UiElement {
             else viewport.scrollLeft = scrollLeft + (x - start.clientX) * (viewport.scrollWidth / viewport.clientWidth);
         };
         const end = () => drag.abort();
-        window.addEventListener('mousemove', (e) => move(e.clientX, e.clientY), { signal });
-        window.addEventListener('touchmove', (e) => e.touches[0] && move(e.touches[0].clientX, e.touches[0].clientY), { signal, passive: false });
-        for (const type of ['mouseup', 'touchend', 'touchcancel']) window.addEventListener(type, end, { signal });
+        globalThis.addEventListener('mousemove', (e) => move(e.clientX, e.clientY), { signal });
+        globalThis.addEventListener('touchmove', (e) => e.touches[0] && move(e.touches[0].clientX, e.touches[0].clientY), { signal, passive: false });
+        for (const type of ['mouseup', 'touchend', 'touchcancel']) globalThis.addEventListener(type, end, { signal });
     }
 }

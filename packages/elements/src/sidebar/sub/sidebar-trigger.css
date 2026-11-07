@@ -1,0 +1,36 @@
+:host {
+    display: contents;
+}
+button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 0;
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: var(--sidebar-foreground);
+    font: inherit;
+    outline: none;
+    transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (hover: hover) {
+    button:hover {
+        background-color: var(--sidebar-accent);
+        color: var(--sidebar-accent-foreground);
+    }
+}
+button:focus-visible {
+    box-shadow: 0 0 0 2px var(--ring);
+}
+svg {
+    display: block;
+    width: 1rem;
+    height: 1rem;
+}
+.sr-only {
+    position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0;
+}

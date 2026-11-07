@@ -1,0 +1,16 @@
+:host {
+    display: inline;
+}
+.base {
+    white-space: pre-wrap;
+}
+.cursor {
+    margin-inline-start: 0.125rem;
+    font-weight: 700;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
