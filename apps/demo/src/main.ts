@@ -255,6 +255,29 @@ for (const d of demos) {
     nav.append(el('a', { class: 'nav-link', href: `#${d.id}` }, d.name));
 }
 
+// Ctrl/⌘+K (or the topbar button) opens a palette of every page; choosing one jumps to its section.
+const palette = document.createElement('ge-command-dialog') as HTMLElement & { open: boolean };
+palette.id = 'nav-palette';
+const paletteGroups: Record<string, Demo[]> = {};
+for (const d of demos) (paletteGroups[d.group] ??= []).push(d);
+const paletteItem = (d: Demo) => `<ge-command-item value="${escapeHtml(`${d.name} ${d.group}`)}" data-id="${d.id}">${escapeHtml(d.name)}</ge-command-item>`;
+palette.innerHTML = `<ge-command>
+  <ge-command-input placeholder="Jump to a component"></ge-command-input>
+  <ge-command-list>
+    <ge-command-empty>No results.</ge-command-empty>
+    ${Object.entries(paletteGroups)
+        .map(([heading, items]) => `<ge-command-group heading="${escapeHtml(heading)}">${items.map(paletteItem).join('')}</ge-command-group>`)
+        .join('')}
+  </ge-command-list>
+</ge-command>`;
+palette.addEventListener('select-item', (event) => {
+    const id = (event.target as HTMLElement).dataset.id;
+    if (id) location.hash = id;
+    palette.open = false;
+});
+document.body.append(palette);
+document.getElementById('search')!.addEventListener('click', () => (palette.open = true));
+
 // Highlight the section nearest the top of the viewport.
 const links = new Map([...nav.querySelectorAll<HTMLAnchorElement>('a')].map((a) => [a.hash.slice(1), a]));
 const observer = new IntersectionObserver(

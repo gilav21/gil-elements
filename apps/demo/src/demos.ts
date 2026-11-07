@@ -2817,12 +2817,12 @@ document.getElementById('nm-data').items = [
             },
             {
                 title: 'Dialog',
-                note: 'Press Ctrl+K (⌘K on a Mac), `/`, or use the button. `shortcut` takes comma-separated alternatives; add `no-shortcut` to turn the key off.',
+                note: 'Press `/` or use the button (Ctrl+K opens the page search of this demo). `shortcut` takes comma-separated alternatives; add `no-shortcut` to turn the key off.',
                 html: `<div style="display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start">
   <ge-button variant="outline" id="cmd-open" style="width: 15rem">Show command dialog</ge-button>
-  <p style="margin: 0; font-size: 0.875rem; color: var(--muted-foreground)">Or press <ge-kbd>⌘</ge-kbd> <ge-kbd>K</ge-kbd> or <ge-kbd>/</ge-kbd></p>
+  <p style="margin: 0; font-size: 0.875rem; color: var(--muted-foreground)">Or press <ge-kbd>/</ge-kbd></p>
 </div>
-<ge-command-dialog id="cmd-dialog" shortcut="Mod+K, /">
+<ge-command-dialog id="cmd-dialog" shortcut="/">
   <ge-command>
     <ge-command-input placeholder="Type a command"></ge-command-input>
     <ge-command-list>
