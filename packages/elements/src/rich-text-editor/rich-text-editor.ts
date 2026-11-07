@@ -664,12 +664,15 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     private syncAddons(): void {
         if (!this.started) return;
         const wanted = new Map(this.usedAddons);
-        for (const id of this.addons.split(/[\s,]+/).filter(Boolean)) {
+        for (const id of new Set(this.addons.split(/[\s,]+/).filter(Boolean))) {
             const addon = GeRichTextEditor.addonRegistry.get(id);
             if (addon) wanted.set(id, { addon });
             else console.warn(`[ge-rich-text-editor] unknown addon "${id}": import its define module first.`);
         }
-        for (const [id, active] of [...this.activeAddons]) {
+        for (const [id, entry] of [...wanted]) {
+            if (entry.addon.covers && this.optionsFor(id, entry) !== false) for (const covered of entry.addon.covers) wanted.delete(covered);
+        }
+        for (const [id, active] of this.activeAddons) {
             const entry = wanted.get(id);
             if (entry && this.optionsFor(id, entry) === active.options) continue;
             active.teardown?.();
@@ -684,7 +687,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
 
     private optionsFor(id: string, { addon, options }: { addon: RichTextAddon; options?: unknown }): unknown {
         if (this.addonOptions[id] === false) return false;
-        if (addon.bundle) return this.addonOptions;
+        if (addon.covers) return this.addonOptions;
         return options ?? this.addonOptions[id];
     }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { editorIn } from '../../rich-text-editor.fixture.test.js';
 import type { GeRichTextEditor } from '../../rich-text-editor.js';
+import { linksAddon } from '../links/links.js';
 import './define.js';
 import { RICH_TEXT_FULL_ADDONS } from './index.js';
 
@@ -70,6 +71,43 @@ describe('the full addon bundle', () => {
         editor.addonOptions = {};
         await editor.updateComplete;
         expect(editor.toolbarSlots.slots.map((slot) => slot.id)).toContain('colors.foreground');
+    });
+
+    describe('naming an addon more than once', () => {
+        const mount = (attributes: string) => editorIn(`<ge-rich-text-editor mode="html" ${attributes}></ge-rich-text-editor>`);
+        const linkSlots = (editor: GeRichTextEditor) => editor.toolbarSlots.slots.filter((slot) => slot.id === 'links.insert');
+
+        it('sets an addon up once however often its id is listed', async () => {
+            expect(linkSlots(await mount('addons="links links, links"'))).toHaveLength(1);
+        });
+
+        it('sets an addon up once when use() is given it twice', async () => {
+            const editor = await mount('');
+            editor.use(linksAddon);
+            editor.use(linksAddon);
+            expect(linkSlots(editor)).toHaveLength(1);
+        });
+
+        it('does not set an addon up again on its own when full already covers it', async () => {
+            const editor = await mount('addons="full links"');
+            expect(linkSlots(editor)).toHaveLength(1);
+            expect(slotsOf(editor)).toHaveLength(SLOTS.length);
+        });
+
+        it('sets up a standalone addon that is already running when full arrives later', async () => {
+            const editor = await mount('addons="links"');
+            editor.addons = 'links full';
+            await editor.updateComplete;
+            expect(linkSlots(editor)).toHaveLength(1);
+            expect(slotsOf(editor)).toHaveLength(SLOTS.length);
+        });
+
+        it('keeps a listed addon when full itself is switched off', async () => {
+            const editor = await mount('addons="full links"');
+            editor.addonOptions = { full: false };
+            await editor.updateComplete;
+            expect(slotsOf(editor)).toEqual([['links.insert', 320]]);
+        });
     });
 
     it('tears every addon down when the editor is removed', async () => {

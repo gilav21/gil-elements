@@ -232,8 +232,8 @@ export type RichTextAddonHost = RichTextEditorHost
 
 export interface RichTextAddon {
     readonly id: string;
-    /** A bundle of other addons: `setup` receives the editor's whole `addonOptions` map, keyed by addon id. */
-    readonly bundle?: boolean;
+    /** The ids this addon sets up itself. Makes it a bundle: `setup` receives the editor's whole `addonOptions` map, and those ids are never set up a second time on their own. */
+    readonly covers?: readonly string[];
     /** May return a teardown. */
     setup(host: RichTextAddonHost, options?: unknown): void | (() => void);
 }

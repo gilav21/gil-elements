@@ -33,6 +33,11 @@ type Entity = MentionItem | TagItem;
 const MAX_ITEMS = 10;
 const KEYS = new Set(['ArrowDown', 'ArrowUp', 'Enter', 'Escape', 'Tab']);
 
+function containerElement(range: Range): Element | null | undefined {
+    const container = range.startContainer;
+    return container instanceof Element ? container : container.parentElement;
+}
+
 class MentionsController {
     private type: RichTextEntityType = 'mention';
     private query = '';
@@ -65,8 +70,7 @@ class MentionsController {
         this.query = match.query;
         const selection = doc.getSelection();
         const range = selection?.rangeCount ? selection.getRangeAt(0) : undefined;
-        const container = range?.startContainer;
-        const anchor = range ? caretRect(range, container instanceof Element ? container : container?.parentElement) : null;
+        const anchor = range ? caretRect(range, containerElement(range)) : null;
         this.show(anchor);
         this.schedule(match.type, match.query);
     };
@@ -117,20 +121,24 @@ class MentionsController {
             if ('color' in item && item.color) dot.style.backgroundColor = item.color;
             row.append(dot, node('span', 'label', item.label));
         } else {
-            const avatar = 'avatar' in item ? item.avatar : undefined;
-            const description = 'description' in item ? item.description : undefined;
-            const src = avatar ? this.host.sanitizer.sanitizeUrl(avatar) : null;
-            const picture = node('img', 'avatar');
-            if (src) {
-                picture.src = src;
-                picture.alt = item.label;
-            }
-            const text = node('div', 'text');
-            text.append(node('span', 'label', item.label));
-            if (description) text.append(node('span', 'description', description));
-            row.append(src ? picture : node('div', 'avatar', item.label.charAt(0).toUpperCase()), text);
+            row.append(...this.userCells(item));
         }
         option.append(row);
+    }
+
+    private userCells(item: Entity): HTMLElement[] {
+        const avatar = 'avatar' in item ? item.avatar : undefined;
+        const description = 'description' in item ? item.description : undefined;
+        const src = avatar ? this.host.sanitizer.sanitizeUrl(avatar) : null;
+        const picture = node('img', 'avatar');
+        if (src) {
+            picture.src = src;
+            picture.alt = item.label;
+        }
+        const text = node('div', 'text');
+        text.append(node('span', 'label', item.label));
+        if (description) text.append(node('span', 'description', description));
+        return [src ? picture : node('div', 'avatar', item.label.charAt(0).toUpperCase()), text];
     }
 
     private insert(item: Entity): void {

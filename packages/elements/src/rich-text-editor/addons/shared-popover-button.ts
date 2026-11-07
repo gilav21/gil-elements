@@ -70,7 +70,7 @@ export function registerPopoverButton(host: RichTextAddonHost, life: Disposables
     };
 
     const update = (): void => {
-        for (const view of [...views]) draw(view);
+        for (const view of views) draw(view);
     };
 
     const create = (): HTMLElement => {
@@ -108,7 +108,7 @@ export function registerPopoverButton(host: RichTextAddonHost, life: Disposables
     life.add(host.subscribe('state', update));
     life.add(host.subscribe('disabled', update));
     life.add(() => {
-        for (const view of [...views]) dispose(view);
+        for (const view of views) dispose(view);
     });
     return { update, close: () => views.forEach((view) => view.close()) };
 }

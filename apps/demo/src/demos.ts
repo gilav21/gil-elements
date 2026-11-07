@@ -4168,9 +4168,9 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
             {
                 title: 'Custom language',
                 note: '`customLanguages` adds or replaces a language by lowercase name. A bare pattern array only colours; a `{ patterns, scopes }` object can also fold.',
-                html: `<ge-code-block id="cb9" style="width:100%;min-width:0" language="shout" code="HELLO there, WORLD"></ge-code-block>
+                html: String.raw`<ge-code-block id="cb9" style="width:100%;min-width:0" language="shout" code="HELLO there, WORLD"></ge-code-block>
 <script>(() => {
-  document.getElementById('cb9').customLanguages = { shout: [{ type: 'keyword', regex: /\\b[A-Z]{2,}\\b/ }] };
+  document.getElementById('cb9').customLanguages = { shout: [{ type: 'keyword', regex: /\b[A-Z]{2,}\b/ }] };
 })();</script>`,
             },
             {
@@ -6388,7 +6388,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
                 title: 'Open any file',
                 note: 'Set `file` to a `File` or `Blob`. Pick a PDF, a Word or Excel file, a slide deck or an image; the toolbar offers pages for PDF and slides, zoom where it makes sense, and a download link. `loaded` and `load-error` report the outcome.',
                 block: true,
-                html: `<div style="display:grid;gap:.75rem;width:100%">
+                html: String.raw`<div style="display:grid;gap:.75rem;width:100%">
   <input id="fv1-pick" type="file" accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,image/*,text/*,video/*,audio/*" />
   <ge-file-viewer id="fv1" height="420px"></ge-file-viewer>
   <p id="fv1-out" style="margin:0;font-size:.75rem;color:var(--muted-foreground)">Nothing opened yet.</p>
@@ -6399,7 +6399,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
   document.getElementById('fv1-pick').addEventListener('change', (e) => { viewer.file = e.target.files[0] ?? null; });
   viewer.addEventListener('loaded', (e) => (out.textContent = 'loaded: ' + JSON.stringify(e.detail)));
   viewer.addEventListener('load-error', (e) => (out.textContent = 'load-error: ' + JSON.stringify(e.detail)));
-  viewer.file = new File(['Pick a file above to preview it here.\\n\\nNothing leaves your browser: the file is parsed locally.\\n'], 'welcome.txt');
+  viewer.file = new File(['Pick a file above to preview it here.\n\nNothing leaves your browser: the file is parsed locally.\n'], 'welcome.txt');
 })();</script>`,
             },
             {

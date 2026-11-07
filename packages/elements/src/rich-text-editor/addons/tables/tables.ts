@@ -55,19 +55,21 @@ export const tablesAddon = defineAddon<RichTextTablesOptions>('tables', 330, ({ 
         insert(rows, cols);
     };
 
+    const cell = (view: PopoverButtonView, row: number, col: number) => html`<button
+        type="button"
+        class="cell"
+        data-grid-cell
+        ?data-on=${row <= hover.rows && col <= hover.cols}
+        aria-label="${row}x${col}"
+        @mouseenter=${() => hoverTo(row, col)}
+        @click=${() => pick(view, row, col)}
+    ></button>`;
+
     const panel = (view: PopoverButtonView) => {
         const { rows, cols } = hover;
         return html`<div class="rte-tables-panel">
             <div class="rte-tables-grid">
-                ${GRID.flatMap((row) => GRID.map((col) => html`<button
-                    type="button"
-                    class="cell"
-                    data-grid-cell
-                    ?data-on=${row <= rows && col <= cols}
-                    aria-label="${row}x${col}"
-                    @mouseenter=${() => hoverTo(row, col)}
-                    @click=${() => pick(view, row, col)}
-                ></button>`))}
+                ${GRID.flatMap((row) => GRID.map((col) => cell(view, row, col)))}
             </div>
             <p class="rte-tables-hint">${rows > 0 && cols > 0 ? `${rows} x ${cols}` : locale.insertTable}</p>
         </div>`;

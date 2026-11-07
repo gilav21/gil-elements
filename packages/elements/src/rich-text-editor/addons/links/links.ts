@@ -201,7 +201,7 @@ export class LinkEditor {
 
     private readonly focusField = (element?: Element): void => {
         const field = element as GeInput | undefined;
-        void field?.updateComplete.then(() => field.focus());
+        field?.updateComplete.then(() => field.focus()).catch(() => undefined);
     };
 
     private show(seed: Pick<LinkForm, 'text' | 'url' | 'anchor'>, placement: Placement): void {

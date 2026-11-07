@@ -105,6 +105,11 @@ export const typographyAddon = defineAddon<RichTextTypographyOptions>('typograph
     for (const kind of kinds) registerKind(host, life, kind);
 });
 
+function detailText(event: Event): string {
+    const { detail } = event as CustomEvent<unknown>;
+    return typeof detail === 'string' ? detail : '';
+}
+
 function registerKind(host: RichTextAddonHost, life: Disposables, kind: Kind): void {
     let seeded = '';
 
@@ -115,7 +120,7 @@ function registerKind(host: RichTextAddonHost, life: Disposables, kind: Kind): v
             .value=${seeded}
             .noFilter=${!kind.filter}
             placeholder=${kind.placeholder}
-            @value-change=${(event: Event) => kind.apply(String((event as CustomEvent<unknown>).detail ?? ''))}
+            @value-change=${(event: Event) => kind.apply(detailText(event))}
         ></ge-autocomplete>
     </div>`;
 

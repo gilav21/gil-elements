@@ -34,7 +34,7 @@ export const RICH_TEXT_FULL_ADDONS: readonly string[] = ADDONS.map((addon) => ad
 /** Every addon at once; `options` is the editor's `addonOptions` map, so each addon keeps its own entry. */
 export const fullAddon: RichTextAddon = {
     id: 'full',
-    bundle: true,
+    covers: RICH_TEXT_FULL_ADDONS,
     setup(host, options) {
         const byId = (options ?? {}) as Readonly<Record<string, unknown>>;
         const teardowns = ADDONS.map((addon) => addon.setup(host, byId[addon.id]));
