@@ -1,0 +1,1680 @@
+import { MAX_NESTING_DEPTH, childList, flattenIntoRowText, inlineElementsHoldingBlocks, isNestedList, isPhrasing, rowRunsOf, separateListKinds } from './rich-text-lines.js';
+import { isValidImageMagicBytes } from '../file-viewer/parsers/image-validator.js';
+import { sanitizeSvg } from '../file-viewer/parsers/svg-sanitizer.js';
+
+import {
+    containsCssUrl,
+    decodeCssEscapes,
+    extractCssUrls,
+    hasUnsafeCssFunction,
+    stripCssComments,
+    isHostAllowed,
+    isHostBearingUrl,
+    remoteHostOf,
+    type ResourcePolicyDecision,
+} from './rich-text-resource-policy.js';
+/**
+ * A per-attribute rule an addon contributes to widen the sanitizer allow-list.
+ * Locked attributes (`on*`, `href`, `src`, `style`, `class`) can never be
+ * contributed — the security boundary stays centralized in this service.
+ */
+export interface SanitizerAttributeRule {
+    /** `'*'` (any element) or a lowercase tag name. */
+    tag: string;
+    /** The attribute name this rule governs (lowercase). */
+    attr: string;
+    /** If set, this attribute is dropped unless the companion attribute survives. */
+    requiresAttr?: string;
+    /** Return the value to keep, or null to strip. Defaults to keeping as-is. */
+    validate?: (value: string, element: HTMLElement) => string | null;
+}
+
+/**
+ * Comprehensive HTML sanitization service for rich text editor.
+ * Uses browser's DOMParser and TreeWalker for zero-dependency sanitization.
+ * 
+ * Security features:
+ * - Allowlist-based element filtering
+ * - Attribute sanitization per element type
+ * - URL validation (blocks javascript:, vbscript:, data:)
+ * - Event handler removal
+ * - Deep DOM traversal and cleaning
+ */
+/**
+ * URL schemes a link in editor content may use by default: the web's own,
+ * plus well-known application schemes a browser hands straight to an installed
+ * app (chat, calls, calendars, maps, source control). None of them can run
+ * script in the page. Consumers add their own through
+ * `[allowedLinkSchemes]` on the editor and the view.
+ */
+export const DEFAULT_LINK_SCHEMES: readonly string[] = [
+    'http', 'https', 'mailto', 'tel', 'sms', 'ftp', 'ftps', 'sftp',
+    'callto', 'sip', 'sips', 'facetime', 'facetime-audio',
+    'xmpp', 'matrix', 'irc', 'ircs', 'news', 'nntp',
+    'geo', 'maps', 'webcal', 'ssh', 'git',
+    'slack', 'msteams', 'skype', 'zoommtg', 'zoomus', 'whatsapp', 'tg', 'signal', 'spotify', 'discord',
+];
+
+/**
+ * Schemes no allowlist may re-admit: each one runs script, embeds a document,
+ * or reaches the local machine, so listing it under `[allowedLinkSchemes]` is
+ * a mistake the sanitizer refuses rather than honours.
+ */
+const FORBIDDEN_LINK_SCHEMES = new Set([
+    'javascript', 'vbscript', 'data', 'blob', 'filesystem', 'file', 'about', 'view-source',
+    'chrome', 'chrome-extension', 'moz-extension', 'ms-msdt', 'search-ms', 'ms-officecmd', 'res',
+]);
+
+const LINK_SCHEMES = new Set(DEFAULT_LINK_SCHEMES);
+
+/** How many resource decisions may wait undrained before the oldest is dropped. */
+const MAX_BUFFERED_DECISIONS = 256;
+
+
+
+/**
+ * Percent-decode a data: URL payload to raw BYTES.
+ *
+ * decodeURIComponent cannot be used here: it decodes to a UTF-8 STRING and
+ * throws URIError on any byte sequence that is not valid UTF-8, which is every
+ * binary image's magic number. Returns null only when a %XX escape is
+ * malformed.
+ */
+function percentDecodeToBytes(payload: string): Uint8Array | null {
+    const out: number[] = [];
+    for (let i = 0; i < payload.length; i++) {
+        const ch = payload[i];
+        if (ch !== '%') {
+            // Rejected, not truncated. Uint8Array silently takes a code point
+            // mod 256, so a run of multi-byte characters (U+0189 U+010D ...)
+            // collapsed into valid PNG magic bytes and a non-image data: URL
+            // passed the content check. A genuine percent-encoded payload has
+            // no code point above 0xFF -- that is what the escapes are for.
+            // An astral character yields a value above 0xFF either way (a code
+            // point of 0x1F600, or a lone surrogate of 0xD83D), so the guard
+            // below rejects it before the two-code-unit width can matter.
+            const code = payload.codePointAt(i) ?? 0;
+            if (code > 0xFF) return null;
+            out.push(code);
+            continue;
+        }
+        const hex = payload.slice(i + 1, i + 3);
+        if (!/^[0-9a-f]{2}$/i.test(hex)) return null;
+        out.push(Number.parseInt(hex, 16));
+        i += 2;
+    }
+    return new Uint8Array(out);
+}
+
+/** CSS functions and schemes that must never appear in a style value. */
+/**
+ * CSS constructs that execute or embed, and are never permitted whatever their
+ * host. `url(` is deliberately NOT here: it is judged by the host policy in
+ * `isStyleValueAllowed`, because a url() to an allowlisted host is legitimate
+ * content while one to an unknown host is a tracking beacon.
+ */
+const UNSAFE_STYLE_TOKENS = ['expression(', 'javascript:', 'vbscript:', 'data:'];
+
+/**
+ * Elements that must hold a line of text or blocks, never both.
+ *
+ * Only tags this sanitizer actually keeps: a selector for a tag it strips
+ * would never match, and reading like a rule it does not enforce.
+ */
+const STRAY_LINE_HOSTS = 'li, td, th, blockquote, div, summary, details';
+
+
+/** Why a resource was allowed or refused, as a flat decision. */
+function resourceReason(noPolicy: boolean, allowed: boolean): ResourcePolicyDecision['reason'] {
+    if (noPolicy) return 'no-policy';
+    return allowed ? 'allowlisted' : 'blocked';
+}
+
+/**
+ * Whether a CSS declaration value is safe to keep.
+ *
+ * The test runs on the value as a BROWSER resolves it. Substring checks on the
+ * raw text are not enough: CSS lets any identifier character be written as a
+ * hex escape, so "\\75rl(https://x/p.png)" is the url() function to a browser
+ * while spelling nothing a naive check looks for. That bypass survived the
+ * whole paste pipeline and planted a live external-resource load -- a tracking
+ * pixel firing for every later viewer of the document.
+ *
+ * Two layers, because one decoder is a thing to be wrong about:
+ *   1. decode CSS hex escapes, then test;
+ *   2. reject any value that still carries a backslash at all. Nothing in the
+ *      allowlist -- colours, lengths, font names, alignments -- needs one, so
+ *      refusing them costs nothing and closes whatever the decoder misses.
+ */
+function hasUnsafeStyleToken(value: string): boolean {
+    // Escapes, comments and whitespace are all insignificant to a CSS
+    // tokenizer, so they are resolved before the test: "\\65xpression(" and
+    // "expression/**/(" and "expression (" are one construct.
+    const normalized = decodeCssEscapes(stripCssComments(value.toLowerCase()))
+        .replaceAll(/\s+/g, '');
+
+    return UNSAFE_STYLE_TOKENS.some((token) => normalized.includes(token));
+}
+
+export interface RichTextSanitizerOptions {
+    /** Defaults to the global `document`, read on first use. */
+    document?: Document;
+    /** Consulted for contributed attribute rules this instance does not hold. */
+    parent?: RichTextSanitizer | null;
+}
+
+export class RichTextSanitizer {
+    private readonly ownDocument: Document | undefined;
+    /**
+     * The enclosing sanitizer, or null at the root. A descendant consults it for
+     * contributed rules, so an addon registered on an ancestor keeps working.
+     * The chain ends at the root, so there is no cycle.
+     */
+    private readonly parentSanitizer: RichTextSanitizer | null;
+
+    constructor(options: RichTextSanitizerOptions = {}) {
+        this.ownDocument = options.document;
+        this.parentSanitizer = options.parent ?? null;
+    }
+
+    private get document(): Document {
+        return this.ownDocument ?? globalThis.document;
+    }
+
+    /** Allowlisted elements - only these can appear in sanitized output */
+    private readonly ALLOWED_TAGS = new Set([
+        // Block elements
+        'p', 'div', 'br', 'hr',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'ul', 'ol', 'li',
+        'blockquote', 'pre', 'code',
+        // Inline elements
+        'strong', 'b', 'em', 'i', 'u', 's', 'del', 'ins', 'mark',
+        'sub', 'sup', 'small',
+        'a', 'span',
+        // Media (with strict attribute sanitization)
+        'img',
+        // Tables (for paste compatibility)
+        'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td',
+        'colgroup', 'col', 'caption',
+        // Task lists
+        'input',
+        // Toggle/collapsible blocks
+        'details', 'summary',
+    ]);
+
+    /** Allowlisted attributes per element */
+    private readonly ALLOWED_ATTRS: Record<string, Set<string>> = {
+        'a': new Set(['href', 'title', 'target', 'rel']),
+        'img': new Set(['src', 'alt', 'width', 'height', 'title', 'data-align', 'data-auto-upload-id', 'data-auto-upload-status', 'data-blocked-src']),
+        'td': new Set(['colspan', 'rowspan']),
+        'th': new Set(['colspan', 'rowspan', 'scope']),
+        'pre': new Set(['data-language']),
+        'code': new Set(['data-language', 'class']),
+        'input': new Set(['type', 'checked', 'disabled']),
+        'ul': new Set(['data-task-list']),
+        'ol': new Set(['start']),
+        'li': new Set(['data-task', 'data-checked']),
+        'details': new Set(['open']),
+        'col': new Set(['span', 'width']),
+        '*': new Set(['data-mention', 'data-mention-id', 'data-tag', 'data-tag-id', 'style', 'dir']),
+    };
+
+    /** Allowed CSS properties for inline styles */
+    private readonly ALLOWED_STYLE_PROPERTIES = new Set([
+        'color',
+        'background-color',
+        'background',
+        'text-align',
+        'font-size',
+        // Dimensions for images
+        'width', 'height',
+        'min-width', 'max-width',
+        'min-height', 'max-height',
+        // Paste fidelity
+        'font-weight',
+        'font-style',
+        'text-decoration',
+        'vertical-align',
+        'padding-left',
+        'margin-left',
+        'list-style-type',
+        // Image alignment
+        'display',
+        'float',
+        'margin',
+        'margin-right',
+        'margin-top',
+        'margin-bottom',
+        'table-layout',
+        // Document import fidelity
+        'font-family',
+        'line-height',
+        'text-indent',
+        'letter-spacing',
+        'font-variant',
+        'text-transform',
+        'text-decoration-style',
+        'text-decoration-color',
+        'word-spacing',
+        // Borders (paragraphs, tables, cells)
+        'border',
+        'border-top',
+        'border-bottom',
+        'border-left',
+        'border-right',
+        'border-collapse',
+        'border-spacing',
+        // Longhand border properties (Word paste uses these)
+        'border-width',
+        'border-style',
+        'border-color',
+        // Padding (table cells, bordered paragraphs)
+        'padding',
+        'padding-top',
+        'padding-bottom',
+        'padding-right',
+    ]);
+
+    /** Allowed class patterns (for syntax highlighting) */
+    private readonly ALLOWED_CLASS_PATTERNS = [
+        /^language-\w+$/,      // language-javascript, language-python, etc.
+        /^hljs(-\w+)?$/,       // hljs, hljs-keyword, etc.
+        /^token(-\w+)?$/,      // Prism.js tokens
+    ];
+
+    /** Event handler attributes pattern */
+    private readonly EVENT_HANDLER_PATTERN = /^on\w+$/i;
+
+    /** Attributes an addon rule may never target — the security boundary stays here. */
+    private readonly LOCKED_ATTRS = new Set(['href', 'src', 'style', 'class']);
+    private readonly contributedRules = new Map<string, { rule: SanitizerAttributeRule; count: number }>();
+
+    /**
+     * Register addon attribute rules. Ref-counted and additive; returns a teardown
+     * that decrements each rule's count and removes it at zero. Throws if any rule
+     * targets a locked or event-handler attribute.
+     */
+    registerAttributeRules(rules: SanitizerAttributeRule[]): () => void {
+        for (const rule of rules) {
+            const attr = rule.attr.toLowerCase();
+            if (this.LOCKED_ATTRS.has(attr) || this.EVENT_HANDLER_PATTERN.test(attr)) {
+                throw new Error(`Cannot contribute a sanitizer rule for locked attribute "${rule.attr}".`);
+            }
+        }
+        for (const rule of rules) {
+            const key = this.ruleKey(rule.tag, rule.attr);
+            const existing = this.contributedRules.get(key);
+            if (existing) {
+                existing.count += 1;
+            } else {
+                this.contributedRules.set(key, { rule, count: 1 });
+            }
+        }
+        return () => {
+            for (const rule of rules) {
+                const key = this.ruleKey(rule.tag, rule.attr);
+                const entry = this.contributedRules.get(key);
+                if (!entry) continue;
+                entry.count -= 1;
+                if (entry.count <= 0) this.contributedRules.delete(key);
+            }
+        };
+    }
+
+    private ruleKey(tag: string, attr: string): string {
+        return `${tag.toLowerCase()}|${attr.toLowerCase()}`;
+    }
+
+    /**
+     * A contributed rule for this tag/attribute, from this instance or any
+     * enclosing one.
+     *
+     * Walking up is safe because LOCKED_ATTRS refuses any rule for `href`,
+     * `src`, `style` or `class`, so an inherited rule can only ever permit a
+     * data-* or aria-* attribute -- nothing a browser fetches. The REMOTE HOST
+     * POLICY is deliberately not inherited this way: that is per-instance
+     * configuration, and a strict view must never widen to a looser ancestor.
+     */
+    private findContributedRule(tagName: string, attrName: string): SanitizerAttributeRule | undefined {
+        const own = this.ownContributedRule(tagName, attrName);
+        return own ?? this.parentSanitizer?.findContributedRule(tagName, attrName);
+    }
+
+    private ownContributedRule(tagName: string, attrName: string): SanitizerAttributeRule | undefined {
+        return this.contributedRules.get(this.ruleKey(tagName, attrName))?.rule
+            ?? this.contributedRules.get(this.ruleKey('*', attrName))?.rule;
+    }
+
+    private dropOrphanCompanionAttributes(root: HTMLElement): void {
+        for (const { rule } of this.contributedRules.values()) {
+            const requires = rule.requiresAttr;
+            if (!requires) continue;
+            for (const el of Array.from(root.querySelectorAll(`[${rule.attr}]`))) {
+                if (!el.hasAttribute(requires)) {
+                    el.removeAttribute(rule.attr);
+                }
+            }
+        }
+    }
+
+    /**
+     * Control, whitespace, and zero-width / bidi / format characters that
+     * browsers ignore or normalize inside URLs; stripped before a URL scheme
+     * is inspected so they cannot mask a dangerous protocol.
+     */
+    // eslint-disable-next-line no-control-regex
+    private readonly URL_STRIP_PATTERN = /[\u0000-\u0020\u007f-\u00a0\u00ad\u1680\u2000-\u200f\u2028-\u202f\u205f\u2060-\u206f\u3000\ufeff\ufff9-\ufffb]/g;
+
+    /**
+     * Sanitize HTML string, removing all dangerous content.
+     * Returns clean, safe HTML.
+     */
+    sanitize(html: string): string {
+        if (!html || typeof html !== 'string') {
+            return '';
+        }
+
+        /** Parse HTML into DOM */
+        const parser = new DOMParser();
+        // In standards mode, the mode the editor and the view render in. With no
+        // doctype the parser runs in quirks mode, where a <table> does not close
+        // an open <p>, so a pasted `<p>a<table>` was kept whole and came apart
+        // only when the page read it back: a different document on every pass.
+        const doc = parser.parseFromString(`<!DOCTYPE html>${html}`, 'text/html');
+
+        /** Create a clean container */
+        const cleanContainer = this.document.createElement('div');
+
+        this.processNodes(doc.body, cleanContainer);
+        this.dropOrphanCompanionAttributes(cleanContainer);
+        this.pushInlineWrappersIntoBlocks(cleanContainer);
+        this.liftBlocksOutOfLines(cleanContainer);
+        this.adoptStrayItems(cleanContainer);
+        this.markTaskListItems(cleanContainer);
+        this.leadDetailsWithSummary(cleanContainer);
+        this.normalizeListKinds(cleanContainer);
+        this.normalizeQuoteLines(cleanContainer);
+        this.normalizeTaskRows(cleanContainer);
+        this.normalizeStrayLines(cleanContainer);
+
+        return this.normalizeStyleQuotes(cleanContainer.innerHTML);
+    }
+
+    /**
+     * An inline element never wraps a block.
+     *
+     * The parser keeps `<span><p>…</p></span>`, but nothing downstream can: the
+     * line passes read the span as inline and wrapped it in a paragraph, which
+     * the next read took apart, so the document gained an empty paragraph on
+     * every pass. The wrapper moves inside instead, around each inline run, so
+     * its formatting survives: `<b><p>x</p></b>` becomes `<p><b>x</b></p>`.
+     *
+     * Innermost wrapper first, so each one finds the ones inside it already
+     * pushed down and descends only to the runs, never through them again:
+     * outermost first re-walked every wrapper nested below, and unclosed inline
+     * tags nest thousands deep. It also keeps the wrappers in their written
+     * order around each run. The moves keep every holder in the tree, and
+     * holding its block, so the holders are found once, up front.
+     *
+     * Each run takes each wrapper around it once, so the output is the runs
+     * times the wrappers -- quadratic when a wrapper is left open around every
+     * block. It is bounded, block by block: a block is not walked again for a
+     * copy of a wrapper already walked through it, which adds nothing, nor past
+     * MAX_NESTING_DEPTH wrappers, as every nested construct is capped. A copy of
+     * the very wrapper already around a run is skipped for the same reason.
+     */
+    private pushInlineWrappersIntoBlocks(root: HTMLElement): void {
+        const { holders, phrasing } = inlineElementsHoldingBlocks(root);
+        const wrap: InlineWrap = { phrasing, covered: new WeakMap<Node, Element[]>() };
+        for (const el of holders) {
+            for (const child of childList(el)) this.wrapInlineRuns(child, el, wrap);
+            el.replaceWith(...childList(el));
+        }
+    }
+
+    /** Wrap each inline piece of `node` in a copy of `wrapper`, descending through blocks. */
+    private wrapInlineRuns(node: Node, wrapper: Element, wrap: InlineWrap): void {
+        // Blank formatting text and a row's checkbox are not content to format:
+        // wrapping the checkbox would take it out of its row.
+        if (node.nodeName === 'INPUT') return;
+        if (node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() === '') return;
+        if (wrap.phrasing(node)) {
+            if (sameElement(node, wrapper)) return;
+            const copy = wrapper.cloneNode(false);
+            node.parentNode?.insertBefore(copy, node);
+            copy.appendChild(node);
+            return;
+        }
+        const covered = wrap.covered.get(node) ?? [];
+        if (covered.length >= MAX_NESTING_DEPTH || covered.some((el) => sameElement(el, wrapper))) return;
+        for (const child of childList(node)) this.wrapInlineRuns(child, wrapper, wrap);
+        wrap.covered.set(node, [...covered, wrapper]);
+    }
+
+    /**
+     * A heading holds inline content only.
+     *
+     * The parser closes an open `<p>` at any block, but not a heading:
+     * `<h2>title<div>body</div></h2>` survives parsing, and a markdown heading
+     * is one line, so the block had nowhere to go on save. Each block moves out
+     * in place, and the inline runs around it keep the heading's tag.
+     * Paragraphs need no such pass: the parser already guarantees them.
+     */
+    private liftBlocksOutOfLines(root: HTMLElement): void {
+        for (const line of Array.from(root.querySelectorAll('h1, h2, h3, h4, h5, h6'))) {
+            if (childList(line).every(isPhrasing)) continue;
+            line.replaceWith(...this.splitAroundBlocks(line));
+        }
+    }
+
+    /** The line's inline runs, each in a copy of the line, with its blocks between them. */
+    private splitAroundBlocks(line: Element): Node[] {
+        const pieces: Node[] = [];
+        let run: Element | null = null;
+        for (const child of childList(line)) {
+            if (isPhrasing(child)) {
+                run ??= line.cloneNode(false) as Element;
+                run.appendChild(child);
+                continue;
+            }
+            if (run && !this.showsNothing(run)) pieces.push(run);
+            run = null;
+            pieces.push(child);
+        }
+        if (run && !this.showsNothing(run)) pieces.push(run);
+        return pieces;
+    }
+
+    /** Whether a piece of a split line is only the whitespace that sat between blocks. */
+    private showsNothing(run: Element): boolean {
+        return (run.textContent ?? '').trim() === '' && !run.querySelector('img, br, input');
+    }
+
+    /**
+     * An item lives in a list, and a summary in a details block.
+     *
+     * `<blockquote><li>x</li></blockquote>` arrives from pasted HTML. The quote
+     * pass wrapped the stray item in a paragraph, which the next read took
+     * apart, adding an empty paragraph per pass. Adjacent stray items share one
+     * new list; a stray summary becomes a paragraph.
+     */
+    private adoptStrayItems(root: HTMLElement): void {
+        const adopted = new Set<Element>();
+        for (const item of Array.from(root.querySelectorAll('li'))) {
+            const parent = item.parentElement;
+            if (!parent || isNestedList(parent)) continue;
+            const before = this.previousContentSibling(item);
+            let list = before && adopted.has(before) ? before : null;
+            if (!list) {
+                list = this.document.createElement('ul');
+                if (item.dataset['task'] !== undefined) (list as HTMLElement).dataset['taskList'] = '';
+                item.before(list);
+                adopted.add(list);
+            }
+            list.appendChild(item);
+        }
+        for (const summary of Array.from(root.querySelectorAll('summary'))) {
+            if (summary.parentElement?.nodeName === 'DETAILS') continue;
+            const paragraph = this.document.createElement('p');
+            paragraph.append(...childList(summary));
+            // A block the summary held goes beside its paragraph, not inside:
+            // `<p><p>x</p></p>` came apart on every read.
+            summary.replaceWith(...this.splitAroundBlocks(paragraph));
+        }
+    }
+
+    /**
+     * Every item of a task list is a task row.
+     *
+     * The markdown writer has always read a task list's items as rows from the
+     * list's own marker, so `<ul data-task-list><li>` arrives from consumer HTML
+     * without `data-task`. Without this, the pass that keeps a list to one kind
+     * split such a list into plain bullets, and every checkbox was lost.
+     */
+    private markTaskListItems(root: HTMLElement): void {
+        for (const item of Array.from(root.querySelectorAll<HTMLElement>('ul[data-task-list] > li:not([data-task])'))) {
+            const checkbox = item.querySelector<HTMLInputElement>(':scope > input[type="checkbox"]');
+            const checked = item.dataset['checked'] === 'true' || checkbox?.hasAttribute('checked') === true;
+            item.dataset['task'] = '';
+            item.dataset['checked'] = String(checked);
+            if (checkbox) continue;
+            const box = this.document.createElement('input');
+            box.type = 'checkbox';
+            if (checked) box.setAttribute('checked', '');
+            item.prepend(box);
+        }
+    }
+
+    /**
+     * A details block's summary is its first child.
+     *
+     * A browser shows the summary at the top wherever it sits, so a summary
+     * written after the body read first on screen and last in the document, and
+     * a save wrote it in document order: the text moved.
+     */
+    private leadDetailsWithSummary(root: HTMLElement): void {
+        for (const details of Array.from(root.querySelectorAll('details'))) {
+            const summary = details.querySelector(':scope > summary');
+            if (summary && details.firstElementChild !== summary) details.prepend(summary);
+        }
+    }
+
+    /** Every list holds one kind of item; see {@link separateListKinds}. */
+    private normalizeListKinds(root: HTMLElement): void {
+        for (const list of Array.from(root.querySelectorAll<HTMLElement>('ul, ol'))) separateListKinds(list);
+    }
+
+    /** The previous sibling element, stepping over the blank text formatting leaves between elements. */
+    private previousContentSibling(node: Node): Element | null {
+        let current = node.previousSibling;
+        while (current?.nodeType === Node.TEXT_NODE && (current.textContent ?? '').trim() === '') {
+            current = current.previousSibling;
+        }
+        return current?.nodeType === Node.ELEMENT_NODE ? current as Element : null;
+    }
+
+    /**
+     * A task row's text lives in a `<span>` after its checkbox.
+     *
+     * The editor builds rows that way and the markdown parser emits them that
+     * way, but nothing enforced it, so a row from another producer (the PDF
+     * import path emits `<li data-task><input>text</li>`) or from consumer
+     * HTML carried its text bare. Every caret rule and the checked-row strike
+     * key off that span, so such a row silently lost its strike and gave the
+     * caret nowhere of its own to sit. Every row reaching the editor or the
+     * view passes through here, so all of them have the shape.
+     */
+    private normalizeTaskRows(root: HTMLElement): void {
+        for (const row of Array.from(root.querySelectorAll<HTMLElement>('li[data-task]'))) {
+            const checkbox: ChildNode | null = row.querySelector(':scope > input[type="checkbox"]');
+            const [own, ...later] = rowRunsOf(row, checkbox);
+            let previous = row;
+            for (const run of later) {
+                const next = this.rowLike(row, checkbox);
+                next.append(...run.content, ...run.lists);
+                previous.after(next);
+                previous = next;
+                this.gatherRowText(next, run.content);
+            }
+            this.gatherRowText(row, own?.content ?? []);
+        }
+    }
+
+    /** Gather a task row's content into the span its text lives in, before its nested lists. */
+    private gatherRowText(row: HTMLElement, content: readonly Node[]): void {
+        // A span holding a paragraph -- what a loose markdown task item
+        // parses to -- no longer reaches here: the inline-wrapper pass has
+        // already moved the paragraph out of it, so a lone span is inline.
+        if (content.length === 1 && content[0]?.nodeName === 'SPAN') return;
+        const span = this.document.createElement('span');
+        // A row's text is inline. A block among its content is flattened
+        // into it rather than nested, or the row would own a line and the
+        // block would own one too, and the same text would belong to both.
+        flattenIntoRowText(content, span);
+        // The row's own nested list renders under its text, so the span
+        // goes before it.
+        row.insertBefore(span, childList(row).find((node) => isNestedList(node)) ?? null);
+    }
+
+    /** A new task row in the state of `row`, for the content after its nested list (see rowRunsOf). */
+    private rowLike(row: HTMLElement, checkbox: ChildNode | null): HTMLElement {
+        const next = this.document.createElement('li');
+        next.dataset['task'] = '';
+        if (row.dataset['checked'] !== undefined) next.dataset['checked'] = row.dataset['checked'];
+        if (checkbox) next.appendChild(checkbox.cloneNode());
+        return next;
+    }
+
+    /**
+     * An element either holds a line of text or holds blocks, never both.
+     *
+     * `<li>text<blockquote>…</blockquote></li>` puts a visible line of text in
+     * an element that is a container, so that text belongs to no line: every
+     * caret and block rule keys off lines, and a block command given such an
+     * item reached out to the whole list and destroyed it. The stray run gets a
+     * paragraph of its own, where it already lives.
+     */
+    private normalizeStrayLines(root: HTMLElement): void {
+        for (const el of Array.from(root.querySelectorAll(STRAY_LINE_HOSTS))) {
+            const children = childList(el);
+            // Only a host with a run to wrap is rebuilt: moving a block holding
+            // the rest of the document is not free in every DOM implementation.
+            if (!children.some((child) => this.needsItsOwnLine(child, el)) || !children.some(isStrayContent)) continue;
+            for (const node of this.withStrayRunsWrapped(detachChildren(el))) el.appendChild(node);
+        }
+    }
+
+    /**
+     * `children` with each run of inline content between the blocks in a
+     * paragraph of its own, everything else in place.
+     *
+     * A block ENDS a run and is never part of one. Letting a nested list stay
+     * in the run — because the sub-list exception says it does not make its
+     * item a container — moved the list into the new paragraph, producing a
+     * `<ul>` inside a `<p>` and one more empty paragraph on every save.
+     */
+    private withStrayRunsWrapped(children: readonly ChildNode[]): Node[] {
+        const out: Node[] = [];
+        let run: ChildNode[] = [];
+        // A task box met inside a run stays out of the paragraph, after it.
+        let after: ChildNode[] = [];
+        const flush = (): void => {
+            if (run.length > 0) {
+                const paragraph = this.document.createElement('p');
+                paragraph.append(...run);
+                out.push(paragraph);
+            }
+            out.push(...after);
+            run = [];
+            after = [];
+        };
+        for (const node of children) {
+            if (!isPhrasing(node)) {
+                flush();
+                out.push(node);
+            } else if (node.nodeName === 'INPUT') {
+                (run.length > 0 ? after : out).push(node);
+            } else if (run.length === 0 && node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() === '') {
+                // Blank text between two of the run's nodes is the space between
+                // their words: left outside the paragraph, "<b>a</b> <i>b</i>" read "ab".
+                out.push(node);
+            } else {
+                run.push(node);
+            }
+        }
+        flush();
+        return out;
+    }
+
+    /**
+     * Whether a block child means its host's own text needs a line of its own.
+     *
+     * A list nested in an item does NOT: that item still shows its own line
+     * above the sub-list, exactly as the line model has it, and wrapping its
+     * text would make every nested row a container. This answers only whether
+     * the host needs normalising; where runs break is a separate question, and
+     * conflating the two moved a sub-list into a paragraph.
+     */
+    private needsItsOwnLine(node: Node, within: Element): boolean {
+        if (isPhrasing(node)) return false;
+        return !(within.nodeName === 'LI' && isNestedList(node));
+    }
+
+    /**
+     * A blockquote's direct children are line blocks, never bare text.
+     *
+     * The editor's Enter rule leaves a quote only from a blank LINE block. A
+     * quote arriving as `<blockquote>a<br>b</blockquote>` -- the markdown
+     * parser's shape, and what older documents and pasted HTML carry -- had no
+     * line for it to find, so Enter fell to the browser and opened a sibling
+     * blockquote per keypress; the quote could not be escaped. Every quote
+     * passes through here, so the editor sees one shape whatever produced it.
+     * Bare and inline children are grouped into `<p>` lines, a `<br>` ends a
+     * line, and block children pass through untouched.
+     */
+    private normalizeQuoteLines(root: HTMLElement): void {
+        for (const quote of Array.from(root.querySelectorAll('blockquote'))) {
+            const bare = childList(quote).some((node) => !this.isQuoteLineBlock(node));
+            if (!bare) continue;
+            quote.replaceChildren(...this.groupQuoteLines(childList(quote)));
+        }
+    }
+
+    private groupQuoteLines(nodes: readonly Node[]): Node[] {
+        const out: Node[] = [];
+        let run: Node[] = [];
+        const flush = (keepEmpty: boolean): void => {
+            const line = this.quoteLineFrom(run, keepEmpty);
+            if (line) out.push(line);
+            run = [];
+        };
+        for (const node of nodes) {
+            if (this.isQuoteLineBlock(node)) {
+                flush(false);
+                out.push(node);
+            } else if ((node as Element).tagName === 'BR') {
+                flush(true);
+            } else {
+                run.push(node);
+            }
+        }
+        flush(false);
+        return out;
+    }
+
+    /** A `<p>` for a run of inline nodes; a blank run is a line only when a `<br>` ended it. */
+    private quoteLineFrom(run: readonly Node[], keepEmpty: boolean): HTMLElement | null {
+        const blank = run.every((node) => node.nodeType === Node.TEXT_NODE && (node.textContent ?? '').trim() === '');
+        if (blank && !keepEmpty) return null;
+        const p = this.document.createElement('p');
+        if (blank) {
+            p.appendChild(this.document.createElement('br'));
+        } else {
+            p.append(...run);
+            this.trimLineEdges(p);
+        }
+        return p;
+    }
+
+    /** Source formatting between blocks is not content; a rendered line never shows edge whitespace anyway. */
+    private trimLineEdges(line: HTMLElement): void {
+        const first = line.firstChild;
+        if (first?.nodeType === Node.TEXT_NODE) first.textContent = (first.textContent ?? '').trimStart();
+        const last = line.lastChild;
+        if (last?.nodeType === Node.TEXT_NODE) last.textContent = (last.textContent ?? '').trimEnd();
+    }
+
+    private isQuoteLineBlock(node: Node): boolean {
+        return node.nodeType === Node.ELEMENT_NODE && !isPhrasing(node);
+    }
+
+    /**
+     * Sanitize HTML and return as DOM fragment.
+     * Useful for direct insertion into contentEditable.
+     */
+    sanitizeToFragment(html: string): DocumentFragment {
+        const sanitized = this.sanitize(html);
+        const template = this.document.createElement('template');
+        template.innerHTML = sanitized;
+        return template.content.cloneNode(true) as DocumentFragment;
+    }
+
+    /**
+     * Check if a URL is safe for use in an href/src attribute (not
+     * javascript:, vbscript:, or a suspicious data: URL).
+     *
+     * Browsers ignore or strip whitespace, control, and zero-width / bidi
+     * characters inside URLs while navigating, so a dangerous scheme can be
+     * smuggled past a naive check by inserting them (e.g. a tab or zero-width
+     * space inside `javascript:`). All such characters are removed before the
+     * protocol is compared against the blocklist.
+     */
+    isUrlSafe(url: string): boolean {
+        if (!url || typeof url !== 'string') {
+            return false;
+        }
+
+        const probe = url.replace(this.URL_STRIP_PATTERN, '').toLowerCase();
+
+        // A protocol-relative URL looks relative but loads an arbitrary external
+        // host. Browsers normalize backslashes to forward slashes in the
+        // authority position, so "/\host" and "\\host" reach the same place
+        // as "//host" -- and the surviving anchor was decorated with
+        // rel="noopener noreferrer", making an off-origin redirect read as a
+        // vetted link. sanitizeImageSrc already guarded the backslash forms;
+        // the href path did not.
+        if (/^[\\/]{2}/.test(probe)) {
+            return false;
+        }
+
+        // ...and the same check AFTER any scheme. "https:\\\\evil" was admitted by
+        // the allowlist below (https is a fine scheme) and never came back here,
+        // so a scheme-qualified backslash authority resolved off-origin exactly
+        // like the schemeless form it sits beside.
+        if (hasForeignAuthority(probe)) {
+            return false;
+        }
+
+        // Allowlist, not blocklist. Naming the dangerous schemes meant anything
+        // unnamed passed -- blob:, filesystem:, view-source:, about:, ws: and
+        // file: all reached a live href. Only the schemes ordinary links use are
+        // accepted; a URL with no scheme at all is relative, and fine.
+        //
+        // javascript:, vbscript: and every data: URL are in FORBIDDEN_LINK_SCHEMES,
+        // which no consumer allowlist widens. No legitimate link target is a
+        // data: URL, and `data:image/svg+xml` was once waved through here,
+        // letting a link carry an SVG document with an onload handler. Image
+        // sources keep their own, stricter route (sanitizeImageSrc ->
+        // sanitizeSvgDataUrl), which scrubs the SVG rather than trusting the
+        // MIME label.
+        const scheme = /^([a-z][a-z0-9+.-]*):/.exec(probe)?.[1];
+        return !scheme || this.isLinkSchemeAllowed(scheme);
+    }
+
+    /**
+     * Sanitize a URL for href/src attributes.
+     * Returns null if URL is unsafe.
+     */
+    sanitizeUrl(url: string): string | null {
+        if (this.isUrlSafe(url)) return url;
+        return this.canonicalOffOriginLink(url);
+    }
+
+    /**
+     * A link written in a form that LOOKS relative but resolves off-origin --
+     * `//host/x`, `/\\host/x`, `https:\\host/x` -- rewritten as the explicit
+     * absolute URL the browser would reach, or null when it is unsafe.
+     *
+     * Dropping such links was a regression: an explicit `https://host/x` to
+     * the same resource is allowed, so refusing the shorthand protected
+     * nothing and deleted legitimate protocol-relative links from pasted
+     * content. What the earlier fix was right about is that the shorthand
+     * must not be STORED -- a reader cannot tell it is off-origin. Resolving
+     * it, like `sanitizeImageSrc` already stores `url.href`, keeps the link
+     * and makes its destination visible.
+     */
+    private canonicalOffOriginLink(url: string): string | null {
+        const probe = url.replace(this.URL_STRIP_PATTERN, '').toLowerCase();
+        if (!/^[\\/]{2}/.test(probe) && !hasForeignAuthority(probe)) return null;
+        try {
+            const resolved = new URL(url, this.document.baseURI);
+            return this.isLinkSchemeAllowed(resolved.protocol.slice(0, -1)) ? resolved.href : null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Extra link schemes the consumer allows, read live like the host policy.
+     * Empty by default; the built-in list is {@link DEFAULT_LINK_SCHEMES}.
+     */
+    private extraLinkSchemes: () => readonly string[] = () => [];
+
+    /**
+     * Widen the link-scheme allowlist. Accepts a reader so a caller can hand
+     * over a getter, for the same reason `setRemoteHostPolicy` does.
+     * A forbidden scheme (`javascript`, `data`, `file`, …) is ignored however
+     * it is listed.
+     */
+    setLinkSchemePolicy(schemes: readonly string[] | (() => readonly string[])): void {
+        if (typeof schemes === 'function') {
+            this.extraLinkSchemes = schemes;
+            return;
+        }
+        const copy = [...schemes];
+        this.extraLinkSchemes = () => copy;
+    }
+
+    private isLinkSchemeAllowed(scheme: string): boolean {
+        const lower = scheme.toLowerCase();
+        if (FORBIDDEN_LINK_SCHEMES.has(lower)) return false;
+        if (LINK_SCHEMES.has(lower)) return true;
+        return this.extraLinkSchemes().some((extra) => extra.trim().toLowerCase().replace(/:$/, '') === lower);
+    }
+
+    /**
+     * Sanitize image source URL.
+     * More restrictive: only allows https, relative, or safe data:image/* —
+     * plus http when the host is localhost, so local development still works.
+     * Protocol-relative URLs (`//host`) are rejected — they look relative but
+     * load an arbitrary external host. Prefix checks run on a control-char
+     * stripped copy so obfuscated forms are caught, while the original input
+     * is returned so legitimate paths keep characters browsers resolve.
+     */
+
+    /**
+     * Hosts whose remote resources may be loaded. Empty means NO POLICY: every
+     * host is allowed, which is the default and preserves prior behaviour.
+     *
+     * Per-instance state, so two editors on a page can hold different policies.
+     */
+    private allowedHosts: () => readonly string[] = () => [];
+
+    /**
+     * Decisions made during the current pass, drained by the editor or the
+     * view. Bounded: a consumer that injects the ROOT service directly and
+     * renders through `toHtml` never drains, and an unbounded buffer would grow
+     * for the life of the app. Past the cap the oldest decision is dropped.
+     */
+    private readonly decisions: ResourcePolicyDecision[] = [];
+    /** `kind + url` of every buffered decision, so the dedupe below is O(1). */
+    private readonly decisionKeys = new Set<string>();
+
+    /**
+     * The URL of the most recent source refused by the HOST POLICY, as opposed
+     * to one refused for being unsafe. Consumed immediately by the `src`
+     * handler; a stale value cannot leak because that handler clears it.
+     */
+    private lastBlockedByPolicy: string | null = null;
+
+    /**
+     * Take the URL of the source the last `sanitizeImageSrc` call refused on
+     * POLICY grounds, or null when it was refused as unsafe (or not at all).
+     *
+     * Reading clears it, so a caller cannot mistake a stale value for its own
+     * result. Callers use it to keep a blocked image as a placeholder while
+     * still dropping an unsafe one outright.
+     */
+    takeBlockedByPolicy(): string | null {
+        const url = this.lastBlockedByPolicy;
+        this.lastBlockedByPolicy = null;
+        return url;
+    }
+
+    /**
+     * Replace the remote-host allowlist. Empty disables the policy.
+     *
+     * Accepts a reader as well as a list: the policy is then read at the moment
+     * each sanitize pass runs, so a value set after construction (or by a
+     * property that has not been assigned yet) is never stale.
+     */
+    setRemoteHostPolicy(hosts: readonly string[] | (() => readonly string[])): void {
+        if (typeof hosts === 'function') {
+            this.allowedHosts = hosts;
+            return;
+        }
+        const copy = [...hosts];
+        this.allowedHosts = () => copy;
+    }
+
+    /** Take and clear the decisions recorded since the last drain. */
+    drainResourceDecisions(): ResourcePolicyDecision[] {
+        this.decisionKeys.clear();
+        return this.decisions.splice(0, this.decisions.length);
+    }
+
+    /**
+     * Judge one remote reference, recording the decision either way.
+     *
+     * Allowed references are recorded too, with `reason: 'no-policy'` when
+     * nothing is configured -- that is what lets a developer see their real
+     * exposure before deciding whether to set an allowlist.
+     */
+    private judgeResource(url: string, kind: 'image' | 'background'): boolean {
+        if (!isHostBearingUrl(url)) return true;
+
+        const hosts = this.allowedHosts();
+        const allowed = isHostAllowed(url, hosts);
+        // One decision per distinct reference per drain. The markdown path
+        // judges an image twice on purpose -- once when parsing `![]()` and
+        // again when the final sanitize re-reads the placeholder's
+        // `data-blocked-src` -- and a consumer counting exposure must not see
+        // the same tracker reported twice for one document.
+        const key = `${kind}\u0000${url}`;
+        if (!this.decisionKeys.has(key)) {
+            if (this.decisions.length >= MAX_BUFFERED_DECISIONS) {
+                const oldest = this.decisions.shift();
+                if (oldest) this.decisionKeys.delete(`${oldest.kind}\u0000${oldest.url}`);
+            }
+            this.decisionKeys.add(key);
+            this.decisions.push({
+                url,
+                host: remoteHostOf(url) ?? '',
+                kind,
+                allowed,
+                reason: resourceReason(hosts.length === 0, allowed),
+            });
+        }
+        return allowed;
+    }
+
+
+    /**
+     * Whether a CSS declaration value may be kept.
+     *
+     * Two stages, in this order:
+     *   1. code constructs (expression(), javascript:, data:) are refused
+     *      outright, after escapes and comments resolve;
+     *   2. any url() is judged by HOST -- allowed when the allowlist permits it
+     *      (or when no allowlist is set), stripped otherwise.
+     *
+     * A value carrying a backslash that is not a resolvable escape is refused:
+     * nothing in the allowlist -- colours, lengths, font names, alignments --
+     * needs one, so refusing costs nothing and closes whatever the decoder
+     * misses.
+     */
+    private isStyleValueAllowed(value: string): boolean {
+        if (hasUnsafeStyleToken(value)) return false;
+
+        // An allowlist of functions, because judging `url()` alone judged one
+        // spelling of "fetch an image": `image-set("https://t/p.png" 1x)` has
+        // no `url(` in it and a browser fetches it all the same (probed in
+        // headless Chrome). Anything not known to be fetch-free is refused,
+        // whatever the host policy says.
+        if (hasUnsafeCssFunction(value)) return false;
+
+        if (!containsCssUrl(value)) {
+            return !value.includes('\\');
+        }
+
+        // A value whose url() is written with escapes is refused even when the
+        // host would be allowed. The policy agreed with the browser here, but
+        // storing the obfuscated form means the document only stays safe while
+        // this decoder and the browser's keep agreeing -- and that divergence is
+        // exactly what the \75rl( bypass was. An author with a legitimate URL
+        // has no reason to escape it.
+        if (value.includes('\\')) return false;
+
+        // With NO allowlist, a url() is refused -- as it always was. The
+        // original ban was justified on the grounds that <img> lets a tracker
+        // through anyway, so blocking backgrounds bought nothing. That was
+        // wrong: an <img> is visible content the author placed and a reader can
+        // see, while a CSS background beacon is invisible. Relaxing the default
+        // opened a channel that was closed for every existing consumer, on
+        // upgrade, with no code change -- the opposite of "the default is
+        // unchanged".
+        //
+        // A url() is permitted only where a developer has named hosts, which is
+        // a deliberate act with the trade-off in front of them.
+        if (this.allowedHosts().length === 0) return false;
+
+        const urls = extractCssUrls(value);
+        if (urls.length === 0) return false;
+
+        return urls.every((url) => this.judgeResource(url, 'background'));
+    }
+
+
+    /**
+     * Set an image source, or mark it as blocked.
+     *
+     * A source refused by the HOST POLICY keeps its element and its original
+     * URL, so the reader sees a labelled frame rather than a hole and the block
+     * is reversible if the host is later allowed. An UNSAFE source
+     * (javascript:, a mislabelled data: payload) is simply dropped -- that is
+     * not content the author should be invited to restore. `src` is never set
+     * in either case: nothing is fetched, which is the entire point.
+     */
+    private applyImageSrc(target: HTMLElement, value: string): void {
+        this.lastBlockedByPolicy = null;
+        const safeSrc = this.sanitizeImageSrc(value);
+        if (safeSrc) {
+            target.setAttribute('src', safeSrc);
+            return;
+        }
+        const blocked = this.takeBlockedByPolicy();
+        if (blocked !== null) {
+            target.dataset['blockedSrc'] = blocked;
+        }
+    }
+
+    /** Validate and, for SVG, scrub a `data:image/*` source. */
+    private sanitizeDataImageSrc(trimmed: string): string | null {
+            if (!this.isAllowedDataUrl(trimmed)) return null;
+            // Scrub by CONTENT, not by the MIME label. The label is attacker-
+            // controlled and the magic-byte check accepts SVG whatever it says,
+            // so "data:image/png;base64,<svg onload=...>" used to skip scrubbing
+            // altogether -- storing unsanitized, script-bearing markup in
+            // content the library asserts is clean. Current browsers will not
+            // render it as an <img>, but anything rendering that content another
+            // way (object/embed/inline, or a server sniffing by content) would.
+            if (this.declaresOrContainsSvg(trimmed)) {
+                return this.sanitizeSvgDataUrl(trimmed);
+            }
+            return trimmed;
+    }
+
+    sanitizeImageSrc(src: string): string | null {
+        // Cleared on ENTRY, so the marker only ever describes this call. It
+        // used to be cleared only by the attribute path; a caller that judged a
+        // URL and never took the marker (an addon's insert-by-URL, say) left it
+        // set, and the next markdown image that was refused as UNSAFE was
+        // attributed the stale blocked URL -- a placeholder for an image the
+        // author never placed, which would load if that host were later allowed.
+        this.lastBlockedByPolicy = null;
+        if (!src || typeof src !== 'string') {
+            return null;
+        }
+
+        const trimmed = src.trim();
+        const probe = trimmed.replace(this.URL_STRIP_PATTERN, '');
+
+        if (probe.startsWith('//') || hasForeignAuthority(probe)) {
+            return null;
+        }
+
+        // Any schemeless target is same-origin once the authority forms above
+        // are refused. Only "/", "./" and "../" were accepted, so a bare
+        // "images/a.png" was judged unsafe, and an unsafe image is dropped.
+        if (probe && !/^[a-z][a-z0-9+.-]*:/i.test(probe)) {
+            return trimmed;
+        }
+
+        if (trimmed.toLowerCase().startsWith('data:image/')) {
+            return this.sanitizeDataImageSrc(trimmed);
+        }
+
+        try {
+            const url = new URL(trimmed);
+
+            if (url.protocol === 'https:') {
+                if (this.judgeResource(url.href, 'image')) return url.href;
+                // Distinguish a policy block from a safety rejection, so the
+                // caller can keep the element for one and not the other. Set
+                // here because this is the only branch that knows the URL was
+                // otherwise acceptable.
+                this.lastBlockedByPolicy = url.href;
+                return null;
+            }
+
+            if (url.protocol === 'http:' && this.isLocalhostUrl(url)) {
+                return url.href;
+            }
+
+            return null;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Strip all HTML tags, returning only text content.
+     * Useful for plain text extraction.
+     */
+    stripTags(html: string): string {
+        if (!html || typeof html !== 'string') {
+            return '';
+        }
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        return doc.body.textContent ?? '';
+    }
+
+    /** Tags that should be removed entirely (including content) */
+    private readonly TAGS_TO_REMOVE = new Set([
+        'script', 'style', 'iframe', 'object', 'embed', 'noscript', 'template',
+    ]);
+
+    /**
+     * Elements that change how the markup INSIDE them is parsed: MathML and SVG
+     * are foreign content, and the rest are scope boundaries a `<table>` does
+     * not close a paragraph across. Unwrapped, their content kept a shape the
+     * parser never builds -- `<p>a <math><mtext><table>` left a table inside a
+     * paragraph -- so the output read back as a different document, the
+     * instability mutation XSS is built on. Removed whole, the author's text
+     * went with them: "Click <button>Save</button> to continue" lost a word.
+     * They become their text alone, which keeps the words and none of the
+     * structure.
+     */
+    private readonly TAGS_TO_FLATTEN = new Set(['math', 'svg', 'button', 'applet', 'marquee']);
+
+    /**
+     * Copy one element, or what of it is safe, into `target`. Returns whether
+     * anything in it was removed rather than copied, so a paragraph can tell an
+     * emptiness sanitising caused from one the author wrote.
+     */
+    private processElementNode(element: HTMLElement, target: HTMLElement): boolean {
+        const tagName = element.tagName.toLowerCase();
+        if (!this.ALLOWED_TAGS.has(tagName)) {
+            if (this.TAGS_TO_FLATTEN.has(tagName)) {
+                this.flattenToText(element, target);
+                return true;
+            }
+            return this.TAGS_TO_REMOVE.has(tagName) || this.processNodes(element, target);
+        }
+        if (tagName === 'input' && element.getAttribute('type') !== 'checkbox') return true;
+        const cleanElement = this.document.createElement(tagName);
+        this.sanitizeAttributes(element, cleanElement, tagName);
+        // Kept without its source, an unsafe image was an empty frame the
+        // author never asked for; a policy-blocked one keeps its marker and stays.
+        if (tagName === 'img' && this.lostItsSource(element, cleanElement)) return true;
+        const removed = this.processNodes(element, cleanElement);
+        if (removed && tagName === 'p' && this.showsNothingAtAll(cleanElement)) return true;
+        target.appendChild(cleanElement);
+        return removed;
+    }
+
+    /**
+     * Copy `element` into `target` as one text node of the text it shows --
+     * without the script or style text a removed tag holds. Walked with a
+     * stack: foreign content nests as deep as the parser allows.
+     *
+     * The element was a box of its own, so its text is set apart from text
+     * right before it: two buttons side by side read "Accept Decline", not
+     * one fused word.
+     */
+    private flattenToText(element: Element, target: HTMLElement): void {
+        const parts: string[] = [];
+        const pending: Node[] = [element];
+        for (let node = pending.pop(); node; node = pending.pop()) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                parts.push(node.textContent ?? '');
+            } else if (node === element || !this.TAGS_TO_REMOVE.has(node.nodeName.toLowerCase())) {
+                pending.push(...childList(node).reverse());
+            }
+        }
+        const text = parts.join('');
+        if (!text) return;
+        const before = target.lastChild?.textContent ?? '';
+        const apart = before !== '' && /\S$/.test(before) && /^\S/.test(text);
+        target.appendChild(this.document.createTextNode(apart ? ` ${text}` : text));
+    }
+
+    /** Whether an image that named a source was left with neither a `src` nor a blocked-source marker. */
+    private lostItsSource(source: HTMLElement, clean: HTMLElement): boolean {
+        const named = source.hasAttribute('src') || 'blockedSrc' in source.dataset;
+        return named && !clean.hasAttribute('src') && !('blockedSrc' in clean.dataset);
+    }
+
+    /**
+     * Whether a block renders nothing: no element that draws, and no text but
+     * collapsible whitespace. A non-breaking space is the author's blank line
+     * and counts as content.
+     */
+    private showsNothingAtAll(el: HTMLElement): boolean {
+        return /^[ \t\n\r\f]*$/.test(el.textContent ?? '') && !el.querySelector('img, br, hr, input, table');
+    }
+
+    /**
+     * Process nodes recursively, copying safe content to clean container.
+     * Returns whether any of them was removed rather than copied.
+     */
+    private processNodes(source: Node, target: HTMLElement): boolean {
+        let removed = false;
+        for (const node of Array.from(source.childNodes)) {
+            if (node.nodeType === Node.TEXT_NODE) {
+                target.appendChild(this.document.createTextNode(node.textContent ?? ''));
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                removed = this.processElementNode(node as HTMLElement, target) || removed;
+            }
+            // Ignore comments, processing instructions, etc.
+        }
+        return removed;
+    }
+
+    /**
+     * Copy only allowed attributes from source to target element.
+     */
+    private sanitizeAttributes(
+        source: HTMLElement,
+        target: HTMLElement,
+        tagName: string
+    ): void {
+        const allowedForTag = this.ALLOWED_ATTRS[tagName];
+        const allowedGlobal = this.ALLOWED_ATTRS['*'];
+
+        for (const attr of Array.from(source.attributes)) {
+            const attrName = attr.name.toLowerCase();
+
+            if (this.EVENT_HANDLER_PATTERN.test(attrName)) {
+                continue;
+            }
+
+            const isAllowed =
+                allowedForTag?.has(attrName) ||
+                allowedGlobal?.has(attrName);
+
+            if (!isAllowed) {
+                this.applyContributedAttribute(tagName, attrName, attr.value, target);
+                continue;
+            }
+
+            this.applyAllowedAttribute(attrName, attr.value, target, source);
+        }
+    }
+
+    private applyContributedAttribute(
+        tagName: string, attrName: string, value: string, target: HTMLElement,
+    ): void {
+        const rule = this.findContributedRule(tagName, attrName);
+        if (!rule) return;
+        const kept = rule.validate ? rule.validate(value, target) : value;
+        if (kept === null) return;
+        target.setAttribute(attrName, kept);
+    }
+
+    private applyAllowedAttribute(attrName: string, value: string, target: HTMLElement, source: HTMLElement): void {
+        switch (attrName) {
+            case 'href': {
+                const safeUrl = this.sanitizeUrl(value);
+                if (safeUrl) {
+                    target.setAttribute('href', safeUrl);
+                    target.setAttribute('rel', 'noopener noreferrer');
+                }
+                return;
+            }
+            case 'src': {
+                this.applyImageSrc(target, value);
+                return;
+            }
+            case 'data-blocked-src': {
+                // Re-judged, never copied. A blocked image is saved WITHOUT a
+                // `src` and WITH this marker, so on the HTML path this is the
+                // only place the original URL comes back through -- and it goes
+                // through the same gate a `src` does. Allowed now: it becomes
+                // `src` and the marker is dropped, which is what makes the
+                // block reversible in HTML mode as well as markdown. Still
+                // blocked: the marker is re-applied. Unsafe: dropped outright,
+                // so a hand-written `data-blocked-src="javascript:..."` never
+                // rides along verbatim.
+                // Judged by what the SOURCE carries, not by what has landed on
+                // the target so far: with the marker written before `src` in
+                // attribute order the target had no src yet, both were applied,
+                // and a loading image wore a stale blocked marker.
+                if (!source.hasAttribute('src')) this.applyImageSrc(target, value);
+                return;
+            }
+            case 'class': {
+                const safeClasses = this.sanitizeClasses(value);
+                if (safeClasses) {
+                    target.setAttribute('class', safeClasses);
+                }
+                return;
+            }
+            case 'style': {
+                const safeStyle = this.sanitizeStyle(value);
+                if (safeStyle) {
+                    target.setAttribute('style', safeStyle);
+                }
+                return;
+            }
+            case 'target': {
+                if (value === '_blank') {
+                    target.setAttribute('target', '_blank');
+                }
+                return;
+            }
+            case 'start': {
+                this.applyListStart(value, target);
+                return;
+            }
+            case 'dir': {
+                if (isTextDirection(value)) target.setAttribute('dir', value);
+                return;
+            }
+            default:
+                target.setAttribute(attrName, value);
+        }
+    }
+
+    /**
+     * A list number a markdown save can write back, 0 to 999999999. A negative
+     * or longer one came back renumbered, or with the next item's number read as
+     * its text.
+     */
+    private applyListStart(value: string, target: HTMLElement): void {
+        if (/^\d{1,9}$/.test(value.trim())) target.setAttribute('start', String(Number.parseInt(value, 10)));
+    }
+
+    /**
+     * Sanitize class attribute, only allowing specific patterns.
+     */
+    private sanitizeClasses(classValue: string): string {
+        const classes = classValue.split(/\s+/).filter(Boolean);
+        const safeClasses = classes.filter(cls =>
+            this.ALLOWED_CLASS_PATTERNS.some(pattern => pattern.test(cls))
+        );
+        return safeClasses.join(' ');
+    }
+
+    /**
+     * Check if a data: URL is an allowed image type with magic byte validation.
+     */
+    private isAllowedDataUrl(url: string): boolean {
+        const allowedMimeTypes = [
+            'data:image/png',
+            'data:image/jpeg',
+            'data:image/jpg',
+            'data:image/gif',
+            'data:image/webp',
+            'data:image/svg+xml',
+        ];
+
+        const lowerUrl = url.toLowerCase();
+        if (!allowedMimeTypes.some(mime => lowerUrl.startsWith(mime))) {
+            return false;
+        }
+
+        if (lowerUrl.startsWith('data:image/svg+xml')) {
+            return true;
+        }
+
+        const marker = ';base64,';
+        const markerIndex = lowerUrl.indexOf(marker);
+        if (markerIndex === -1) {
+            // A data: URL without ';base64,' carries a percent-encoded payload.
+            // Returning true here skipped content validation entirely, so
+            // 'data:image/png,<script>...' was kept verbatim while the SAME
+            // bytes base64-encoded were rejected -- the encoding decided the
+            // verdict, not the content. Every data:image/* payload is checked.
+            const comma = url.indexOf(',');
+            if (comma === -1) return false;
+            // Decoded to BYTES, not text. decodeURIComponent yields a UTF-8
+            // string and THROWS on any sequence that is not valid UTF-8 -- and
+            // every binary image format has a high byte in its magic number
+            // (PNG, ÿØ for JPEG), so it rejected every percent-encoded
+            // raster image. GIF and WebP survived only because their magic bytes
+            // happen to be ASCII. In a document that is not a refused paste, it
+            // is deletion: the <img> kept its alt and lost its src.
+            const bytes = percentDecodeToBytes(url.slice(comma + 1));
+            return bytes !== null && isValidImageMagicBytes(bytes);
+        }
+
+        const base64Start = markerIndex + marker.length;
+        const chunk = url.substring(base64Start, base64Start + 16);
+        if (!chunk) return false;
+
+        try {
+            const decoded = atob(chunk);
+            const bytes = new Uint8Array(decoded.length);
+            for (let i = 0; i < decoded.length; i++) {
+                bytes[i] = decoded.codePointAt(i) ?? 0;
+            }
+            return isValidImageMagicBytes(bytes);
+        } catch {
+            return false;
+        }
+    }
+
+    private isLocalhostUrl(url: URL): boolean {
+        return url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+    }
+
+    /**
+     * Sanitize an SVG data URL by parsing and sanitizing the SVG content.
+     */
+    /**
+     * Whether a `data:image/*` URL is SVG by label or by payload. Mislabelled
+     * SVG must take the scrubbing path, so both are checked.
+     */
+    private declaresOrContainsSvg(url: string): boolean {
+        if (url.toLowerCase().startsWith('data:image/svg+xml')) return true;
+
+        const comma = url.indexOf(',');
+        if (comma === -1) return false;
+        const payload = url.slice(comma + 1);
+        let decoded: string;
+        if (/;base64/i.test(url.slice(0, comma))) {
+            try {
+                decoded = atob(payload);
+            } catch {
+                // Undecodable payloads are not usable images either; treat them
+                // as suspect so they take the scrubbing path rather than passing.
+                return true;
+            }
+        } else {
+            // Byte-wise, for the same reason as isAllowedDataUrl:
+            // decodeURIComponent throws on a PNG's or JPEG's high magic bytes,
+            // and the catch above then treated every percent-encoded raster
+            // image as suspect -- routing it into SVG scrubbing, which stripped
+            // the src and deleted the image from the document.
+            const bytes = percentDecodeToBytes(payload);
+            if (bytes === null) return true;
+            decoded = Array.from(bytes, (b) => String.fromCodePoint(b)).join('');
+        }
+        return /<\s*svg\b/i.test(decoded);
+    }
+
+    /** A percent-encoded payload as text, or null when an escape is malformed. */
+    private percentDecodeToText(payload: string): string | null {
+        const bytes = percentDecodeToBytes(payload);
+        return bytes === null ? null : new TextDecoder().decode(bytes);
+    }
+
+    sanitizeSvgDataUrl(url: string): string | null {
+        const comma = url.indexOf(',');
+        if (comma === -1) return null;
+        const payload = url.slice(comma + 1);
+        if (!payload) return null;
+
+        // Both encodings are handled. Bailing unless ";base64," was present
+        // silently deleted every URL-encoded SVG -- an ordinary, spec-legal
+        // inline image -- with no feedback to the author. Fail-closed, so never
+        // a security hole, but a real content-loss bug.
+        const isBase64 = /;base64/i.test(url.slice(0, comma));
+
+        try {
+            // Byte-wise, then decoded with replacement: `decodeURIComponent`
+            // throws on any sequence that is not valid UTF-8, and the catch
+            // below then dropped the whole image for one stray byte in an
+            // otherwise ordinary SVG. A replacement character is scrubbed like
+            // any other text.
+            const svgString = isBase64 ? atob(payload) : this.percentDecodeToText(payload);
+            if (svgString === null) return null;
+            const sanitized = sanitizeSvg(svgString);
+            if (!sanitized) return null;
+            return isBase64
+                ? `data:image/svg+xml;base64,${btoa(sanitized)}`
+                : `data:image/svg+xml,${encodeURIComponent(sanitized)}`;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Sanitize style attribute, only allowing specific CSS properties.
+     */
+    private sanitizeStyle(styleValue: string): string {
+        if (!styleValue) return '';
+
+        const safeStyles: string[] = [];
+
+        /** Parse the style string */
+        const declarations = styleValue.split(';').filter(Boolean);
+        for (const declaration of declarations) {
+            const colonIndex = declaration.indexOf(':');
+            if (colonIndex === -1) continue;
+
+            const property = declaration.substring(0, colonIndex).trim().toLowerCase();
+            const value = declaration.substring(colonIndex + 1).trim();
+
+            if (this.ALLOWED_STYLE_PROPERTIES.has(property) && value) {
+                // Tested against the value a BROWSER resolves, not its raw
+                // spelling. These were substring checks on attacker-controlled
+                // text, and CSS lets any identifier character be written as a
+                // hex escape -- so "\\75rl(...)" sailed past a check for "url("
+                // and the browser then loaded it. A pasted document could plant
+                // a persistent tracking pixel that fires for every later viewer.
+                //
+                // Both the raw value and the browser's own reading of it must
+                // pass. The hand-written escape and comment decoders are one
+                // line of defence; the browser's tokenizer is the authority on
+                // what the value will actually mean, so the canonical form is
+                // judged too. The RAW value is what is stored, so output does
+                // not change shape (hex colours stay hex).
+                const canonical = this.canonicalStyleValue(property, value);
+                if (this.isStyleValueAllowed(value) && (canonical === null || this.isStyleValueAllowed(canonical))) {
+                    safeStyles.push(`${property}: ${value}`);
+                }
+            }
+        }
+
+        return safeStyles.join('; ');
+    }
+
+    /**
+     * A declaration's value as the browser serialises it after parsing, or
+     * null when the browser rejects the declaration or cannot serialise the
+     * property (some shorthands). Parsed through a constructed stylesheet that
+     * is never adopted, so nothing is fetched or applied.
+     */
+    private canonicalStyleValue(property: string, value: string): string | null {
+        if (typeof CSSStyleSheet !== 'function') return null;
+        try {
+            const sheet = new CSSStyleSheet();
+            sheet.replaceSync(`x{${property}:${value.replaceAll('}', '')}}`);
+            const rule = sheet.cssRules[0] as CSSStyleRule | undefined;
+            const canonical = rule?.style.getPropertyValue(property) ?? '';
+            return canonical === '' ? null : canonical;
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Replace &quot; entities with single quotes inside style attribute values.
+     * Browsers serialize CSS quoted strings (e.g. font-family: "Comic Sans MS")
+     * with double quotes, which become &quot; in innerHTML. This produces
+     * valid but problematic HTML. Single quotes are equally valid in CSS and
+     * don't require HTML entity encoding inside double-quoted attributes.
+     */
+    private normalizeStyleQuotes(html: string): string {
+        return html.replaceAll(
+            /style="([^"]*)"/g,
+            (...[, styleContent]: [string, string]) =>
+                `style="${styleContent.replaceAll('&quot;', "'")}"`,
+        );
+    }
+}
+
+/**
+ * Whether a URL reaches another origin through its authority component.
+ *
+ * Browsers accept far more than "//host": a backslash is normalized to a
+ * slash, and any run of delimiters longer than the scheme's own "//" still
+ * opens an authority. So "https:/host" with a backslash, and "https:///host",
+ * both reach the same place as "https://host".
+ *
+ * An earlier version pattern-matched the first TWO characters against a short
+ * list of shapes. That is the shape where the bug is absent -- a single
+ * backslash and three slashes both slipped through, resolved off-origin, and
+ * were decorated with rel="noopener noreferrer" so the link read as vetted.
+ * Counting the delimiter run is the general rule.
+ */
+/** The three values `dir` accepts. */
+/** Whether `node` is inline content that belongs in a line: not blank text, and not a task's box. */
+function isStrayContent(node: Node): boolean {
+    if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? '').trim() !== '';
+    return node.nodeName !== 'INPUT' && isPhrasing(node);
+}
+
+/**
+ * `el`'s children, removed from it front first. Rebuilding a host from its
+ * detached children and appending them back keeps a pass linear: moving a
+ * node out of the middle of a long child list, or inserting there, costs a walk
+ * of that list in some DOM implementations -- quadratic in a host holding
+ * thousands of lines.
+ */
+function detachChildren(el: Element): ChildNode[] {
+    const children: ChildNode[] = [];
+    for (let child = el.firstChild; child; child = el.firstChild) {
+        child.remove();
+        children.push(child);
+    }
+    return children;
+}
+
+/** What pushing inline wrappers into blocks knows: which nodes are inline, and which wrappers each block was walked for. */
+interface InlineWrap {
+    readonly phrasing: (node: Node) => boolean;
+    readonly covered: WeakMap<Node, Element[]>;
+}
+
+/** Whether `node` is an element of `element`'s tag with the same attributes: a copy of it would add nothing. */
+function sameElement(node: Node, element: Element): boolean {
+    if (!(node instanceof Element) || node.nodeName !== element.nodeName) return false;
+    if (node.attributes.length !== element.attributes.length) return false;
+    return Array.from(element.attributes).every((attr) => node.getAttribute(attr.name) === attr.value);
+}
+
+function isTextDirection(value: string): boolean {
+    return value === 'rtl' || value === 'ltr' || value === 'auto';
+}
+
+/** A single backslash, spelled by code point so no escaping is needed. */
+const BACKSLASH = '\u005C';
+
+function hasForeignAuthority(url: string): boolean {
+    // Only a LEADING scheme separates an authority; splitting on the first
+    // colon anywhere read `/search?q=file:///etc` -- a same-origin path with a
+    // URL in its query -- as an `https:///`-style authority and dropped it.
+    const scheme = /^[a-z][a-z0-9+.-]*:/i.exec(url);
+    const afterScheme = scheme ? url.slice(scheme[0].length) : url;
+
+    let run = 0;
+    let backslashes = 0;
+    while (run < afterScheme.length && (afterScheme[run] === '/' || afterScheme[run] === BACKSLASH)) {
+        if (afterScheme[run] === BACKSLASH) backslashes++;
+        run++;
+    }
+
+    // Exactly "//" is the ordinary absolute form. Any backslash in the run, or
+    // a longer run, is a delimiter shape browsers still resolve as an authority
+    // while the naive checks did not: a single backslash and three slashes
+    // both reach the host.
+    if (backslashes > 0) return true;
+    if (!scheme) return run >= 2;
+    return run > 2;
+}
