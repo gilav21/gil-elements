@@ -1,0 +1,140 @@
+/* Find & replace panel and match highlights; adopted into the editor's shadow root by the find controller. */
+.find-panel {
+    position: absolute;
+    inset-block-start: 0.5rem;
+    inset-inline-end: 0.5rem;
+    z-index: 50;
+    box-sizing: border-box;
+    width: 20rem;
+    max-width: calc(100vw - 2rem);
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+
+@media (max-width: 639px) {
+    .find-panel {
+        inset-inline-start: 0.5rem;
+        width: auto;
+        max-width: none;
+    }
+}
+
+.find-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+.find-row + .find-row {
+    margin-block-start: 0.5rem;
+}
+
+.find-row[data-spread] {
+    justify-content: space-between;
+}
+
+.find-nav {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.find-panel input {
+    box-sizing: border-box;
+    flex: 1;
+    min-width: 0;
+    height: 1.75rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: transparent;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    font: inherit;
+    color: inherit;
+}
+
+.find-panel input::placeholder {
+    color: var(--muted-foreground);
+}
+
+.find-panel input:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--ring);
+}
+
+.find-panel input[aria-invalid='true'] {
+    border-color: var(--destructive);
+}
+
+.find-panel button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+    padding: 0.25rem;
+    border: 0;
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    font: inherit;
+    font-weight: 500;
+    color: inherit;
+    cursor: pointer;
+    transition: background-color 150ms;
+}
+
+.find-panel button[data-text] {
+    padding-inline: 0.5rem;
+    white-space: nowrap;
+}
+
+.find-panel button:hover,
+.find-panel button[aria-pressed='true'] {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+}
+
+.find-panel button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1px var(--ring);
+}
+
+.find-panel button:disabled {
+    pointer-events: none;
+    opacity: 0.5;
+}
+
+@media (pointer: coarse) {
+    .find-panel button:not([data-text]) {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+}
+
+.find-counter {
+    color: var(--muted-foreground);
+}
+
+.find-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.find-overlay > div {
+    position: absolute;
+    border-radius: 2px;
+    background-color: rgb(250 204 21 / 0.35);
+}
+
+.find-overlay > div[data-find-current] {
+    background-color: rgb(250 204 21 / 0.7);
+}

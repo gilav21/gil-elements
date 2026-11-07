@@ -233,11 +233,17 @@ function isSimpleColorValue(value: string): boolean {
         || (/^[a-z]+$/.test(v) && !['none', 'inherit', 'initial', 'unset'].includes(v));
 }
 
+function setWhen(mapped: StyleMap, applies: boolean, key: string, value: string): void {
+    if (applies) mapped.set(key, value);
+}
+
+function setMissingWhen(mapped: StyleMap, applies: boolean, key: string, value: string): void {
+    if (applies && !mapped.has(key)) mapped.set(key, value);
+}
+
 function mapMsoProperty(prop: string, value: string, mapped: StyleMap): void {
     if (!value) return;
-    const setIfMissing = (key: string): void => {
-        if (!mapped.has(key)) mapped.set(key, value);
-    };
+    const setIfMissing = (key: string): void => setMissingWhen(mapped, true, key, value);
     switch (prop) {
         case 'mso-ansi-font-size':
         case 'mso-bidi-font-size':
@@ -247,19 +253,19 @@ function mapMsoProperty(prop: string, value: string, mapped: StyleMap): void {
             setIfMissing('font-weight');
             break;
         case 'mso-bidi-font-weight':
-            if (value === 'bold') mapped.set('font-weight', 'bold');
+            setWhen(mapped, value === 'bold', 'font-weight', 'bold');
             break;
         case 'mso-bidi-font-style':
-            if (value === 'italic') mapped.set('font-style', 'italic');
+            setWhen(mapped, value === 'italic', 'font-style', 'italic');
             break;
         case 'mso-text-underline':
-            if (value !== 'none') mapped.set('text-decoration', 'underline');
+            setWhen(mapped, value !== 'none', 'text-decoration', 'underline');
             break;
         case 'mso-font-kerning':
-            if (value !== '0pt') setIfMissing('letter-spacing');
+            setMissingWhen(mapped, value !== '0pt', 'letter-spacing', value);
             break;
         case 'mso-highlight':
-            if (value !== 'auto') mapped.set('background-color', value);
+            setWhen(mapped, value !== 'auto', 'background-color', value);
             break;
         case 'mso-style-textfill-fill-color':
         case 'mso-color-alt':
@@ -269,12 +275,10 @@ function mapMsoProperty(prop: string, value: string, mapped: StyleMap): void {
             setIfMissing('line-height');
             break;
         case 'mso-text-raise':
-            if (value !== '0') setIfMissing('vertical-align');
+            setMissingWhen(mapped, value !== '0', 'vertical-align', value);
             break;
         case 'mso-border-alt':
-            if (!mapped.has('border')) {
-                mapped.set('border', value.replaceAll(/\s{0,4096}windowtext\s{0,4096}/gi, ' #000000 ').trim());
-            }
+            setMissingWhen(mapped, true, 'border', value.replaceAll(/\s{0,4096}windowtext\s{0,4096}/gi, ' #000000 ').trim());
             break;
         case 'mso-padding-alt':
             setIfMissing('padding');
@@ -788,7 +792,7 @@ export class RichTextPasteNormalizer {
     }
 
     private convertFontElements(container: HTMLElement): void {
-        for (const font of Array.from(container.querySelectorAll('font'))) {
+        for (const font of Array.from(container.querySelectorAll<HTMLElement>('font'))) {
             const span = this.document.createElement('span');
             const styles: string[] = [];
 
@@ -833,11 +837,11 @@ export class RichTextPasteNormalizer {
 
     private removeConditionalComments(container: HTMLElement): void {
         const walker = this.document.createTreeWalker(container, NodeFilter.SHOW_COMMENT);
-        const comments: Node[] = [];
-        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-            if (/^\[(?:if\s|endif\])/i.test((node as Comment).data)) comments.push(node);
+        const comments: Comment[] = [];
+        for (let node = walker.nextNode() as Comment | null; node; node = walker.nextNode() as Comment | null) {
+            if (/^\[(?:if\s|endif\])/i.test(node.data)) comments.push(node);
         }
-        comments.forEach((node) => node.parentNode?.removeChild(node));
+        comments.forEach((node) => node.remove());
     }
 
     private normalizeGenericHtml(html: string): string {
