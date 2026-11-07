@@ -331,3 +331,58 @@ function earliestMatch(
     }
     return best;
 }
+
+/** The class a highlighter marks a token with (`token token-<type>`), matching what the sanitizer allows. A `text` run gets none. */
+export function tokenClassFor(type: string): string | null {
+    return type === 'text' ? null : `token token-${type}`;
+}
+
+/** How a line break is written inside a code block: a newline character, or a `<br>` (what Shift+Enter inserts). */
+export type LineBreakKind = 'newline' | 'br';
+
+/** A code block's text read as lines, with the kind of every break. */
+export interface CodeLines {
+    /** The text with EVERY line break as `\n`, whichever form it took. */
+    text: string;
+    /** The form of each break, in order: one per `\n` in `text`. */
+    breaks: LineBreakKind[];
+    /** A `<br>` that ends the block. It is not text, but must be written back or the empty last line disappears. */
+    trailingBr: boolean;
+}
+
+/** A code block's text with its line breaks, whether each is a `\n` character or a `<br>` (which `textContent` drops). */
+export function readCodeLines(node: Node): CodeLines {
+    const lines: CodeLines = { text: '', breaks: [], trailingBr: false };
+    collectCodeLines(node, lines);
+    if (lines.breaks.at(-1) === 'br' && lines.text.endsWith('\n') && endsWithBr(node)) {
+        lines.text = lines.text.slice(0, -1);
+        lines.breaks.pop();
+        lines.trailingBr = true;
+    }
+    return lines;
+}
+
+function collectCodeLines(node: Node, into: CodeLines): void {
+    for (const child of Array.from(node.childNodes)) {
+        if (child instanceof Text) {
+            into.text += child.data;
+            into.breaks.push(...Array.from(child.data.matchAll(/\n/g), (): LineBreakKind => 'newline'));
+        } else if (child.nodeName === 'BR') {
+            into.text += '\n';
+            into.breaks.push('br');
+        } else if (child instanceof Element) {
+            collectCodeLines(child, into);
+        }
+    }
+}
+
+function endsWithBr(node: Node): boolean {
+    let last = node.lastChild;
+    while (last instanceof Element && last.nodeName !== 'BR') last = last.lastChild;
+    return last?.nodeName === 'BR';
+}
+
+/** A code block's text with every line break as `\n`. */
+export function codeTextOf(node: Node): string {
+    return readCodeLines(node).text;
+}
