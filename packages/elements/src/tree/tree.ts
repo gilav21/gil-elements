@@ -204,11 +204,15 @@ export class GeTree extends UiElement implements TreeHost {
         render(this.data.length > 0 ? this.nodes(this.data) : html``, this, { host: this });
     }
 
+    private defaultContent(node: TreeNode): TemplateResult {
+        return html`${node.icon ? html`<ge-tree-icon>${node.icon}</ge-tree-icon>` : ''} ${node.label}`;
+    }
+
     private nodes(nodes: TreeNode[]): TemplateResult[] {
         return nodes.map((node) => {
             const expandable = !!node.children?.length;
             return html`<ge-tree-item .value=${node.key} .hasNested=${expandable}>
-                <ge-tree-label>${this.nodeContent ? this.nodeContent(node) : html`${node.icon ? html`<ge-tree-icon>${node.icon}</ge-tree-icon>` : ''} ${node.label}`}</ge-tree-label>
+                <ge-tree-label>${this.nodeContent ? this.nodeContent(node) : this.defaultContent(node)}</ge-tree-label>
                 ${expandable && this.isExpanded(node.key) ? this.nodes(node.children ?? []) : ''}
             </ge-tree-item>`;
         });

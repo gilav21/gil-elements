@@ -134,7 +134,8 @@ export class GeDurationInput extends UiElement {
         const parts = toParts(this.value ?? 0, this.units);
         const locale = this.resolvedLocale;
         return this.units.map((unit, index) => {
-            const text = this.value === null ? '' : segmentText(parts[unit], index === 0 ? LEADING_WIDTH : SEGMENT_WIDTH);
+            const width = index === 0 ? LEADING_WIDTH : SEGMENT_WIDTH;
+            const text = this.value === null ? '' : segmentText(parts[unit], width);
             return {
                 unit,
                 value: parts[unit],

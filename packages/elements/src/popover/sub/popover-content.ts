@@ -180,8 +180,8 @@ export class GePopoverContent extends UiElement {
         if (!anchor) return '';
         const vertical = side === 'top' || side === 'bottom';
         const along = { start: anchor.left, center: anchor.left + anchor.width / 2, end: anchor.right }[this.align];
-        const left = vertical ? along : { left: anchor.left, right: anchor.right }[side as 'left' | 'right'];
-        const top = vertical ? { top: anchor.top, bottom: anchor.bottom }[side as 'top' | 'bottom'] : anchor.top;
+        const left = vertical ? along : { left: anchor.left, right: anchor.right }[side];
+        const top = vertical ? { top: anchor.top, bottom: anchor.bottom }[side] : anchor.top;
         return `left:${left}px;top:${top}px;`;
     }
 }

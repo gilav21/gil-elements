@@ -723,11 +723,10 @@ export class GeTour extends UiElement {
         const last = this.isLastStep;
         const spot = this.targetRect;
         return html`
-            ${this.pending
-                ? html`<div class="scrim" data-slot="tour-scrim"></div>`
-                : this.ready
-                  ? html`<div class="spotlight" data-slot="tour-spotlight" style=${`top:${spot.top - SPOTLIGHT_PAD}px;left:${spot.left - SPOTLIGHT_PAD}px;width:${spot.width + SPOTLIGHT_PAD * 2}px;height:${spot.height + SPOTLIGHT_PAD * 2}px`}></div>`
-                  : nothing}
+            ${this.pending ? html`<div class="scrim" data-slot="tour-scrim"></div>` : nothing}
+            ${!this.pending && this.ready
+                ? html`<div class="spotlight" data-slot="tour-spotlight" style=${`top:${spot.top - SPOTLIGHT_PAD}px;left:${spot.left - SPOTLIGHT_PAD}px;width:${spot.width + SPOTLIGHT_PAD * 2}px;height:${spot.height + SPOTLIGHT_PAD * 2}px`}></div>`
+                : nothing}
             <div
                 ${ref(this.card)}
                 class="card"

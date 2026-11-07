@@ -82,7 +82,7 @@ export class GeSpeedDialMenu extends UiElement implements SpeedDialPart, SpeedDi
         const direction = dial?.direction ?? 'up';
         const at = dial?.contextPosition ?? null;
         // Anchored to the trigger, a linear menu with a diagonal direction falls back to `up`; opened at a point it gets no layout.
-        const dir = at ? direction : STRAIGHT.has(direction) ? direction : 'up';
+        const dir = at || STRAIGHT.has(direction) ? direction : 'up';
         return html`<div
             part="base"
             class="menu"

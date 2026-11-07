@@ -195,19 +195,32 @@ export class GeBarChart extends GeChartBase {
         })}</g>`;
     }
 
-    private axes(area: Area, ticks: number[], bars: BarRect[]) {
+    private valueTick(tick: number, area: Area) {
         const scale = this.valueScale;
-        const rtl = this.rtl;
-        return svg`<g class="axis">${ticks.map((tick) =>
-            this.vertical
-                ? svg`<text x=${rtl ? area.right + 8 : area.left - 8} y=${scale.scale(tick)} text-anchor="end" dominant-baseline="middle" fill="currentColor">${this.fmtAxis(tick)}</text>`
-                : svg`<text x=${scale.scale(tick)} y=${area.bottom + 16} text-anchor="middle" fill="currentColor">${this.fmtAxis(tick)}</text>`,
-        )}</g>
-        <g class="axis">${bars.map((bar) =>
-            this.vertical
-                ? svg`<text x=${bar.x + bar.width / 2} y=${area.bottom + 16} text-anchor="middle" fill="currentColor">${bar.data.name}</text>`
-                : svg`<text x=${rtl ? area.right + 12 : area.left - 12} y=${bar.y + bar.height / 2} text-anchor="end" dominant-baseline="middle" fill="currentColor">${bar.data.name}</text>`,
-        )}</g>`;
+        if (this.vertical) {
+            const x = this.rtl ? area.right + 8 : area.left - 8;
+            return svg`<text x=${x} y=${scale.scale(tick)} text-anchor="end" dominant-baseline="middle" fill="currentColor">${this.fmtAxis(tick)}</text>`;
+        }
+        return svg`<text x=${scale.scale(tick)} y=${area.bottom + 16} text-anchor="middle" fill="currentColor">${this.fmtAxis(tick)}</text>`;
+    }
+
+    private categoryTick(bar: BarRect, area: Area) {
+        if (this.vertical) {
+            return svg`<text x=${bar.x + bar.width / 2} y=${area.bottom + 16} text-anchor="middle" fill="currentColor">${bar.data.name}</text>`;
+        }
+        const x = this.rtl ? area.right + 12 : area.left - 12;
+        return svg`<text x=${x} y=${bar.y + bar.height / 2} text-anchor="end" dominant-baseline="middle" fill="currentColor">${bar.data.name}</text>`;
+    }
+
+    private axes(area: Area, ticks: number[], bars: BarRect[]) {
+        return svg`<g class="axis">${ticks.map((tick) => this.valueTick(tick, area))}</g>
+        <g class="axis">${bars.map((bar) => this.categoryTick(bar, area))}</g>`;
+    }
+
+    private valueLabel(bar: BarRect) {
+        if (!this.showValues) return nothing;
+        const baseline = this.vertical ? 'auto' : 'middle';
+        return svg`<text class="value" x=${bar.labelPosition.x} y=${bar.labelPosition.y} text-anchor=${bar.labelAnchor} dominant-baseline=${baseline}>${this.fmt(bar.value)}</text>`;
     }
 
     private barGroup(bar: BarRect) {
@@ -220,9 +233,7 @@ export class GeBarChart extends GeChartBase {
             @click=${(event: Event) => this.onBarClick(event, bar)}
             @keydown=${(event: KeyboardEvent) => this.onBarKey(event, bar)}>
             <rect x=${bar.x} y=${bar.y} width=${bar.width} height=${bar.height} rx=${this.barRadius} fill=${bar.color} data-hover=${hover === bar.index ? '' : nothing} />
-            ${this.showValues
-                ? svg`<text class="value" x=${bar.labelPosition.x} y=${bar.labelPosition.y} text-anchor=${bar.labelAnchor} dominant-baseline=${this.vertical ? 'auto' : 'middle'}>${this.fmt(bar.value)}</text>`
-                : nothing}
+            ${this.valueLabel(bar)}
         </g>`;
     }
 
@@ -230,8 +241,15 @@ export class GeBarChart extends GeChartBase {
         const w = this.svgWidth;
         const rtl = this.rtl;
         const rotate = rtl ? `rotate(90 ${w - 12} ${this.height / 2})` : `rotate(-90 12 ${this.height / 2})`;
-        return svg`${this.xAxisLabel ? svg`<text class="caption" x=${w / 2} y=${this.height - 4} text-anchor="middle">${this.xAxisLabel}</text>` : nothing}
-            ${this.yAxisLabel ? svg`<text class="caption" x=${rtl ? w - 12 : 12} y=${this.height / 2} text-anchor="middle" transform=${rotate}>${this.yAxisLabel}</text>` : nothing}`;
+        const xLabel = this.xAxisLabel
+            ? svg`<text class="caption" x=${w / 2} y=${this.height - 4} text-anchor="middle">${this.xAxisLabel}</text>`
+            : nothing;
+        const yX = rtl ? w - 12 : 12;
+        const yLabel = this.yAxisLabel
+            ? svg`<text class="caption" x=${yX} y=${this.height / 2} text-anchor="middle" transform=${rotate}>${this.yAxisLabel}</text>`
+            : nothing;
+        return svg`${xLabel}
+            ${yLabel}`;
     }
 
     protected override render() {
@@ -240,6 +258,7 @@ export class GeBarChart extends GeChartBase {
         const ticks = this.valueScale.ticks(5);
         const hovered = this.hoverIndex === null ? null : (bars.find((b) => b.index === this.hoverIndex) ?? null);
         const w = this.svgWidth;
+        const flip = this.tooltipPos.x > w * 0.7 ? '' : nothing;
         const label = getChartSummary(this.vertical ? 'Column chart' : 'Bar chart', this.data.length, this.heading);
         return html`<div part="base" class="base" data-slot="bar-chart">
             <svg role="group" aria-label=${label} viewBox=${`0 0 ${w} ${this.height}`} width="100%" height="auto" style=${`max-width:${w}px;aspect-ratio:${w} / ${this.height}`}>
@@ -248,7 +267,7 @@ export class GeBarChart extends GeChartBase {
                 ${this.captions()}
             </svg>
             ${hovered && this.showTooltip
-                ? html`<div class="tooltip" data-flip=${this.tooltipPos.x > w * 0.7 ? '' : nothing} style=${`left:${this.tooltipPos.x}px;top:${this.tooltipPos.y}px`}>
+                ? html`<div class="tooltip" data-flip=${flip} style=${`left:${this.tooltipPos.x}px;top:${this.tooltipPos.y}px`}>
                       <div class="name">${hovered.data.name}</div>
                       <div class="amount">${this.fmt(hovered.value)}</div>
                   </div>`

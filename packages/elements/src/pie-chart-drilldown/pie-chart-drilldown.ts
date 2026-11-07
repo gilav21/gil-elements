@@ -200,10 +200,14 @@ export class GePieChartDrilldown extends UiElement {
             @click=${(event: Event) => this.onSliceClick(event, slice)}
             @keydown=${(event: KeyboardEvent) => this.onSliceKey(event, slice)}>
             <path d=${slice.path} fill=${slice.color} transform-origin="0 0" data-hover=${hover === slice.index ? '' : nothing} />
-            ${this.showLabels && slice.percentage >= 5
-                ? svg`<text class="percent" data-light=${this.isLight(slice.color) ? '' : nothing} x=${slice.centroid.x} y=${slice.centroid.y} text-anchor="middle" dominant-baseline="middle">${this.percent(slice.percentage)}</text>`
-                : nothing}
+            ${this.percentLabel(slice)}
         </g>`;
+    }
+
+    private percentLabel(slice: PieSlice) {
+        if (!this.showLabels || slice.percentage < 5) return nothing;
+        const light = this.isLight(slice.color) ? '' : nothing;
+        return svg`<text class="percent" data-light=${light} x=${slice.centroid.x} y=${slice.centroid.y} text-anchor="middle" dominant-baseline="middle">${this.percent(slice.percentage)}</text>`;
     }
 
     private legend(entries: PieSlice[]) {
@@ -239,6 +243,7 @@ export class GePieChartDrilldown extends UiElement {
         const slices = entries.filter((e) => e.percentage > 0);
         const half = this.size / 2;
         const hovered = this.hoverIndex === null ? null : (slices.find((s) => s.index === this.hoverIndex) ?? null);
+        const hint = hovered && this.hasDrilldown(hovered) ? html`<div class="hint">Click to drill down</div>` : nothing;
         const label = getChartSummary('Pie chart with drilldown', this.current.data.length, this.current.name);
         return html`<div part="base" class="outer" data-slot="pie-chart-drilldown">
             ${this.isDrilledDown && this.showBreadcrumb ? this.breadcrumb() : nothing}
@@ -254,7 +259,7 @@ export class GePieChartDrilldown extends UiElement {
                     ? html`<div class="tooltip" style=${`left:${this.tooltipPos.x}px;top:${this.tooltipPos.y}px`}>
                           <div class="tip-name">${hovered.data.name}</div>
                           <div class="tip-amount">${`${formatChartValue(hovered.data.value)} (${this.percent(hovered.percentage)})`}</div>
-                          ${this.hasDrilldown(hovered) ? html`<div class="hint">Click to drill down</div>` : nothing}
+                          ${hint}
                       </div>`
                     : nothing}
             </div>

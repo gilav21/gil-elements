@@ -181,7 +181,7 @@ export class GeVirtualScroll extends UiElement {
         return this.grid ? Math.max(1, Math.trunc(this.columnCount) || 1) : 1;
     }
     private get mainCount(): number {
-        return this.horizontal ? this.items.length : this.grid ? Math.ceil(this.items.length / this.columns) : this.items.length;
+        return !this.horizontal && this.grid ? Math.ceil(this.items.length / this.columns) : this.items.length;
     }
     private get mainAxis(): VirtualAxis {
         return this.horizontal ? this.columnAxis : this.rowAxis;
@@ -459,11 +459,9 @@ export class GeVirtualScroll extends UiElement {
     protected override render() {
         const orientation = this.orientation;
         const content =
-            orientation === 'both'
-                ? `padding-top:${this.paddingTop}px;padding-bottom:${this.paddingBottom}px`
-                : orientation === 'horizontal'
-                  ? `padding-inline-start:${this.paddingStart}px;padding-inline-end:${this.paddingEnd}px`
-                  : `padding-top:${this.paddingTop}px;padding-bottom:${this.paddingBottom}px`;
+            orientation === 'horizontal'
+                ? `padding-inline-start:${this.paddingStart}px;padding-inline-end:${this.paddingEnd}px`
+                : `padding-top:${this.paddingTop}px;padding-bottom:${this.paddingBottom}px`;
         return html`<div class="viewport" part="viewport" data-orientation=${orientation} tabindex="0" @scroll=${this.onScroll}>
             <div class="content" data-orientation=${orientation} style=${content}><slot name="items"></slot></div>
             ${this.loading

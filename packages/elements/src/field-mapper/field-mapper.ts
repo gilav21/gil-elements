@@ -895,11 +895,12 @@ export class GeFieldMapper extends UiElement {
                     'end',
                     this.endVisible.map((item) => this.renderItem_('end', item, (endRowOf.get(item.id) ?? 0) + HEADER_ROWS + 1, stops.end, ids.end)),
                 )}
-                ${(['start', 'end'] as const).map((side) =>
-                    hidden[side]
-                        ? html`<p class="note hidden-note" style=${`grid-column:${side === 'start' ? 1 : 3};grid-row:${rowCount + 2}`} data-slot="field-mapper-hidden-note" data-side=${side}>${t.hiddenLinked(hidden[side])}</p>`
-                        : nothing,
-                )}
+                ${(['start', 'end'] as const).map((side) => {
+                    const column = side === 'start' ? 1 : 3;
+                    return hidden[side]
+                        ? html`<p class="note hidden-note" style=${`grid-column:${column};grid-row:${rowCount + 2}`} data-slot="field-mapper-hidden-note" data-side=${side}>${t.hiddenLinked(hidden[side])}</p>`
+                        : nothing;
+                })}
                 ${geometry.lines.map((line) => this.renderLineLabel(line))}
             </div>
         </div>`;

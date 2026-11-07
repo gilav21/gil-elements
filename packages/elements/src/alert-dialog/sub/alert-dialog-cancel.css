@@ -8,10 +8,10 @@ button {
     justify-content: center;
     box-sizing: border-box;
     height: calc(2.25rem * var(--_d));
-    margin: 0;
+    margin: 0.5rem 0 0;
     padding: calc(0.5rem * var(--_d)) calc(1rem * var(--_d));
-    border: 0 solid transparent;
-    background-color: transparent;
+    border: 1px solid var(--input);
+    background-color: var(--background);
     color: inherit;
     border-radius: calc(var(--radius) - 2px);
     font: inherit;
@@ -28,12 +28,6 @@ button:focus-visible {
 button:disabled {
     pointer-events: none;
     opacity: 0.5;
-}
-button {
-    margin-top: 0.5rem;
-    border-width: 1px;
-    border-color: var(--input);
-    background-color: var(--background);
 }
 @media (min-width: 640px) {
     button {

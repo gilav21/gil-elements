@@ -187,6 +187,7 @@ export class GeWaterfallChart extends GeChartBase {
         const ys = this.yScale;
         const ticks = ys.ticks(5).map((value) => ({ value, y: ys.scale(value) }));
         const hover = this.hoverIndex;
+        const tooltipHeading = hover === null ? undefined : this.data[hover]?.name;
         return html`<div part="base" class="base" data-slot="waterfall-chart" role="group" aria-label=${getChartSummary('Waterfall chart', this.data.length, this.heading)}>
             <svg
                 viewBox=${`0 0 ${this.svgWidth} ${this.height}`}
@@ -206,7 +207,7 @@ export class GeWaterfallChart extends GeChartBase {
                       .visible=${hover !== null}
                       .x=${this.tooltipPos.x}
                       .y=${this.tooltipPos.y}
-                      .heading=${hover === null ? undefined : this.data[hover]?.name}
+                      .heading=${tooltipHeading}
                       .rows=${this.tooltipRows(bars)}
                       .flipX=${this.tooltipPos.x > this.svgWidth * 0.7}
                   ></ge-chart-tooltip>`

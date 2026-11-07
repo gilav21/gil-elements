@@ -116,7 +116,8 @@ export class GeCarousel extends UiElement implements CarouselHost {
         this.canScrollPrev = offset >= 1;
         this.canScrollNext = offset < max - 1;
         const first = content.querySelector<HTMLElement>('ge-carousel-item');
-        const size = first ? (horizontal ? first.offsetWidth : first.offsetHeight) : 0;
+        let size = 0;
+        if (first) size = horizontal ? first.offsetWidth : first.offsetHeight;
         if (size > 0) {
             const index = Math.round(offset / size);
             if (index !== this.currentIndex) {

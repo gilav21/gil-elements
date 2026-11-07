@@ -268,6 +268,7 @@ export class GeKanbanColumn extends UiElement implements KanbanColumnHost, Kanba
 
     private defaultHeader() {
         const over = this.isOverWipLimit;
+        const toggleLabel = this.collapsed ? 'Expand column' : 'Collapse column';
         return html`<div class="header" data-slot="kanban-column-header">
             <div class="heading">
                 <h3>${this.heading}</h3>
@@ -277,7 +278,7 @@ export class GeKanbanColumn extends UiElement implements KanbanColumnHost, Kanba
             <div class="tools">
                 <button type="button" class="tool" aria-label="Add card" data-slot="kanban-add-card-button" @click=${() => this.onAddCard()}>${PLUS}</button>
                 ${this.collapsible
-                    ? html`<button type="button" class="tool" aria-label=${this.collapsed ? 'Expand column' : 'Collapse column'} aria-expanded=${!this.collapsed} @click=${() => this.toggleCollapse()}>${CHEVRON}</button>`
+                    ? html`<button type="button" class="tool" aria-label=${toggleLabel} aria-expanded=${!this.collapsed} @click=${() => this.toggleCollapse()}>${CHEVRON}</button>`
                     : nothing}
             </div>
         </div>`;

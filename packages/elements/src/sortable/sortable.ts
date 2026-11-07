@@ -474,7 +474,7 @@ export class GeSortable extends UiElement implements SortableHost {
     // ---- registry -----------------------------------------------------------------------------------------
 
     private buildRegistryEntry(): SortableRegistryEntry {
-        return ((self: GeSortable): SortableRegistryEntry => ({
+        const build = (self: GeSortable): SortableRegistryEntry => ({
             get listId() {
                 return self.resolvedListId;
             },
@@ -499,7 +499,8 @@ export class GeSortable extends UiElement implements SortableHost {
             },
             receiveItem: (item, atIndex) => self.handleReceiveItem(item, atIndex),
             removeItem: (item) => self.handleRemoveItem(item),
-        }))(this);
+        });
+        return build(this);
     }
 
     private itemRects(): DOMRect[] {

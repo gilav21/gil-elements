@@ -37,8 +37,8 @@ const PAD_EDGE = 20;
  * @csspart base - The chart container.
  */
 export class GeBarChartDrilldown extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         data: { attribute: false },
         drilldownSeries: { attribute: false },

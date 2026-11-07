@@ -73,6 +73,7 @@ export class GeStatCard extends UiElement {
 
     protected override render() {
         const hasArrow = !this.hideTrendIcon && ARROWS[this.trend] !== null;
+        const trendAttr = hasArrow ? this.trend : nothing;
         return html`<ge-card part="card">
             <ge-card-header>
                 <ge-card-description>${this.label}</ge-card-description>
@@ -80,7 +81,7 @@ export class GeStatCard extends UiElement {
             </ge-card-header>
             <ge-card-content ?hidden=${!this.delta && !this.extra}>
                 ${this.delta
-                    ? html`<ge-badge variant=${VARIANTS[this.trend]} data-trend=${hasArrow ? this.trend : nothing}>${this.arrow()}${this.delta}</ge-badge>`
+                    ? html`<ge-badge variant=${VARIANTS[this.trend]} data-trend=${trendAttr}>${this.arrow()}${this.delta}</ge-badge>`
                     : nothing}
                 <slot @slotchange=${this.onSlotChange}></slot>
             </ge-card-content>

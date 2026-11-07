@@ -33,8 +33,14 @@ export class GeCardAccordionItem extends GeAccordionItem {
     protected override render() {
         const state = this.isOpen ? 'open' : 'closed';
         return html`<div part="base" class="card" data-slot="card-accordion-item" data-state=${state}>
-            ${this.skeleton ? this.renderSkeletonCard() : this.heading ? this.renderCard(state) : html`<slot></slot>`}
+            ${this.renderCardBody(state)}
         </div>`;
+    }
+
+    private renderCardBody(state: string) {
+        if (this.skeleton) return this.renderSkeletonCard();
+        if (this.heading) return this.renderCard(state);
+        return html`<slot></slot>`;
     }
 
     private renderSkeletonCard() {

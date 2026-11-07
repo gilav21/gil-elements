@@ -145,6 +145,7 @@ export class GeHeatmap extends GeChartBase {
             cell,
         }));
         const hovered = this.hovered;
+        const tooltipHeading = hovered ? `${hovered.row} · ${hovered.col}` : undefined;
         return html`<div part="base" class="base" data-slot="heatmap" role="group" aria-label=${`${this.heading ? `${this.heading}. ` : ''}Heatmap with ${rows.length} rows and ${cols.length} columns.`}>
             <svg viewBox=${`0 0 ${usedWidth} ${height}`} width=${usedWidth} height=${height}>
                 ${cols.map((col, ci) => svg`<text class="label" x=${ROW_LABEL_W + ci * (size + GAP) + size / 2} y="14" text-anchor="middle">${col}</text>`)}
@@ -157,7 +158,7 @@ export class GeHeatmap extends GeChartBase {
                       .visible=${hovered !== null}
                       .x=${this.tooltipPos.x}
                       .y=${this.tooltipPos.y}
-                      .heading=${hovered ? `${hovered.row} · ${hovered.col}` : undefined}
+                      .heading=${tooltipHeading}
                       .rows=${this.tooltipRows()}
                       .flipX=${this.tooltipPos.x > this.svgWidth * 0.7}
                   ></ge-chart-tooltip>`

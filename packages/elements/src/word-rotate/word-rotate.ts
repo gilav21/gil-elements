@@ -36,7 +36,9 @@ export class GeWordRotate extends UiElement {
     protected override render() {
         const count = this.words.length;
         return html`${this.words.map((word, index) => {
-            const position = index === this.current ? 'current' : index === (this.current - 1 + count) % count ? 'previous' : 'next';
+            const isPrevious = index === (this.current - 1 + count) % count;
+            let position = isPrevious ? 'previous' : 'next';
+            if (index === this.current) position = 'current';
             return html`<span class="word" part="word" data-position=${position}>${word}</span>`;
         })}`;
     }

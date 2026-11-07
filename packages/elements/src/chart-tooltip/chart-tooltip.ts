@@ -59,7 +59,9 @@ export class GeChartTooltip extends UiElement {
 
     protected override render() {
         if (!this.visible) return nothing;
-        const flip = this.flipX || this.flipY ? `;translate:${this.flipX ? '-100%' : '0'} ${this.flipY ? '-100%' : '0'}` : '';
+        const tx = this.flipX ? '-100%' : '0';
+        const ty = this.flipY ? '-100%' : '0';
+        const flip = this.flipX || this.flipY ? `;translate:${tx} ${ty}` : '';
         return html`<div part="base" class="base" data-slot="chart-tooltip" role="tooltip" style=${`left:${this.x}px;top:${this.y}px${flip}`}>
             ${this.heading ? html`<div class="heading">${this.heading}</div>` : nothing}
             ${this.rows.map(
