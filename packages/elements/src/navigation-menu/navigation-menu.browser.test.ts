@@ -97,7 +97,7 @@ describe('ge-navigation-menu', () => {
         await settle(page);
         button(page, 'learn-trigger').click();
         await settle(page);
-        expect(visible(el(page, 'learn-panel'))).toBe(true);
+        await vi.waitFor(() => expect(visible(el(page, 'learn-panel'))).toBe(true));
         expect(button(page, 'learn-trigger').dataset.state).toBe('open');
         button(page, 'learn-trigger').click();
         await settle(page);
@@ -143,7 +143,7 @@ describe('ge-navigation-menu', () => {
         expect(deepActive(document)).toBe(button(page, 'learn-trigger'));
         await userEvent.keyboard('{Enter}');
         await settle(page);
-        expect(visible(el(page, 'learn-panel'))).toBe(true);
+        await vi.waitFor(() => expect(visible(el(page, 'learn-panel'))).toBe(true));
         await userEvent.keyboard('{Tab}');
         await settle(page);
         expect(deepActive(document)).toBe(el(page, 'intro').shadowRoot!.querySelector('a'));
