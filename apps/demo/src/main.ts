@@ -108,6 +108,8 @@ import '@gilav21/elements/chat-message/define';
 import '@gilav21/elements/chat-list/define';
 import '@gilav21/elements/chat-input/define';
 import '@gilav21/elements/tour/define';
+import '@gilav21/elements/rich-text-editor/define';
+import '@gilav21/elements/rich-text-editor/locales/he';
 import '@gilav21/elements/blur-fade/define';
 import '@gilav21/elements/flip-text/define';
 import '@gilav21/elements/gradient-text/define';
@@ -264,15 +266,26 @@ for (const d of demos) {
 const palette = document.createElement('ge-command-dialog') as HTMLElement & { open: boolean };
 palette.id = 'nav-palette';
 const paletteGroups: Record<string, Demo[]> = {};
-for (const d of demos) (paletteGroups[d.group] ??= []).push(d);
-const paletteItem = (d: Demo) => `<ge-command-item value="${escapeHtml(`${d.name} ${d.group}`)}" data-id="${d.id}">${escapeHtml(d.name)}</ge-command-item>`;
+for (const d of demos) {
+    const members = paletteGroups[d.group] ?? [];
+    members.push(d);
+    paletteGroups[d.group] = members;
+}
+const paletteItem = (d: Demo) => {
+    const searchValue = escapeHtml(d.name + ' ' + d.group);
+    return `<ge-command-item value="${searchValue}" data-id="${d.id}">${escapeHtml(d.name)}</ge-command-item>`;
+};
+const paletteGroupsHtml = Object.entries(paletteGroups)
+    .map(([heading, items]) => {
+        const itemsHtml = items.map(paletteItem).join('');
+        return `<ge-command-group heading="${escapeHtml(heading)}">${itemsHtml}</ge-command-group>`;
+    })
+    .join('');
 palette.innerHTML = `<ge-command>
   <ge-command-input placeholder="Jump to a component"></ge-command-input>
   <ge-command-list>
     <ge-command-empty>No results.</ge-command-empty>
-    ${Object.entries(paletteGroups)
-        .map(([heading, items]) => `<ge-command-group heading="${escapeHtml(heading)}">${items.map(paletteItem).join('')}</ge-command-group>`)
-        .join('')}
+    ${paletteGroupsHtml}
   </ge-command-list>
 </ge-command>`;
 palette.addEventListener('select-item', (event) => {

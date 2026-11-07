@@ -386,3 +386,179 @@ function endsWithBr(node: Node): boolean {
 export function codeTextOf(node: Node): string {
     return readCodeLines(node).text;
 }
+
+/**
+ * Elements that only STYLE the code text around them. A browser writes these
+ * into a contenteditable on its own (`<font color>`, `<b>`, a weight-resetting
+ * `<span>`) and the toolbar writes the rest; none of it survives a save, and the
+ * colour of code is the highlighter's to decide, so the paint reads through them.
+ */
+const STYLE_ONLY_TAGS = new Set(['SPAN', 'FONT', 'B', 'STRONG', 'I', 'EM', 'U', 'S', 'STRIKE', 'DEL']);
+
+/**
+ * Whether a block can be rebuilt from its lines without losing anything. An
+ * image or a link inside a block is content, and rebuilding would delete it.
+ */
+function isTextOnlyCode(code: HTMLElement): boolean {
+    return Array.from(code.querySelectorAll('*')).every(el => el.nodeName === 'BR' || STYLE_ONLY_TAGS.has(el.nodeName));
+}
+
+/** The token markup for a block, built detached so it can be compared with what is there before any node is replaced; `null` when the block is not one to paint. */
+function paintedFragment(code: HTMLElement, language: string | null | undefined): DocumentFragment | null {
+    const patterns = languagePatternsFor(language);
+    if (!patterns || !isTextOnlyCode(code)) return null;
+    const { text, breaks, trailingBr } = readCodeLines(code);
+    if (text === '') return null;
+
+    const doc = code.ownerDocument;
+    const painted = doc.createDocumentFragment();
+    for (const [index, line] of text.split('\n').entries()) {
+        // Each break is written back in the form it had: as `\n` a trailing blank line
+        // was dropped, and converted from `<br>` the line a Shift+Enter opened collapsed.
+        if (index > 0) painted.append(breaks[index - 1] === 'br' ? doc.createElement('br') : doc.createTextNode('\n'));
+        for (const token of tokenizeLine(line, patterns)) {
+            const className = tokenClassFor(token.type);
+            if (className === null) {
+                painted.append(doc.createTextNode(token.text));
+                continue;
+            }
+            const span = doc.createElement('span');
+            span.className = className;
+            span.textContent = token.text;
+            painted.append(span);
+        }
+    }
+    if (trailingBr) painted.append(doc.createElement('br'));
+    return painted;
+}
+
+function markupOf(fragment: DocumentFragment): string {
+    const holder = fragment.ownerDocument.createElement('div');
+    holder.append(fragment.cloneNode(true));
+    return holder.innerHTML;
+}
+
+/**
+ * Marks a `<pre><code>` element up with token spans, in place. The element's own
+ * text is never changed and the children are rebuilt from it, so running this
+ * twice equals running it once. Returns whether anything was painted.
+ */
+export function highlightCodeElement(code: HTMLElement, language: string | null | undefined): boolean {
+    const painted = paintedFragment(code, language);
+    if (!painted) return false;
+    code.replaceChildren(painted);
+    return true;
+}
+
+/** The language a rendered `<pre><code>` carries: `data-language`, else the `language-*` class. */
+export function languageOfCodeElement(code: HTMLElement): string | null {
+    const attribute = code.dataset['language'];
+    if (attribute) return attribute;
+    return /(?:^|\s)language-([\w+#.-]+)/.exec(code.className)?.[1] ?? null;
+}
+
+/** Highlights every code block under `root` that names a known language and returns how many it painted. */
+export function highlightCodeBlocks(root: ParentNode): number {
+    let painted = 0;
+    for (const code of root.querySelectorAll<HTMLElement>('pre > code')) {
+        if (highlightCodeElement(code, languageOfCodeElement(code))) painted++;
+    }
+    return painted;
+}
+
+/**
+ * Removes the spans the highlighter painted, in place, and only from blocks in a
+ * language it knows: spans in any other block are the author's own content. The
+ * spans are unwrapped, not the block flattened to text, so an image inside survives.
+ */
+export function stripCodeHighlighting(root: ParentNode): void {
+    for (const code of root.querySelectorAll<HTMLElement>('pre > code')) {
+        if (!languagePatternsFor(languageOfCodeElement(code))) continue;
+        for (const span of code.querySelectorAll<HTMLElement>('span.token')) {
+            span.replaceWith(...span.childNodes);
+        }
+        code.normalize();
+    }
+}
+
+/** Text length with every `<br>` counted as the newline it stands for; `Range.toString()` counts it as nothing. */
+function rawLengthOf(node: Node): number {
+    let length = 0;
+    for (const child of node.childNodes) {
+        if (child instanceof Text) length += child.data.length;
+        else if (child.nodeName === 'BR') length += 1;
+        else length += rawLengthOf(child);
+    }
+    return length;
+}
+
+/** Characters before (`container`, `offset`) in `root`, each `<br>` counting as one. */
+function characterOffsetIn(root: HTMLElement, container: Node, offset: number): number | null {
+    if (!root.contains(container)) return null;
+    const measure = root.ownerDocument.createRange();
+    measure.setStart(root, 0);
+    measure.setEnd(container, offset);
+    return rawLengthOf(measure.cloneContents());
+}
+
+function collapsedRange(doc: Document, place: (range: Range) => void): Range {
+    const range = doc.createRange();
+    place(range);
+    range.collapse(true);
+    return range;
+}
+
+/** A collapsed range `offset` characters into `root`, counted as {@link characterOffsetIn} counts, or `null` when the block is empty. */
+function rangeAtCharacterOffset(root: HTMLElement, offset: number): Range | null {
+    const doc = root.ownerDocument;
+    const walker = doc.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
+    let seen = 0;
+    let tail: Node | null = null;
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (node instanceof Text) {
+            if (seen + node.data.length >= offset) {
+                const text = node;
+                return collapsedRange(doc, range => range.setStart(text, offset - seen));
+            }
+            seen += node.data.length;
+            tail = node;
+        } else if (node.nodeName === 'BR') {
+            if (seen >= offset) {
+                const br = node;
+                return collapsedRange(doc, range => range.setStartBefore(br));
+            }
+            seen += 1;
+            tail = node;
+        }
+    }
+    const end = tail;
+    if (!end) return null;
+    return collapsedRange(doc, range => (end instanceof Text ? range.setStart(end, end.data.length) : range.setStartAfter(end)));
+}
+
+/**
+ * Highlights one code block and puts the caret back where it was. The caret is
+ * remembered as a character offset, because every node inside the block is
+ * replaced. When the paint would change nothing the block, and the selection,
+ * are left untouched; that is decided on the detached paint, before any node moves.
+ */
+export function highlightCodeElementKeepingCaret(
+    code: HTMLElement,
+    language: string | null | undefined,
+    selection: Selection | null,
+): boolean {
+    const painted = paintedFragment(code, language);
+    if (!painted || markupOf(painted) === code.innerHTML) return false;
+
+    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    const caret = range?.collapsed ? characterOffsetIn(code, range.startContainer, range.startOffset) : null;
+
+    code.replaceChildren(painted);
+
+    const restored = caret !== null && selection ? rangeAtCharacterOffset(code, caret) : null;
+    if (restored && selection) {
+        selection.removeAllRanges();
+        selection.addRange(restored);
+    }
+    return true;
+}
