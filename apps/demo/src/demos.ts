@@ -52,7 +52,7 @@ const SB_TILE = (variant: string, collapsible: string, name: string) => `<div st
 export const demos: Demo[] = [
     {
         id: 'badge',
-        group: 'Rung 1 · Static',
+        group: 'Display',
         name: 'Badge',
         tag: 'ge-badge',
         description: 'A short status label. Use `label` for plain text or slot anything for full control.',
@@ -85,7 +85,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'kbd',
-        group: 'Rung 1 · Static',
+        group: 'Display',
         name: 'Kbd',
         tag: 'ge-kbd',
         description: 'A keyboard key, for documenting shortcuts.',
@@ -101,7 +101,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'checkbox',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Checkbox',
         tag: 'ge-checkbox',
         description: 'A checkbox that acts like the native one: Space toggles it, a form submits it and a form reset restores it.',
@@ -135,7 +135,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'input',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Input',
         tag: 'ge-input',
         description: 'A text input. The native input lives inside, so typing, selection and autofill stay native.',
@@ -188,7 +188,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'label',
-        group: 'Rung 1 · Static',
+        group: 'Display',
         name: 'Label',
         tag: 'ge-label',
         description:
@@ -217,7 +217,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'aspect-ratio',
-        group: 'Rung 1 · Static',
+        group: 'Display',
         name: 'Aspect Ratio',
         tag: 'ge-aspect-ratio',
         description: 'A box that keeps a fixed width-to-height ratio and reserves its height before content loads, so nothing shifts.',
@@ -243,7 +243,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'separator',
-        group: 'Rung 1 · Static',
+        group: 'Display',
         name: 'Separator',
         tag: 'ge-separator',
         description: 'A thin line dividing content, horizontal or vertical.',
@@ -272,7 +272,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'skeleton',
-        group: 'Rung 1 · Static',
+        group: 'Display',
         name: 'Skeleton',
         tag: 'ge-skeleton',
         description: 'A placeholder shown while content loads. You size it with ordinary CSS.',
@@ -296,7 +296,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'spinner',
-        group: 'Rung 1 · Static',
+        group: 'Display',
         name: 'Spinner',
         tag: 'ge-spinner',
         description: 'A loading indicator. The built-in loader is the slot fallback, so slotting your own replaces it.',
@@ -332,7 +332,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'alert',
-        group: 'Rung 2 · Slots',
+        group: 'Display',
         name: 'Alert',
         tag: 'ge-alert',
         description: 'A callout. A leading icon goes in the `icon` slot, so the text sits beside it whatever the icon is.',
@@ -378,7 +378,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'avatar',
-        group: 'Rung 2 · Slots',
+        group: 'Display',
         name: 'Avatar',
         tag: 'ge-avatar',
         description: 'A round picture that falls back to initials until the image has loaded, or if it fails.',
@@ -437,7 +437,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'card',
-        group: 'Rung 2 · Slots',
+        group: 'Display',
         name: 'Card',
         tag: 'ge-card',
         description: 'A surface for related content. Simple mode generates the header from inputs; custom mode composes the parts.',
@@ -485,7 +485,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'empty',
-        group: 'Rung 2 · Slots',
+        group: 'Display',
         name: 'Empty',
         tag: 'ge-empty',
         description: 'A placeholder for a view with nothing to show yet.',
@@ -511,7 +511,7 @@ export const demos: Demo[] = [
     },
     {
         id: 'chip-list',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Chip List',
         tag: 'ge-chip-list',
         description: 'A text field that turns what you type into removable chips. Enter commits, Backspace in an empty field removes the last chip.',
@@ -585,7 +585,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'page-header',
-        group: 'Rung 2 · Slots',
+        group: 'Display',
         name: 'Page header',
         tag: 'ge-page-header',
         description: 'A heading with a description and actions. The heading is a real `h1`–`h6`; the actions wrap under it when there is no room.',
@@ -617,7 +617,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'button',
-        group: 'Rung 3 · Interactive',
+        group: 'Actions',
         name: 'Button',
         tag: 'ge-button',
         description:
@@ -686,7 +686,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'progress',
-        group: 'Rung 3 · Interactive',
+        group: 'Display',
         name: 'Progress',
         tag: 'ge-progress',
         description: 'A progress bar. The fill is visual; a hidden native progress element carries the value for assistive technology.',
@@ -722,7 +722,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'rating',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Rating',
         tag: 'ge-rating',
         description: 'A star rating. Hover previews, click commits, clicking the current value clears it, and a finger can slide across the row.',
@@ -764,7 +764,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'slider',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Slider',
         tag: 'ge-slider',
         description: 'Pick a number by dragging or pressing the track, with a mouse or a finger. The keys work too.',
@@ -807,7 +807,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'number-input',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Number Input',
         tag: 'ge-number-input',
         description: 'A number field with stepping. Arrow Up and Down step it, so does the mouse wheel while it has focus, and blur clamps it to the limits.',
@@ -847,7 +847,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'switch',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Switch',
         tag: 'ge-switch',
         description: 'An on/off toggle. Click, Enter and Space all toggle it, and in a form it submits like a checkbox.',
@@ -887,7 +887,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'radio-group',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Radio Group',
         tag: 'ge-radio-group',
         description: 'Mutually exclusive choices. One item is in the tab order and the arrow keys move and select, like a native group.',
@@ -944,7 +944,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'toggle',
-        group: 'Rung 3 · Interactive',
+        group: 'Actions',
         name: 'Toggle',
         tag: 'ge-toggle',
         description: 'A button that stays pressed until it is pressed again.',
@@ -981,7 +981,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'toggle-group',
-        group: 'Rung 3 · Interactive',
+        group: 'Actions',
         name: 'Toggle group',
         tag: 'ge-toggle-group',
         description: 'A row of toggle buttons that share a selection: one at a time, or any number.',
@@ -1025,7 +1025,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'collapsible',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Collapsible',
         tag: 'ge-collapsible',
         description: 'Shows or hides a panel. The panel is not rendered at all while it is closed.',
@@ -1067,7 +1067,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'accordion',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Accordion',
         tag: 'ge-accordion',
         description: 'A stack of items that each open to reveal a panel. Quick form from attributes, or design the trigger and panel yourself.',
@@ -1117,7 +1117,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'card-accordion',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Card accordion',
         tag: 'ge-card-accordion',
         description: 'An accordion whose items are elevated cards with a smooth height animation. Same state engine as the accordion: type, value, collapsible, change.',
@@ -1168,7 +1168,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'tabs',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Tabs',
         tag: 'ge-tabs',
         description: 'Tabbed panels. Only the panel of the active tab is rendered.',
@@ -1206,7 +1206,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'breadcrumb',
-        group: 'Rung 3 · Interactive',
+        group: 'Navigation',
         name: 'Breadcrumb',
         tag: 'ge-breadcrumb',
         description: 'The trail from the root to the current page. Give the list items for the quick form, or compose the crumbs yourself.',
@@ -1254,7 +1254,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'pagination',
-        group: 'Rung 3 · Interactive',
+        group: 'Navigation',
         name: 'Pagination',
         tag: 'ge-pagination',
         description: 'Page navigation. Set total-pages and it builds previous, the numbers, ellipses and next; or compose the row yourself.',
@@ -1292,7 +1292,7 @@ document.querySelector('ge-chip-list[disabled]').value = ['Locked', 'Chips'];
     },
     {
         id: 'stepper',
-        group: 'Rung 3 · Interactive',
+        group: 'Navigation',
         name: 'Stepper',
         tag: 'ge-stepper',
         description: 'A row or column of steps. It tracks which are complete, current and pending, and each step can carry its own panel.',
@@ -1356,7 +1356,7 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
     },
     {
         id: 'timeline',
-        group: 'Rung 3 · Interactive',
+        group: 'Display',
         name: 'Timeline',
         tag: 'ge-timeline',
         description: 'Events in order. Give each item a heading, description and time, or slot the dot, line and text yourself.',
@@ -1415,7 +1415,7 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
     },
     {
         id: 'dialog',
-        group: 'Rung 4 · Overlays',
+        group: 'Overlays',
         name: 'Dialog',
         tag: 'ge-dialog',
         description: 'A modal box over the page. Wrap a trigger and a content in `ge-dialog`; it locks page scroll, keeps focus inside, and closes on Escape, the overlay or the close button.',
@@ -1478,7 +1478,7 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
     },
     {
         id: 'alert-dialog',
-        group: 'Rung 4 · Overlays',
+        group: 'Overlays',
         name: 'Alert Dialog',
         tag: 'ge-alert-dialog',
         description: 'A modal that asks for a decision. Unlike a dialog it has no close button and the overlay does not dismiss it; Escape and the two choices do.',
@@ -1520,7 +1520,7 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
     },
     {
         id: 'sheet',
-        group: 'Rung 4 · Overlays',
+        group: 'Overlays',
         name: 'Sheet',
         tag: 'ge-sheet',
         description: 'A panel that slides in from an edge. Same behaviour as the dialog: scroll lock, focus kept inside, closes on Escape, the overlay or the close button.',
@@ -1575,7 +1575,7 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
     },
     {
         id: 'drawer',
-        group: 'Rung 4 · Overlays',
+        group: 'Overlays',
         name: 'Drawer',
         tag: 'ge-drawer',
         description: 'A modal panel that slides in from an edge, with a drag handle on top and bottom. Same behaviour as the dialog; unlike the sheet it has no close button, so give it a ge-drawer-close of your own.',
@@ -1636,7 +1636,7 @@ s.canLeave = (from, to) => to < from || new Promise((ok) => setTimeout(() => ok(
     },
     {
         id: 'input-otp',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Input OTP',
         tag: 'ge-input-otp',
         description: 'A one-time-code field: a row of slots drawn over one visually hidden input, so typing, paste and autofill work natively.',
@@ -1695,7 +1695,7 @@ document.getElementById('otp-form').addEventListener('submit', (e) => {
     },
     {
         id: 'split-button',
-        group: 'Rung 3 · Interactive',
+        group: 'Actions',
         name: 'Split Button',
         tag: 'ge-split-button',
         description: 'A primary action joined to a dropdown of related actions. Set `label` and `items` for the quick form, or slot the parts yourself.',
@@ -1758,7 +1758,7 @@ document.querySelectorAll('ge-split-button[label]').forEach((s) => { if (!s.item
     },
     {
         id: 'table',
-        group: 'Rung 3 · Interactive',
+        group: 'Display',
         name: 'Table',
         tag: 'ge-table',
         description: 'A table made of flex rows, so the header can stick while the body scrolls. Size a column by giving its head and cells the same width.',
@@ -1871,7 +1871,7 @@ document.querySelectorAll('ge-split-button[label]').forEach((s) => { if (!s.item
     },
     {
         id: 'time-picker',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Time picker',
         tag: 'ge-time-picker',
         description: 'A time of day edited one segment at a time. The value is always 24-hour "HH:mm"; the order, separators, digits and AM/PM come from the locale.',
@@ -1925,7 +1925,7 @@ document.getElementById('tp-basic').addEventListener('value-change', (e) => {
     },
     {
         id: 'carousel',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Carousel',
         tag: 'ge-carousel',
         description: 'Scroll-snapping slides with previous and next buttons. The arrow keys page it when the track has focus, and a finger swipes it.',
@@ -1975,7 +1975,7 @@ document.getElementById('tp-basic').addEventListener('value-change', (e) => {
     },
     {
         id: 'resizable',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Resizable',
         tag: 'ge-resizable-panel-group',
         description: 'Panels you resize by dragging the divider between them, with a finger, or with the arrow keys (5% a press). Each panel keeps to its own limits.',
@@ -2030,7 +2030,7 @@ for (const [id, label, range] of [['rz-a', 'Left', '20–60%'], ['rz-b', 'Right'
     },
     {
         id: 'textarea',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Textarea',
         tag: 'ge-textarea',
         description: 'A multi-line text field. The native textarea lives inside, so typing, selection and resizing stay native.',
@@ -2081,7 +2081,7 @@ for (const [id, label, range] of [['rz-a', 'Left', '20–60%'], ['rz-b', 'Right'
     },
     {
         id: 'button-group',
-        group: 'Rung 3 · Interactive',
+        group: 'Actions',
         name: 'Button group',
         tag: 'ge-button-group',
         description: 'Joins buttons into one control: outer corners stay round, neighbouring borders merge.',
@@ -2119,7 +2119,7 @@ for (const [id, label, range] of [['rz-a', 'Left', '20–60%'], ['rz-b', 'Right'
     },
     {
         id: 'popover',
-        group: 'Rung 4 · Overlays',
+        group: 'Overlays',
         name: 'Popover',
         tag: 'ge-popover',
         description: 'A panel anchored to a trigger. It does not lock the page or trap focus; a click outside or Escape closes it, and focus goes back to the trigger.',
@@ -2194,7 +2194,7 @@ for (const [id, label, range] of [['rz-a', 'Left', '20–60%'], ['rz-b', 'Right'
     },
     {
         id: 'tooltip',
-        group: 'Rung 4 · Overlays',
+        group: 'Overlays',
         name: 'Tooltip',
         tag: 'ge-tooltip',
         description: 'A short label beside a trigger. It opens on hover after a short dwell, at once on keyboard focus, and on a tap on touch screens. It does not flip near a viewport edge.',
@@ -2231,7 +2231,7 @@ for (const [id, label, range] of [['rz-a', 'Left', '20–60%'], ['rz-b', 'Right'
     },
     {
         id: 'hover-card',
-        group: 'Rung 4 · Overlays',
+        group: 'Overlays',
         name: 'Hover card',
         tag: 'ge-hover-card',
         description: 'A preview card that opens when the pointer rests on a trigger or the trigger takes focus. Moving onto the card keeps it open. On a touch screen a tap opens it and a tap elsewhere closes it.',
@@ -2280,7 +2280,7 @@ for (const [id, label, range] of [['rz-a', 'Left', '20–60%'], ['rz-b', 'Right'
     },
     {
         id: 'dropdown-menu',
-        group: 'Rung 4 · Overlays',
+        group: 'Overlays',
         name: 'Dropdown menu',
         tag: 'ge-dropdown-menu',
         description: 'A menu of actions opened from a button. Up and Down move through the items, Right (Left in right-to-left text) opens a submenu, Escape closes the innermost menu and a click outside closes it. Build it from parts, or hand it `items` data.',
@@ -2383,7 +2383,7 @@ document.getElementById('dm-data').items = [
     },
     {
         id: 'context-menu',
-        group: 'Rung 4 · Overlays',
+        group: 'Overlays',
         name: 'Context menu',
         tag: 'ge-context-menu',
         description: 'A menu that opens at the pointer on right-click, or on a long press on a touch screen. It sits in the top layer, stays 8px inside the viewport, and closes on a click outside, a scroll, Tab or Escape. Up, Down, Home and End move through the items.',
@@ -2491,7 +2491,7 @@ document.getElementById('cm-data').items = [
     },
     {
         id: 'menubar',
-        group: 'Rung 4 · Overlays',
+        group: 'Navigation',
         name: 'Menubar',
         tag: 'ge-menubar',
         description: 'A bar of menus like a desktop app. One menu is open at a time; once one is open, hovering another trigger or pressing Left or Right switches to it. Down or Enter opens a menu into its first item, Up and Down walk the items, and Escape closes and returns to the trigger.',
@@ -2593,7 +2593,7 @@ document.getElementById('cm-data').items = [
     },
     {
         id: 'select',
-        group: 'Rung 4 · Overlays',
+        group: 'Form inputs',
         name: 'Select',
         tag: 'ge-select',
         description: 'Picks one value from a list. It takes part in forms, opens from the keyboard (Enter, Space, Down), and walks the rows with the arrow keys. The panel either sits over the trigger so the chosen row lines up with it, or drops beside it.',
@@ -2699,7 +2699,7 @@ document.getElementById('sel-data').options = ['Apple', 'Banana', 'Blueberry', '
     },
     {
         id: 'navigation-menu',
-        group: 'Rung 4 · Overlays',
+        group: 'Navigation',
         name: 'Navigation menu',
         tag: 'ge-navigation-menu',
         description: 'A row of links where some open a dropdown. Hover opens an item and leaving closes it after a short grace period; a click or tap toggles it, which is how touch opens it. Following a link does not close the panel. From the keyboard, Tab goes through the entries and into an open panel; Left and Right (and Home and End) move along the bar, Down opens a panel onto its first link, the arrows walk its links and Escape closes it back onto the trigger.',
@@ -2789,7 +2789,7 @@ document.getElementById('nm-data').items = [
     },
     {
         id: 'command',
-        group: 'Rung 4 · Overlays',
+        group: 'Navigation',
         name: 'Command',
         tag: 'ge-command',
         description: 'A searchable palette: type to filter the rows, arrow keys move the highlight, Enter selects. Groups and separators are plain children, and `ge-command-dialog` wraps one in a dialog opened with Mod+K. Rows fire `select-item`; set `source` for async results and `recent-key` to remember picks.',
@@ -2862,7 +2862,7 @@ document.getElementById('cmd-open').addEventListener('click', () => { document.g
     },
     {
         id: 'banner',
-        group: 'Rung 3 · Interactive',
+        group: 'Display',
         name: 'Banner',
         tag: 'ge-banner',
         description: 'A persistent, page-level announcement bar for system status and account notices. Set `message` for plain text, or project your own content and it replaces the message.',
@@ -2915,7 +2915,7 @@ document.getElementById('bn-dismiss').addEventListener('dismissed', () => { docu
     },
     {
         id: 'native-select',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Native select',
         tag: 'ge-native-select',
         description: 'The platform\'s own `<select>`, styled like an input. The browser draws the list, so it behaves as it does on every device. Project `<option>` and `<optgroup>` children; they are mirrored into the control and kept in step as you change them.',
@@ -2969,7 +2969,7 @@ document.getElementById('bn-dismiss').addEventListener('dismissed', () => { docu
     },
     {
         id: 'scroll-area',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Scroll area',
         tag: 'ge-scroll-area',
         description: 'A clipped box whose content scrolls under thin custom scrollbars. The element is the root, so give it a height; each thumb shows only while its content overflows.',
@@ -3003,7 +3003,7 @@ box.innerHTML = '<h4 style="margin:0 0 1rem;font-size:0.875rem;font-weight:500;l
     },
     {
         id: 'stat-card',
-        group: 'Rung 2 · Slots',
+        group: 'Display',
         name: 'Stat card',
         tag: 'ge-stat-card',
         description: 'A KPI tile: a label, a headline value, an optional delta badge and an optional projected sparkline. The host draws nothing, so the card inside is the real grid item; style it through `::part(card)`.',
@@ -3043,7 +3043,7 @@ box.innerHTML = '<h4 style="margin:0 0 1rem;font-size:0.875rem;font-weight:500;l
     },
     {
         id: 'result',
-        group: 'Rung 2 · Slots',
+        group: 'Display',
         name: 'Result',
         tag: 'ge-result',
         description: 'A centred outcome panel shown after an operation completes. It announces politely and never takes focus, whatever the status. Projected content lands in the actions row; a `ge-result-detail` goes above it.',
@@ -3082,7 +3082,7 @@ box.innerHTML = '<h4 style="margin:0 0 1rem;font-size:0.875rem;font-weight:500;l
     },
     {
         id: 'data-list',
-        group: 'Rung 2 · Slots',
+        group: 'Display',
         name: 'Data list',
         tag: 'ge-data-list',
         description: 'Label and value pairs as a real `<dl>`. Set the `items` property for plain text, or write `ge-data-list-item` children when a value needs markup. Both can be mixed; data rows come first.',
@@ -3120,7 +3120,7 @@ document.getElementById('dl-data').items = [
     },
     {
         id: 'input-group',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Input group',
         tag: 'ge-input-group',
         description: 'One bordered row that holds a text field and its addons (an icon, a unit, a button) under a single border and focus ring. The ring shows while the field has focus, not when an addon button does.',
@@ -3171,7 +3171,7 @@ document.getElementById('dl-data').items = [
     },
     {
         id: 'field',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Field',
         tag: 'ge-field',
         description: 'A form field: a label, a control and helper text laid out together. Set the label\'s `for` to the control\'s `id`. The field keeps the ids of its descriptions and errors as `describedBy`, for the control\'s `aria-describedby`.',
@@ -3231,7 +3231,7 @@ document.getElementById('dl-data').items = [
     },
     {
         id: 'calendar',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Calendar',
         tag: 'ge-calendar',
         description: 'A month grid. `mode` picks what a click selects: one day, a range or several days. Optional month and year selects and time fields; `locale` names the days and months and sets the direction. Fires `selected-change`.',
@@ -3295,7 +3295,7 @@ cal.addEventListener('selected-change', (e) => {
     },
     {
         id: 'date-picker',
-        group: 'Rung 4 · Overlays',
+        group: 'Form inputs',
         name: 'Date picker',
         tag: 'ge-date-picker',
         description: 'A button that shows the picked date and opens a `ge-calendar` in a popover. `ge-date-range-picker` picks a start and an end. Picking closes the panel, unless `show-time` is on. Form-associated: a `name` submits `YYYY-MM-DD`.',
@@ -3352,7 +3352,7 @@ document.getElementById('dp-clear').addEventListener('click', () => { dp.date = 
     },
     {
         id: 'autocomplete',
-        group: 'Rung 4 · Overlays',
+        group: 'Form inputs',
         name: 'Autocomplete',
         tag: 'ge-autocomplete',
         description: 'A text box that suggests `options` as you type, filtering them and highlighting the match. One pick, or `multiple` chips. Options can be objects: give `displayWith` and `value-attribute`. Fires `value-change` and `search-change` (debounced with `debounce-time`, for server search).',
@@ -3445,7 +3445,7 @@ remote.addEventListener('search-change', (e) => {
     },
     {
         id: 'toast',
-        group: 'Rung 3 · Interactive',
+        group: 'Overlays',
         name: 'Toast',
         tag: 'ge-toaster',
         description: 'Transient messages. Put one `ge-toaster` in the page and call the shared `toast` service from anywhere; the demo page exposes it as `globalThis.geToast`.',
@@ -3508,7 +3508,7 @@ remote.addEventListener('search-change', (e) => {
     },
     {
         id: 'tree',
-        group: 'Rung 3 · Interactive',
+        group: 'Navigation',
         name: 'Tree',
         tag: 'ge-tree',
         description: 'A hierarchy of expandable, optionally selectable nodes. The whole tree is one tab stop: arrow keys move, expand and collapse, `*` opens every visible parent and Enter or Space selects.',
@@ -3614,7 +3614,7 @@ remote.addEventListener('search-change', (e) => {
     },
     {
         id: 'sidebar',
-        group: 'Rung 3 · Interactive',
+        group: 'Navigation',
         name: 'Sidebar',
         tag: 'ge-sidebar',
         description: 'An app-shell sidebar. On a page 768px or wider it is a sticky column that collapses to a 60px icon rail; below that it is a drawer with a scrim, Escape to close and a focus trap. The collapsed flag is remembered in `localStorage`.',
@@ -3758,7 +3758,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'eyedropper',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Eyedropper',
         tag: 'ge-eyedropper',
         description: 'Picks a colour from the screen with the browser\'s own EyeDropper where it exists, and otherwise samples an image, canvas or video you point it at.',
@@ -3827,7 +3827,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'color-picker',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Color Picker',
         tag: 'ge-color-picker',
         description: 'A popover colour picker with saturation/value area, hue and alpha sliders, per-format editing, presets, recents, image palette extraction, harmonies and a WCAG contrast checker.',
@@ -3904,7 +3904,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'code-block',
-        group: 'Rung 3 · Interactive',
+        group: 'Display',
         name: 'Code Block',
         tag: 'ge-code-block',
         description: 'A syntax-highlighted code viewer with a copy button, line numbers and optional scope folding. The surface is dark in both themes.',
@@ -3974,7 +3974,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'speed-dial',
-        group: 'Rung 3 · Interactive',
+        group: 'Actions',
         name: 'Speed Dial',
         tag: 'ge-speed-dial',
         description: 'A floating action button that fans out a menu of actions in a line or along an arc, or opens at the pointer. A click outside closes it.',
@@ -4026,7 +4026,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'dock',
-        group: 'Rung 3 · Interactive',
+        group: 'Actions',
         name: 'Dock',
         tag: 'ge-dock',
         description: 'A macOS-style dock: icons swell towards the pointer on a cosine curve. Mouse only; on touch it stays at rest.',
@@ -4086,7 +4086,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'file-upload',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'File upload',
         tag: 'ge-file-upload',
         description: 'A dropzone that validates and queues files, and can crop images first. It never transfers anything: upload on `file-added` and report back with `updateFileProgress`.',
@@ -4177,7 +4177,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'tree-context-menu',
-        group: 'Rung 3 · Interactive',
+        group: 'Overlays',
         name: 'Tree context menu',
         tag: 'ge-tree-context-menu',
         description: 'Wrap a `ge-tree` so that a right-click, the context-menu key or a long press on a node opens a `ge-context-menu` at the pointer, with the node it hit as the menu\'s `data`.',
@@ -4250,7 +4250,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'tree-select',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Tree select',
         tag: 'ge-tree-select',
         description: 'A select whose options are the nodes of a tree. It is form-associated: the selected key is submitted under `name`.',
@@ -4336,7 +4336,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'sortable',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Sortable',
         tag: 'ge-sortable',
         description: 'A list you reorder by dragging, with the keyboard, or between lists. Write `ge-sortable-item`s yourself, or set `items` and `renderItem` and let it render them.',
@@ -4486,7 +4486,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'kanban',
-        group: 'Rung 3 · Interactive',
+        group: 'Apps & tools',
         name: 'Kanban',
         tag: 'ge-kanban',
         description: 'A board of columns and cards. Drag a card between columns (on touch, hold a card until it lifts, then drag it; let go without moving for its menu); right-click or long-press elsewhere for menus; Mod+Z undoes. The board is controlled: it reports every change as an event and waits for you to apply it.',
@@ -4717,7 +4717,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'effects',
-        group: 'Rung 3 · Interactive',
+        group: 'Charts & motion',
         name: 'Effects',
         tag: 'ge-marquee',
         description: 'Motion that decorates a page. All of them stand still under `prefers-reduced-motion: reduce`.',
@@ -4944,7 +4944,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'comparison-slider',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Comparison slider',
         tag: 'ge-comparison-slider',
         description: 'Two images in one box with a draggable divider. Drag anywhere, tap to jump, or focus the handle and use the arrow keys, Home and End.',
@@ -4974,7 +4974,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'masonry',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Masonry',
         tag: 'ge-masonry',
         description: 'A column-balanced wall for items of uneven height. Unlike CSS columns, reading order, keyboard order and DOM order all agree.',
@@ -5002,7 +5002,7 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
     },
     {
         id: 'virtual-scroll',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Virtual scroll',
         tag: 'ge-virtual-scroll',
         description: 'Renders only the rows in view of a very long list, with variable heights, and anchors the scroll position when a row above changes size. Give it a bounded height.',
@@ -5072,7 +5072,7 @@ grid.renderItem = (cell) => Object.assign(document.createElement('div'), { textC
     },
     {
         id: 'bento-grid',
-        group: 'Rung 3 · Interactive',
+        group: 'Layout',
         name: 'Bento grid',
         tag: 'ge-bento-grid',
         description: 'A dashboard canvas of cards on a grid: drag to move, pull a grip to resize, select neighbours and merge them, split or delete from the context menu, and right-click empty space to add.',
@@ -5148,7 +5148,7 @@ stats.renderItem = (item) => {
     },
     {
         id: 'currency-input',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Currency Input',
         tag: 'ge-currency-input',
         description: 'An amount of money written the way the reader\'s locale writes it. While you type it is a plain number; on blur it rounds to the currency\'s own decimals, clamps to the limits and shows the full formatting.',
@@ -5203,7 +5203,7 @@ money.addEventListener('change', () => {
     },
     {
         id: 'duration-input',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Duration Input',
         tag: 'ge-duration-input',
         description: 'A length of time edited one unit at a time, as `h:mm`. Each unit is its own field, so there is never a guess about what `130` means. Arrow keys step the segment under the caret.',
@@ -5250,7 +5250,7 @@ timer.addEventListener('input', () => { document.getElementById('dur1-out').text
     },
     {
         id: 'phone-input',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Phone Input',
         tag: 'ge-phone-input',
         description: 'An international phone number: a searchable country picker beside a masked number field. The value is E.164, so it can go straight to an API.',
@@ -5301,7 +5301,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'signature-pad',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Signature pad',
         tag: 'ge-signature-pad',
         description: 'A canvas to sign on with a mouse, finger or pen. Undo removes the last stroke, Clear removes all; the result exports as a PNG data URL or an SVG.',
@@ -5337,7 +5337,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'emoji-picker',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Emoji picker',
         tag: 'ge-emoji-picker',
         description: 'A button that opens a panel of emoji: search by name or keyword, jump between categories with the tabs, and pick one. It is a `ge-popover`, so `open`, `show()` and `hide()` work as they do there.',
@@ -5384,7 +5384,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'input-mask',
-        group: 'Rung 3 · Interactive',
+        group: 'Form inputs',
         name: 'Input mask',
         tag: 'ge-input-mask',
         description: 'Formats what is typed into a wrapped `ge-input` or native `input`. `0` and `9` take a digit, `a` a letter, `*` either; every other character is a literal. The wrapper draws no box.',
@@ -5422,7 +5422,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'charts',
-        group: 'Rung 3 · Interactive',
+        group: 'Charts & motion',
         name: 'Charts',
         tag: 'ge-line-chart',
         description: 'Pure SVG charts that measure their own width, follow `dir`, and take their data as a property. Hover, focus or tap a point for its tooltip; the legend hides and shows series.',
@@ -5808,7 +5808,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'chat',
-        group: 'Rung 3 · Interactive',
+        group: 'Apps & tools',
         name: 'Chat',
         tag: 'ge-chat-message',
         description: 'A message list, a message bubble and a composer. The list follows new messages; the composer sends on Enter.',
@@ -5876,7 +5876,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'tour',
-        group: 'Rung 3 · Interactive',
+        group: 'Navigation',
         name: 'Tour',
         tag: 'ge-tour',
         description: 'A guided tour: the page dims, one element at a time is spotlit, and a card explains it. Set `steps` as a property and turn `active` on.',
@@ -5958,7 +5958,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'icon',
-        group: 'Rung 1 · Static',
+        group: 'Display',
         name: 'Icon',
         tag: 'ge-icon',
         description: 'An inline SVG icon from about a thousand built-in glyphs, drawn in the surrounding text colour. An unknown name draws nothing instead of throwing.',
@@ -6011,7 +6011,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'error-page',
-        group: 'Rung 2 · Slots',
+        group: 'Display',
         name: 'Error page',
         tag: 'ge-error-page',
         description: 'A full-page 404, 403 or 500 state with the status code (or your own artwork), a message and two recovery actions. It reports; you decide where to go.',
@@ -6052,7 +6052,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'shortcut-bindings-dialog',
-        group: 'Rung 2 · Slots',
+        group: 'Apps & tools',
         name: 'Shortcut bindings dialog',
         tag: 'ge-shortcut-bindings-dialog',
         description: 'A searchable list of every keyboard shortcut the page registers, where each can be rebound by pressing a new key. Components register through the shared `shortcutBindings` registry; this dialog edits it.',
@@ -6086,7 +6086,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'field-mapper',
-        group: 'Rung 3 · Interactive',
+        group: 'Apps & tools',
         name: 'Field mapper',
         tag: 'ge-field-mapper',
         description: 'Two lists joined by lines that say which goes with which: import columns to fields, schema to schema. Draw a line three ways: drag from an item\'s dot, tap an item then one in the other list, or the keyboard (arrows move, Enter picks, Delete removes). Below about 28rem it becomes stacked rows with a picker for each item.',
@@ -6159,7 +6159,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'file-viewer',
-        group: 'Rung 3 · Interactive',
+        group: 'Apps & tools',
         name: 'File viewer',
         tag: 'ge-file-viewer',
         description: 'Previews a file in the page without uploading it: PDF, Word (DOCX and DOC), PowerPoint (PPTX and PPT), Excel (XLSX), images (SVG is sanitised first), text, video and audio. The type is read from the file\'s bytes, so a wrong extension does not matter. Parsing runs in the browser and each format loads only when it is first opened.',
@@ -6218,7 +6218,7 @@ phone.addEventListener('input', () => { document.getElementById('ph1-out').textC
     },
     {
         id: 'page-builder',
-        group: 'Rung 3 · Interactive',
+        group: 'Apps & tools',
         name: 'Page builder',
         tag: 'ge-page-builder',
         description: 'A drag-and-drop page editor: a palette of your own components, a grid canvas, and a property editor that is drawn from each widget\'s own properties. Save emits a plain JSON document that `ge-page-renderer` turns back into a live page. Widgets are any custom element named by `tag`, so the palette can hold anything on the page.',
