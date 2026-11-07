@@ -30,7 +30,7 @@ interface Placement {
  * @attr {boolean} no-restore-focus - Does not return focus to the trigger on close.
  * @attr {string} strategy - `absolute` (default) or `fixed`.
  * @csspart panel - The panel.
- * @cssprop --popover-offset - The gap to the trigger. `side-offset` supplies it; setting this property on the content or its `panel` part overrides that.
+ * @cssprop --popover-offset - The gap to the trigger. `side-offset` supplies it; set it on the `panel` part (`ge-popover-content::part(panel)`) to override that. It is not inherited, so a value on an ancestor reaches no other popover.
  * @cssprop --trigger-width - The trigger's width, set on the open panel so it can match it (`width: var(--trigger-width)`).
  * @cssprop --density-popover - Spacing multiplier for this component; falls back to `--density`.
  */
@@ -44,6 +44,7 @@ export class GePopoverContent extends UiElement {
         noRestoreFocus: { type: Boolean, attribute: 'no-restore-focus' },
         strategy: { reflect: true },
         placement: { state: true },
+        triggerWidth: { state: true },
     };
 
     declare side: Side;
@@ -53,6 +54,7 @@ export class GePopoverContent extends UiElement {
     declare noRestoreFocus: boolean;
     declare strategy: Strategy;
     declare placement: Placement;
+    declare triggerWidth: number | undefined;
     protected owner?: PopoverHost;
     private wasOpen = false;
     private frame = 0;
@@ -95,7 +97,7 @@ export class GePopoverContent extends UiElement {
         if (opened) this.onOpened();
         else if (closed) this.onClosed();
         else if (open && (changed.has('side') || changed.has('align') || changed.has('strategy') || changed.has('sideOffset'))) this.reset();
-        else if (open && changed.has('placement') && (changed.get('placement') as Placement | undefined)?.side !== this.placement.side) this.place();
+        else if (open && this.strategy === 'fixed' && changed.has('placement') && (changed.get('placement') as Placement | undefined)?.side !== this.placement.side) this.place();
     }
 
     private onOpened(): void {
@@ -132,7 +134,7 @@ export class GePopoverContent extends UiElement {
             const panel = this.panel;
             const anchor = this.owner?.triggerRect();
             if (!panel || !anchor) return;
-            panel.style.setProperty('--trigger-width', `${anchor.width}px`);
+            this.triggerWidth = anchor.width;
             if (this.noCollisions) return;
             const bounds = this.strategy === 'fixed' ? new DOMRect(0, 0, innerWidth, innerHeight) : clippingRect(panel);
             const rect = panel.getBoundingClientRect();
@@ -151,7 +153,9 @@ export class GePopoverContent extends UiElement {
     /** The side to be on: a top or bottom panel flips when it overflows; a left or right one stays. */
     private nextSide(current: Side, rect: DOMRect, anchor: DOMRect, bounds: DOMRect): Side {
         if (current !== 'top' && current !== 'bottom') return current;
-        return this.strategy === 'fixed' ? flippedSideByRoom(current, rect, anchor, bounds, this.sideOffset) : flippedSide(current, rect, anchor, bounds);
+        if (this.strategy === 'fixed') return flippedSideByRoom(current, rect, anchor, bounds, this.sideOffset);
+        // Judged from the preferred side every time, since no second pass follows a flip here.
+        return flippedSide(this.side as 'top' | 'bottom', rect, anchor, bounds);
     }
 
     /** A top-layer panel is positioned in viewport coordinates, so it has to follow the trigger when the page moves. */
@@ -189,7 +193,7 @@ export class GePopoverContent extends UiElement {
     }
 
     private panelStyle(side: Side, nudge: number, nudgeY: number): string {
-        const width = this.owner?.triggerRect()?.width;
+        const width = this.triggerWidth ?? this.owner?.triggerRect()?.width;
         const vars = `--_offset:${this.sideOffset}px;` + (width === undefined ? '' : `--trigger-width:${width}px;`);
         const shift = nudge === 0 && nudgeY === 0 ? '' : `transform:translate(${nudge}px,${nudgeY}px);`;
         return vars + shift + (this.strategy === 'fixed' ? this.fixedAnchor(side) : '');

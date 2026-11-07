@@ -5,6 +5,8 @@
     text-align: inherit;
 }
 .panel {
+    /* Never inherited: a value set on an ancestor would otherwise reach every popover inside it. */
+    --popover-offset: initial;
     position: absolute;
     z-index: 50;
     box-sizing: border-box;

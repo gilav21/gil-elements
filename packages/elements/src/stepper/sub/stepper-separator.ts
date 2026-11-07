@@ -5,8 +5,8 @@ import { STEPPER_ITEM_REGISTER, type StepperItemHost } from './stepper-item.js';
 import css from './stepper-separator.css?inline';
 
 /**
- * A line you place yourself between steps; it turns to the primary colour once its step is complete.
- * (A horizontal stepper already draws a connector after every step but the last.)
+ * A line you place yourself, in a `ge-stepper-item`; it turns to the primary colour once its step is complete.
+ * It replaces the item's own connector, so a step has one line whether or not you add one.
  *
  * @csspart base - The line.
  */

@@ -58,7 +58,7 @@ export function flippedSide(side: 'top' | 'bottom', panel: DOMRect, anchor: DOMR
     return side;
 }
 
-/** How far to move a panel along y so it ends up inside `bounds`, with {@link EDGE_GAP} to spare; the top edge wins when it cannot fit. */
+/** How far to move an overflowing panel along y to leave {@link EDGE_GAP} to the edge; the top edge wins when it cannot fit. A panel that fits is left alone. */
 export function verticalNudge(panel: DOMRect, bounds: DOMRect): number {
     const down = bounds.top + EDGE_GAP - panel.top;
     if (panel.top < bounds.top) return down;

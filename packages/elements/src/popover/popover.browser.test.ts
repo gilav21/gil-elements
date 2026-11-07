@@ -185,8 +185,13 @@ describe('ge-popover', () => {
         close(p.top, t.bottom + 10);
         expect(el.dataset['side']).toBe('bottom');
         expect(el.style.getPropertyValue('--_offset')).toBe('10px');
-        // The public property wins over the attribute: setting it on the content moves the panel.
-        page.querySelector<HTMLElement>('ge-popover-content')!.style.setProperty('--popover-offset', '30px');
+        // The public property wins over the attribute when set on the panel part, and does not leak in from an ancestor.
+        page.style.setProperty('--popover-offset', '60px');
+        await settle(page);
+        close(el.getBoundingClientRect().top, t.bottom + 10);
+        const rule = document.createElement('style');
+        rule.textContent = 'ge-popover-content::part(panel){--popover-offset:30px}';
+        page.append(rule);
         await settle(page);
         close(el.getBoundingClientRect().top, t.bottom + 30);
         close(Number.parseFloat(el.style.getPropertyValue('--trigger-width')), t.width);
