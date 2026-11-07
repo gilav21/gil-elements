@@ -10,17 +10,19 @@
     "build": "pnpm -r --filter './packages/*' run build",
     "typecheck": "tsc -p packages/base --noEmit && tsc -p packages/elements --noEmit && tsc -p apps/demo --noEmit",
     "test": "vitest --run",
+    "test:coverage": "vitest --run --coverage",
     "size": "node scripts/size.mjs",
     "check": "pnpm run typecheck && pnpm run build && pnpm run build:demo && pnpm run test && pnpm run size",
     "demo": "pnpm --filter @gilav21/elements-demo dev",
     "build:demo": "pnpm --filter @gilav21/elements-demo build",
-    "sonar": "node scripts/sonar.mjs"
+    "sonar": "pnpm run test:coverage && node scripts/sonar.mjs"
   },
   "devDependencies": {
     "@lit-labs/ssr": "^4.1.0",
     "@tailwindcss/cli": "^4.3.3",
     "@vitest/browser": "^5.0.5",
     "@vitest/browser-playwright": "^5.0.5",
+    "@vitest/coverage-v8": "5.0.5",
     "axe-core": "^4.14.0",
     "lit": "^3.3.3",
     "pixelmatch": "^8.0.0",

@@ -1,7 +1,7 @@
 // Runs the Dockerized sonar-scanner against a local SonarQube.
 // Token: SONAR_TOKEN in the environment, or in a gitignored .env / packages/.env file.
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 function resolveToken() {
     if (process.env.SONAR_TOKEN) return process.env.SONAR_TOKEN;
@@ -17,6 +17,14 @@ const token = resolveToken();
 if (!token) {
     console.error('SONAR_TOKEN is not set (environment, .env or packages/.env).');
     process.exit(1);
+}
+
+// vitest writes `SF:packages\base\...` on Windows; the Linux scanner container needs forward slashes.
+const lcov = 'coverage/lcov.info';
+if (existsSync(lcov)) {
+    writeFileSync(lcov, readFileSync(lcov, 'utf8').replace(/^SF:.*$/gm, (line) => line.replaceAll('\\', '/')));
+} else {
+    console.warn(`${lcov} not found: the scan will report no coverage (run \`pnpm run test:coverage\` first).`);
 }
 
 const host = process.env.SONAR_HOST_URL ?? 'http://host.docker.internal:9000';
