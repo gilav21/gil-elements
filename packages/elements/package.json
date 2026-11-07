@@ -6,7 +6,8 @@
   "type": "module",
   "sideEffects": [
     "**/define.js",
-    "**/define.ts"
+    "**/define.ts",
+    "**/rich-text-editor/locales/*"
   ],
   "files": [
     "dist",
@@ -267,6 +268,71 @@
       "types": "./dist/toggle-group/define.d.ts",
       "development": "./src/toggle-group/define.ts",
       "default": "./dist/toggle-group/define.js"
+    },
+    "./rich-text-editor": {
+      "types": "./dist/rich-text-editor/index.d.ts",
+      "development": "./src/rich-text-editor/index.ts",
+      "default": "./dist/rich-text-editor/index.js"
+    },
+    "./rich-text-editor/define": {
+      "types": "./dist/rich-text-editor/define.d.ts",
+      "development": "./src/rich-text-editor/define.ts",
+      "default": "./dist/rich-text-editor/define.js"
+    },
+    "./rich-text-editor/toolbar": {
+      "types": "./dist/rich-text-editor/toolbar/index.d.ts",
+      "development": "./src/rich-text-editor/toolbar-index.ts",
+      "default": "./dist/rich-text-editor/toolbar/index.js"
+    },
+    "./rich-text-editor/toolbar/define": {
+      "types": "./dist/rich-text-editor/toolbar/define.d.ts",
+      "development": "./src/rich-text-editor/toolbar-define.ts",
+      "default": "./dist/rich-text-editor/toolbar/define.js"
+    },
+    "./rich-text-editor/locales/he": {
+      "types": "./dist/rich-text-editor/locales/he.d.ts",
+      "development": "./src/rich-text-editor/locales/he.ts",
+      "default": "./dist/rich-text-editor/locales/he.js"
+    },
+    "./rich-text-editor/locales/ar": {
+      "types": "./dist/rich-text-editor/locales/ar.d.ts",
+      "development": "./src/rich-text-editor/locales/ar.ts",
+      "default": "./dist/rich-text-editor/locales/ar.js"
+    },
+    "./rich-text-editor/locales/de": {
+      "types": "./dist/rich-text-editor/locales/de.d.ts",
+      "development": "./src/rich-text-editor/locales/de.ts",
+      "default": "./dist/rich-text-editor/locales/de.js"
+    },
+    "./rich-text-editor/locales/fr": {
+      "types": "./dist/rich-text-editor/locales/fr.d.ts",
+      "development": "./src/rich-text-editor/locales/fr.ts",
+      "default": "./dist/rich-text-editor/locales/fr.js"
+    },
+    "./rich-text-editor/locales/es": {
+      "types": "./dist/rich-text-editor/locales/es.d.ts",
+      "development": "./src/rich-text-editor/locales/es.ts",
+      "default": "./dist/rich-text-editor/locales/es.js"
+    },
+    "./rich-text-editor/locales/ja": {
+      "types": "./dist/rich-text-editor/locales/ja.d.ts",
+      "development": "./src/rich-text-editor/locales/ja.ts",
+      "default": "./dist/rich-text-editor/locales/ja.js"
+    },
+    "./rich-text-editor/locales/zh": {
+      "types": "./dist/rich-text-editor/locales/zh.d.ts",
+      "development": "./src/rich-text-editor/locales/zh.ts",
+      "default": "./dist/rich-text-editor/locales/zh.js"
+    },
+    "./rich-text-editor/locales/ru": {
+      "types": "./dist/rich-text-editor/locales/ru.d.ts",
+      "development": "./src/rich-text-editor/locales/ru.ts",
+      "default": "./dist/rich-text-editor/locales/ru.js"
+    },
+    "./rich-text-editor/locales/pt": {
+      "types": "./dist/rich-text-editor/locales/pt.d.ts",
+      "development": "./src/rich-text-editor/locales/pt.ts",
+      "default": "./dist/rich-text-editor/locales/pt.js"
     },
     "./collapsible": {
       "types": "./dist/collapsible/index.d.ts",
