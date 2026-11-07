@@ -205,6 +205,7 @@ describe('ge-popover', () => {
         expect(flippedSideByRoom('top', new DOMRect(100, 20, 200, 100), anchor, bounds, 4)).toBe('top');
         expect(verticalNudge(new DOMRect(0, 300, 10, 400), bounds)).toBe(-108);
         expect(verticalNudge(new DOMRect(0, 100, 10, 700), bounds)).toBe(-92);
+        expect(verticalNudge(new DOMRect(0, 3, 10, 700), bounds)).toBe(0);
         expect(verticalNudge(new DOMRect(0, -30, 10, 100), bounds)).toBe(38);
         expect(verticalNudge(new DOMRect(0, 10, 10, 100), bounds)).toBe(0);
     });

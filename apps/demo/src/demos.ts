@@ -2412,7 +2412,7 @@ for (const [id, label, range] of [['rz-a', 'Left', '20–60%'], ['rz-b', 'Right'
             { name: 'content: no-restore-focus', type: 'boolean', default: 'false', description: 'Does not return focus to the trigger on close.' },
             { name: 'content: strategy', type: "'absolute' | 'fixed'", default: "'absolute'", description: '`fixed` renders in the browser top layer.' },
             { name: '--density-popover', type: 'css', default: '--density', description: 'Spacing multiplier for the panel padding.' },
-            { name: '--popover-offset', type: 'css', default: 'side-offset', description: 'Gap between trigger and panel. `side-offset` supplies it; set it on the content to override.' },
+            { name: '--popover-offset', type: 'css', default: 'side-offset', description: 'Gap between trigger and panel. `side-offset` supplies it; set it on `ge-popover-content::part(panel)` to override. Not inherited.' },
             { name: '--trigger-width', type: 'css', default: '-', description: 'Set on the open panel to the trigger\'s width, so it can match it with `width: var(--trigger-width)`.' },
         ],
     },

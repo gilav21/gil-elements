@@ -63,7 +63,7 @@ export function verticalNudge(panel: DOMRect, bounds: DOMRect): number {
     const down = bounds.top + EDGE_GAP - panel.top;
     if (panel.top < bounds.top) return down;
     // Moving up never goes past the point where the top edge meets the gap: a panel taller than the screen keeps its start.
-    return panel.bottom > bounds.bottom ? Math.max(bounds.bottom - EDGE_GAP - panel.bottom, down) : 0;
+    return panel.bottom > bounds.bottom ? Math.min(0, Math.max(bounds.bottom - EDGE_GAP - panel.bottom, down)) : 0;
 }
 
 /**

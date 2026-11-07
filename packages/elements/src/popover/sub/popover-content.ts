@@ -97,7 +97,12 @@ export class GePopoverContent extends UiElement {
         if (opened) this.onOpened();
         else if (closed) this.onClosed();
         else if (open && (changed.has('side') || changed.has('align') || changed.has('strategy') || changed.has('sideOffset'))) this.reset();
-        else if (open && this.strategy === 'fixed' && changed.has('placement') && (changed.get('placement') as Placement | undefined)?.side !== this.placement.side) this.place();
+        else if (open && this.flippedSince(changed)) this.place();
+    }
+
+    /** A fixed panel that just flipped is measured again from its new side; an absolute one is always judged from `reset()`. */
+    private flippedSince(changed: Map<PropertyKey, unknown>): boolean {
+        return this.strategy === 'fixed' && changed.has('placement') && (changed.get('placement') as Placement | undefined)?.side !== this.placement.side;
     }
 
     private onOpened(): void {
@@ -110,6 +115,7 @@ export class GePopoverContent extends UiElement {
 
     private onClosed(): void {
         cancelAnimationFrame(this.frame);
+        this.triggerWidth = undefined;
         this.stopTracking?.();
         this.stopTracking = undefined;
         // Focus that moved to another control belongs to the user; only reclaim it when it was lost with the panel.
@@ -154,7 +160,7 @@ export class GePopoverContent extends UiElement {
     private nextSide(current: Side, rect: DOMRect, anchor: DOMRect, bounds: DOMRect): Side {
         if (current !== 'top' && current !== 'bottom') return current;
         if (this.strategy === 'fixed') return flippedSideByRoom(current, rect, anchor, bounds, this.sideOffset);
-        // Judged from the preferred side every time, since no second pass follows a flip here.
+        // Every pass starts from `reset()`, which puts the panel back on the preferred side before it is measured; no second pass follows a flip here.
         return flippedSide(this.side as 'top' | 'bottom', rect, anchor, bounds);
     }
 
@@ -193,16 +199,15 @@ export class GePopoverContent extends UiElement {
     }
 
     private panelStyle(side: Side, nudge: number, nudgeY: number): string {
-        const width = this.triggerWidth ?? this.owner?.triggerRect()?.width;
+        const anchor = this.owner?.triggerRect();
+        const width = this.triggerWidth ?? anchor?.width;
         const vars = `--_offset:${this.sideOffset}px;` + (width === undefined ? '' : `--trigger-width:${width}px;`);
         const shift = nudge === 0 && nudgeY === 0 ? '' : `transform:translate(${nudge}px,${nudgeY}px);`;
-        return vars + shift + (this.strategy === 'fixed' ? this.fixedAnchor(side) : '');
+        return vars + shift + (this.strategy === 'fixed' && anchor ? this.fixedAnchor(side, anchor) : '');
     }
 
     /** Viewport coordinates the panel hangs from; the CSS `translate` for `data-side` and `data-align` moves it off that point. */
-    private fixedAnchor(side: Side): string {
-        const anchor = this.owner?.triggerRect();
-        if (!anchor) return '';
+    private fixedAnchor(side: Side, anchor: DOMRect): string {
         const vertical = side === 'top' || side === 'bottom';
         const along = { start: anchor.left, center: anchor.left + anchor.width / 2, end: anchor.right }[this.align];
         const left = vertical ? along : { left: anchor.left, right: anchor.right }[side];
