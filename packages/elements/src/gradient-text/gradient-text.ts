@@ -16,8 +16,8 @@ export type GradientDirection = 'to right' | 'to left' | 'to bottom' | 'to top';
  * @csspart text - The element that carries the gradient.
  */
 export class GeGradientText extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         colors: { attribute: false },
         speed: { type: Number },
         direction: { type: String },

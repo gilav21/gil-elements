@@ -8,7 +8,7 @@ import css from './input-group-text.css?inline';
  * @slot - The text.
  */
 export class GeInputGroupText extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

@@ -11,7 +11,7 @@ import css from './collapsible-content.css?inline';
  * @csspart base - The panel wrapper.
  */
 export class GeCollapsibleContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private collapsible?: CollapsibleHost;
 

@@ -33,8 +33,8 @@ const BASE_WIDTH = 40;
  * @csspart base - The bar.
  */
 export class GeDock extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         magnification: { type: Number },
         distance: { type: Number },
         position: { reflect: true },

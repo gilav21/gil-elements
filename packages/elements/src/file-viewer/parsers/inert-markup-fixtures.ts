@@ -114,7 +114,7 @@ function attributeViolations(element: Element, policy: InertPolicy): string[] {
     const where = `<${element.localName}>`;
     for (const attribute of Array.from(element.attributes)) {
         const name = attribute.name.toLowerCase();
-        if (/^on/.test(name)) {
+        if (name.startsWith('on')) {
             violations.push(`${where}: event handler attribute ${name}`);
         } else if (name === 'style') {
             violations.push(...styleViolations(attribute.value, policy, where));

@@ -17,8 +17,8 @@ const defaultTrue = { fromAttribute: (value: string | null) => value !== 'false'
  * @csspart base - The text container.
  */
 export class GeStreamingText extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         text: { type: String },
         speed: { type: Number },
         showCursor: { attribute: 'show-cursor', converter: defaultTrue },

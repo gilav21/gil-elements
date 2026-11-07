@@ -27,9 +27,9 @@ const DASH = svg`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
  * @cssprop --density-checkbox - Size multiplier for this component; falls back to `--density`.
  */
 export class GeCheckbox extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static readonly formAssociated = true;
+    static override readonly properties = {
         checked: { type: Boolean, reflect: true },
         indeterminate: { type: Boolean, reflect: true },
         disabled: { type: Boolean, reflect: true },

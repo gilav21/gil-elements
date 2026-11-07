@@ -1,4 +1,5 @@
 :host {
+    -webkit-touch-callout: none;
     display: block;
     box-sizing: border-box;
     background-color: var(--card);
@@ -81,9 +82,6 @@
     border: 2px solid var(--background);
     border-radius: 9999px;
     box-sizing: border-box;
-}
-:host {
-    -webkit-touch-callout: none;
 }
 @media (pointer: coarse) {
     :host {

@@ -10,7 +10,7 @@ import css from './error-page-actions.css?inline';
  * @slot - Buttons or links.
  */
 export class GeErrorPageActions extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

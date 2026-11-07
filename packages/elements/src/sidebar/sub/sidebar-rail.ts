@@ -11,8 +11,8 @@ import css from './sidebar-rail.css?inline';
  * @csspart base - The `<button>`.
  */
 export class GeSidebarRail extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly properties = {
         label: {},
         side: { reflect: true },
     };

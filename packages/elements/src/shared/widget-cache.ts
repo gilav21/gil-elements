@@ -28,7 +28,7 @@ export class WidgetCache {
     /** Forgets every element whose id is not in `keep`. */
     prune(keep: Iterable<string>): void {
         const wanted = new Set(keep);
-        for (const id of [...this.entries.keys()]) if (!wanted.has(id)) this.entries.delete(id);
+        for (const id of this.entries.keys()) if (!wanted.has(id)) this.entries.delete(id);
     }
 
     forget(id: string): void {

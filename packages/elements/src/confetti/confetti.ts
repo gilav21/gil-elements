@@ -75,8 +75,8 @@ const DEFAULT_COLORS = ['#26ccff', '#a25afd', '#ff5e7e', '#88ff5a', '#fcff42', '
  * @slot - The content under the confetti.
  */
 export class GeConfetti extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         manualTrigger: { type: Boolean, attribute: 'manual-trigger', reflect: true },
         options: { attribute: false },
     };

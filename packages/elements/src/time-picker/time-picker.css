@@ -32,8 +32,6 @@ fieldset[aria-disabled='true'] {
 }
 fieldset[data-variant='outline'] {
     min-height: calc(2.25rem * var(--_d));
-}
-fieldset[data-variant='outline'] {
     background-color: color-mix(in oklab, var(--input) var(--input-surface-mix), transparent);
 }
 fieldset[data-variant='underline'] {

@@ -53,6 +53,7 @@
     inset: auto;
     margin: 0;
     overflow: visible;
+    translate: var(--_x, 0) var(--_y, 0);
 }
 .panel[data-strategy="fixed"]:is([data-side="top"], [data-side="bottom"])[data-align="center"] {
     --_x: -50%;
@@ -71,7 +72,4 @@
 }
 .panel[data-strategy="fixed"][data-side="right"] {
     --_x: var(--_gap);
-}
-.panel[data-strategy="fixed"] {
-    translate: var(--_x, 0) var(--_y, 0);
 }

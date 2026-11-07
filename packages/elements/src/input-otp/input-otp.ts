@@ -41,10 +41,10 @@ function parseSeparator(value: string | null): number[] {
  * @cssprop --density-input - Spacing multiplier for the slot size; falls back to `--density`.
  */
 export class GeInputOtp extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static readonly formAssociated = true;
+    static override readonly properties = {
         value: { reflect: true },
         maxLength: { type: Number, attribute: 'max-length' },
         separator: { converter: { fromAttribute: parseSeparator } },

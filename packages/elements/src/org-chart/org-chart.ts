@@ -24,8 +24,8 @@ import css from './org-chart.css?inline';
  * @csspart base - The chart container.
  */
 export class GeOrgChart extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         data: { attribute: false },
         layout: {},
         nodeWidth: { type: Number, attribute: 'node-width' },

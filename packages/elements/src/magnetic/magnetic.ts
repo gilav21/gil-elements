@@ -14,8 +14,8 @@ import css from './magnetic.css?inline';
  * @slot - The content that moves.
  */
 export class GeMagnetic extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         strength: { type: Number, reflect: true },
         radius: { type: Number, reflect: true },
         smoothing: { type: Number, reflect: true },

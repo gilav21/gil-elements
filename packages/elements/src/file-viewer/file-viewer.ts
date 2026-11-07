@@ -72,8 +72,8 @@ const ICON_FILE = icon(svg`<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 
  * @csspart frame - The bordered frame.
  */
 export class GeFileViewer extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         file: { attribute: false },
         src: {},
         type: {},

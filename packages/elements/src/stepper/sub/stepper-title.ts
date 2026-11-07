@@ -8,7 +8,7 @@ import css from './stepper-title.css?inline';
  * @slot - The text.
  */
 export class GeStepperTitle extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<span data-slot="stepper-title"><slot></slot></span>`;

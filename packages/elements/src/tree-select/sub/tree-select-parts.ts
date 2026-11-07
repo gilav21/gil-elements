@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - Usually a `ge-popover-trigger`.
  */
 export class GeTreeSelectTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
 
     override connectedCallback(): void {
         super.connectedCallback();
@@ -25,7 +25,7 @@ export class GeTreeSelectTrigger extends UiElement {
  * @slot - Usually a `ge-popover-content`.
  */
 export class GeTreeSelectContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
 
     override connectedCallback(): void {
         super.connectedCallback();

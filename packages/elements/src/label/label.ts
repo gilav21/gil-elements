@@ -16,8 +16,8 @@ let nextId = 0;
  * @attr {string} for - `id` of the control, looked up in the same tree as this element.
  */
 export class GeLabel extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { htmlFor: { attribute: 'for' } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { htmlFor: { attribute: 'for' } };
 
     declare htmlFor: string;
 

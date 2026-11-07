@@ -23,8 +23,8 @@ export interface ChartTooltipRow {
  * @csspart base - The tooltip surface.
  */
 export class GeChartTooltip extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         visible: { type: Boolean, reflect: true },
         x: { type: Number },
         y: { type: Number },

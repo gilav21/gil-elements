@@ -29,8 +29,8 @@ const ARROWS: Readonly<Record<StatCardTrend, string | null>> = {
  * @csspart card - The card surface.
  */
 export class GeStatCard extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         label: {},
         value: {},
         delta: {},

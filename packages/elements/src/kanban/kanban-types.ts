@@ -89,7 +89,7 @@ export interface KanbanHost extends HTMLElement {
     readonly draggedCardId: string | null;
     readonly columns: KanbanColumn[];
     getCardsForColumn(columnId: string, swimlaneId?: string): KanbanCard[];
-    startDrag(cardId: string, columnId: string): void;
+    startDrag(cardId: string): void;
     endDrag(): void;
     moveCard(cardId: string, toColumnId: string, newOrder: number, toSwimlaneId?: string): void;
     onAddCard(columnId?: string): void;

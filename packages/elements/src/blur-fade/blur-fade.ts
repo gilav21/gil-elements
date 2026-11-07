@@ -26,8 +26,8 @@ const FROM: Record<BlurFadeDirection, string> = {
  * @attr {boolean} in-view - Wait for the element to scroll into view. On by default; `in-view="false"` plays at once, which suits a container that is already visible, such as a dialog.
  */
 export class GeBlurFade extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         delay: { type: Number },
         duration: { type: Number },
         direction: { type: String },

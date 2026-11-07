@@ -14,9 +14,9 @@ export const INTERACTIVE = 'button, a[href], input, select, textarea, [role="but
  * @csspart base - The wrapper.
  */
 export abstract class GeActivator<Host> extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly properties = {
         ownsControl: { state: true },
     };
 

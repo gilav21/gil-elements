@@ -27,8 +27,8 @@ export interface AccordionItemHost {
  * @attr {boolean} skeleton - Shows a placeholder row instead of the item.
  */
 export class GeAccordionItem extends UiElement implements AccordionItemHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { reflect: true },
         heading: {},
         content: {},

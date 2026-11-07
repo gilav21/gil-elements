@@ -15,8 +15,8 @@ export type SidebarMenuSubButtonSize = 'sm' | 'md';
  * @csspart base - The `<a>`.
  */
 export class GeSidebarMenuSubButton extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         href: {},
         target: {},
         active: { type: Boolean, reflect: true },

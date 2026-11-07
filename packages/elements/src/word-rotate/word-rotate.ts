@@ -13,8 +13,8 @@ import css from './word-rotate.css?inline';
  * @csspart word - Each stacked word.
  */
 export class GeWordRotate extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         words: { attribute: false },
         duration: { type: Number },
         current: { state: true },

@@ -34,8 +34,8 @@ const PAD = 8;
  * @csspart base - The chart container.
  */
 export class GeFunnelChart extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         data: { attribute: false },
         percentageMode: { attribute: 'percentage-mode' },

@@ -9,7 +9,7 @@ import css from './result-detail.css?inline';
  * @slot - The detail content.
  */
 export class GeResultDetail extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

@@ -8,7 +8,7 @@ import css from './dialog-description.css?inline';
  * @slot - The text.
  */
 export class GeDialogDescription extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

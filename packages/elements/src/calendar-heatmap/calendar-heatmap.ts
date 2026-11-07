@@ -43,8 +43,8 @@ const weekdayOf = (ms: number): number => new Date(ms).getUTCDay();
  * @csspart base - The chart container.
  */
 export class GeCalendarHeatmap extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         data: { attribute: false },
         cellSize: { type: Number, attribute: 'cell-size' },
         fromColor: { attribute: 'from-color' },

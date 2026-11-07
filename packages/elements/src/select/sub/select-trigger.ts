@@ -18,9 +18,9 @@ import css from './select-trigger.css?inline';
  * @attr {boolean} fill - Take the width of the select instead of the width of the content.
  */
 export class GeSelectTrigger extends UiElement {
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         loading: { type: Boolean, reflect: true },
         skeleton: { type: Boolean, reflect: true },
         fill: { type: Boolean, reflect: true },

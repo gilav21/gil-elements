@@ -8,7 +8,7 @@ import css from './button-group-text.css?inline';
  * @slot - Text, optionally with an `<svg>` icon (sized to 1rem unless it sets its own size).
  */
 export class GeButtonGroupText extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<div class="text" part="base"><slot></slot></div>`;

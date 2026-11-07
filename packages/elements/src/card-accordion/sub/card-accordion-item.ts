@@ -20,8 +20,8 @@ const CHEVRON = html`<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" 
  * @csspart base - The card surface.
  */
 export class GeCardAccordionItem extends GeAccordionItem {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { ...GeAccordionItem.properties, description: {} };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { ...GeAccordionItem.properties, description: {} };
 
     declare description: string;
 

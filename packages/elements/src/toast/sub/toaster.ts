@@ -15,7 +15,7 @@ export type ToasterHorizontal = 'start' | 'center' | 'end';
  * @attr {'start' | 'center' | 'end'} horizontal - Horizontal anchor; `start` and `end` flip in RTL. Defaults to `end`.
  */
 export class GeToaster extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         css`
             :host {
@@ -60,7 +60,7 @@ export class GeToaster extends UiElement {
             }
         `,
     ];
-    static override properties = { vertical: { reflect: true }, horizontal: { reflect: true } };
+    static override readonly properties = { vertical: { reflect: true }, horizontal: { reflect: true } };
     declare vertical: ToasterVertical;
     declare horizontal: ToasterHorizontal;
 
@@ -89,7 +89,7 @@ export class GeToaster extends UiElement {
         this.requestUpdate();
         // A removed element fires no focusout or pointerleave: once the DOM settles, drop a focus hold whose element
         // is gone, and every hold once the stack is empty, or the next toast would be raised frozen.
-        void this.updateComplete.then(() => this.releaseStaleHolds());
+        this.updateComplete.then(() => this.releaseStaleHolds());
     };
 
     override connectedCallback(): void {

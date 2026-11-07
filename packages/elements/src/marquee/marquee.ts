@@ -21,8 +21,8 @@ export type MarqueeDirection = 'left' | 'right' | 'up' | 'down';
  * @slot - The items to scroll.
  */
 export class GeMarquee extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         direction: { type: String, reflect: true },
         speed: { type: Number, reflect: true },
         pauseOnHover: { type: Boolean, attribute: 'pause-on-hover', reflect: true },
@@ -67,15 +67,15 @@ export class GeMarquee extends UiElement {
         </div>`;
     }
 
-    private hold = (): void => {
+    private readonly hold = (): void => {
         if (this.pauseOnHover) this.animation?.pause();
     };
 
-    private release = (): void => {
+    private readonly release = (): void => {
         if (this.pauseOnHover) this.animation?.play();
     };
 
-    private scheduleSetup = (): void => {
+    private readonly scheduleSetup = (): void => {
         this.teardown();
         // The slotted items are laid out only after the first frame, and the loop distance is measured from them.
         this.frameId = requestAnimationFrame(() => {

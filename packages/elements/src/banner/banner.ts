@@ -23,8 +23,8 @@ export type BannerVariant = 'info' | 'warning' | 'success' | 'destructive';
  * @attr {string} close-label - Accessible name of the close button. Defaults to "Close".
  */
 export class GeBanner extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         variant: { reflect: true },
         message: {},
         dismissible: { type: Boolean, reflect: true },

@@ -170,7 +170,9 @@ shortcutBindings.registerComponent(
         defaultShortcut,
         category,
         scope: 'global' as const,
-        handler: () => void toast.info(`${description} pressed`),
+        handler: () => {
+            toast.info(`${description} pressed`);
+        },
     })),
 );
 document.body.append(document.createElement('ge-toaster'));
@@ -246,7 +248,10 @@ content.append(...demos.map(renderSection));
 const nav = document.getElementById('nav')!;
 let group = '';
 for (const d of demos) {
-    if (d.group !== group) nav.append(el('div', { class: 'nav-group' }, (group = d.group)));
+    if (d.group !== group) {
+        group = d.group;
+        nav.append(el('div', { class: 'nav-group' }, group));
+    }
     nav.append(el('a', { class: 'nav-link', href: `#${d.id}` }, d.name));
 }
 

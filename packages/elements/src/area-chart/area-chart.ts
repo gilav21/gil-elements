@@ -40,8 +40,8 @@ const seriesKey = (s: ChartSeries): string => s.id ?? s.name;
  * @csspart base - The chart container.
  */
 export class GeAreaChart extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         series: { attribute: false },
         curve: {},

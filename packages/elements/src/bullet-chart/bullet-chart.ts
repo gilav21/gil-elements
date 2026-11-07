@@ -20,8 +20,8 @@ const PAD = 4;
  * @csspart base - The container.
  */
 export class GeBulletChart extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         value: { type: Number },
         target: { type: Number },

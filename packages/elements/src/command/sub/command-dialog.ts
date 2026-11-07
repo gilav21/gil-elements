@@ -1,9 +1,9 @@
 import { html, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
-import { isEditable, matchesShortcut } from '../../shared/shortcut.js';
+import { isEditable } from '../../shared/shortcut.js';
 import { shortcutBindings, type ShortcutComponentHandle } from '../../shared/shortcut-bindings.js';
 
-export { matchesShortcut };
+export { matchesShortcut } from '../../shared/shortcut.js';
 
 /**
  * A command palette in a modal dialog. Project a `ge-command` into it. A global key combination toggles it, and
@@ -18,12 +18,12 @@ export { matchesShortcut };
  * @attr {boolean} no-shortcut - Drops the key binding; drive `open` yourself.
  */
 export class GeCommandDialog extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(`:host{display:contents;--command-group-px:0.5rem;--command-group-weight:500;--command-group-color:var(--muted-foreground);--command-item-px:0.5rem;--command-item-py:0.75rem}
 ge-dialog-content::part(panel){overflow:hidden;padding:0;box-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1),0 4px 6px -4px rgb(0 0 0 / 0.1)}`),
     ];
-    static override properties = {
+    static override readonly properties = {
         open: { type: Boolean, reflect: true },
         shortcut: {},
         noShortcut: { type: Boolean, attribute: 'no-shortcut' },

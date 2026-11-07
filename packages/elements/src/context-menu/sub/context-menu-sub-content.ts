@@ -17,7 +17,7 @@ const GAP = 4;
  * @slot - Items, labels, separators and further submenus.
  */
 export class GeContextMenuSubContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private sub?: MenuSubHost;
     private root?: ContextMenuHost;

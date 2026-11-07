@@ -37,8 +37,8 @@ export interface HoverCardPart extends HTMLElement {
  * @attr {boolean} open - Whether the card is showing. Hover, focus and touch drive it; `toggle()` does too.
  */
 export class GeHoverCard extends UiElement implements HoverCardHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         open: { type: Boolean, reflect: true },
     };
 

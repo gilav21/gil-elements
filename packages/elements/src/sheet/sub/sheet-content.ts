@@ -24,8 +24,8 @@ export type SheetSide = 'top' | 'bottom' | 'left' | 'right';
  * @csspart panel - The panel.
  */
 export class GeSheetContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         side: { reflect: true },
         heading: {},
         description: {},

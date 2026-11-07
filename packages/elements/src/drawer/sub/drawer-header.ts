@@ -8,7 +8,7 @@ import css from './drawer-header.css?inline';
  * @slot - A `ge-drawer-title` and a `ge-drawer-description`.
  */
 export class GeDrawerHeader extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

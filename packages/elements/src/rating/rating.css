@@ -1,6 +1,7 @@
 /* shadcn-angular rating: a row of star buttons over a visually hidden range input that carries focus and keys. */
 :host {
     display: inline-flex;
+    --_s: 1.25rem;
 }
 .row {
     display: inline-flex;
@@ -33,6 +34,8 @@
     margin: 0;
     padding: 0;
     border: 0;
+    width: var(--_s);
+    height: var(--_s);
     border-radius: calc(var(--radius) - 4px);
     background: transparent;
     font: inherit;
@@ -44,13 +47,8 @@
     width: 100%;
     height: 100%;
 }
-:host { --_s: 1.25rem; }
 :host([size="sm"]) { --_s: 1rem; }
 :host([size="lg"]) { --_s: 1.5rem; }
-.star {
-    width: var(--_s);
-    height: var(--_s);
-}
 .star.empty {
     color: color-mix(in oklab, var(--muted-foreground) 30%, transparent);
 }

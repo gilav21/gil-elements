@@ -11,7 +11,7 @@ import css from './stepper-content.css?inline';
  * @csspart base - The panel wrapper.
  */
 export class GeStepperContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private item?: StepperItemHost;
 

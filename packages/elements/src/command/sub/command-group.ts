@@ -10,13 +10,13 @@ import { COMMAND_REGISTER, type CommandHost } from '../command.js';
  * @attr {string} heading - Section label above the rows. It is not searched; only row values are.
  */
 export class GeCommandGroup extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(`:host{display:block;overflow:hidden;padding:0.25rem;color:var(--command-group-color,var(--foreground));font-weight:var(--command-group-weight,inherit);padding-inline:var(--command-group-px,0.25rem)}
 :host([hidden]){display:none}
 .heading{padding:0.375rem 0.5rem;font-size:0.75rem;line-height:1rem;font-weight:500;color:var(--muted-foreground)}`),
     ];
-    static override properties = { heading: {} };
+    static override readonly properties = { heading: {} };
 
     declare heading: string;
     private command?: CommandHost;

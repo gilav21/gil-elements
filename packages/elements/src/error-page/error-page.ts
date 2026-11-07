@@ -22,8 +22,8 @@ import css from './error-page.css?inline';
  * @csspart base - The page container.
  */
 export class GeErrorPage extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         code: { reflect: true },
         heading: {},
         description: {},

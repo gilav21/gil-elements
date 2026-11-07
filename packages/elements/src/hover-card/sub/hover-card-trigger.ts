@@ -15,7 +15,7 @@ import css from './hover-card-trigger.css?inline';
  * @csspart base - The focusable wrapper.
  */
 export class GeHoverCardTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     private card?: HoverCardHost;
 
     override connectedCallback(): void {

@@ -145,8 +145,8 @@ function nearestEdge(column: DOMRect, origin: DOMRect, x: number): number {
  * @cssprop --field-mapper-max-height - Height at which the lists scroll.
  */
 export class GeFieldMapper extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         start: { attribute: false },
         end: { attribute: false },
         links: { attribute: false },

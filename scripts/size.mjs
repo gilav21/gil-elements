@@ -20,7 +20,9 @@ for (const file of walk(root)) {
     const key = relative(root, file);
     const gz = gzipSync(readFileSync(file), { level: 9 }).length;
     const limit = budget[key];
-    const status = limit === undefined ? 'no budget' : gz <= limit ? 'ok' : 'OVER';
+    let status = 'ok';
+    if (limit === undefined) status = 'no budget';
+    else if (gz > limit) status = 'OVER';
     if (status !== 'ok') failed = true;
     console.log(`${key.padEnd(24)} ${String(gz).padStart(6)} B gzip   budget ${limit ?? '-'}   ${status}`);
 }

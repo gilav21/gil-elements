@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - The text.
  */
 export class GeDropdownMenuLabel extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(':host{display:block;padding:0.375rem 0.5rem;font-size:0.875rem;line-height:1.25rem;font-weight:600}'),
     ];

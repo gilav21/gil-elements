@@ -15,8 +15,8 @@ import { SPEED_DIAL_REGISTER, type SpeedDialHost } from '../speed-dial.js';
  * @attr {string} for - The id of the `ge-speed-dial` to open, for a dial that is not around this element.
  */
 export class GeSpeedDialContextTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
+    static override readonly properties = {
         forDial: { attribute: 'for' },
     };
 

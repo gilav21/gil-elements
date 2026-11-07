@@ -13,8 +13,8 @@ import css from './card-accordion-trigger.css?inline';
  * @cssprop --density-card-accordion - Spacing multiplier; falls back to `--density`.
  */
 export class GeCardAccordionTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
 
     private item?: AccordionItemHost;
 

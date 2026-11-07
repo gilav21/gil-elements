@@ -24,7 +24,7 @@ export interface TableHost extends HTMLElement {
  * `cell` or `gridcell` to match.
  */
 export class GeTable extends UiElement implements TableHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private readonly cells = new Set<HTMLElement & { requestUpdate(): void }>();
     private readonly roleObserver = new MutationObserver(() => {

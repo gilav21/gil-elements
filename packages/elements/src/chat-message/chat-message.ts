@@ -24,8 +24,8 @@ export type ChatSender = 'user' | 'assistant' | 'system';
  * @slot - Rich message content.
  */
 export class GeChatMessage extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         sender: { type: String, reflect: true },
         content: { type: String },
         avatarSrc: { type: String, attribute: 'avatar-src' },

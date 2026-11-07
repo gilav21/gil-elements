@@ -47,8 +47,8 @@ export interface ContextMenuPart extends HTMLElement {
  * @attr {boolean} open - Whether the menu is showing.
  */
 export class GeContextMenu extends UiElement implements ContextMenuHost {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
+    static override readonly properties = {
         open: { type: Boolean, reflect: true },
         items: { attribute: false },
         x: { state: true },

@@ -148,7 +148,7 @@ export class GeBarChartDrilldown extends GeChartBase {
     private readonly enter = (bar: Placed) => {
         this.hoverIndex = bar.index;
         this.tooltipPos = { x: bar.x + bar.width / 2 + 12, y: bar.y - 8 };
-        this.emit<ChartClickEvent<DrilldownDataPoint> | null>('bar-hover', { point: bar.data as DrilldownDataPoint, index: bar.index });
+        this.emit<ChartClickEvent<DrilldownDataPoint> | null>('bar-hover', { point: bar.data, index: bar.index });
     };
 
     private readonly leave = () => {
@@ -180,7 +180,7 @@ export class GeBarChartDrilldown extends GeChartBase {
 
     private barLabel(bar: Placed): string {
         const label = getPointAriaLabel(bar.data.name, bar.value);
-        return this.hasDrilldown(bar.data as DrilldownDataPoint) ? `${label}. Press Enter to drill down.` : label;
+        return this.hasDrilldown(bar.data) ? `${label}. Press Enter to drill down.` : label;
     }
 
     private barGroup(bar: Placed) {
@@ -211,7 +211,7 @@ export class GeBarChartDrilldown extends GeChartBase {
         return html`<div class="tooltip" data-flip=${this.tooltipPos.x > this.svgWidth * 0.7 ? '' : nothing} style=${`left:${this.tooltipPos.x}px;top:${this.tooltipPos.y}px`}>
             <div class="tip-name">${hovered.data.name}</div>
             <div class="tip-amount">${formatChartValue(hovered.value, { compact: true })}</div>
-            ${this.hasDrilldown(hovered.data as DrilldownDataPoint) ? html`<div class="hint">Click to drill down</div>` : nothing}
+            ${this.hasDrilldown(hovered.data) ? html`<div class="hint">Click to drill down</div>` : nothing}
         </div>`;
     }
 

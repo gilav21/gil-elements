@@ -14,8 +14,8 @@ import css from './sidebar-menu-sub-trigger.css?inline';
  * @csspart base - The `<button>`.
  */
 export class GeSidebarMenuSubTrigger extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
-    static override properties = { for: { reflect: true } };
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly properties = { for: { reflect: true } };
 
     /** The id of the controlled sub-menu. */
     declare for: string;

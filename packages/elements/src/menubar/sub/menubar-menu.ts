@@ -42,7 +42,7 @@ export interface MenubarMenuHost {
  * @slot - `ge-menubar-trigger` and `ge-menubar-content`.
  */
 export class GeMenubarMenu extends UiElement implements MenubarMenuRef, MenubarMenuHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private bar?: MenubarHost;
     private readonly parts = new Set<MenubarPart>();

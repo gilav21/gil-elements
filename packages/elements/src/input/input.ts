@@ -45,10 +45,10 @@ let nextId = 0;
  * @cssprop --density-input - Height and padding multiplier for this component; falls back to `--density`.
  */
 export class GeInput extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static readonly formAssociated = true;
+    static override readonly properties = {
         name: { reflect: true },
         value: {},
         type: { reflect: true },
@@ -180,29 +180,33 @@ export class GeInput extends UiElement {
 
     protected override render() {
         if (this.skeleton) return html`<span class="skeleton" part="skeleton" aria-hidden="true"></span>`;
-        if (this.floatingNeeded) {
-            return html`<div class="floating" data-slot="input-floating" data-variant=${this.variant}>
-                ${this.field(this.labelActive ? this.placeholder : '')}
-                <label
-                    for=${this.autoId}
-                    part="label"
-                    class=${this.labelActive ? 'floating-label active' : 'floating-label'}
-                    >${this.label}</label
-                >
-            </div>`;
-        }
-        if (this.containerNeeded) {
-            return html`<div class="container" data-slot="input-container" ?data-disabled=${this.isDisabled}>
-                ${this.prefix ? html`<span class="affix prefix">${this.prefix}</span>` : nothing}
-                ${this.field(this.placeholder, true)}
-                ${this.clearable && this.value
-                    ? html`<button type="button" tabindex="-1" class="clear" aria-label="Clear" @click=${this.clear}>${X}</button>`
-                    : nothing}
-                ${this.loading ? html`<div class="busy"><output class="spinner" aria-label="Loading">${RING}</output></div>` : nothing}
-                ${this.suffix && !this.loading ? html`<span class="affix suffix">${this.suffix}</span>` : nothing}
-            </div>`;
-        }
+        if (this.floatingNeeded) return this.renderFloating();
+        if (this.containerNeeded) return this.renderContainer();
         return this.field(this.placeholder);
+    }
+
+    private renderFloating() {
+        return html`<div class="floating" data-slot="input-floating" data-variant=${this.variant}>
+            ${this.field(this.labelActive ? this.placeholder : '')}
+            <label
+                for=${this.autoId}
+                part="label"
+                class=${this.labelActive ? 'floating-label active' : 'floating-label'}
+                >${this.label}</label
+            >
+        </div>`;
+    }
+
+    private renderContainer() {
+        return html`<div class="container" data-slot="input-container" ?data-disabled=${this.isDisabled}>
+            ${this.prefix ? html`<span class="affix prefix">${this.prefix}</span>` : nothing}
+            ${this.field(this.placeholder, true)}
+            ${this.clearable && this.value
+                ? html`<button type="button" tabindex="-1" class="clear" aria-label="Clear" @click=${this.clear}>${X}</button>`
+                : nothing}
+            ${this.loading ? html`<div class="busy"><output class="spinner" aria-label="Loading">${RING}</output></div>` : nothing}
+            ${this.suffix && !this.loading ? html`<span class="affix suffix">${this.suffix}</span>` : nothing}
+        </div>`;
     }
 
     private field(placeholder: string, inner = false) {

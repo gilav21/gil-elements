@@ -36,8 +36,8 @@ export function registerIcons(icons: Record<string, string>): void {
  * @csspart base - The `<svg>`.
  */
 export class GeIcon extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         name: { reflect: true },
         size: {},
         weight: {},

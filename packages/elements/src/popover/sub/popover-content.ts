@@ -31,8 +31,8 @@ interface Placement {
  * @cssprop --density-popover - Spacing multiplier for this component; falls back to `--density`.
  */
 export class GePopoverContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         side: { reflect: true },
         align: { reflect: true },
         sideOffset: { type: Number, attribute: 'side-offset' },

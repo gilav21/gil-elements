@@ -79,8 +79,8 @@ const MIN_EXTENT = 1;
  * @csspart base - The chart container.
  */
 export class GeBoxplot extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         groups: { attribute: false },
         orientation: { reflect: true },

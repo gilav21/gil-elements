@@ -35,9 +35,9 @@ const IME_KEY_CODE = 229;
  * @cssprop --density-chip-list - Spacing multiplier; falls back to `--density-badge`, then `--density`.
  */
 export class GeChipList extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static readonly formAssociated = true;
+    static override readonly properties = {
         placeholder: {},
         disabled: { type: Boolean, reflect: true },
         variant: { reflect: true },
@@ -165,7 +165,7 @@ export class GeChipList extends UiElement {
 
     private readonly onKeydown = (event: KeyboardEvent) => {
         // keyCode 229 is Safari: it fires the keydown that confirms a candidate after compositionend, with isComposing already false.
-        if (event.isComposing || event.keyCode === IME_KEY_CODE) return;
+        if (event.isComposing || Reflect.get(event, 'keyCode') === IME_KEY_CODE) return;
         if (event.key === 'Enter' || this.separatorKeys.includes(event.key)) {
             event.preventDefault();
             this.addChip(this.draft);

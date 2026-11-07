@@ -47,8 +47,8 @@ const CUMULATIVE_KEY = '__cumulative__';
  * @csspart base - The chart container.
  */
 export class GeComboChart extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         barSeries: { attribute: false },
         lineSeries: { attribute: false },
@@ -162,7 +162,7 @@ export class GeComboChart extends GeChartBase {
     private lines(): Line[] {
         const centres = this.centres;
         const scale = this.secondary;
-        const place = (values: (number | undefined)[]) => linePath(values.flatMap((v, ci) => (centres[ci] === undefined ? [] : [{ x: centres[ci]!, y: scale.scale(v as number) }])), 'linear');
+        const place = (values: (number | undefined)[]) => linePath(values.flatMap((v, ci) => (centres[ci] === undefined ? [] : [{ x: centres[ci], y: scale.scale(v as number) }])), 'linear');
         const explicit = this.lineSeries.map((s, i): Line => ({ key: s.id ?? s.name, name: s.name, color: getChartColor(this.barSeries.length + i, s.color), path: place(s.data.map((d) => d.value)) }));
         if (!this.showCumulative) return explicit;
         return [{ key: CUMULATIVE_KEY, name: this.cumulativeLabel, color: getChartColor(this.barSeries.length + explicit.length), path: place(this.cumulative) }, ...explicit];

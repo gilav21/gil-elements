@@ -52,8 +52,8 @@ export function applyMask(raw: string, mask: string, slotChar = '_', showMaskTyp
  * @slot - A `ge-input`, a `ge-input-group-input` or an `input`.
  */
 export class GeInputMask extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         mask: { type: String, reflect: true },
         slotChar: { type: String, attribute: 'slot-char', reflect: true },
         showMaskTyped: { type: Boolean, attribute: 'show-mask-typed', reflect: true },
@@ -135,7 +135,8 @@ export class GeInputMask extends UiElement {
     private caretAfter(caret: number, typed: string, masked: string): number {
         if (caret >= typed.length) return masked.length;
         const literals = this.literals();
-        const before = [...typed.slice(0, caret)].filter((char) => !literals.has(char)).length;
+        let before = 0;
+        for (const char of typed.slice(0, caret)) if (!literals.has(char)) before++;
         let seen = 0;
         for (let i = 0; i < masked.length; i++) {
             if (!literals.has(masked[i]!)) seen++;

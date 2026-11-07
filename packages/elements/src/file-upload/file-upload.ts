@@ -82,8 +82,8 @@ const REMOVE_ICON = html`<svg xmlns="http://www.w3.org/2000/svg" width="16" heig
  * @csspart dropzone - The dashed drop target.
  */
 export class GeFileUpload extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         accept: {},
         multiple: { converter: defaultTrue },
         maxFiles: { attribute: 'max-files', converter: nullableNumber },

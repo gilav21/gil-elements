@@ -28,7 +28,7 @@ const columnsFromAttribute = {
         if (Number.isFinite(count)) return count;
         try {
             const parsed: unknown = JSON.parse(value);
-            return parsed !== null && typeof parsed === 'object' ? (parsed as MasonryColumns) : DEFAULT_COLUMNS;
+            return parsed !== null && typeof parsed === 'object' ? parsed : DEFAULT_COLUMNS;
         } catch {
             return DEFAULT_COLUMNS;
         }
@@ -52,8 +52,8 @@ function shortestColumn(bottoms: readonly number[]): number {
  * @slot - The items.
  */
 export class GeMasonry extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         columns: { converter: columnsFromAttribute },
         gap: { type: Number },
     };

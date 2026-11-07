@@ -27,8 +27,8 @@ const LABEL_ROOM = 36;
  * @csspart base - The container.
  */
 export class GeGaugeChart extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { type: Number },
         min: { type: Number },
         max: { type: Number },

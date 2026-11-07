@@ -22,7 +22,7 @@ export interface NavigationMenuItemHost {
  * @slot - A `ge-navigation-menu-trigger` and `ge-navigation-menu-content`, or a `ge-navigation-menu-link`.
  */
 export class GeNavigationMenuItem extends UiElement implements NavigationMenuItemHost {
-    static override styles = [UiElement.styles, unsafeCSS(':host{position:relative;display:block}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{position:relative;display:block}')];
 
     private menu?: NavigationMenuHost;
     private readonly parts = new Set<ItemPart>();

@@ -5,6 +5,6 @@ import css from './dropdown-menu-sub-content.css?inline';
 
 /** The submenu panel (`role="menu"`) of a dropdown menu. */
 export class GeDropdownMenuSubContent extends GeMenuSubContent {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     protected readonly slotName = 'dropdown-menu-sub-content';
 }

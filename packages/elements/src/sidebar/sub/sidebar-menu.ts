@@ -8,7 +8,7 @@ import css from './sidebar-menu.css?inline';
  * @slot - The items.
  */
 export class GeSidebarMenu extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<ul data-slot="sidebar-menu"><slot></slot></ul>`;

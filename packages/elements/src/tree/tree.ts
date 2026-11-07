@@ -58,8 +58,8 @@ const HANDLED = new Set(['ArrowDown', 'ArrowUp', 'Enter', ' ', 'Home', 'End', '*
  * @attr {number} initial-expand-depth - Levels of `data` open on load: `0` none, `n` down to depth `n`, `-1` all. Re-applied whenever `data` changes.
  */
 export class GeTree extends UiElement implements TreeHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         selectable: { reflect: true },
         initialExpandDepth: { attribute: 'initial-expand-depth', type: Number },
         data: { attribute: false },
@@ -250,8 +250,8 @@ export class GeTree extends UiElement implements TreeHost {
     private expandOrDescend({ items, values, focused, index }: KeyContext): void {
         const item = items.find((candidate) => candidate.value === focused);
         if (!focused || !item?.hasChildren) return;
-        if (!this.isExpanded(focused)) this.toggleExpanded(focused);
-        else this.moveTo(values[index + 1]);
+        if (this.isExpanded(focused)) this.moveTo(values[index + 1]);
+        else this.toggleExpanded(focused);
     }
 
     private collapseOrAscend(items: GeTreeItem[], focused: string | null): void {

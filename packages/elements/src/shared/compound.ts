@@ -32,3 +32,8 @@ export function adoptChildren<Parent, Child extends HTMLElement>(
 export function byDocumentOrder(a: Node, b: Node): number {
     return a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
 }
+
+/** The parent in the tree a script sees: a shadow root's parent is its host, which `parentNode` does not give. */
+export function parentOf(node: Node): Node | null {
+    return node.parentNode ?? (node instanceof ShadowRoot ? node.host : null);
+}

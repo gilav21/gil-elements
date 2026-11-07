@@ -70,8 +70,8 @@ const newId = (): string => globalThis.crypto?.randomUUID?.() ?? `bento-${Date.n
  * @slot - Static `ge-bento-grid-item` cards.
  */
 export class GeBentoGrid extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         items: { attribute: false },
         renderItem: { attribute: false },
         cols: { type: Number },
@@ -491,7 +491,7 @@ export class GeBentoGrid extends UiElement {
         const deltaX = (clientX - state.startX) * (rtl ? -1 : 1);
         const rect = resizeRect(rtl ? flipForRtl(state.direction) : state.direction, deltaX, clientY - state.startY, state);
         const old = this.resizePreview;
-        if (old && old.cols === rect.cols && old.rows === rect.rows && old.x === rect.x && old.y === rect.y) return;
+        if (old?.cols === rect.cols && old.rows === rect.rows && old.x === rect.x && old.y === rect.y) return;
         this.resizePreview = { id: state.id, ...rect };
     }
 

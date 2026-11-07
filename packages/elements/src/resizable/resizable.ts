@@ -13,8 +13,8 @@ export type ResizableDirection = 'horizontal' | 'vertical';
  * @attr {'horizontal' | 'vertical'} direction - Axis the panels are laid out and resized along. Defaults to `horizontal`.
  */
 export class GeResizablePanelGroup extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { direction: { reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { direction: { reflect: true } };
     declare direction: ResizableDirection;
 
     constructor() {

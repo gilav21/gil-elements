@@ -14,8 +14,8 @@ import css from './flip-text.css?inline';
  * @csspart base - The inline-flex row of characters.
  */
 export class GeFlipText extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         text: { type: String },
         delay: { type: Number },
         duration: { type: Number },

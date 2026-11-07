@@ -45,8 +45,8 @@ const seriesKey = (s: XYZSeries): string => s.id ?? s.name;
  * @csspart base - The chart container.
  */
 export class GeBubbleChart extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         series: { attribute: false },
         minRadius: { type: Number, attribute: 'min-radius' },

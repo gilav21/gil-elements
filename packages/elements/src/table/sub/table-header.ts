@@ -3,7 +3,7 @@ import { UiElement } from '@gilav21/elements-base';
 
 /** The header row group. It sticks to the top of the table with an opaque background, so it stays while the body scrolls. */
 export class GeTableHeader extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         css`
             :host {

@@ -11,7 +11,7 @@ import css from './tooltip-content.css?inline';
  * @csspart bubble - The bubble.
  */
 export class GeTooltipContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     private tooltip?: TooltipHost;
 
     override connectedCallback(): void {

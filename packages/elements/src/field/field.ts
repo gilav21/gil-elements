@@ -29,8 +29,8 @@ export interface FieldHost extends HTMLElement {
  * @csspart field - The layout box.
  */
 export class GeField extends UiElement implements FieldHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { orientation: { reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { orientation: { reflect: true } };
 
     declare orientation: FieldOrientation;
     private readonly parts = new Set<FieldDescription>();

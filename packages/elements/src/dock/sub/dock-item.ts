@@ -11,8 +11,8 @@ import css from './dock-item.css?inline';
  * @csspart base - The square box that holds the icon.
  */
 export class GeDockItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         active: { type: Boolean, reflect: true },
         bouncing: { type: Boolean, reflect: true },
     };

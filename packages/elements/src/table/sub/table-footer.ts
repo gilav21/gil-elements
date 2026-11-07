@@ -3,7 +3,7 @@ import { UiElement } from '@gilav21/elements-base';
 
 /** The footer row group, with a muted background and a top border for totals rows. */
 export class GeTableFooter extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         css`
             :host {

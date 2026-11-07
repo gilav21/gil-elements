@@ -13,7 +13,7 @@ export type DrawerDirection = 'top' | 'bottom' | 'left' | 'right';
  * @fires open-change - When the user opens or closes it; `detail` is the new state.
  */
 export class GeDrawer extends GeDialog {
-    static override properties = {
+    static override readonly properties = {
         ...GeDialog.properties,
         direction: { reflect: true },
     };

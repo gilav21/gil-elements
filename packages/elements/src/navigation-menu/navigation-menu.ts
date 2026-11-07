@@ -55,8 +55,8 @@ function focusEntry(item: HTMLElement): void {
  * @cssprop --density-menu - Size multiplier for triggers, links and panels; falls back to `--density`.
  */
 export class GeNavigationMenu extends UiElement implements NavigationMenuHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { items: { attribute: false } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { items: { attribute: false } };
 
     declare items: NavigationMenuEntry[];
     private active?: HTMLElement;

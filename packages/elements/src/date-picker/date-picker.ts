@@ -23,7 +23,7 @@ const dateConverter = { fromAttribute: (value: string | null): Date | null => pa
  * @cssprop --density-picker - Spacing multiplier for the picker family; falls back to `--density`.
  */
 export class GeDatePicker extends PickerBase {
-    static override properties = { ...PickerBase.properties, date: { converter: dateConverter } };
+    static override readonly properties = { ...PickerBase.properties, date: { converter: dateConverter } };
 
     declare date: Date | null;
     private defaultDate: Date | null | undefined;

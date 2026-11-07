@@ -8,7 +8,7 @@ import css from './sheet-description.css?inline';
  * @slot - The text.
  */
 export class GeSheetDescription extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

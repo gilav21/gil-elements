@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - The description text.
  */
 export class GeDrawerDescription extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(':host{display:block;font-size:0.875rem;line-height:calc(1.25 / 0.875);color:var(--muted-foreground)}'),
     ];

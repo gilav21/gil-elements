@@ -8,7 +8,7 @@ import css from './alert-description.css?inline';
  * @slot - Description text or paragraphs.
  */
 export class GeAlertDescription extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

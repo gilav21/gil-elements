@@ -8,8 +8,8 @@ import css from './pagination-ellipsis.css?inline';
  * @attr {string} label - Screen-reader text. Defaults to "More pages".
  */
 export class GePaginationEllipsis extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         label: {},
     };
 

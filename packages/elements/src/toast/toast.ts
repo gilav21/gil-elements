@@ -23,8 +23,8 @@ import type { ToastVariant } from './toast-service.js';
  * @attr {string} locale - Locale id for the close button label; follows the page's `lang` when unset.
  */
 export class GeToast extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         variant: { reflect: true },
         heading: {},
         description: {},

@@ -30,8 +30,8 @@ const SPEED: Record<MeteorSpeed, number> = { slow: 0.5, medium: 1, fast: 2 };
  * @attr {string} color - Any CSS colour, `white` by default. It is resolved once against the element, so a `var(...)` token it inherits works. Trail and glow are alpha gradients of it.
  */
 export class GeMeteors extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         count: { type: Number, reflect: true },
         speed: { reflect: true },
         color: { reflect: true },

@@ -7,7 +7,7 @@ import { CELL_STYLES, GeTableCellBase } from './table-cell-base.js';
  * `role="presentation"` on a purely decorative filler cell.
  */
 export class GeTableHead extends GeTableCellBase {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         CELL_STYLES,
         css`

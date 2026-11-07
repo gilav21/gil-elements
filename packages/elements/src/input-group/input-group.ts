@@ -32,8 +32,8 @@ export interface InputGroupHost extends HTMLElement {
  * @cssprop --density-input - Height and padding multiplier for this component; falls back to `--density`.
  */
 export class GeInputGroup extends UiElement implements InputGroupHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         variant: { reflect: true },
         disabled: { type: Boolean, reflect: true },
         fieldFocused: { state: true },

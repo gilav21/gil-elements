@@ -25,8 +25,8 @@ const OFFSETS: Record<StaggerDirection, { x: number; y: number }> = {
  * @slot - The children to reveal.
  */
 export class GeStaggerChildren extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         delay: { type: Number },
         duration: { type: Number },
         direction: { reflect: true },

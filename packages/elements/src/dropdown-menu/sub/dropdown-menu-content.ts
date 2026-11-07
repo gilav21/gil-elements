@@ -15,8 +15,8 @@ import css from './dropdown-menu-content.css?inline';
  * @attr {string} align - Which edge lines up with the trigger: `start` (default), `center` or `end`. `start` and `end` follow the text direction.
  */
 export class GeDropdownMenuContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         align: { reflect: true },
     };
 

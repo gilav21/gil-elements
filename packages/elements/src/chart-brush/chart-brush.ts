@@ -27,8 +27,8 @@ const HANDLE = 6;
  * @csspart base - The container.
  */
 export class GeChartBrush extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         width: { type: Number },
         height: { type: Number },
         selection: { attribute: false },

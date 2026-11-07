@@ -32,10 +32,10 @@ const PAGE_STEPS = 10;
  * @cssprop --density-slider - Track and thumb size multiplier; falls back to `--density`.
  */
 export class GeSlider extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static readonly formAssociated = true;
+    static override readonly properties = {
         value: { type: Number, reflect: true },
         min: { type: Number },
         max: { type: Number },

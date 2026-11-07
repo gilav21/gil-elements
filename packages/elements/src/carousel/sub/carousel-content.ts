@@ -9,7 +9,7 @@ import { CAROUSEL_REGISTER, type CarouselHost } from '../carousel.js';
  * slides' gutter, so change `margin-inline-start` and the slides' `padding-inline-start` together.
  */
 export class GeCarouselContent extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         css`
             :host {

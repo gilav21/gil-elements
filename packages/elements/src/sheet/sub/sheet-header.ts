@@ -8,7 +8,7 @@ import css from './sheet-header.css?inline';
  * @slot - A `ge-sheet-title` and a `ge-sheet-description`.
  */
 export class GeSheetHeader extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

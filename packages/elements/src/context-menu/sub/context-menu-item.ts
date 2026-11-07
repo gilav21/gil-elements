@@ -10,8 +10,8 @@ import css from './context-menu-item.css?inline';
  * @attr {string} variant - `default` or `destructive`, which paints the row in the destructive colour.
  */
 export class GeContextMenuItem extends GeMenuItem<ContextMenuHost> {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { ...GeMenuItem.properties, variant: { reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { ...GeMenuItem.properties, variant: { reflect: true } };
     protected readonly registerEvent = CONTEXT_MENU_REGISTER;
     protected readonly slotName = 'context-menu-item';
 

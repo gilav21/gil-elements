@@ -6,7 +6,7 @@ import { UiElement } from '@gilav21/elements-base';
  * positioned and does not follow the open item, so place and show it yourself.
  */
 export class GeNavigationMenuIndicator extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(`:host{display:contents}
 .wrap{top:100%;z-index:1;display:flex;height:0.375rem;align-items:flex-end;justify-content:center;overflow:hidden}

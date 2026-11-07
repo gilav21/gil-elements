@@ -29,8 +29,8 @@ const NO_POINTER = -1000;
  * @attr {boolean} mouse-interaction - The pointer repels nearby particles. On by default (`="false"` turns it off). While on, the element captures pointer events, which can block clicks on content behind it; it has no effect on touch-only devices.
  */
 export class GeParticles extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         count: { type: Number, reflect: true },
         color: { type: String, reflect: true },
         speed: { type: Number, reflect: true },

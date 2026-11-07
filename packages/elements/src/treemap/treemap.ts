@@ -55,8 +55,8 @@ const DEPTH_FADE = 0.12;
  * @csspart base - The chart container.
  */
 export class GeTreemap extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         nodes: { attribute: false },
         groupPadding: { type: Number, attribute: 'group-padding' },

@@ -13,7 +13,7 @@ const STAR = svg`<path d="M80 0C80 0 84.2846 41.2925 101.496 58.504C118.707 75.7
  * @csspart svg - The star's drawing.
  */
 export class GeSparkles extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

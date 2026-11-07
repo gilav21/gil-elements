@@ -1,4 +1,4 @@
-import { html, unsafeCSS, type PropertyValues } from 'lit';
+import { html, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
 import { findParent } from '../../shared/compound.js';
 import { SORTABLE_REGISTER, type SortableHost } from '../sortable.js';
@@ -18,8 +18,8 @@ function prefersReducedMotion(): boolean {
  * @csspart base - The wrapper around the content.
  */
 export class GeSortableItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ghost: { type: Boolean, reflect: true },
     };
 
@@ -58,8 +58,7 @@ export class GeSortableItem extends UiElement {
         return this.parent?.indexOf(this) ?? -1;
     }
 
-    protected override updated(changed: PropertyValues<this>): void {
-        void changed;
+    protected override updated(): void {
         this.syncState();
     }
 

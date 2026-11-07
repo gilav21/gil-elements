@@ -9,7 +9,7 @@ import css from './kbd.css?inline';
  * @csspart base - The `<kbd>` element.
  */
 export class GeKbd extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<kbd part="base"><slot></slot></kbd>`;

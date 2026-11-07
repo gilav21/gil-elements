@@ -17,9 +17,9 @@ import css from './tabs-trigger.css?inline';
  * @cssprop --density-tabs - Padding multiplier; falls back to `--density`.
  */
 export class GeTabsTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly properties = {
         value: { reflect: true },
         disabled: { type: Boolean, reflect: true },
     };

@@ -30,8 +30,8 @@ export interface DialogPart extends HTMLElement {
  * @fires open-change - When the user opens or closes it; `detail` is the new state. Setting `open` yourself does not fire it.
  */
 export class GeDialog extends UiElement implements DialogHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         open: { type: Boolean, reflect: true },
     };
 

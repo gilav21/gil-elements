@@ -25,8 +25,8 @@ const GAP_MS = 300;
  * @csspart caret - The caret.
  */
 export class GeTypingAnimation extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         strings: { attribute: false },
         typeSpeed: { type: Number, attribute: 'type-speed' },
         deleteSpeed: { type: Number, attribute: 'delete-speed' },

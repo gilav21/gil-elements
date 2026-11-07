@@ -8,7 +8,7 @@ import css from './breadcrumb-separator.css?inline';
  * @slot - A custom divider, such as `/`. An svg is sized to 0.875rem.
  */
 export class GeBreadcrumbSeparator extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

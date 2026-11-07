@@ -28,8 +28,8 @@ export interface KanbanCardDialogSubmit {
  * @prop {{ name: string, avatar?: string }[]} assigneeOptions - Known assignees. Non-empty switches the field to a multi-select autocomplete that keeps each avatar.
  */
 export class GeKanbanCardDialog extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         locale: { attribute: false },
         haveLabels: { attribute: 'have-labels', converter: defaultTrue },
         haveAssignees: { attribute: 'have-assignees', converter: defaultTrue },
@@ -100,28 +100,28 @@ export class GeKanbanCardDialog extends UiElement {
         ];
     }
 
-    private onLabelAdded = (event: Event) => {
+    private readonly onLabelAdded = (event: Event) => {
         const text = (event as CustomEvent<string>).detail;
         this.formLabels = [...this.formLabels, { text, color: this.newLabelColor }];
     };
 
-    private onLabelRemoved = (event: Event) => {
+    private readonly onLabelRemoved = (event: Event) => {
         const text = (event as CustomEvent<string>).detail;
         this.formLabels = this.formLabels.filter((label) => label.text !== text);
     };
 
-    private onAssigneeAdded = (event: Event) => {
+    private readonly onAssigneeAdded = (event: Event) => {
         const name = (event as CustomEvent<string>).detail;
         const option = this.assigneeOptions.find((a) => a.name === name);
         this.formAssignees = [...this.formAssignees, option ?? { name }];
     };
 
-    private onAssigneeRemoved = (event: Event) => {
+    private readonly onAssigneeRemoved = (event: Event) => {
         const name = (event as CustomEvent<string>).detail;
         this.formAssignees = this.formAssignees.filter((a) => a.name !== name);
     };
 
-    private onAssigneeSelection = (event: Event) => {
+    private readonly onAssigneeSelection = (event: Event) => {
         const names = (event as CustomEvent<string[]>).detail;
         this.formAssignees = names.map((name) => this.formAssignees.find((a) => a.name === name) ?? this.assigneeOptions.find((a) => a.name === name) ?? { name });
     };

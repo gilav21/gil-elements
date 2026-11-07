@@ -68,8 +68,8 @@ const MAX_ORDINAL_TICKS = 8;
  * @csspart base - The chart container.
  */
 export class GeCandlestick extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         points: { attribute: false },
         axisMode: { attribute: 'axis-mode', reflect: true },

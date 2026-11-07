@@ -39,8 +39,8 @@ const PAD_AXIS = 70;
  * @csspart base - The chart container.
  */
 export class GeColumnRangeChart extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         data: { attribute: false },
         unit: {},

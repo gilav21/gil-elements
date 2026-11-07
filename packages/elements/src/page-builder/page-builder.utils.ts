@@ -14,7 +14,7 @@ interface PropertyDeclaration {
 
 /** The public properties of a custom element class: what Lit declares in `static properties`, minus internal state. */
 export function reflectInputs(tag: string): Array<{ name: string; declaredType: InputType | null }> {
-    const ctor = customElements.get(tag) as (CustomElementConstructor & { elementProperties?: Map<PropertyKey, PropertyDeclaration> }) | undefined;
+    const ctor: (CustomElementConstructor & { elementProperties?: Map<PropertyKey, PropertyDeclaration> }) | undefined = customElements.get(tag);
     if (!ctor?.elementProperties) return [];
     const inputs: Array<{ name: string; declaredType: InputType | null }> = [];
     for (const [key, options] of ctor.elementProperties) {

@@ -15,9 +15,9 @@ export type PaginationLinkSize = 'default' | 'sm' | 'lg' | 'icon';
  * @cssprop --density-button - Size multiplier; falls back to `--density`.
  */
 export class GePaginationLink extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly properties = {
         active: { type: Boolean, reflect: true },
         size: { reflect: true },
         disabled: { type: Boolean, reflect: true },

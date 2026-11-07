@@ -18,8 +18,8 @@ import css from './ripple.css?inline';
  * @slot - The content that ripples.
  */
 export class GeRipple extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         color: { type: String, reflect: true },
         duration: { type: Number, reflect: true },
         disabled: { type: Boolean, reflect: true },

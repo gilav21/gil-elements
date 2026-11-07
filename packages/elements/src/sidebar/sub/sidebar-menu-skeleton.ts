@@ -12,8 +12,8 @@ import css from './sidebar-menu-skeleton.css?inline';
  * @attr {number} seed - Picks the text bar's width from four, so a list of skeletons does not look uniform. Any integer works.
  */
 export class GeSidebarMenuSkeleton extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly properties = {
         hideIcon: { attribute: 'hide-icon', type: Boolean, reflect: true },
         variant: { reflect: true },
         seed: { type: Number },

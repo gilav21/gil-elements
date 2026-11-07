@@ -10,8 +10,8 @@ import css from './sidebar-menu-badge.css?inline';
  * @attr {boolean} announce - Lets assistive technology read the badge.
  */
 export class GeSidebarMenuBadge extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
-    static override properties = { announce: { type: Boolean, reflect: true } };
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly properties = { announce: { type: Boolean, reflect: true } };
 
     declare announce: boolean;
 

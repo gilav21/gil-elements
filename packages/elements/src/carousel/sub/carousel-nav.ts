@@ -82,8 +82,8 @@ export const NAV_STYLES = css`
 
 /** Shared by the previous and next buttons: `side` is where the button sits, `start` (left) or `end` (right). */
 export abstract class GeCarouselNav extends UiElement {
-    static override styles = [UiElement.styles, NAV_STYLES];
-    static override properties = { locale: {} };
+    static override readonly styles = [UiElement.styles, NAV_STYLES];
+    static override readonly properties = { locale: {} };
     declare locale: string | null;
     protected abstract readonly side: 'start' | 'end';
     private host?: CarouselHost;

@@ -161,7 +161,7 @@ export function parseTimeValue(value: string | null | undefined): TimeParts | nu
     const parts: TimeParts = {
         hours: Number.parseInt(match[1]!, 10),
         minutes: Number.parseInt(match[2]!, 10),
-        seconds: match[3] === undefined ? 0 : Number.parseInt(match[3]!, 10),
+        seconds: match[3] === undefined ? 0 : Number.parseInt(match[3], 10),
     };
 
     const valid =

@@ -86,8 +86,8 @@ export const CODE_BLOCK_THEMES: Record<string, CodeBlockTheme> = {
  * @csspart base - The outer surface.
  */
 export class GeCodeBlock extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         code: {},
         language: {},
         theme: { attribute: false },

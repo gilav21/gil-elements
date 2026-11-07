@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - The hint.
  */
 export class GeMenubarShortcut extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(':host{display:block;margin-inline-start:auto;font-size:0.75rem;line-height:1rem;letter-spacing:0.1em;color:var(--muted-foreground)}'),
     ];

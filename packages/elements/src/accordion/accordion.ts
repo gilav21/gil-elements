@@ -36,8 +36,8 @@ const defaultTrue = { fromAttribute: (attribute: string | null): boolean => attr
  * @attr {boolean} collapsible - In `single`, whether pressing the open item closes it. On unless set to `false`; ignored by `multiple`.
  */
 export class GeAccordion extends UiElement implements AccordionHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         type: { reflect: true },
         value: { converter: commaList },
         collapsible: { converter: defaultTrue, reflect: true },
