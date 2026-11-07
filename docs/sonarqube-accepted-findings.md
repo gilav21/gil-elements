@@ -27,8 +27,3 @@ bundle); the `typeof` guard is what makes the check safe.
 
 The listener sets are copied before iterating on purpose: a listener may unsubscribe or subscribe while the loop runs,
 and iterating the live set would skip or revisit entries.
-
-## typescript:S7747 (spread of an iterable in `for...of`) in `rich-text-editor/rich-text-editor.ts`
-
-`syncAddons` removes the addons that another addon `covers` from the `wanted` map while walking it. The walk runs over a
-copy so that removing an entry not yet visited cannot change which addons are processed.

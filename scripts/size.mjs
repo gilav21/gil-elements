@@ -9,7 +9,8 @@ import { fileURLToPath } from 'node:url';
 const root = fileURLToPath(new URL('../packages/elements/dist', import.meta.url));
 const budgetFile = fileURLToPath(new URL('../size-budget.json', import.meta.url));
 const update = process.argv.includes('--update');
-const STATIC_IMPORT = /(?:^|[;\n])\s*(?:import|export)\b[^;"'`]*?\bfrom\s*["'](\.[^"']+)["']|(?:^|[;\n])\s*import\s*["'](\.[^"']+)["']/g;
+// `from './x.js'` (import/export) and a bare `import './x.js'`; dynamic `import('./x.js')` has a parenthesis and does not match.
+const STATIC_IMPORT = /\b(?:from|import)\s*["'](\.[^"']+)["']/g;
 
 const gzipSize = (file) => gzipSync(readFileSync(file), { level: 9 }).length;
 const withHeadroom = (bytes) => Math.ceil((bytes * 1.05) / 10) * 10;
@@ -25,7 +26,7 @@ function* walk(dir) {
 function loadedBy(file, seen = new Set()) {
     if (seen.has(file)) return seen;
     seen.add(file);
-    for (const match of readFileSync(file, 'utf8').matchAll(STATIC_IMPORT)) loadedBy(resolve(dirname(file), match[1] ?? match[2]), seen);
+    for (const match of readFileSync(file, 'utf8').matchAll(STATIC_IMPORT)) loadedBy(resolve(dirname(file), match[1]), seen);
     return seen;
 }
 

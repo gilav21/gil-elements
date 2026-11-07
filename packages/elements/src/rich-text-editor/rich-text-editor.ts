@@ -663,15 +663,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
 
     private syncAddons(): void {
         if (!this.started) return;
-        const wanted = new Map(this.usedAddons);
-        for (const id of new Set(this.addons.split(/[\s,]+/).filter(Boolean))) {
-            const addon = GeRichTextEditor.addonRegistry.get(id);
-            if (addon) wanted.set(id, { addon });
-            else console.warn(`[ge-rich-text-editor] unknown addon "${id}": import its define module first.`);
-        }
-        for (const [id, entry] of [...wanted]) {
-            if (entry.addon.covers && this.optionsFor(id, entry) !== false) for (const covered of entry.addon.covers) wanted.delete(covered);
-        }
+        const wanted = this.wantedAddons();
         for (const [id, active] of this.activeAddons) {
             const entry = wanted.get(id);
             if (entry && this.optionsFor(id, entry) === active.options) continue;
@@ -683,6 +675,19 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
             if (resolved === false || this.activeAddons.has(id)) continue;
             this.activeAddons.set(id, { teardown: addon.setup(this, resolved), options: resolved });
         }
+    }
+
+    /** The used and listed addons, once per id; an enabled bundle stands in for the ids it covers. */
+    private wantedAddons(): Map<string, { addon: RichTextAddon; options?: unknown }> {
+        const wanted = new Map(this.usedAddons);
+        for (const id of new Set(this.addons.split(/[\s,]+/).filter(Boolean))) {
+            const addon = GeRichTextEditor.addonRegistry.get(id);
+            if (addon) wanted.set(id, { addon });
+            else console.warn(`[ge-rich-text-editor] unknown addon "${id}": import its define module first.`);
+        }
+        const bundles = [...wanted].filter(([id, entry]) => entry.addon.covers && this.optionsFor(id, entry) !== false);
+        for (const [, { addon }] of bundles) for (const covered of addon.covers ?? []) wanted.delete(covered);
+        return wanted;
     }
 
     private optionsFor(id: string, { addon, options }: { addon: RichTextAddon; options?: unknown }): unknown {
