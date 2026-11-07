@@ -157,9 +157,18 @@ export class GePopoverContent extends UiElement {
     /** The side to be on: a top or bottom panel flips when it overflows; a left or right one stays. */
     private nextSide(current: Side, rect: DOMRect, anchor: DOMRect, bounds: DOMRect): Side {
         if (current !== 'top' && current !== 'bottom') return current;
-        if (this.strategy === 'fixed') return flippedSideByRoom(current, rect, anchor, bounds, this.sideOffset);
+        if (this.strategy === 'fixed') return flippedSideByRoom(current, rect, anchor, bounds, this.drawnGap(current, rect, anchor));
         // Every pass starts from `reset()`, which puts the panel back on the preferred side before it is measured; no second pass follows a flip here.
         return flippedSide(this.side as 'top' | 'bottom', rect, anchor, bounds);
+    }
+
+    /**
+     * The gap actually drawn between trigger and panel, measured: `--popover-offset` on the panel part can differ from
+     * `side-offset`, and a flip decided on the wrong gap would flip back and forth. The vertical clamp is taken out first.
+     */
+    private drawnGap(side: 'top' | 'bottom', rect: DOMRect, anchor: DOMRect): number {
+        const shifted = rect.top - this.placement.nudgeY;
+        return Math.max(0, side === 'bottom' ? shifted - anchor.bottom : anchor.top - (shifted + rect.height));
     }
 
     /** A top-layer panel is positioned in viewport coordinates, so it has to follow the trigger when the page moves. */

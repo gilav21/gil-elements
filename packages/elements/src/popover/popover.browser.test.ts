@@ -210,6 +210,21 @@ describe('ge-popover', () => {
         expect(verticalNudge(new DOMRect(0, 10, 10, 100), bounds)).toBe(0);
     });
 
+    it('a fixed panel that fits on neither side settles, whatever gap is drawn, instead of flipping every frame', async () => {
+        const tall = '<div style="height:345px">tall</div>';
+        const page = await mount(`<div style="padding:383px 300px 0"><ge-popover><ge-popover-trigger><ge-button id="open">Open</ge-button></ge-popover-trigger><ge-popover-content strategy="fixed" side="bottom" side-offset="4">${tall}</ge-popover-content></ge-popover></div><style>ge-popover-content::part(panel){--popover-offset:30px}</style>`);
+        page.querySelector<HTMLElement>('#open')!.click();
+        const frames = async (n: number) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(() => r(null))); };
+        await frames(8);
+        const sides: (string | undefined)[] = [];
+        // Every frame: sampling every other one would land on the same side of an oscillation each time.
+        for (let i = 0; i < 8; i++) {
+            await frames(1);
+            sides.push(panel(page)!.dataset['side']);
+        }
+        expect(new Set(sides).size).toBe(1);
+    });
+
     it('fires open-change for user changes only, and close-on-scroll closes it when the page scrolls', async () => {
         const page = await mount(MARKUP('', 'height:2000px'));
         popover(page).setAttribute('close-on-scroll', '');
