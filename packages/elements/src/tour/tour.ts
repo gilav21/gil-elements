@@ -116,6 +116,18 @@ function hasHooks(step: TourStep): boolean {
     return !!step.when || !!step.beforeActivate || !!step.afterDeactivate || (step.targetTimeout ?? 0) > 0;
 }
 
+/**
+ * The elements that draw a box for `el`: itself, or, for a `display: contents` host such as `ge-button`, whose own
+ * rect is empty, the boxes of its children, shadow children and slotted content.
+ */
+function boxesOf(el: Element): Element[] {
+    const { display } = getComputedStyle(el);
+    if (display === 'none') return [];
+    if (display !== 'contents') return [el];
+    const children = el instanceof HTMLSlotElement ? el.assignedElements({ flatten: true }) : [...el.children, ...(el.shadowRoot?.children ?? [])];
+    return children.flatMap(boxesOf);
+}
+
 function isRendered(el: HTMLElement): boolean {
     let node: HTMLElement | null = el;
     while (node) {
@@ -592,7 +604,7 @@ export class GeTour extends UiElement {
 
         this.applyHighlight(el);
         this.currentTarget = el;
-        el.scrollIntoView({ block: 'center', inline: 'center', behavior: 'auto' });
+        (boxesOf(el)[0] ?? el).scrollIntoView({ block: 'center', inline: 'center', behavior: 'auto' });
         this.readRect(el);
         this.setupObservers(el);
         void this.settle(el);
@@ -631,8 +643,12 @@ export class GeTour extends UiElement {
     }
 
     private readRect(el: HTMLElement): void {
-        const r = el.getBoundingClientRect();
-        this.targetRect = { top: r.top, left: r.left, width: r.width, height: r.height, bottom: r.bottom, right: r.right };
+        const rects = boxesOf(el).map((box) => box.getBoundingClientRect());
+        const top = Math.min(...rects.map((r) => r.top));
+        const left = Math.min(...rects.map((r) => r.left));
+        const bottom = Math.max(...rects.map((r) => r.bottom));
+        const right = Math.max(...rects.map((r) => r.right));
+        this.targetRect = rects.length > 0 ? { top, left, width: right - left, height: bottom - top, bottom, right } : { top: 0, left: 0, width: 0, height: 0, bottom: 0, right: 0 };
     }
 
     private measureCard(): void {
@@ -646,7 +662,7 @@ export class GeTour extends UiElement {
     private setupObservers(el: HTMLElement): void {
         const onReposition = (): void => this.reposition(el);
         this.resizeObserver = new ResizeObserver(onReposition);
-        this.resizeObserver.observe(el);
+        for (const box of boxesOf(el)) this.resizeObserver.observe(box);
         addEventListener('scroll', onReposition, { passive: true, capture: true });
         addEventListener('resize', onReposition, { passive: true });
         this.removeReposition = () => {
