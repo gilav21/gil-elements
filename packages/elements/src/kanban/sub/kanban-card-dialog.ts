@@ -152,6 +152,10 @@ export class GeKanbanCardDialog extends UiElement {
         const adding = this.mode === 'add';
         const names = this.assigneeOptions.map((a) => a.name);
         const assigneeNames = this.formAssignees.map((a) => a.name);
+        const assigneeInput =
+            names.length > 0
+                ? html`<ge-autocomplete .options=${names} multiple placeholder=${l.assigneePlaceholder} .value=${assigneeNames} @value-change=${this.onAssigneeSelection}></ge-autocomplete>`
+                : html`<ge-chip-list placeholder=${l.assigneePlaceholder} .value=${assigneeNames} @chip-added=${this.onAssigneeAdded} @chip-removed=${this.onAssigneeRemoved}></ge-chip-list>`;
         const colors: Record<string, string> = {};
         for (const label of this.formLabels) colors[label.text] = label.color;
         return html`<ge-dialog ?open=${this.dialogOpen} @open-change=${(e: CustomEvent<boolean>) => (this.dialogOpen = e.detail)}>
@@ -197,9 +201,7 @@ export class GeKanbanCardDialog extends UiElement {
                     ${this.haveAssignees
                         ? html`<div class="field">
                               <ge-label>${l.assigneesLabel}</ge-label>
-                              ${names.length > 0
-                                  ? html`<ge-autocomplete .options=${names} multiple placeholder=${l.assigneePlaceholder} .value=${assigneeNames} @value-change=${this.onAssigneeSelection}></ge-autocomplete>`
-                                  : html`<ge-chip-list placeholder=${l.assigneePlaceholder} .value=${assigneeNames} @chip-added=${this.onAssigneeAdded} @chip-removed=${this.onAssigneeRemoved}></ge-chip-list>`}
+                              ${assigneeInput}
                           </div>`
                         : nothing}
                 </div>

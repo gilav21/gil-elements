@@ -90,13 +90,14 @@ export class GeToast extends UiElement {
 
     protected override render() {
         const countdown = this.showCountdown && this.countdownSeconds !== null;
+        const countdownLabel = countdown ? html`<span class="countdown">${`(${this.countdownSeconds}s)`}</span>` : nothing;
         return html`${this.loading ? html`<div class="spinner" data-slot="toast-spinner" aria-hidden="true"></div>` : nothing}
             <div class="body">
                 ${this.heading ? html`<div class="heading" data-slot="toast-title">${this.heading}</div>` : nothing}
                 ${this.description ? html`<div class="description" data-slot="toast-description">${this.description}</div>` : nothing}
             </div>
             ${this.actionLabel
-                ? html`<button class="action" type="button" @click=${() => this.dispatchEvent(new CustomEvent('action', { bubbles: true, composed: true }))}>${this.actionLabel}${countdown ? html`<span class="countdown">${`(${this.countdownSeconds}s)`}</span>` : nothing}</button>`
+                ? html`<button class="action" type="button" @click=${() => this.dispatchEvent(new CustomEvent('action', { bubbles: true, composed: true }))}>${this.actionLabel}${countdownLabel}</button>`
                 : nothing}
             <button class="close" type="button" aria-label=${this.text.close} @click=${() => this.emitClosed()}>
                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>

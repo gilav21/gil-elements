@@ -86,7 +86,13 @@ export class GeAccordionItem extends UiElement implements AccordionItemHost {
     }
 
     protected override render() {
-        return html`<div part="base" class="item" data-slot="accordion-item">${this.skeleton ? this.renderSkeleton() : this.heading ? this.renderQuick() : html`<slot></slot>`}</div>`;
+        return html`<div part="base" class="item" data-slot="accordion-item">${this.renderBody()}</div>`;
+    }
+
+    private renderBody() {
+        if (this.skeleton) return this.renderSkeleton();
+        if (this.heading) return this.renderQuick();
+        return html`<slot></slot>`;
     }
 
     private renderSkeleton() {

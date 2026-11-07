@@ -185,7 +185,7 @@ export class GeTimePicker extends UiElement {
         }
         const bounds = segmentBounds(kind, layout.hour12);
         const raw = this.rawOf(kind);
-        const shown = raw === null ? null : kind === 'hour' ? displayHour(raw, layout.hour12) : raw;
+        const shown = raw !== null && kind === 'hour' ? displayHour(raw, layout.hour12) : raw;
         return {
             kind,
             text: shown === null ? '' : segmentDisplay(shown, kind, layout),

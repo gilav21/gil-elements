@@ -12,6 +12,12 @@ interface PropertyDeclaration {
     state?: boolean;
 }
 
+function declaredInputType(type: unknown): InputType | null {
+    if (type === Number) return 'number';
+    if (type === Boolean) return 'boolean';
+    return null;
+}
+
 /** The public properties of a custom element class: what Lit declares in `static properties`, minus internal state. */
 export function reflectInputs(tag: string): Array<{ name: string; declaredType: InputType | null }> {
     const ctor: (CustomElementConstructor & { elementProperties?: Map<PropertyKey, PropertyDeclaration> }) | undefined = customElements.get(tag);
@@ -19,7 +25,7 @@ export function reflectInputs(tag: string): Array<{ name: string; declaredType: 
     const inputs: Array<{ name: string; declaredType: InputType | null }> = [];
     for (const [key, options] of ctor.elementProperties) {
         if (typeof key !== 'string' || options.state) continue;
-        inputs.push({ name: key, declaredType: options.type === Number ? 'number' : options.type === Boolean ? 'boolean' : null });
+        inputs.push({ name: key, declaredType: declaredInputType(options.type) });
     }
     return inputs;
 }

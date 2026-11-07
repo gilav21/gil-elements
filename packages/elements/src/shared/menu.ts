@@ -23,7 +23,8 @@ export function focusStep(menu: HTMLElement, from: EventTarget | null, step: 1 |
     const items = ownItems(menu);
     if (items.length === 0) return;
     const index = items.indexOf(from as HTMLElement);
-    const next = index === -1 ? (step === 1 ? 0 : items.length - 1) : (index + step + items.length) % items.length;
+    const wrapStart = step === 1 ? 0 : items.length - 1;
+    const next = index === -1 ? wrapStart : (index + step + items.length) % items.length;
     items[next]?.focus();
 }
 

@@ -3,8 +3,9 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { join, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const root = new URL('../packages/elements/dist', import.meta.url).pathname;
+const root = fileURLToPath(new URL('../packages/elements/dist', import.meta.url));
 const budget = JSON.parse(readFileSync(new URL('../size-budget.json', import.meta.url), 'utf8'));
 
 function* walk(dir) {
@@ -17,7 +18,7 @@ function* walk(dir) {
 
 let failed = false;
 for (const file of walk(root)) {
-    const key = relative(root, file);
+    const key = relative(root, file).replaceAll('\\', '/');
     const gz = gzipSync(readFileSync(file), { level: 9 }).length;
     const limit = budget[key];
     let status = 'ok';

@@ -191,6 +191,7 @@ export class GeLineChart extends GeChartBase {
         const rows = this.tooltipRows();
         const legend: ChartLegendItem[] = this.series.map((s, i) => ({ key: seriesKey(s), label: s.name, color: getChartColor(i, s.color) }));
         const hover = this.hoverIndex;
+        const tooltipHeading = hover === null ? undefined : this.categories[hover];
         return html`<div part="base" class="base" data-slot="line-chart" role="group" aria-label=${getChartSummary('Line chart', this.categories.length, this.heading)}>
             <svg
                 viewBox=${`0 0 ${this.svgWidth} ${this.height}`}
@@ -208,7 +209,7 @@ export class GeLineChart extends GeChartBase {
                       .visible=${hover !== null && rows.length > 0}
                       .x=${this.tooltipPos.x}
                       .y=${this.tooltipPos.y}
-                      .heading=${hover === null ? undefined : this.categories[hover]}
+                      .heading=${tooltipHeading}
                       .rows=${rows}
                       .flipX=${this.tooltipPos.x > this.svgWidth * 0.7}
                   ></ge-chart-tooltip>`

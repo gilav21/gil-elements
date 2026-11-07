@@ -180,6 +180,7 @@ export class GeBubbleChart extends GeChartBase {
     protected override render() {
         const rows = this.tooltipRows();
         const legend: ChartLegendItem[] = this.series.map((s, i) => ({ key: seriesKey(s), label: s.name, color: getChartColor(i, s.color) }));
+        const tooltipHeading = this.hovered === null ? undefined : this.series[this.hovered.s]?.name;
         return html`<div part="base" class="base" data-slot="bubble-chart" role="group" aria-label=${getChartSummary('Bubble chart', this.series.length, this.heading)}>
             <svg
                 viewBox=${`0 0 ${this.svgWidth} ${this.height}`}
@@ -197,7 +198,7 @@ export class GeBubbleChart extends GeChartBase {
                       .visible=${this.hovered !== null && rows.length > 0}
                       .x=${this.tooltipPos.x}
                       .y=${this.tooltipPos.y}
-                      .heading=${this.hovered === null ? undefined : this.series[this.hovered.s]?.name}
+                      .heading=${tooltipHeading}
                       .rows=${rows}
                       .flipX=${this.tooltipPos.x > this.svgWidth * 0.7}
                   ></ge-chart-tooltip>`

@@ -382,6 +382,7 @@ export class GeAutocomplete extends UiElement {
     protected override render() {
         const placeholder = this.placeholder ?? this.text.selectPlaceholder;
         const rtl = this.text.rtl ? 'rtl' : nothing;
+        const multiPlaceholder = this.selectedItems.length === 0 ? placeholder : '';
         return html`<ge-popover ?open=${this.isOpen} @open-change=${this.onOpenChange}>
             <ge-popover-trigger>
                 <div
@@ -395,7 +396,7 @@ export class GeAutocomplete extends UiElement {
                     @click=${this.onContainerClick}
                 >
                     ${this.multiple
-                        ? html`<div class="chips">${this.renderChips()}${this.renderInput('multi-input', this.selectedItems.length === 0 ? placeholder : '')}</div>`
+                        ? html`<div class="chips">${this.renderChips()}${this.renderInput('multi-input', multiPlaceholder)}</div>`
                         : html`<div class="single">${this.renderInput('single-input', placeholder)}${CHEVRON}</div>`}
                 </div>
             </ge-popover-trigger>

@@ -98,6 +98,7 @@ export class GeHoverCardContent extends UiElement {
     protected override render() {
         if (!this.card?.open) return nothing;
         const { side, nudge } = this.placement;
+        const description = this.description ? html`<p>${this.description}</p>` : nothing;
         return html`<div
             class="panel"
             part="panel"
@@ -109,7 +110,7 @@ export class GeHoverCardContent extends UiElement {
             @mouseenter=${this.onEnter}
             @mouseleave=${this.onLeave}
           >
-            ${this.heading ? html`<div class="simple" data-slot="hover-card-simple-content"><h4>${this.heading}</h4>${this.description ? html`<p>${this.description}</p>` : nothing}</div>` : nothing}
+            ${this.heading ? html`<div class="simple" data-slot="hover-card-simple-content"><h4>${this.heading}</h4>${description}</div>` : nothing}
             <slot></slot>
           </div>`;
     }

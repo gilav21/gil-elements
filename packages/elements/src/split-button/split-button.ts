@@ -192,7 +192,10 @@ export class GeSplitButton extends UiElement implements SplitButtonHost {
         event.preventDefault();
         const rows = this.rows();
         const current = this.focusedRow(rows);
-        const next = event.key === 'ArrowDown' ? (current < rows.length - 1 ? current + 1 : 0) : (current > 0 ? current - 1 : rows.length - 1);
+        const down = event.key === 'ArrowDown';
+        const downNext = current < rows.length - 1 ? current + 1 : 0;
+        const upNext = current > 0 ? current - 1 : rows.length - 1;
+        const next = down ? downNext : upNext;
         rows[next]?.focus();
     };
 
@@ -235,10 +238,8 @@ export class GeSplitButton extends UiElement implements SplitButtonHost {
                 @keydown=${this.onToggleKeydown}
                 >${CHEVRON(this.open)}</ge-button
             >
-            ${hasItems
-                ? this.open
-                    ? html`<div class="menu ${this.above ? 'above' : 'below'}" role="menu" tabindex="-1">${this.items.map((item) => this.dataRow(item))}</div>`
-                    : nothing
+            ${hasItems && this.open
+                ? html`<div class="menu ${this.above ? 'above' : 'below'}" role="menu" tabindex="-1">${this.items.map((item) => this.dataRow(item))}</div>`
                 : nothing}
         </div>`;
     }

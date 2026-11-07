@@ -11,7 +11,7 @@ textarea {
     padding-inline: calc(0.75rem * var(--_d));
     padding-block: calc(0.5rem * var(--_d));
     min-height: calc(3rem * var(--_d));
-    border: 0 solid var(--input);
+    border: 1px solid var(--input);
     border-radius: calc(var(--radius) - 2px);
     background-color: transparent;
     box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
@@ -42,9 +42,6 @@ textarea:disabled {
 }
 
 /* outline (default) */
-textarea {
-    border-width: 1px;
-}
 textarea:focus-visible {
     box-shadow: 0 0 0 1px var(--ring), 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
 }

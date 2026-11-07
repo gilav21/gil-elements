@@ -148,10 +148,14 @@ export class GePieChart extends UiElement {
             @click=${(event: Event) => this.onSliceClick(event, slice)}
             @keydown=${(event: KeyboardEvent) => this.onSliceKey(event, slice)}>
             <path d=${slice.path} fill=${slice.color} transform-origin="0 0" data-hover=${hover === slice.index ? '' : nothing} />
-            ${this.showLabels && slice.percentage >= 5
-                ? svg`<text class="percent" data-light=${this.isLight(slice.color) ? '' : nothing} x=${slice.centroid.x} y=${slice.centroid.y} text-anchor="middle" dominant-baseline="middle">${this.percent(slice.percentage)}</text>`
-                : nothing}
+            ${this.percentLabel(slice)}
         </g>`;
+    }
+
+    private percentLabel(slice: PieSlice) {
+        if (!this.showLabels || slice.percentage < 5) return nothing;
+        const light = this.isLight(slice.color) ? '' : nothing;
+        return svg`<text class="percent" data-light=${light} x=${slice.centroid.x} y=${slice.centroid.y} text-anchor="middle" dominant-baseline="middle">${this.percent(slice.percentage)}</text>`;
     }
 
     private legend(entries: PieSlice[]) {

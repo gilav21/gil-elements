@@ -155,7 +155,10 @@ export class GeBoxplot extends GeChartBase {
         const all = items.flatMap(({ stats }) => [stats.min, stats.max, stats.q1, stats.q3, ...stats.outliers]);
         const range = extent(all);
         const domain = range ? niceDomain(range[0], range[1], 5) : ([0, 1] as [number, number]);
-        const values = linearScale(domain, vertical ? [a.bottom, a.top] : rtl ? [a.right, a.left] : [a.left, a.right]);
+        let valueRange: [number, number] = [a.left, a.right];
+        if (vertical) valueRange = [a.bottom, a.top];
+        else if (rtl) valueRange = [a.right, a.left];
+        const values = linearScale(domain, valueRange);
         const keys = items.map((...[, i]) => String(i));
         const bands = bandScale(vertical && rtl ? [...keys].reverse() : keys, vertical ? [a.left, a.right] : [a.top, a.bottom], BAND_PADDING_INNER, BAND_PADDING_OUTER);
         const band = Math.abs(bands.bandwidth);

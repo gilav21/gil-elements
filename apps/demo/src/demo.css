@@ -61,7 +61,7 @@ section.component > p.lede { margin: 0 0 1.5rem; color: var(--muted-foreground);
 }
 .code pre { margin: 0; padding: 0.9rem 1rem; font: 12px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr; text-align: left; }
 .code .copy { position: absolute; top: 0.4rem; inset-inline-end: 0.4rem; }
-table.api { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+table.api { width: 100%; border-collapse: collapse; font-size: 0.8rem; min-width: 32rem; margin-bottom: 0.75rem; }
 table.api th, table.api td { text-align: start; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 table.api code { font: 12px ui-monospace, monospace; }
 h4.api-title { margin: 1.5rem 0 0.5rem; font-size: 0.95rem; }
@@ -87,4 +87,3 @@ code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; direction: ltr
 }
 
 .table-scroll { display: block; }
-table.api { min-width: 32rem; margin-bottom: 0.75rem; }

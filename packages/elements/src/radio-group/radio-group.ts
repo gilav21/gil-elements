@@ -27,9 +27,9 @@ const BACKWARD = new Set(['ArrowUp', 'ArrowLeft']);
  * @cssprop --density-radio - Size multiplier for the items; falls back to `--density`.
  */
 export class GeRadioGroup extends UiElement implements RadioGroupHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static readonly formAssociated = true;
+    static override readonly properties = {
         name: { reflect: true },
         value: { reflect: true },
         orientation: { reflect: true },

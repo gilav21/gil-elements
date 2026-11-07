@@ -43,12 +43,10 @@ export class GeAlert extends UiElement {
     // safely during construction or server rendering.
     protected override render() {
         const destructive = this.variant === 'destructive';
+        const description = this.description ? html`<div class="description" part="description">${this.description}</div>` : nothing;
         return html`<div class="icon"><slot name="icon"></slot></div>
             <div class="body" role=${destructive ? 'alert' : 'status'} aria-live=${destructive ? 'assertive' : 'polite'}>
-                ${this.heading
-                    ? html`<div class="title" part="title">${this.heading}</div>
-                          ${this.description ? html`<div class="description" part="description">${this.description}</div>` : nothing}`
-                    : nothing}
+                ${this.heading ? html`<div class="title" part="title">${this.heading}</div>${description}` : nothing}
                 <slot></slot>
             </div>`;
     }

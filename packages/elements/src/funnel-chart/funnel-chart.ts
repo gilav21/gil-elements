@@ -141,6 +141,7 @@ export class GeFunnelChart extends GeChartBase {
     protected override render() {
         const rows = this.tooltipRows();
         const hover = this.hoverIndex;
+        const tooltipHeading = hover === null ? undefined : this.data[hover]?.name;
         return html`<div part="base" class="base" data-slot="funnel-chart" role="group" aria-label=${getChartSummary('Funnel chart', this.data.length, this.heading)}>
             <svg viewBox=${`0 0 ${this.svgWidth} ${this.height}`} width="100%" height=${this.height}>${this.stages().map((s) => this.stage(s))}</svg>
             ${this.showTooltip
@@ -148,7 +149,7 @@ export class GeFunnelChart extends GeChartBase {
                       .visible=${hover !== null}
                       .x=${this.tooltipPos.x}
                       .y=${this.tooltipPos.y}
-                      .heading=${hover === null ? undefined : this.data[hover]?.name}
+                      .heading=${tooltipHeading}
                       .rows=${rows}
                   ></ge-chart-tooltip>`
                 : nothing}
