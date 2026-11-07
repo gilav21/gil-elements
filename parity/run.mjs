@@ -1,7 +1,9 @@
 // Visual parity: shadcn-angular's real Tailwind output vs the elements, per case item, in light and
 // dark, compared pixel by pixel. Usage: node parity/run.mjs [caseName ...]
-import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { availableParallelism } from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'vite';
 import { chromium } from 'playwright';
@@ -10,6 +12,8 @@ import pixelmatch from 'pixelmatch';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = `${here}out`;
+// Only failing cases write images, so anything left from an earlier run would read as a failure that still stands.
+rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
 const wanted = process.argv.slice(2);
@@ -32,7 +36,7 @@ if (process.env.PARITY_TW_ALL) {
     }
 }
 writeFileSync(`${out}/reference-source.html`, sourceCases.flatMap((c) => c.items.map((i) => i.ref)).join('\n'));
-execFileSync('npx', ['tailwindcss', '-i', `${here}reference.css`, '-o', `${out}/reference.out.css`], { stdio: 'ignore' });
+execFileSync(process.execPath, [fileURLToPath(new URL('../node_modules/@tailwindcss/cli/dist/index.mjs', import.meta.url)), '-i', `${here}reference.css`, '-o', `${out}/reference.out.css`], { stdio: 'ignore' });
 await build({
     configFile: false,
     root: here,
@@ -59,6 +63,31 @@ const shell = (theme, body, extraCss) =>
      [data-case]{display:block;width:max-content;max-width:100%;isolation:isolate;will-change:transform}
      /* ^ each case gets its own compositing layer, so antialiasing does not depend on what is stacked above it */
      </style></head><body>${body}</body></html>`;
+
+// What the fixed sleeps stood in for: the frame after an action (a scroll event, a focus), then every running finite
+// animation or transition in the document and in every shadow root, until none is left. Frozen (paused) animations are
+// not waited on, they never finish. Capped, so a page that never settles still gets its screenshot and a warning.
+const SETTLE_CAP_MS = 3000;
+const settle = async (page, why) => {
+    const settled = await page.evaluate(async (cap) => {
+        const frame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+        const roots = (root) => [root, ...[...root.querySelectorAll('*')].flatMap((el) => (el.shadowRoot ? roots(el.shadowRoot) : []))];
+        const running = () =>
+            roots(document)
+                .flatMap((root) => root.getAnimations())
+                .filter((a) => a.playState === 'running' && a.effect?.getComputedTiming().iterations !== Infinity);
+        const until = performance.now() + cap;
+        for (;;) {
+            await frame();
+            await frame();
+            const pending = running();
+            if (pending.length === 0) return true;
+            if (performance.now() > until) return false;
+            await Promise.race([Promise.all(pending.map((a) => a.finished.catch(() => {}))), new Promise((resolve) => setTimeout(resolve, cap))]);
+        }
+    }, SETTLE_CAP_MS);
+    if (!settled) console.warn(`parity: still animating ${SETTLE_CAP_MS} ms after ${why}`);
+};
 
 // Where the differing pixels sit (CSS px), so a failure from a machine you cannot screenshot is still locatable.
 const boundsOfDiff = (d) => {
@@ -89,30 +118,65 @@ const deltaStats = (a, b) => {
     return `pixels ${count}, max channel delta ${max}, mean ${(sum / Math.max(count, 1)).toFixed(1)}`;
 };
 
-const browser = await chromium.launch();
+// Jobs (one page of one theme and side) are independent, so they run on a pool of Chromium processes: separate processes, not
+// contexts, so one worker's rasterisation cannot touch another's. PARITY_WORKERS=1 gives the old serial run.
+const WORKERS = Math.max(1, Number(process.env.PARITY_WORKERS) || Math.min(12, availableParallelism() - 2));
+const browsers = await Promise.all(Array.from({ length: WORKERS }, () => chromium.launch()));
 let failures = 0;
 let compared = 0;
 const report = [];
-for (const theme of ['light', 'dark']) {
-    const shots = { ref: new Map(), el: new Map() };
-    const rects = { ref: {}, el: {} };
-    // A case file marked `isolated` gets a page of its own: opening a menu moves focus into it, which scrolls the shared
-    // page, and every other case that measures itself on open would then measure at the wrong scroll position.
-    // The shared pages are also capped in size: past a few thousand pixels of height the same markup rasterises differently
-    // (a full run differed in text on whole components that pass alone, and a half run in the one that sits deepest), so
-    // cases are packed into pages of at most `PAGE_ITEMS` items.
-    const PAGE_ITEMS = 80;
-    const shared = [];
-    for (const c of cases.filter((c) => !c.isolated)) {
-        const last = shared.at(-1);
-        if (last && last.items + c.items.length <= PAGE_ITEMS) {
-            last.cases.push(c);
-            last.items += c.items.length;
-        } else shared.push({ cases: [c], items: c.items.length });
-    }
-    const groups = [...shared.map((g) => g.cases), ...cases.filter((c) => c.isolated).map((c) => [c])].filter((g) => g.length > 0);
-    for (const group of groups) for (const side of ['ref', 'el']) {
-        const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: group[0].width ?? 700, height: 900 } });
+// A case file marked `isolated` gets a page of its own: opening a menu moves focus into it, which scrolls the shared
+// page, and every other case that measures itself on open would then measure at the wrong scroll position.
+// The shared pages are also capped in size: past a few thousand pixels of height the same markup rasterises differently
+// (a full run differed in text on whole components that pass alone, and a half run in the one that sits deepest), so
+// cases are packed into pages of at most `PAGE_ITEMS` items.
+const PAGE_ITEMS = 80;
+const shared = [];
+for (const c of cases.filter((c) => !c.isolated)) {
+    const last = shared.at(-1);
+    if (last && last.items + c.items.length <= PAGE_ITEMS) {
+        last.cases.push(c);
+        last.items += c.items.length;
+    } else shared.push({ cases: [c], items: c.items.length });
+}
+const groups = [...shared.map((g) => g.cases), ...cases.filter((c) => c.isolated).map((c) => [c])].filter((g) => g.length > 0);
+
+const THEMES = ['light', 'dark'];
+const state = Object.fromEntries(THEMES.map((theme) => [theme, { shots: { ref: new Map(), el: new Map() }, rects: { ref: {}, el: {} } }]));
+
+// The reference side only changes when the Angular class strings, the reference CSS or this runner do, and it is half of
+// all the screenshots, so a page of it is kept on disk under a hash of everything it is rendered from.
+// PARITY_NO_CACHE=1 skips it (PARITY_DEBUG too, which needs the live style dumps).
+const runnerSource = readFileSync(fileURLToPath(import.meta.url));
+const cacheRoot = `${here}.cache/ref`;
+const useCache = !process.env.PARITY_NO_CACHE && !process.env.PARITY_DEBUG;
+const usedCache = new Set();
+const refCacheDir = (browser, theme, group) =>
+    `${cacheRoot}/${createHash('sha256').update(JSON.stringify([browser.version(), process.platform, runnerSource.toString(), theme, group[0].width ?? 700, rows(group, 'ref'), referenceCss, tokens])).digest('hex').slice(0, 24)}`;
+
+function readCachedRefs(dir, shots) {
+    if (!existsSync(`${dir}/index.json`)) return null;
+    const keys = JSON.parse(readFileSync(`${dir}/index.json`, 'utf8'));
+    for (const key of keys) shots.set(key, readFileSync(`${dir}/${encodeURIComponent(key)}.png`));
+    return keys;
+}
+
+function writeCachedRefs(dir, shots, keys) {
+    mkdirSync(dir, { recursive: true });
+    for (const key of keys) writeFileSync(`${dir}/${encodeURIComponent(key)}.png`, shots.get(key));
+    // The index goes last: a run killed half way leaves a directory that reads as a miss.
+    writeFileSync(`${dir}/index.json`, JSON.stringify(keys));
+}
+
+async function renderJob(browser, theme, group, side) {
+    const { shots, rects } = state[theme];
+    const cacheDir = side === 'ref' && useCache ? refCacheDir(browser, theme, group) : null;
+    if (cacheDir) usedCache.add(cacheDir);
+    const cached = cacheDir && readCachedRefs(cacheDir, shots.ref);
+    if (cached) return cached;
+    const mine = [];
+    const page = await browser.newPage({ deviceScaleFactor: 2, viewport: { width: group[0].width ?? 700, height: 900 } });
+    try {
         // Every case sits on one tall page, below the 900px viewport, where collision handling would flip the panels. The
         // viewport height the elements read is raised so the case's own `overflow: hidden` wrapper is the box they stay in.
         const unbounded = `<script>Object.defineProperty(window, 'innerHeight', { get: () => 100000 });</script>`;
@@ -485,38 +549,50 @@ for (const theme of ['light', 'dark']) {
                 await handle.locator(focus).first().evaluate((target) => target.blur());
                 await handle.locator(focus).first().focus();
                 // Focus starts the ring and floating-label transitions; the reference page has nothing left to animate.
-                await page.waitForTimeout(400);
+                await settle(page, 'focus');
             }
             // A context menu opens at the pointer, in the top layer at viewport coordinates, so it is opened at an offset
             // inside the case once the case has been scrolled to the top of the viewport.
             // `scroll` brings the case to the top first and lets whatever follows the scroll (a tour's spotlight) settle.
             if ((await handle.getAttribute('data-scroll')) !== null) {
                 await handle.evaluate((c) => c.scrollIntoView({ block: 'start', behavior: 'instant' }));
-                await page.waitForTimeout(500);
+                await settle(page, 'scroll');
             }
             const show = await handle.getAttribute('data-show');
             if (show) {
                 await handle.evaluate((c) => c.scrollIntoView({ block: 'start', behavior: 'instant' }));
                 // The scroll event arrives a frame later, and a context menu closes on scroll.
-                await page.waitForTimeout(200);
+                await settle(page, 'scroll before the menu');
                 await handle.evaluate((c, at) => {
                     const rect = c.firstElementChild.getBoundingClientRect();
                     const [dx, dy] = at.split(',').map(Number);
                     // Offsets are from the padding edge, where an absolutely placed reference box measures them.
                     c.querySelector('ge-context-menu').show(rect.left + c.firstElementChild.clientLeft + dx, rect.top + c.firstElementChild.clientTop + dy);
                 }, show);
-                await page.waitForTimeout(300);
+                await settle(page, 'menu open');
                 await handle.evaluate((c) => {
                     for (const target of c.querySelectorAll('[data-hover-on-show]')) target.dispatchEvent(new MouseEvent('mouseenter'));
                 });
-                await page.waitForTimeout(400);
+                await settle(page, 'menu hover');
             }
             shots[side].set(key, await handle.screenshot({ animations: 'allow' }));
+            mine.push(key);
             if (show) await handle.evaluate((c) => c.querySelector('ge-context-menu').close());
         }
+        if (cacheDir) writeCachedRefs(cacheDir, shots.ref, mine);
+        return mine;
+    } finally {
         await page.close();
     }
-    for (const [key, refShot] of shots.ref) {
+}
+
+// Both sides of a page are compared as soon as the second is done, while the other workers keep rendering; the shots are
+// dropped after, since a full run holds thousands of 2x PNGs.
+function compareKeys(theme, keys) {
+    const { shots, rects } = state[theme];
+    for (const key of keys) {
+        const refShot = shots.ref.get(key);
+        if (!shots.el.has(key)) throw new Error(`no element screenshot for ${theme} ${key}`);
         const a = PNG.sync.read(refShot);
         const b = PNG.sync.read(shots.el.get(key));
         const same = a.width === b.width && a.height === b.height;
@@ -530,9 +606,15 @@ for (const theme of ['light', 'dark']) {
             if (diff > 0) where = boundsOfDiff(d);
             if (diff > 0 && process.env.PARITY_DEBUG) console.log(`${theme} ${key} ${deltaStats(a, b)}`);
         }
-        writeFileSync(`${out}/${theme}-${safe}-ref.png`, refShot);
-        writeFileSync(`${out}/${theme}-${safe}-el.png`, shots.el.get(key));
         compared++;
+        if (diff !== 0 || process.env.PARITY_KEEP) {
+            writeFileSync(`${out}/${theme}-${safe}-ref.png`, refShot);
+            writeFileSync(`${out}/${theme}-${safe}-el.png`, shots.el.get(key));
+        }
+        shots.ref.delete(key);
+        shots.el.delete(key);
+        delete rects.ref[key];
+        delete rects.el[key];
         if (diff !== 0) {
             failures++;
             if (process.env.PARITY_DEBUG && rects.ref[key] && rects.el[key]) {
@@ -543,7 +625,32 @@ for (const theme of ['light', 'dark']) {
         }
     }
 }
-await browser.close();
+
+const queue = THEMES.flatMap((theme) => groups.map((group) => ({ theme, group, left: 2, keys: [] })));
+const work = queue.flatMap((page) => ['ref', 'el'].map((side) => ({ page, side })));
+let next = 0;
+let failed = false;
+try {
+    await Promise.all(browsers.map(async (browser) => {
+        for (let job = work[next++]; job && !failed; job = work[next++]) {
+            const { page, side } = job;
+            try {
+                const keys = await renderJob(browser, page.theme, page.group, side);
+                if (side === 'ref') page.keys = keys;
+                if (--page.left === 0) compareKeys(page.theme, page.keys);
+            } catch (error) {
+                failed = true;
+                throw new Error(`${page.theme} ${side} page [${page.group.map((c) => c.name).join(', ')}]: ${error.message}`, { cause: error });
+            }
+        }
+    }));
+} finally {
+    await Promise.all(browsers.map((browser) => browser.close()));
+}
+// A full run knows every page it needs; what else is cached belongs to an older runner or reference, and is dropped.
+if (useCache && wanted.length === 0 && existsSync(cacheRoot)) {
+    for (const name of readdirSync(cacheRoot)) if (!usedCache.has(`${cacheRoot}/${name}`)) rmSync(`${cacheRoot}/${name}`, { recursive: true, force: true });
+}
 console.log(`${compared} comparisons, ${failures} differing`);
-if (report.length) console.log(report.join('\n'));
+if (report.length) console.log(report.sort((a, b) => THEMES.findIndex((t) => a.startsWith(t)) - THEMES.findIndex((t) => b.startsWith(t)) || a.localeCompare(b)).join('\n'));
 process.exit(failures === 0 ? 0 : 1);
