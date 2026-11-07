@@ -96,9 +96,9 @@ let nextId = 0;
  * @cssprop --density-picker - Spacing multiplier for the trigger; falls back to `--density`.
  */
 export class GeColorPicker extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static readonly formAssociated = true;
+    static override readonly properties = {
         value: { reflect: false },
         name: { reflect: true },
         presets: { converter: jsonList },
@@ -268,12 +268,7 @@ export class GeColorPicker extends UiElement {
 
     protected override willUpdate(changed: PropertyValues<this>): void {
         if (changed.has('disabled') && this.isDisabled) this.isOpen = false;
-        if (changed.has('value') && this.value) {
-            const parsed = parseColor(this.value);
-            if (parsed && formatHex(parsed, this.alpha || parsed.a === 0) !== this.currentColor) this.applyRgba(parsed);
-        }
-        // `value` always reads back as the hex the picker holds, whatever CSS colour was written.
-        if (this.value !== this.currentColor) this.value = this.currentColor;
+        this.syncValue(changed);
         if (changed.has('contrastBackground')) {
             const parsed = parseColor(this.contrastBackground);
             if (parsed) this.compareB = parsed;
@@ -283,6 +278,15 @@ export class GeColorPicker extends UiElement {
             if (loaded.length > 0) this.internalRecents = loaded;
         }
         if (!this.activeFormat || !this.formats.includes(this.activeFormat)) this.activeFormat = this.formats[0] ?? '';
+    }
+
+    private syncValue(changed: PropertyValues<this>): void {
+        if (changed.has('value') && this.value) {
+            const parsed = parseColor(this.value);
+            if (parsed && formatHex(parsed, this.alpha || parsed.a === 0) !== this.currentColor) this.applyRgba(parsed);
+        }
+        // `value` always reads back as the hex the picker holds, whatever CSS colour was written.
+        if (this.value !== this.currentColor) this.value = this.currentColor;
     }
 
     protected override updated(): void {

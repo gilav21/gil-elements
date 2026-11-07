@@ -10,6 +10,9 @@ export interface PropertyChange {
     value: unknown;
 }
 
+/** Text for an input's value: objects as JSON rather than `[object Object]`. */
+const displayText = (value: unknown): string => (typeof value === 'object' ? (JSON.stringify(value) ?? '') : `${value as string | number | boolean}`);
+
 const inputValue = (event: Event): string => (event.target as HTMLInputElement).value;
 /** What a number field holds: the number, or `null` when it is empty. */
 const numberValue = (event: Event): number | null => {
@@ -30,8 +33,8 @@ const numberValue = (event: Event): number | null => {
  * @attr {boolean} loading - Shows a placeholder while the widget's details are still being worked out. Visual only.
  */
 export class GePropertyEditor extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         item: { attribute: false },
         componentMeta: { attribute: false },
         loading: { type: Boolean, reflect: true },
@@ -101,7 +104,7 @@ export class GePropertyEditor extends UiElement {
             case 'select':
                 return html`<ge-select .options=${def.options ?? []} .value=${value ?? ''} placeholder=${`Select ${label}`} @value-change=${(e: CustomEvent) => this.emit(def.name, e.detail)}></ge-select>`;
             default:
-                return html`<input id=${id} class="text-input" type=${def.type === 'number' ? 'number' : 'text'} .value=${value === undefined || value === null ? '' : String(value)} @input=${(e: Event) => this.emit(def.name, def.type === 'number' ? numberValue(e) : inputValue(e))} />`;
+                return html`<input id=${id} class="text-input" type=${def.type === 'number' ? 'number' : 'text'} .value=${value === undefined || value === null ? '' : displayText(value)} @input=${(e: Event) => this.emit(def.name, def.type === 'number' ? numberValue(e) : inputValue(e))} />`;
         }
     }
 

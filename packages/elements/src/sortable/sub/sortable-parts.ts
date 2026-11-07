@@ -8,7 +8,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - The grip: an icon or text.
  */
 export class GeSortableHandle extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:inline-flex;touch-action:none;cursor:grab}:host(:active){cursor:grabbing}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:inline-flex;touch-action:none;cursor:grab}:host(:active){cursor:grabbing}')];
 
     override connectedCallback(): void {
         super.connectedCallback();
@@ -27,7 +27,7 @@ export class GeSortableHandle extends UiElement {
  * @slot - What the gap should show.
  */
 export class GeSortableGhost extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:none}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:none}')];
 
     override connectedCallback(): void {
         super.connectedCallback();
@@ -46,7 +46,7 @@ export class GeSortableGhost extends UiElement {
  * @slot - What the origin should show.
  */
 export class GeSortablePlaceholder extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:none}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:none}')];
 
     override connectedCallback(): void {
         super.connectedCallback();

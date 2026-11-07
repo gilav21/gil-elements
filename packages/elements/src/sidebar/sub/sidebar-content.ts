@@ -9,7 +9,7 @@ import css from './sidebar-content.css?inline';
  * @slot - The groups.
  */
 export class GeSidebarContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<ge-scroll-area data-slot="sidebar-content"><slot></slot></ge-scroll-area>`;

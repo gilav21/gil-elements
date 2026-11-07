@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - The text.
  */
 export class GeSelectLabel extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(':host{display:block;padding:0.375rem 0.5rem;font-size:0.75rem;line-height:1rem;color:var(--muted-foreground)}'),
     ];

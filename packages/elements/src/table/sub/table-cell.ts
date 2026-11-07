@@ -7,7 +7,7 @@ import { CELL_STYLES, GeTableCellBase } from './table-cell-base.js';
  * and on the matching `ge-table-head`. Its role is `cell` in a table and `gridcell` in a `grid` or `treegrid`.
  */
 export class GeTableCell extends GeTableCellBase {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         CELL_STYLES,
         css`

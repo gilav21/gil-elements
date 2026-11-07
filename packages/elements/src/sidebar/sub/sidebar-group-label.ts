@@ -8,7 +8,7 @@ import css from './sidebar-group-label.css?inline';
  * @slot - The label text.
  */
 export class GeSidebarGroupLabel extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<div class="label" data-slot="sidebar-group-label" ?data-collapsed=${this.collapsedState}><slot></slot></div>`;

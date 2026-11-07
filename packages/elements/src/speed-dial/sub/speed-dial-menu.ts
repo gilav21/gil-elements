@@ -29,8 +29,8 @@ const STRAIGHT = new Set(['up', 'down', 'left', 'right']);
  * @csspart base - The `role="group"` element.
  */
 export class GeSpeedDialMenu extends UiElement implements SpeedDialPart, SpeedDialMenuHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         label: {},
     };
 

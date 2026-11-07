@@ -34,8 +34,8 @@ export interface CarouselHost extends HTMLElement {
  * @attr {'horizontal' | 'vertical'} orientation - Scroll axis. Defaults to `horizontal`.
  */
 export class GeCarousel extends UiElement implements CarouselHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         orientation: { reflect: true },
         canScrollPrev: { state: true },
         canScrollNext: { state: true },

@@ -18,8 +18,8 @@ const easeOutCubic = (x: number): number => 1 - (1 - x) ** 3;
  * @attr {string} locale - BCP-47 tag for the digits' grouping and decimal separator; defaults to the page's `lang`, then `en`.
  */
 export class GeNumberTicker extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { type: Number },
         direction: { type: String },
         delay: { type: Number },

@@ -11,7 +11,7 @@ import { COMMAND_REGISTER, type CommandHost } from '../command.js';
  * @attr {string} aria-label - Accessible name of the listbox; give one when no visible label sits near it.
  */
 export class GeCommandList extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(`:host{display:block;max-height:200px;overflow-y:auto;overflow-x:hidden}
 @media (min-width:640px){:host{max-height:300px}}`),

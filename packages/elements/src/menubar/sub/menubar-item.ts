@@ -11,7 +11,7 @@ import css from './menubar-item.css?inline';
  * @cssprop --density-menu - Spacing multiplier for this component; falls back to `--density`.
  */
 export class GeMenubarItem extends GeMenuItem<MenubarMenuHost> {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     protected readonly registerEvent = MENUBAR_MENU_REGISTER;
     protected readonly slotName = 'menubar-item';
 

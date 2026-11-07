@@ -15,8 +15,8 @@ const WHITESPACE_RUN = /[ \t\n\r\f]+/;
  * @csspart base - The flex-wrapped word container; set text size, alignment or `justify-content` on the host or here.
  */
 export class GeTextReveal extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         text: { type: String, reflect: true },
         delay: { type: Number, reflect: true },
     };

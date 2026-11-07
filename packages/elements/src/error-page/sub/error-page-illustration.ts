@@ -9,7 +9,7 @@ import css from './error-page-illustration.css?inline';
  * @slot - An image or SVG.
  */
 export class GeErrorPageIllustration extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

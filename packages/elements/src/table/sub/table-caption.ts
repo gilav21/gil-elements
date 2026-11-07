@@ -3,7 +3,7 @@ import { UiElement } from '@gilav21/elements-base';
 
 /** A caption. It is a flex sibling of the row groups rather than a native `<caption>`, so it renders where you put it. */
 export class GeTableCaption extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         css`
             :host {

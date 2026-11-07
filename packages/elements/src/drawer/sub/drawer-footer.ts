@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - Buttons or other actions.
  */
 export class GeDrawerFooter extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:flex;flex-direction:column;gap:0.5rem;margin-top:auto;padding:1rem}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:flex;flex-direction:column;gap:0.5rem;margin-top:auto;padding:1rem}')];
 
     protected override render() {
         return html`<slot></slot>`;

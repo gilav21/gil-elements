@@ -59,9 +59,9 @@ function stepFor(key: string): number {
  * @attr {string} aria-label - Accessible name of the group of segments. Defaults to `Time`.
  */
 export class GeTimePicker extends UiElement {
-    static formAssociated = true;
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static readonly formAssociated = true;
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { reflect: true },
         locale: { reflect: true },
         withSeconds: { attribute: 'with-seconds', type: Boolean },

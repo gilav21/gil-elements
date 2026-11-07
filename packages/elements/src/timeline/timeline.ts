@@ -11,8 +11,8 @@ export type TimelineOrientation = 'vertical' | 'horizontal';
  * @attr {'vertical' | 'horizontal'} orientation - Direction the items are laid out. Defaults to vertical.
  */
 export class GeTimeline extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         orientation: { reflect: true },
     };
 

@@ -8,7 +8,7 @@ import css from './empty-description.css?inline';
  * @slot - Text, optionally with `<a>` links.
  */
 export class GeEmptyDescription extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

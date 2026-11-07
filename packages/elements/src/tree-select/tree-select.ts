@@ -45,9 +45,9 @@ function findNode(nodes: TreeNode[], key: string): TreeNode | null {
  * @csspart trigger - The combobox button (built-in trigger only).
  */
 export class GeTreeSelect extends GePopover {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static readonly formAssociated = true;
+    static override readonly properties = {
         ...GePopover.properties,
         nodes: { attribute: false },
         placeholder: {},

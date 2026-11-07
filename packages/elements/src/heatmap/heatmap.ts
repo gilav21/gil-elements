@@ -36,8 +36,8 @@ const LEGEND_STEPS = 5;
  * @csspart base - The chart container.
  */
 export class GeHeatmap extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         data: { attribute: false },
         maxCellSize: { type: Number, attribute: 'max-cell-size' },

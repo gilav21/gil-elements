@@ -12,7 +12,7 @@ import type { GeFieldLegend } from './field-legend.js';
  * @csspart set - The `<fieldset>`.
  */
 export class GeFieldSet extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private readonly fieldset = createRef<HTMLFieldSetElement>();
 

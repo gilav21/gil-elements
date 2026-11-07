@@ -18,8 +18,8 @@ import css from './chat-list.css?inline';
  * @slot - The messages.
  */
 export class GeChatList extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         autoScroll: { type: Boolean, attribute: 'auto-scroll', reflect: true },
     };
 

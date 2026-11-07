@@ -11,8 +11,8 @@ import css from './alert-dialog-action.css?inline';
  * @csspart base - The `<button>`.
  */
 export class GeAlertDialogAction extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
 
     private dialog?: DialogHost;
 

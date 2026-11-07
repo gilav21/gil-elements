@@ -8,7 +8,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - `ge-navigation-menu-item` elements.
  */
 export class GeNavigationMenuList extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(':host{display:flex;flex:1 1 0%;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.25rem;list-style:none}'),
     ];

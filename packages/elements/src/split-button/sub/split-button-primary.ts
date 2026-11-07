@@ -9,8 +9,8 @@ import { SPLIT_BUTTON_REGISTER, type SplitButtonHost } from '../split-button.js'
  * forwards its click as the split button's `primary-click`. Ignored while the split button has a `label`.
  */
 export class GeSplitButtonPrimary extends UiElement {
-    static override styles = [UiElement.styles, css`:host { display: contents; }`];
-    static override properties = { host: { state: true } };
+    static override readonly styles = [UiElement.styles, css`:host { display: contents; }`];
+    static override readonly properties = { host: { state: true } };
     declare host: SplitButtonHost | undefined;
 
     override connectedCallback(): void {

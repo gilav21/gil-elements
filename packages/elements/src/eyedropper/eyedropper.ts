@@ -30,9 +30,9 @@ type NativeEyeDropperConstructor = new () => NativeEyeDropper;
  * @csspart base - The inner `<button>`.
  */
 export class GeEyedropper extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly properties = {
         variant: { reflect: true },
         label: {},
         disabled: { type: Boolean, reflect: true },

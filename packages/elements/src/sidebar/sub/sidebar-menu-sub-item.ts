@@ -8,7 +8,7 @@ import css from './sidebar-menu-sub-item.css?inline';
  * @slot - A `ge-sidebar-menu-sub-button` and optionally an action.
  */
 export class GeSidebarMenuSubItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

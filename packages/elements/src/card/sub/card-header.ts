@@ -11,8 +11,8 @@ import css from './card-header.css?inline';
  * @attr {boolean} bordered - Draw a divider under the header and add matching bottom padding.
  */
 export class GeCardHeader extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { bordered: { type: Boolean, reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { bordered: { type: Boolean, reflect: true } };
 
     declare bordered: boolean;
 

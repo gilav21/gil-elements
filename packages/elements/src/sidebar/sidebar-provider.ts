@@ -25,8 +25,8 @@ const defaultTrue = { fromAttribute: (attribute: string | null): boolean => attr
  * @attr {string} storage-key - Where it is remembered. Defaults to `ge-sidebar:collapsed`.
  */
 export class GeSidebarProvider extends UiElement implements SidebarHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         persistCollapsed: { attribute: 'persist-collapsed', converter: defaultTrue },
         storageKey: { attribute: 'storage-key' },
         isOpen: { state: true },

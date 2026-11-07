@@ -11,8 +11,8 @@ import css from './navigation-menu-trigger.css?inline';
  * @slot - The label.
  */
 export class GeNavigationMenuTrigger extends UiElement {
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private item?: NavigationMenuItemHost;
 

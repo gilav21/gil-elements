@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - The glyph, usually an emoji or an icon.
  */
 export class GeTreeIcon extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:inline;margin-inline-end:0.5rem}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:inline;margin-inline-end:0.5rem}')];
 
     override connectedCallback(): void {
         super.connectedCallback();

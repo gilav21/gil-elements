@@ -5,6 +5,6 @@ import css from './menubar-sub-content.css?inline';
 
 /** The submenu panel (`role="menu"`) of a menubar menu. */
 export class GeMenubarSubContent extends GeMenuSubContent {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     protected readonly slotName = 'menubar-sub-content';
 }

@@ -15,8 +15,8 @@ import css from './accordion-trigger.css?inline';
  * @cssprop --density-accordion - Vertical padding multiplier; falls back to `--density`.
  */
 export class GeAccordionTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
 
     private item?: AccordionItemHost;
 

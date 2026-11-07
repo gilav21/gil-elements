@@ -38,8 +38,8 @@ export interface TabsHost {
  * @attr {string} value - The active tab. With `tabs` set and no value, the first tab is active.
  */
 export class GeTabs extends UiElement implements TabsHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { reflect: true },
         tabs: { attribute: false },
     };

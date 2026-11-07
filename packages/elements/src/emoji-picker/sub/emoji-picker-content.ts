@@ -44,8 +44,8 @@ export function filterCategories(query: string): EmojiCategory[] {
  * @csspart panel - The panel.
  */
 export class GeEmojiPickerContent extends GePopoverContent {
-    static override styles = [...GePopoverContent.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [...GePopoverContent.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GePopoverContent.properties,
         query: { state: true },
         active: { state: true },

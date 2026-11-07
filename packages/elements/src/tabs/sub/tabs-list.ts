@@ -12,8 +12,8 @@ import css from './tabs-list.css?inline';
  * @csspart base - The bar.
  */
 export class GeTabsList extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ariaLabel: { attribute: 'aria-label' },
         skeleton: { type: Boolean, reflect: true },
         skeletonCount: { type: Number, attribute: 'skeleton-count' },

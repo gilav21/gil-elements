@@ -8,7 +8,7 @@ import css from './sidebar-group-content.css?inline';
  * @slot - The group's content.
  */
 export class GeSidebarGroupContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<div class="content" data-slot="sidebar-group-content"><slot></slot></div>`;

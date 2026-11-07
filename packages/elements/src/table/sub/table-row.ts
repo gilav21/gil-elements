@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @attr {boolean} selected - Paints the selected background and sets `data-state="selected"`. Visual only: it does not manage a selection or set `aria-selected`.
  */
 export class GeTableRow extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         css`
             :host {
@@ -25,7 +25,7 @@ export class GeTableRow extends UiElement {
             }
         `,
     ];
-    static override properties = { selected: { type: Boolean, reflect: true } };
+    static override readonly properties = { selected: { type: Boolean, reflect: true } };
     declare selected: boolean;
 
     constructor() {

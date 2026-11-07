@@ -12,7 +12,7 @@ import css from './card-accordion.css?inline';
  * @cssprop --density-card-accordion - Spacing multiplier; falls back to `--density`.
  */
 export class GeCardAccordion extends GeAccordion {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<div class="card-accordion" data-slot="card-accordion"><slot></slot></div>`;

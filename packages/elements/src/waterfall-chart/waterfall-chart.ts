@@ -45,8 +45,8 @@ const PAD_EDGE = 12;
  * @csspart base - The chart container.
  */
 export class GeWaterfallChart extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         data: { attribute: false },
         showConnectors: { converter: defaultTrue, attribute: 'show-connectors' },

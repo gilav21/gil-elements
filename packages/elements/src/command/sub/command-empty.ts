@@ -9,7 +9,7 @@ import { COMMAND_REGISTER, type CommandHost } from '../command.js';
  * @slot - The message.
  */
 export class GeCommandEmpty extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(':host{display:block;padding-block:1.5rem;text-align:center;font-size:0.875rem;line-height:1.25rem;color:var(--muted-foreground)}:host([hidden]){display:none}'),
     ];

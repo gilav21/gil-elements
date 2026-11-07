@@ -6,7 +6,7 @@ import { UiElement } from '@gilav21/elements-base';
  * at once, such as `50%`. Its start gutter pairs with the track's negative margin, so keep them together.
  */
 export class GeCarouselItem extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         css`
             :host {

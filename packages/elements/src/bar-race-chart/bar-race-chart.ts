@@ -46,8 +46,8 @@ const rankFrame = (frame: ChartDataPoint[]): ChartDataPoint[] =>
  * @csspart base - The chart container.
  */
 export class GeBarRaceChart extends GeChartBase {
-    static override styles = [GeChartBase.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeChartBase.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeChartBase.properties,
         frames: { attribute: false },
         frameLabels: { attribute: false },

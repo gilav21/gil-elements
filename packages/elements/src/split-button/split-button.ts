@@ -53,8 +53,8 @@ const MENU_ROOM = 150;
  * @attr {string} dropdown-label - Accessible name of the toggle. Defaults to "More options".
  */
 export class GeSplitButton extends UiElement implements SplitButtonHost {
-    static override styles = [UiElement.styles, unsafeCSS(css), unsafeCSS(itemCss)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css), unsafeCSS(itemCss)];
+    static override readonly properties = {
         label: { reflect: true },
         items: { attribute: false },
         variant: { reflect: true },

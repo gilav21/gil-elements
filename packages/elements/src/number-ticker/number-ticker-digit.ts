@@ -13,8 +13,8 @@ const DIGIT = /^\d$/;
  * @attr {string} digit - The character to show.
  */
 export class GeNumberTickerDigit extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         digit: { type: String },
         previous: { state: true },
     };

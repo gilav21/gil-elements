@@ -12,8 +12,8 @@ import css from './aspect-ratio.css?inline';
  * @slot - The content that fills the box.
  */
 export class GeAspectRatio extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { ratio: { type: Number, reflect: true } };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { ratio: { type: Number, reflect: true } };
 
     declare ratio: number;
 

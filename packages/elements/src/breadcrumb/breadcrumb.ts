@@ -9,8 +9,8 @@ import css from './breadcrumb.css?inline';
  * @attr {string} aria-label - Name of the landmark. Defaults to "breadcrumb".
  */
 export class GeBreadcrumb extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ariaLabel: { attribute: 'aria-label' },
     };
 

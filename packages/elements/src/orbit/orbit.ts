@@ -16,8 +16,8 @@ import css from './orbit.css?inline';
  * @slot - What travels around.
  */
 export class GeOrbit extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         radius: { type: Number },
         duration: { type: Number },
         delay: { type: Number },

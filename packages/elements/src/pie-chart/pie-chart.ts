@@ -22,8 +22,8 @@ import css from './pie-chart.css?inline';
  * @csspart base - The chart container.
  */
 export class GePieChart extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         data: { attribute: false },
         size: { type: Number },
         innerRadius: { type: Number, attribute: 'inner-radius' },

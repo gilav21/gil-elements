@@ -189,7 +189,7 @@ export class ModalFocus {
         const previous = deepActive();
         this.returnTo = previous instanceof HTMLElement ? previous : undefined;
         // Elements the panel generated have not rendered their controls yet; there is nothing to focus until they have.
-        const pending = [...panel.querySelectorAll<HTMLElement & { updateComplete?: Promise<boolean> }>('*')].map((el) => el.updateComplete);
+        const pending = [...panel.querySelectorAll<HTMLElement & { updateComplete?: Promise<boolean> }>('*')].flatMap((el) => el.updateComplete ?? []);
         await Promise.all(pending);
         if (panel.isConnected) focusFirst(panel, panel);
     }

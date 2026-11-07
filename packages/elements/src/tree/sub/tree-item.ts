@@ -22,8 +22,8 @@ const tristate = {
  * @attr {boolean} has-nested - Forces the chevron on (`true`, for lazily loaded branches) or off (`false`); left unset the item counts its child items.
  */
 export class GeTreeItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { reflect: true },
         hasNested: { attribute: 'has-nested', converter: tristate },
         childCount: { state: true },

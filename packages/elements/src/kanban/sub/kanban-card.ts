@@ -1,6 +1,6 @@
-import { html, nothing, unsafeCSS, type PropertyValues } from 'lit';
+import { html, nothing, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
-import { findParent } from '../../shared/compound.js';
+import { findParent, parentOf } from '../../shared/compound.js';
 import { readableForeground } from '../../shared/color.js';
 import { onContextGesture, type ContextGesture } from '../../shared/touch.js';
 import { KANBAN_COLUMN_REGISTER, KANBAN_REGISTER, type KanbanCard, type KanbanColumnHost, type KanbanHost } from '../kanban-types.js';
@@ -42,7 +42,7 @@ function columnAbove(node: Element | null): GeKanbanColumn | undefined {
     let current: Node | null = node;
     while (current) {
         if (current instanceof Element && current.localName === 'ge-kanban-column') return current as GeKanbanColumn;
-        current = current.parentNode ?? (current instanceof ShadowRoot ? current.host : null);
+        current = parentOf(current);
     }
     return undefined;
 }
@@ -61,8 +61,8 @@ function columnAbove(node: Element | null): GeKanbanColumn | undefined {
  * @prop {KanbanCard} card - The card to draw.
  */
 export class GeKanbanCard extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         card: { attribute: false },
         cardId: { attribute: 'card-id' },
         hasCustomContent: { state: true },
@@ -72,7 +72,6 @@ export class GeKanbanCard extends UiElement {
     declare cardId: string;
     declare hasCustomContent: boolean;
     private kanban?: KanbanHost;
-    private column?: KanbanColumnHost;
     private stopGesture?: () => void;
     private touchDrag: TouchDrag | undefined;
     private touchEndedAt = 0;
@@ -89,7 +88,8 @@ export class GeKanbanCard extends UiElement {
         this.dataset.slot = 'kanban-card';
         this.draggable = true;
         this.kanban = findParent<KanbanHost, GeKanbanCard>(this, KANBAN_REGISTER);
-        this.column = findParent<KanbanColumnHost, GeKanbanCard>(this, KANBAN_COLUMN_REGISTER);
+        // The request is the registration: the column that answers it adopts this card.
+        findParent<KanbanColumnHost, GeKanbanCard>(this, KANBAN_COLUMN_REGISTER);
         this.kanban?.register(this);
         this.addEventListener('dragstart', this.onDragStart);
         this.addEventListener('dragend', this.onDragEnd);
@@ -109,15 +109,13 @@ export class GeKanbanCard extends UiElement {
         this.endTouch();
         this.kanban?.unregister(this);
         this.kanban = undefined;
-        this.column = undefined;
     }
 
     private get resolvedCardId(): string {
         return this.cardId || this.card?.id || '';
     }
 
-    protected override willUpdate(changed: PropertyValues<this>): void {
-        void changed;
+    protected override willUpdate(): void {
         const priority = this.card?.priority;
         if (priority) this.dataset.priority = priority;
         else delete this.dataset.priority;
@@ -129,11 +127,10 @@ export class GeKanbanCard extends UiElement {
     /** Puts the card id on the transfer as `text/plain` and tells the board a drag is in progress. */
     private readonly onDragStart = (event: DragEvent) => {
         const id = this.resolvedCardId;
-        const columnId = this.column?.columnId || this.card?.columnId || '';
         if (!event.dataTransfer || !id) return;
         event.dataTransfer.effectAllowed = 'move';
         event.dataTransfer.setData('text/plain', id);
-        this.kanban?.startDrag(id, columnId);
+        this.kanban?.startDrag(id);
     };
 
     private readonly onDragEnd = () => this.kanban?.endDrag();
@@ -174,8 +171,7 @@ export class GeKanbanCard extends UiElement {
     private lift(drag: TouchDrag): void {
         drag.timer = undefined;
         drag.lifted = true;
-        const columnId = this.column?.columnId || this.card?.columnId || '';
-        this.kanban?.startDrag(this.resolvedCardId, columnId);
+        this.kanban?.startDrag(this.resolvedCardId);
         drag.frozen = this.freezeScrolling();
         drag.ghost = this.makeGhost();
         this.moveGhost(drag);
@@ -188,9 +184,8 @@ export class GeKanbanCard extends UiElement {
      */
     private freezeScrolling(): TouchDrag['frozen'] {
         const frozen: TouchDrag['frozen'] = [];
-        let node: Node | null = this;
-        while (node) {
-            const parent: Node | null = node.parentNode ?? (node instanceof ShadowRoot ? node.host : null);
+        let parent = parentOf(this);
+        while (parent) {
             if (parent instanceof HTMLElement && parent !== document.body && parent !== document.documentElement) {
                 const { overflowX, overflowY } = getComputedStyle(parent);
                 if (/auto|scroll/.test(overflowX + overflowY)) {
@@ -198,7 +193,7 @@ export class GeKanbanCard extends UiElement {
                     parent.style.overflow = 'hidden';
                 }
             }
-            node = parent;
+            parent = parentOf(parent);
         }
         return frozen;
     }
@@ -297,7 +292,7 @@ export class GeKanbanCard extends UiElement {
         }, 0);
     }
 
-    private onSlotChange = (event: Event) => {
+    private readonly onSlotChange = (event: Event) => {
         const slot = event.target as HTMLSlotElement;
         this.hasCustomContent = slot.assignedElements().some((el) => el.localName === 'ge-kanban-card-content');
     };

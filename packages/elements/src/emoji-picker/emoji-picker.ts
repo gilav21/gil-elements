@@ -14,7 +14,7 @@ import { defaultTrue } from '../shared/chart/chart-base.js';
  * @fires open-change - The panel opened or closed by the user; `detail` is the new state.
  */
 export class GeEmojiPicker extends GePopover {
-    static override properties = {
+    static override readonly properties = {
         ...GePopover.properties,
         closeOnSelect: { attribute: 'close-on-select', converter: defaultTrue },
     };

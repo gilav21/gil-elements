@@ -16,8 +16,8 @@ const SHOWN_MS = 1500;
  * @slot - The thing to click.
  */
 export class GeCopyTo extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { type: String, reflect: true },
         locale: {},
     };

@@ -217,8 +217,8 @@ let nextId = 0;
  * @cssprop --density-sortable - Not used: the list adds no spacing of its own.
  */
 export class GeSortable extends UiElement implements SortableHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         items: { attribute: false },
         renderItem: { attribute: false },
         orientation: { reflect: true },
@@ -448,8 +448,8 @@ export class GeSortable extends UiElement implements SortableHost {
     protected override updated(changed: PropertyValues<this>): void {
         if (this.dataMode && (changed.has('items') || changed.has('renderItem') || changed.has('trackBy') || !this.dataRendered)) this.renderDataItems();
         this.toggleAttribute('data-receiving', this.foreignHover !== null);
-        if (this.rejectReason === null) this.removeAttribute('data-reject');
-        else this.setAttribute('data-reject', this.rejectReason);
+        if (this.rejectReason === null) delete this.dataset.reject;
+        else this.dataset.reject = this.rejectReason;
         this.syncGhost();
         this.checkDragIntegrity();
         if (changed.has('disabled') && this.disabled) this.liftedIndex = null;
@@ -474,9 +474,7 @@ export class GeSortable extends UiElement implements SortableHost {
     // ---- registry -----------------------------------------------------------------------------------------
 
     private buildRegistryEntry(): SortableRegistryEntry {
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        const self = this;
-        return {
+        return ((self: GeSortable): SortableRegistryEntry => ({
             get listId() {
                 return self.resolvedListId;
             },
@@ -501,7 +499,7 @@ export class GeSortable extends UiElement implements SortableHost {
             },
             receiveItem: (item, atIndex) => self.handleReceiveItem(item, atIndex),
             removeItem: (item) => self.handleRemoveItem(item),
-        };
+        }))(this);
     }
 
     private itemRects(): DOMRect[] {
@@ -669,7 +667,7 @@ export class GeSortable extends UiElement implements SortableHost {
         }
         const els = this.itemElements();
         const reference = els[gap] ?? null;
-        if (!this.ghostHost) this.ghostHost = this.buildGhost();
+        this.ghostHost ??= this.buildGhost();
         if (this.ghostHost.nextElementSibling === reference && this.ghostHost.parentElement === this) return;
         if (reference) this.insertBefore(this.ghostHost, reference);
         else this.insertBefore(this.ghostHost, els.at(-1)?.nextElementSibling ?? null);

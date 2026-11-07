@@ -13,7 +13,7 @@ import css from './menubar-content.css?inline';
  * @slot - Items, separators and submenus.
  */
 export class GeMenubarContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private menu?: MenubarMenuHost;
 

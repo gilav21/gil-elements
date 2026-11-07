@@ -24,8 +24,8 @@ type DrawerHost = DialogHost & { readonly direction: DrawerDirection };
  * @csspart panel - The panel.
  */
 export class GeDrawerContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         heading: {},
         description: {},
         slottedTitle: { state: true },

@@ -13,7 +13,7 @@ import css from './card-accordion-content.css?inline';
  * @cssprop --density-card-accordion - Spacing multiplier; falls back to `--density`.
  */
 export class GeCardAccordionContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private item?: AccordionItemHost;
 

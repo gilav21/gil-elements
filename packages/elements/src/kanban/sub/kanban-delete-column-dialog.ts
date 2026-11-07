@@ -12,8 +12,8 @@ import css from './kanban-dialogs.css?inline';
  * @prop {KanbanColumn[]} columns - Every column on the board, including the one being deleted. With a single column there is nowhere to move cards, and the dialog warns that they go too.
  */
 export class GeKanbanDeleteColumnDialog extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         locale: { attribute: false },
         columns: { attribute: false },
         dialogOpen: { state: true },

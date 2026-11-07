@@ -8,7 +8,7 @@ import css from './dialog-footer.css?inline';
  * @slot - The buttons.
  */
 export class GeDialogFooter extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

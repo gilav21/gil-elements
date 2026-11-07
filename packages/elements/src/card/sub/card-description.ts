@@ -8,7 +8,7 @@ import css from './card-description.css?inline';
  * @slot - Description text.
  */
 export class GeCardDescription extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

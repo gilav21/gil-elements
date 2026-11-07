@@ -13,7 +13,8 @@
     "size": "node scripts/size.mjs",
     "check": "pnpm run typecheck && pnpm run build && pnpm run build:demo && pnpm run test && pnpm run size",
     "demo": "pnpm --filter @gilav21/elements-demo dev",
-    "build:demo": "pnpm --filter @gilav21/elements-demo build"
+    "build:demo": "pnpm --filter @gilav21/elements-demo build",
+    "sonar": "node scripts/sonar.mjs"
   },
   "devDependencies": {
     "@lit-labs/ssr": "^4.1.0",

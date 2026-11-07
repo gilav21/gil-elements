@@ -8,7 +8,7 @@ import css from './empty.css?inline';
  * @slot - `ge-empty-header` (media, title, description) and `ge-empty-content` (actions).
  */
 export class GeEmpty extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

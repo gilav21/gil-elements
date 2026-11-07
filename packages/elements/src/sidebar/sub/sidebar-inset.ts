@@ -8,7 +8,7 @@ import css from './sidebar-inset.css?inline';
  * @slot - The page.
  */
 export class GeSidebarInset extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<main data-slot="sidebar-inset"><slot></slot></main>`;

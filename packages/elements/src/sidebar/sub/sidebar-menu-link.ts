@@ -13,8 +13,8 @@ import css from './sidebar-menu-link.css?inline';
  * @csspart base - The `<a>`.
  */
 export class GeSidebarMenuLink extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly properties = {
         href: {},
         target: {},
         active: { type: Boolean, reflect: true },

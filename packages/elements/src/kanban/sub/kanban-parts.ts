@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - Anything.
  */
 export class GeKanbanCardContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:block;padding:0.75rem}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:block;padding:0.75rem}')];
 
     override connectedCallback(): void {
         super.connectedCallback();
@@ -26,7 +26,7 @@ export class GeKanbanCardContent extends UiElement {
  * @slot - Anything.
  */
 export class GeKanbanColumnHeader extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:flex;align-items:center;justify-content:space-between;padding:0.75rem}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:flex;align-items:center;justify-content:space-between;padding:0.75rem}')];
 
     override connectedCallback(): void {
         super.connectedCallback();

@@ -1,4 +1,4 @@
-import { html, nothing, unsafeCSS, type PropertyValues } from 'lit';
+import { html, nothing, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
 import { adoptChildren, findParent } from '../../shared/compound.js';
 import { onContextGesture, type ContextGesture } from '../../shared/touch.js';
@@ -27,8 +27,8 @@ const CHEVRON = html`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="
  * @prop {KanbanLocale} locale - Strings for the empty state. The board passes its own down.
  */
 export class GeKanbanColumn extends UiElement implements KanbanColumnHost, KanbanPart {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         columnId: { attribute: 'column-id' },
         heading: {},
         wipLimit: { type: Number, attribute: 'wip-limit' },
@@ -138,8 +138,7 @@ export class GeKanbanColumn extends UiElement implements KanbanColumnHost, Kanba
         return true;
     }
 
-    protected override updated(changed: PropertyValues<this>): void {
-        void changed;
+    protected override updated(): void {
         this.toggleAttribute('data-over-limit', this.isOverWipLimit);
         this.toggleAttribute('data-drag-over', this.isDragOver);
         this.dataset.columnId = this.columnId;
@@ -259,11 +258,11 @@ export class GeKanbanColumn extends UiElement implements KanbanColumnHost, Kanba
         this.dragEnterCount = 0;
     };
 
-    private onHeaderSlot = (event: Event) => {
+    private readonly onHeaderSlot = (event: Event) => {
         this.hasCustomHeader = (event.target as HTMLSlotElement).assignedElements().length > 0;
     };
 
-    private onCardSlot = () => {
+    private readonly onCardSlot = () => {
         this.customCardCount = this.customCards.length;
     };
 

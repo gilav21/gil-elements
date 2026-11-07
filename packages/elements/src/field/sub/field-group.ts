@@ -9,7 +9,7 @@ import css from './field-group.css?inline';
  * @csspart group - The grid.
  */
 export class GeFieldGroup extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

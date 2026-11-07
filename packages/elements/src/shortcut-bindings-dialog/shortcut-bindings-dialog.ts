@@ -54,8 +54,8 @@ const instanceNumber = (componentId: string): number => {
  * @csspart panel - The dialog box.
  */
 export class GeShortcutBindingsDialog extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         open: { type: Boolean, reflect: true },
         allowSaveMapping: { type: Boolean, attribute: 'allow-save-mapping' },
         replaceOnSchemaLoad: { converter: defaultTrue, attribute: 'replace-on-schema-load' },

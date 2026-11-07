@@ -186,8 +186,8 @@ function computeCardPosition(target: Rect, card: Size, preferred: TourSide | und
  * @csspart card - The step card.
  */
 export class GeTour extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         steps: { attribute: false },
         active: { type: Boolean, reflect: true },
         showSkip: { attribute: 'show-skip', converter: defaultTrue },

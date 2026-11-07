@@ -8,7 +8,7 @@ import css from './sidebar-header.css?inline';
  * @slot - The header content.
  */
 export class GeSidebarHeader extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<div class="header" data-slot="sidebar-header" ?data-collapsed=${this.collapsedState}><slot></slot></div>`;

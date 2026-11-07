@@ -8,7 +8,7 @@ import css from './alert-dialog-header.css?inline';
  * @slot - A `ge-alert-dialog-title` and a `ge-alert-dialog-description`.
  */
 export class GeAlertDialogHeader extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

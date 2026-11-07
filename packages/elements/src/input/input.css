@@ -47,13 +47,11 @@ input:disabled {
 .plain {
     border-radius: var(--radius);
     border-width: 1px;
+    background-color: color-mix(in oklab, var(--input) var(--input-surface-mix, 0%), transparent);
 }
 .plain:focus-visible {
     border-color: var(--ring);
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 50%, transparent);
-}
-.plain {
-    background-color: color-mix(in oklab, var(--input) var(--input-surface-mix, 0%), transparent);
 }
 :host([variant="underline"]) .plain {
     border-radius: 0;

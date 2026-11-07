@@ -20,8 +20,8 @@ const CUSTOM_PARTS = 'ge-timeline-header, ge-timeline-content';
  * @attr {boolean} hide-connector - Simple mode: leave out the line under the dot. (A boolean attribute cannot default to true, so this is the inverse of the Angular `showConnector`.)
  */
 export class GeTimelineItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         heading: {},
         description: {},
         time: {},

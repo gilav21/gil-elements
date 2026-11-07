@@ -8,7 +8,7 @@ import css from './breadcrumb-page.css?inline';
  * @slot - The page name.
  */
 export class GeBreadcrumbPage extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     override connectedCallback(): void {
         super.connectedCallback();

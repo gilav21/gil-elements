@@ -8,7 +8,7 @@ export const STEPPER_ITEM_REGISTER = 'ge-stepper-item-register';
 
 /** The part of an item its trigger, separator and content talk to. */
 export interface StepperItemHost {
-    stepper?: StepperHost | undefined;
+    stepper?: StepperHost;
     readonly index: number;
     readonly status: StepStatus;
     register(part: StepperPart): void;
@@ -23,8 +23,8 @@ export interface StepperItemHost {
  * @attr {string} value - Identifies the step. Required.
  */
 export class GeStepperItem extends UiElement implements StepperItemHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: { reflect: true },
     };
 

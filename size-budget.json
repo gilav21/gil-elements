@@ -78,7 +78,7 @@
   "chunks/color.js": 3100,
   "chunks/command-shortcut.js": 4550,
   "chunks/common-locales.js": 1970,
-  "chunks/compound.js": 340,
+  "chunks/compound.js": 360,
   "chunks/context-menu-trigger.js": 3600,
   "chunks/context-menu.js": 1030,
   "chunks/currency-input.js": 2900,

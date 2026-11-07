@@ -9,7 +9,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @csspart base - The box.
  */
 export class GeDockIcon extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         unsafeCSS(':host{display:contents}.icon{display:flex;align-items:center;justify-content:center;width:100%;height:100%}'),
     ];

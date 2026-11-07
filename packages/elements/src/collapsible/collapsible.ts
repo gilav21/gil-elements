@@ -27,8 +27,8 @@ export interface CollapsibleHost {
  * @attr {boolean} disabled - Blocks opening: `toggle()` and `show()` do nothing. `hide()` still closes it.
  */
 export class GeCollapsible extends UiElement implements CollapsibleHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         open: { type: Boolean, reflect: true },
         disabled: { type: Boolean, reflect: true },
     };

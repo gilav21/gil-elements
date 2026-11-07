@@ -11,8 +11,8 @@ export type TimelineVariant = 'default' | 'filled' | 'outline' | 'success' | 'er
  * @attr {'default' | 'filled' | 'outline' | 'success' | 'error' | 'warning'} variant - Colour. Defaults to default.
  */
 export class GeTimelineDot extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         variant: { reflect: true },
     };
 

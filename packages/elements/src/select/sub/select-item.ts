@@ -12,8 +12,8 @@ import css from './select-item.css?inline';
  * @attr {boolean} disabled - The row cannot be picked and the arrow keys skip it.
  */
 export class GeSelectItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         value: {},
         disabled: { type: Boolean, reflect: true },
     };

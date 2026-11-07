@@ -13,8 +13,8 @@ import css from './sidebar-menu-action.css?inline';
  * @csspart base - The `<button>`.
  */
 export class GeSidebarMenuAction extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly properties = {
         label: {},
         showOnHover: { attribute: 'show-on-hover', type: Boolean, reflect: true },
     };

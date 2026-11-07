@@ -19,8 +19,8 @@ export interface KanbanColumnDialogSubmit {
  * @fires submitted - The user submitted; `detail` is `{ mode, name?, wipLimit?, columnId? }`.
  */
 export class GeKanbanColumnDialog extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         locale: { attribute: false },
         dialogOpen: { state: true },
         mode: { state: true },

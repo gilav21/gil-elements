@@ -40,9 +40,9 @@ export type SignatureImageType = 'image/png' | 'image/jpeg' | 'image/webp';
  * @cssprop --density-input - Padding multiplier of the toolbar; falls back to `--density`.
  */
 export class GeSignaturePad extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static readonly formAssociated = true;
+    static override readonly properties = {
         value: { reflect: true },
         penColor: { attribute: 'pen-color' },
         penWidth: { type: Number, attribute: 'pen-width' },

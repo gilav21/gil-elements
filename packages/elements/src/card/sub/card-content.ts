@@ -8,7 +8,7 @@ import css from './card-content.css?inline';
  * @slot - Anything.
  */
 export class GeCardContent extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<slot></slot>`;

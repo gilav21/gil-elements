@@ -18,8 +18,8 @@ import css from './shine-border.css?inline';
  * @csspart content - The surface the content sits on.
  */
 export class GeShineBorder extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         colors: { attribute: false },
         duration: { type: Number },
         borderWidth: { attribute: 'border-width', type: Number },

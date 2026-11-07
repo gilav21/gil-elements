@@ -8,7 +8,7 @@ import css from './sidebar-trigger.css?inline';
  * @csspart base - The `<button>`.
  */
 export class GeSidebarTrigger extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<button part="base" type="button" data-slot="sidebar-trigger" aria-expanded=${String(this.provider?.isOpen ?? true)} aria-label="Toggle sidebar" @click=${() => this.provider?.toggle()}>

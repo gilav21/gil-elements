@@ -14,8 +14,8 @@ import css from './wobble-card.css?inline';
  * @slot - The card's content.
  */
 export class GeWobbleCard extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         intensity: { type: Number },
         perspective: { type: Number },
         rotateX: { state: true },

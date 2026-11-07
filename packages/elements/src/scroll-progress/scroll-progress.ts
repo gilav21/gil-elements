@@ -1,5 +1,6 @@
 import { html, unsafeCSS, type PropertyValues } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
+import { parentOf } from '../shared/compound.js';
 import css from './scroll-progress.css?inline';
 
 /** What the bar can follow: an element, or the page. */
@@ -16,8 +17,8 @@ type ScrollSource = HTMLElement | Window;
  * @csspart bar - The fill.
  */
 export class GeScrollProgress extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         position: { reflect: true },
         color: {},
         height: { type: Number },
@@ -87,13 +88,12 @@ export class GeScrollProgress extends UiElement {
     }
 
     private scrollingAncestor(): HTMLElement | null {
-        let node: Node | null = this;
-        while (node) {
-            const parent: Node | null = node.parentNode ?? (node instanceof ShadowRoot ? node.host : null);
+        let parent = parentOf(this);
+        while (parent) {
             if (!(parent instanceof HTMLElement) || parent === document.body) return null;
             const { overflowY } = getComputedStyle(parent);
             if (overflowY === 'auto' || overflowY === 'scroll') return parent;
-            node = parent;
+            parent = parentOf(parent);
         }
         return null;
     }

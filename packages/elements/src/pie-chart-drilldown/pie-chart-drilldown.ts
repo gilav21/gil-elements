@@ -29,8 +29,8 @@ import css from './pie-chart-drilldown.css?inline';
  * @csspart base - The chart container.
  */
 export class GePieChartDrilldown extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(pieCss), unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(pieCss), unsafeCSS(css)];
+    static override readonly properties = {
         data: { attribute: false },
         drilldownSeries: { attribute: false },
         size: { type: Number },

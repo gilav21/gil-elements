@@ -20,8 +20,8 @@ const defaultTrue = { fromAttribute: (attribute: string | null): boolean => attr
  * @attr {'icon' | 'hidden'} collapse-mode - What collapsing looks like: a 60px rail of icons (default) or zero width.
  */
 export class GeSidebar extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         side: { reflect: true },
         variant: { reflect: true },
         collapsible: { converter: defaultTrue, reflect: true },

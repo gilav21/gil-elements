@@ -52,8 +52,8 @@ function toArray(value: string | readonly string[] | undefined, type: ToggleGrou
  * @attr {string} aria-label - Accessible name of the group.
  */
 export class GeToggleGroup extends UiElement implements ToggleGroupHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         type: { reflect: true },
         variant: { reflect: true },
         size: { reflect: true },

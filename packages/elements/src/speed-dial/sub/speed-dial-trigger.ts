@@ -13,8 +13,8 @@ import css from './speed-dial-trigger.css?inline';
  * @csspart base - The wrapper.
  */
 export class GeSpeedDialTrigger extends GeActivator<SpeedDialHost> {
-    static override styles = [...GeActivator.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [...GeActivator.styles, unsafeCSS(css)];
+    static override readonly properties = {
         ...GeActivator.properties,
         label: {},
     };

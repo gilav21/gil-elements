@@ -37,8 +37,8 @@ const EXPORT_NAME = 'page-builder-export.json';
  * @attr {boolean} enable-export - Shows the Export button, which downloads the layout as JSON (default false).
  */
 export class GePageBuilder extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         components: { attribute: false },
         data: { attribute: false },
         enableSave: { attribute: 'enable-save', converter: defaultTrue, reflect: true },

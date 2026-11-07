@@ -14,9 +14,9 @@ import css from './command-input.css?inline';
  * @attr {string} value - Seed query, applied once when it connects and only when non-empty.
  */
 export class GeCommandInput extends UiElement {
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         placeholder: {},
         value: {},
     };

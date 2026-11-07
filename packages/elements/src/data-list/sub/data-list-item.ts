@@ -14,8 +14,8 @@ let counter = 0;
  * @attr {string} label - The term, shown in the row's `<dt>`.
  */
 export class GeDataListItem extends UiElement implements DataListRow {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = { label: {} };
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = { label: {} };
 
     declare label: string;
     readonly slotName = `row-${++counter}`;

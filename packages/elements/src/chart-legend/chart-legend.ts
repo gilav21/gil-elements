@@ -22,8 +22,8 @@ export interface ChartLegendItem {
  * @csspart base - The wrapper.
  */
 export class GeChartLegend extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         items: { attribute: false },
         hiddenKeys: { attribute: false },
         position: { reflect: true },

@@ -52,8 +52,8 @@ export function arcPosition(type: SpeedDialType, direction: SpeedDialDirection, 
  * @csspart base - The animated wrapper.
  */
 export class GeSpeedDialItem extends UiElement implements SpeedDialPart, SpeedDialItemPart {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         itemIndex: { state: true },
         totalItems: { state: true },
     };

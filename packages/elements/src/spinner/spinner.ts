@@ -18,8 +18,8 @@ const DOTS = [0, 1, 2];
  * @attr {string} label - Accessible name announced for the status. Defaults to "Loading".
  */
 export class GeSpinner extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         variant: { reflect: true },
         size: { reflect: true },
         customSize: { attribute: 'custom-size', type: Number },

@@ -67,9 +67,9 @@ export function parseE164(value: string, countries: readonly PhoneCountry[], cur
  * @prop {string} nationalNumber - The digits typed after the dial code (read-only).
  */
 export class GePhoneInput extends GePopover {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static readonly formAssociated = true;
+    static override readonly properties = {
         ...GePopover.properties,
         value: { reflect: true },
         defaultCountry: { attribute: 'default-country' },

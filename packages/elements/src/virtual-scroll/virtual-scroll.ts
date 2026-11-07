@@ -64,8 +64,8 @@ const ITEM = '[data-virtual-item]';
  * @csspart viewport - The scrolling box.
  */
 export class GeVirtualScroll extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         items: { attribute: false },
         renderItem: { attribute: false },
         trackBy: { attribute: false },

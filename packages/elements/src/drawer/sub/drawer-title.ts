@@ -7,7 +7,7 @@ import { UiElement } from '@gilav21/elements-base';
  * @slot - The title text.
  */
 export class GeDrawerTitle extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:block;font-weight:600;color:var(--foreground)}')];
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:block;font-weight:600;color:var(--foreground)}')];
 
     protected override render() {
         return html`<slot></slot>`;

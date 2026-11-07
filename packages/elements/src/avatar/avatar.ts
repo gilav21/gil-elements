@@ -24,8 +24,8 @@ export type AvatarStatus = 'loading' | 'loaded' | 'error';
  * @cssprop --density-avatar - Size multiplier for this component; falls back to `--density`.
  */
 export class GeAvatar extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(overlayCss), unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(overlayCss), unsafeCSS(css)];
+    static override readonly properties = {
         src: {},
         alt: {},
         fallback: {},

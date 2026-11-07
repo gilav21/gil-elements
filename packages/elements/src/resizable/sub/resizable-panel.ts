@@ -13,8 +13,8 @@ import { UiElement } from '@gilav21/elements-base';
  * @attr {number} max-size - Upper bound in percent. Defaults to `90`.
  */
 export class GeResizablePanel extends UiElement {
-    static override styles = [UiElement.styles, css`:host { display: block; flex: 0 0 auto; min-width: 0; min-height: 0; overflow: hidden; }`];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, css`:host { display: block; flex: 0 0 auto; min-width: 0; min-height: 0; overflow: hidden; }`];
+    static override readonly properties = {
         defaultSize: { type: Number, attribute: 'default-size' },
         minSize: { type: Number, attribute: 'min-size' },
         maxSize: { type: Number, attribute: 'max-size' },

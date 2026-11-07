@@ -25,8 +25,8 @@ interface Pair {
  * @attr {string} aria-label - Accessible name of the separator. Defaults to "Resize Handle".
  */
 export class GeResizableHandle extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         withHandle: { type: Boolean, attribute: 'with-handle' },
         handleSize: { type: Number, attribute: 'handle-size' },
         disabled: { type: Boolean, reflect: true },

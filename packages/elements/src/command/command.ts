@@ -57,8 +57,8 @@ export interface CommandHost {
  * @cssprop --density-menu - Size multiplier for rows; falls back to `--density`.
  */
 export class GeCommand extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         search: {},
         noFilter: { type: Boolean, attribute: 'no-filter', reflect: true },
         source: { attribute: false },

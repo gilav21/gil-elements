@@ -12,9 +12,9 @@ import css from './split-button-item.css?inline';
  * @attr {boolean} disabled - Greys the row, blocks pointer events and skips it with the arrow keys.
  */
 export class GeSplitButtonItem extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly properties = {
         value: {},
         disabled: { type: Boolean, reflect: true },
     };

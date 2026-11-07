@@ -26,10 +26,10 @@ import css from './input-group-input.css?inline';
  * @csspart input - The native input.
  */
 export class GeInputGroupInput extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static readonly formAssociated = true;
+    static override readonly properties = {
         name: { reflect: true },
         value: {},
         type: { reflect: true },

@@ -8,7 +8,7 @@ import css from './sidebar-footer.css?inline';
  * @slot - The footer content.
  */
 export class GeSidebarFooter extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<div class="footer" data-slot="sidebar-footer"><slot></slot></div>`;

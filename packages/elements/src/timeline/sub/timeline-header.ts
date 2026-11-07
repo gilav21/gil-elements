@@ -8,7 +8,7 @@ import css from './timeline-header.css?inline';
  * @slot - A `ge-timeline-dot` and a `ge-timeline-connector`.
  */
 export class GeTimelineHeader extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     protected override render() {
         return html`<div part="base" data-slot="timeline-header"><slot></slot></div>`;

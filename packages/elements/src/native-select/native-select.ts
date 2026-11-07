@@ -28,10 +28,10 @@ const CHEVRON = svg`<svg class="chevron" part="icon" xmlns="http://www.w3.org/20
  * @cssprop --density-input - Height and padding multiplier for this component; falls back to `--density`.
  */
 export class GeNativeSelect extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static formAssociated = true;
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static readonly formAssociated = true;
+    static override readonly properties = {
         name: { reflect: true },
         value: {},
         size: { reflect: true },

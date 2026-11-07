@@ -13,8 +13,8 @@ import css from './sidebar-menu-button.css?inline';
  * @csspart base - The `<button>`.
  */
 export class GeSidebarMenuButton extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly properties = {
         active: { type: Boolean, reflect: true },
         tooltip: {},
     };

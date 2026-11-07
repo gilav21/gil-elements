@@ -13,7 +13,7 @@ import css from './menubar-trigger.css?inline';
  * @slot - The label.
  */
 export class GeMenubarTrigger extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private menu?: MenubarMenuHost;
 

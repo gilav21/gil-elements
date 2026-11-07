@@ -20,8 +20,8 @@ import { resolvePath, toDashboardItem } from '../page-builder/page-builder.utils
  * @prop {Record<string, unknown>} context - Data source for bindings.
  */
 export class GePageRenderer extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         data: { attribute: false },
         components: { attribute: false },
         context: { attribute: false },

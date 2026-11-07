@@ -40,8 +40,8 @@ const ECHO_MS = 1000;
  * @fires node-context-menu - An item asked for the menu; `detail` is `{ node, event }` with `node` as `{ key, label, expanded, selected, element }`.
  */
 export class GeTreeContextMenu extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(':host{display:contents}')];
+    static override readonly properties = {
         forMenu: { attribute: 'for' },
         disabled: { type: Boolean, reflect: true },
     };

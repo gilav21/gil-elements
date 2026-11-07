@@ -19,9 +19,9 @@ export type ToggleSize = 'default' | 'sm' | 'lg';
  * @cssprop --density-button - Height and padding multiplier; falls back to `--density`.
  */
 export class GeToggle extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly shadowRootOptions: ShadowRootInit = { ...UiElement.shadowRootOptions, delegatesFocus: true };
+    static override readonly properties = {
         pressed: { type: Boolean, reflect: true },
         variant: { reflect: true },
         size: { reflect: true },

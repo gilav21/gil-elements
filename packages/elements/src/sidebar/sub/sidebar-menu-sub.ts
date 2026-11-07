@@ -3,7 +3,7 @@ import { GeSidebarPart } from './sidebar-part.js';
 import css from './sidebar-menu-sub.css?inline';
 
 /** `expanded` is on unless the attribute says `false`, because a bare boolean attribute cannot default to true. */
-const defaultTrue = { fromAttribute: (attribute: string | null): boolean => attribute !== 'false', toAttribute: (value: boolean): string => String(value) };
+const defaultTrue = { fromAttribute: (attribute: string | null): boolean => attribute !== 'false', toAttribute: String };
 
 /**
  * A nested list under a menu row, opened and closed by a `ge-sidebar-menu-sub-trigger`. Its rows stay in the DOM and
@@ -15,8 +15,8 @@ const defaultTrue = { fromAttribute: (attribute: string | null): boolean => attr
  * @attr {boolean} expanded - Whether it is open. On unless set to `false`.
  */
 export class GeSidebarMenuSub extends GeSidebarPart {
-    static override styles = [GeSidebarPart.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [GeSidebarPart.styles, unsafeCSS(css)];
+    static override readonly properties = {
         expanded: { converter: defaultTrue, reflect: true },
     };
 

@@ -12,7 +12,7 @@ import css from './speed-dial-mask.css?inline';
  * @csspart base - The scrim.
  */
 export class GeSpeedDialMask extends UiElement implements SpeedDialPart {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     private dial?: SpeedDialHost;
 
     override connectedCallback(): void {

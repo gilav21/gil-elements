@@ -14,11 +14,11 @@ export type BadgeVariant = 'default' | 'secondary' | 'destructive' | 'outline';
  * @cssprop --density-badge - Spacing multiplier for this component; falls back to `--density`.
  */
 export class GeBadge extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     // Declared through `static properties` (not decorators) so there is no compiler magic
     // to depend on, and assigned in the constructor: a class field would shadow Lit's accessor.
-    static override properties = {
+    static override readonly properties = {
         variant: { reflect: true },
         label: {},
         skeleton: { type: Boolean, reflect: true },

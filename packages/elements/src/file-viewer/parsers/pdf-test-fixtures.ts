@@ -115,7 +115,7 @@ export class PdfBuilder {
         }
 
         const kids = pageObjNums.map(num => `${num} 0 R`).join(' ');
-        const pageObjects = streams.map((stream, i) => {
+        const pageObjects = streams.flatMap((stream, i) => {
             const annots = this.annotations
                 .filter(a => a.page === i)
                 .map(a => `<< /Subtype /Link /Rect [${a.rect.join(' ')}] /A << /S /URI /URI (${a.uri}) >> >>`);
@@ -130,7 +130,7 @@ export class PdfBuilder {
                     content: `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
                 },
             ];
-        }).flat();
+        });
 
         const allObjects: { num: number; content: string }[] = [
             ...this.objects,

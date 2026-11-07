@@ -13,8 +13,8 @@ import css from './morphing-text.css?inline';
  * @csspart text - Each of the two layers that trade places.
  */
 export class GeMorphingText extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         texts: { attribute: false },
         interval: { type: Number },
         index: { state: true },

@@ -11,7 +11,7 @@ import css from './stepper-separator.css?inline';
  * @csspart base - The line.
  */
 export class GeStepperSeparator extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
 
     private item?: StepperItemHost;
 

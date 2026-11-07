@@ -80,8 +80,8 @@ const CLOSE = html`<svg width="16" height="16" fill="none" viewBox="0 0 24 24" s
  * @fires history-change - `detail` is `{ canUndo, canRedo }`.
  */
 export class GeKanban extends UiElement implements KanbanHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         columns: { attribute: false },
         cards: { attribute: false },
         searchTerm: { attribute: 'search-term' },
@@ -253,8 +253,7 @@ export class GeKanban extends UiElement implements KanbanHost {
     // ---- drag and drop ------------------------------------------------------------------------------------
 
     /** Marks a card as being dragged, so columns accept drops and the source card dims. Called from the card's `dragstart`. */
-    startDrag(cardId: string, columnId: string): void {
-        void columnId;
+    startDrag(cardId: string): void {
         this.draggedCardId = cardId;
     }
 
@@ -536,7 +535,7 @@ export class GeKanban extends UiElement implements KanbanHost {
 
     // ---- dialog results -----------------------------------------------------------------------------------
 
-    private onCardSubmitted = (event: Event) => {
+    private readonly onCardSubmitted = (event: Event) => {
         const { mode, card, data } = (event as CustomEvent<KanbanCardDialogSubmit>).detail;
         this.captureSnapshot();
         if (mode === 'add') {
@@ -546,7 +545,7 @@ export class GeKanban extends UiElement implements KanbanHost {
         }
     };
 
-    private onColumnSubmitted = (event: Event) => {
+    private readonly onColumnSubmitted = (event: Event) => {
         const { mode, name, wipLimit, columnId } = (event as CustomEvent<KanbanColumnDialogSubmit>).detail;
         this.captureSnapshot();
         if (mode === 'add-column') {
@@ -562,7 +561,7 @@ export class GeKanban extends UiElement implements KanbanHost {
         this.emit<KanbanColumn>('column-updated', mapped[mode]);
     };
 
-    private onDeleteColumnConfirmed = (event: Event) => {
+    private readonly onDeleteColumnConfirmed = (event: Event) => {
         this.captureSnapshot();
         this.emit<KanbanColumnDeleteEvent>('column-deleted', (event as CustomEvent<KanbanColumnDeleteEvent>).detail);
     };
@@ -628,8 +627,7 @@ export class GeKanban extends UiElement implements KanbanHost {
         }
     }
 
-    protected override updated(changed: PropertyValues<this>): void {
-        void changed;
+    protected override updated(): void {
         const surface = this.renderRoot.querySelector<HTMLElement>('[data-surface]') ?? undefined;
         if (surface !== this.surface) {
             this.stopSurfaceGesture?.();
@@ -639,7 +637,7 @@ export class GeKanban extends UiElement implements KanbanHost {
         for (const part of this.parts) part.requestUpdate();
     }
 
-    private onSlotChange = (event: Event) => {
+    private readonly onSlotChange = (event: Event) => {
         this.hasCustomColumns = (event.target as HTMLSlotElement).assignedElements().some((el) => el.localName === 'ge-kanban-column');
     };
 

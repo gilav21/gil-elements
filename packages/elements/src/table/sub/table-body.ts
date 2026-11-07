@@ -11,7 +11,7 @@ import './table-row.js';
  * @attr {number} skeleton-rows - How many placeholder rows to show. Defaults to 5; match your page size so the table does not resize when the data lands.
  */
 export class GeTableBody extends UiElement {
-    static override styles = [
+    static override readonly styles = [
         UiElement.styles,
         css`
             :host {
@@ -26,7 +26,7 @@ export class GeTableBody extends UiElement {
             }
         `,
     ];
-    static override properties = {
+    static override readonly properties = {
         skeleton: { type: Boolean, reflect: true },
         skeletonRows: { attribute: 'skeleton-rows', type: Number },
     };

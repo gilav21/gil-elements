@@ -15,7 +15,7 @@ export const defaultTrue = { fromAttribute: (value: string | null) => value !== 
  * @attr {string} dir - `auto` (default) follows the inherited direction; `ltr` or `rtl` forces it.
  */
 export abstract class GeChartBase extends UiElement {
-    static override properties = {
+    static override readonly properties = {
         width: { type: Number },
         height: { type: Number },
         heading: {},

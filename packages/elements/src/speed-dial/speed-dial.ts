@@ -47,8 +47,8 @@ export interface SpeedDialHost extends HTMLElement {
  * @fires hidden - On every `hide`.
  */
 export class GeSpeedDial extends UiElement implements SpeedDialHost {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         type: { reflect: true },
         direction: { reflect: true },
         radius: { type: Number },

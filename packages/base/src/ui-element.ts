@@ -9,5 +9,5 @@ import baseCss from './base.css?inline';
  * `static styles = [UiElement.styles, unsafeCSS(css)]`.
  */
 export class UiElement extends LitElement {
-    static override styles: CSSResultGroup = unsafeCSS(baseCss);
+    static override readonly styles: CSSResultGroup = unsafeCSS(baseCss);
 }

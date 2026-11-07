@@ -20,8 +20,8 @@ const ARROW_UP = html`<svg xmlns="http://www.w3.org/2000/svg" width="24" height=
  * @csspart send - The send button.
  */
 export class GeChatInput extends UiElement {
-    static override styles = [UiElement.styles, unsafeCSS(css)];
-    static override properties = {
+    static override readonly styles = [UiElement.styles, unsafeCSS(css)];
+    static override readonly properties = {
         placeholder: { type: String },
         disabled: { type: Boolean, reflect: true },
         draft: { state: true },
