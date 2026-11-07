@@ -39,6 +39,34 @@ export function placeCaret(node: Node, offset: number): void {
     selection.addRange(range);
 }
 
+/** An html-mode editor holding `html`, with every registered controller attached. */
+export const blockEditor = (html = ''): Promise<GeRichTextEditor> =>
+    createEditor((editor) => {
+        editor.mode = 'html';
+        editor.value = html;
+    });
+
+/** Replaces the content the way a consumer writing `value` does. */
+export async function load(editor: GeRichTextEditor, html: string): Promise<void> {
+    editor.value = html;
+    await editor.updateComplete;
+}
+
+export function selectBetween(start: Node, startOffset: number, end: Node, endOffset: number): void {
+    const range = new Range();
+    range.setStart(start, startOffset);
+    range.setEnd(end, endOffset);
+    const selection = document.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+}
+
+export const selectContents = (node: Node): void => selectBetween(node, 0, node, node.childNodes.length);
+
+/** `TAG:text` of each child, with caret padding removed. */
+export const tagsOf = (root: Element): string[] =>
+    Array.from(root.children).map((el) => `${el.tagName}:${(el.textContent ?? '').replaceAll('​', '')}`);
+
 /** Records the detail of every `type` event the editor fires. */
 export function record<T = unknown>(editor: Element, type: string): T[] {
     const seen: T[] = [];

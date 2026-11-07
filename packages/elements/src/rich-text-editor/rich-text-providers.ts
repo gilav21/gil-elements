@@ -1,11 +1,8 @@
 import type { RichTextSanitizer } from './rich-text-sanitizer.js';
 import type { RichTextMarkdown } from './rich-text-markdown.js';
 import type { RichTextLocale } from './rich-text-locales.js';
-import type {
-    RichTextHistoryEntrySnapshot,
-    RichTextInlineStyle,
-    RichTextSelectionInlineStyle,
-} from './rich-text-host.js';
+import type { RichTextHistoryEntrySnapshot, RichTextInlineStyle } from './rich-text-host.js';
+import type { RichTextSelectionProvider } from './rich-text-selection.js';
 
 /** Undo-history tuning; every field optional. */
 export interface RichTextHistoryOptions {
@@ -65,7 +62,6 @@ export interface RichTextInsertProvider {
 /** Inline typography at the selection; supplied by the inline-format controller. */
 export interface RichTextInlineStyleProvider {
     apply(style: RichTextInlineStyle): void;
-    current(): RichTextSelectionInlineStyle;
 }
 
 /** Block commands on one block; supplied by the block controller. */
@@ -78,6 +74,7 @@ export interface RichTextProviders {
     insert: RichTextInsertProvider;
     inlineStyle: RichTextInlineStyleProvider;
     blocks: RichTextBlockProvider;
+    selection: RichTextSelectionProvider;
 }
 
 /**
@@ -91,11 +88,15 @@ export interface RichTextShellHost {
     readonly config: RichTextConfig;
     /** Plugs a capability in; the returned teardown unplugs exactly this one. */
     provide<K extends keyof RichTextProviders>(key: K, provider: RichTextProviders[K]): () => void;
+    /** What another controller plugged in under `key`, if anything. */
+    provider<K extends keyof RichTextProviders>(key: K): RichTextProviders[K] | undefined;
     /** Runs on every input event before the content is read; return true when it rewrote the content. */
     addInputTransform(fn: (event: Event) => boolean): () => void;
     /** Formats active at the caret, as the toolbar shows them. */
     readonly activeFormats: ReadonlySet<string>;
     setActiveFormats(formats: ReadonlySet<string>): void;
+    /** The range last saved by `saveSelection` (on blur, say), while it is still inside the editor. */
+    readonly savedSelection: Range | null;
     readonly selectedImage: HTMLImageElement | null;
     setSelectedImage(image: HTMLImageElement | null): void;
     /** Captions the images the resource policy refused; call after a sanitized insert. */

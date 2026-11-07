@@ -21,6 +21,18 @@ export const BLOCK_TAGS: ReadonlySet<string> = new Set([
  */
 export const LINE_OWNING_TAGS: ReadonlySet<string> = new Set([...BLOCK_TAGS, ...BLOCK_CONTAINER_TAGS]);
 
+/** Tags that wrap a run of inline text to format it. */
+export const INLINE_WRAPPER_TAGS: ReadonlySet<string> = new Set([
+    'B', 'STRONG', 'I', 'EM', 'U', 'S', 'DEL', 'INS', 'CODE', 'SPAN', 'MARK', 'SUB', 'SUP', 'SMALL', 'A',
+]);
+
+/** A blank paragraph a caret can sit in. */
+export function createEmptyParagraph(doc: Document): HTMLParagraphElement {
+    const paragraph = doc.createElement('p');
+    paragraph.innerHTML = '<br>';
+    return paragraph;
+}
+
 function select(selection: Selection, range: Range): void {
     selection.removeAllRanges();
     selection.addRange(range);

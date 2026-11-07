@@ -30,6 +30,7 @@ import type {
     RichTextShellHost,
     RichTextToolbarPosition,
 } from './rich-text-providers.js';
+import { KEY_PRIORITY } from './rich-text-key-priority.js';
 import { Disposables, HandlerChain, SlotRegistry, TopicBus } from './rich-text-registry.js';
 import { labelBlockedImages, reportResourceDecisions, type RichTextAllow } from './rich-text-resource-policy.js';
 import { RichTextSanitizer } from './rich-text-sanitizer.js';
@@ -75,7 +76,7 @@ export interface RichTextAllowElement extends HTMLElement {
 
 const ZERO_WIDTH = '​';
 const CUSTOM_TOOLBAR_ITEM_ORDER = 500;
-const INTERCEPTOR_PRIORITY = -1000;
+const EMPTY_INLINE_STYLE: RichTextSelectionInlineStyle = { color: '', backgroundColor: '', fontSize: '', fontFamily: '' };
 const VALIDATION_MESSAGES = {
     required: 'Please fill out this field.',
     minWords: 'The text is too short.',
@@ -368,7 +369,11 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     }
 
     get selectionInlineStyle(): RichTextSelectionInlineStyle {
-        return this.providers.inlineStyle?.current() ?? { color: '', backgroundColor: '', fontSize: '', fontFamily: '' };
+        return this.providers.selection?.inlineStyle ?? EMPTY_INLINE_STYLE;
+    }
+
+    get textStyleAvailable(): boolean {
+        return this.providers.selection?.textStyleAvailable ?? true;
     }
 
     get hasImageFileHandler(): boolean {
@@ -562,7 +567,12 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     }
 
     invalidate(): void {
+        this.bus.emit('state');
         this.requestUpdate();
+    }
+
+    provider<K extends keyof RichTextProviders>(key: K): RichTextProviders[K] | undefined {
+        return this.providers[key];
     }
 
     emit<T>(name: string, detail: T): void {
@@ -667,7 +677,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     }
 
     registerKeydownInterceptor(fn: (event: KeyboardEvent) => boolean): () => void {
-        return this.keyHandlers.add(INTERCEPTOR_PRIORITY, fn);
+        return this.keyHandlers.add(KEY_PRIORITY.interceptor, fn);
     }
 
     registerPasteInterceptor(fn: (event: ClipboardEvent) => boolean): () => void {
@@ -1021,6 +1031,11 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
     saveSelection(): void {
         const range = this.rangeInEditor();
         if (range) this.savedRange = range.cloneRange();
+    }
+
+    get savedSelection(): Range | null {
+        const range = this.savedRange;
+        return range && this.editable?.contains(range.startContainer) ? range : null;
     }
 
     /**

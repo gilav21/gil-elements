@@ -1,5 +1,5 @@
 import { html } from 'lit';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RICH_TEXT_CONTROLLERS, type RichTextControllerFactory } from './rich-text-controllers.js';
 import { createEditor, editableOf, editorIn, placeCaret, record, typeHtml } from './rich-text-editor.fixture.test.js';
 import { GeRichTextEditor } from './rich-text-editor.js';
@@ -21,6 +21,13 @@ function historyProvider(calls: string[] = []): RichTextHistoryProvider {
         reconstruct: (index) => ({ html: `<p>${index}</p>`, markdown: `${index}` }),
         restore: (index) => calls.push(`restore ${index}`),
     };
+}
+
+/** An editor whose controllers are detached, so every seam behaves as if nothing were plugged in. */
+async function bareEditor(): Promise<GeRichTextEditor> {
+    const editor = await editorIn(HELLO);
+    editor.remove();
+    return editor;
 }
 
 const key = (name: string) => new KeyboardEvent('keydown', { key: name, bubbles: true, cancelable: true });
@@ -221,7 +228,7 @@ describe('ge-rich-text-editor transactions', () => {
 
 describe('ge-rich-text-editor providers', () => {
     it('behaves as an empty history until one is provided, then delegates to it', async () => {
-        const editor = await editorIn(HELLO);
+        const editor = await bareEditor();
         expect(editor.canUndo).toBe(false);
         expect(editor.canRedo).toBe(false);
         expect(editor.historyEntries()).toEqual([]);
@@ -261,16 +268,21 @@ describe('ge-rich-text-editor providers', () => {
     });
 
     it('routes the insert, inline-style and block seams to their providers', async () => {
-        const editor = await editorIn(HELLO);
+        const editor = await bareEditor();
         const calls: string[] = [];
         editor.provide('insert', {
             text: (t) => calls.push(`text ${t}`), html: (h) => calls.push(`html ${h}`),
             textAtCaret: (t) => calls.push(`caret ${t}`), htmlAtCaret: (h) => calls.push(`caret-html ${h}`),
             block: (h) => calls.push(`block ${h}`), fromOverlay: (t) => calls.push(`overlay ${t}`),
         });
-        editor.provide('inlineStyle', {
-            apply: (style) => calls.push(`style ${style.color}`),
-            current: () => ({ color: 'red', backgroundColor: '', fontSize: '', fontFamily: '' }),
+        editor.provide('inlineStyle', { apply: (style) => calls.push(`style ${style.color}`) });
+        editor.provide('selection', {
+            inlineStyle: { color: 'red', backgroundColor: '', fontSize: '', fontFamily: '' },
+            textStyleAvailable: false,
+            selectedTextInEditor: () => '',
+            pendingCaretStyle: () => ({}),
+            armCaretStyle: () => undefined,
+            reSaveLiveSelection: () => undefined,
         });
         editor.provide('blocks', { execute: (command, block) => calls.push(`block-cmd ${command} ${block === null}`) });
 
@@ -286,10 +298,11 @@ describe('ge-rich-text-editor providers', () => {
 
         expect(calls).toEqual(['text a', 'html <b>b</b>', 'caret c', 'caret-html <i>d</i>', 'block <hr>', 'overlay e', 'style blue', 'block-cmd heading1 true']);
         expect(editor.selectionInlineStyle.color).toBe('red');
+        expect(editor.textStyleAvailable).toBe(false);
     });
 
     it('reports an empty inline style and ignores the seams without providers', async () => {
-        const editor = await editorIn(HELLO);
+        const editor = await bareEditor();
 
         expect(editor.selectionInlineStyle).toEqual({ color: '', backgroundColor: '', fontSize: '', fontFamily: '' });
         expect(() => {
@@ -652,9 +665,14 @@ describe('ge-rich-text-editor addons and controllers', () => {
 
     describe('controllers', () => {
         const registry = RICH_TEXT_CONTROLLERS as RichTextControllerFactory[];
+        const registered = [...registry];
+
+        beforeEach(() => {
+            registry.length = 0;
+        });
 
         afterEach(() => {
-            registry.length = 0;
+            registry.splice(0, registry.length, ...registered);
         });
 
         it('builds controllers from the list, attaches them with the element, and draws what they render', async () => {

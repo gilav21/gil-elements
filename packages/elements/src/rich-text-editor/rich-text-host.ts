@@ -77,7 +77,7 @@ export interface RichTextInlineStyle {
     readonly fontFamily?: string;
 }
 
-/** The inline style at the caret as raw computed browser values (`rgb(...)`, `18px`, first family). */
+/** The inline style at the caret: computed colours (`rgb(...)`), the font size as a bare number of pixels (`'20'`), the first family. */
 export interface RichTextSelectionInlineStyle {
     readonly color: string;
     readonly backgroundColor: string;
@@ -128,6 +128,8 @@ export interface RichTextEditorHost {
     subscribe(topic: RichTextTopic, fn: () => void): () => void;
     selection(): RichTextSelectionSnapshot;
     readonly selectionInlineStyle: RichTextSelectionInlineStyle;
+    /** Whether the text-style select can change the caret's line. */
+    readonly textStyleAvailable: boolean;
     saveSelection(): void;
     restoreSelection(options?: { preferLive?: boolean }): void;
     /** Runs `fn` against the content root as one transaction: history entry, sanitize, change events. */
