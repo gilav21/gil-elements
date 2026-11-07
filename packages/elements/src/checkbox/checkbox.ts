@@ -112,9 +112,15 @@ export class GeCheckbox extends UiElement {
             return html`<span class="skeleton box-skeleton" part="skeleton" aria-hidden="true"></span>
                 ${this.label ? html`<span class="skeleton label-skeleton" aria-hidden="true"></span>` : nothing}`;
         }
-        const state = this.indeterminate ? 'indeterminate' : this.checked ? 'checked' : 'unchecked';
-        let mark = this.checked ? CHECK : nothing;
-        if (this.indeterminate) mark = DASH;
+        let state = 'unchecked';
+        let mark: typeof DASH | typeof CHECK | typeof nothing = nothing;
+        if (this.indeterminate) {
+            state = 'indeterminate';
+            mark = DASH;
+        } else if (this.checked) {
+            state = 'checked';
+            mark = CHECK;
+        }
         return html`<span class="box" part="box" data-slot="checkbox" data-state=${state}
                 >${mark}</span
             >${this.label ? html`<span class="label" part="label">${this.label}</span>` : nothing}`;

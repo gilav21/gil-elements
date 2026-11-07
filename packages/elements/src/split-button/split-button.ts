@@ -211,6 +211,7 @@ export class GeSplitButton extends UiElement implements SplitButtonHost {
 
     protected override render() {
         const hasItems = this.items.length > 0;
+        const side = this.above ? 'above' : 'below';
         return html`<div class="group" role="group" data-slot="split-button" @keydown=${this.onMenuKeydown}>
             ${this.label
                 ? html`<ge-button
@@ -239,7 +240,7 @@ export class GeSplitButton extends UiElement implements SplitButtonHost {
                 >${CHEVRON(this.open)}</ge-button
             >
             ${hasItems && this.open
-                ? html`<div class="menu ${this.above ? 'above' : 'below'}" role="menu" tabindex="-1">${this.items.map((item) => this.dataRow(item))}</div>`
+                ? html`<div class="menu ${side}" role="menu" tabindex="-1">${this.items.map((item) => this.dataRow(item))}</div>`
                 : nothing}
         </div>`;
     }
