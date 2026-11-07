@@ -32,7 +32,7 @@ if (process.env.PARITY_TW_ALL) {
     }
 }
 writeFileSync(`${out}/reference-source.html`, sourceCases.flatMap((c) => c.items.map((i) => i.ref)).join('\n'));
-execFileSync('npx', ['tailwindcss', '-i', `${here}reference.css`, '-o', `${out}/reference.out.css`], { stdio: 'ignore' });
+execFileSync(process.execPath, [fileURLToPath(new URL('../node_modules/@tailwindcss/cli/dist/index.mjs', import.meta.url)), '-i', `${here}reference.css`, '-o', `${out}/reference.out.css`], { stdio: 'ignore' });
 await build({
     configFile: false,
     root: here,

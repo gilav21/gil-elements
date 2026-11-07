@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { ref as button } from '../lib/button-ref.mjs';
 
 const dir = new URL('../../packages/elements/src/emoji-picker/', import.meta.url);
-const table = (file, name) => new Function(`${readFileSync(new URL(file, dir), 'utf8').replace(/export interface[\s\S]*?\n}\n/, '').replace(/export const (\w+)(: [^=]+)? =/, 'const $1 =')}; return ${name};`)();
+const table = (file, name) => new Function(`${readFileSync(new URL(file, dir), 'utf8').replace(/export interface[\s\S]*?\r?\n}\r?\n/, '').replace(/export const (\w+)(: [^=]+)? =/, 'const $1 =')}; return ${name};`)();
 const CATEGORIES = table('emoji-picker.categories.ts', 'EMOJI_CATEGORIES');
 const DATA = table('emoji-picker.keywords.ts', 'EMOJI_DATA');
 
