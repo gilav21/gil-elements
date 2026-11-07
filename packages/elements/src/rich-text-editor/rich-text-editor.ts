@@ -949,8 +949,7 @@ export class GeRichTextEditor extends UiElement implements RichTextCoreHost, Ric
         this.markClean();
     }
 
-    private applyExternalHtml(value: string | null | undefined): void {
-        const text = value ?? '';
+    private applyExternalHtml(text = ''): void {
         const converted = this.mode === 'markdown' && text ? this.markdown.toHtml(text) : this.sanitizer.sanitize(text);
         this.swapContent(converted);
     }
