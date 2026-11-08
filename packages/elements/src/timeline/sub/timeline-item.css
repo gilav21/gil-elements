@@ -5,8 +5,7 @@
     position: relative;
     display: flex;
     gap: 1rem;
-    padding-bottom: 2rem;
 }
-:host(:last-child) .item {
-    padding-bottom: 0;
+:host(:not(:last-of-type)) .item {
+    padding-bottom: 2rem;
 }

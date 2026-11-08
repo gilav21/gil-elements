@@ -5363,6 +5363,7 @@ stats.renderItem = (item) => {
             { name: 'item-padding', type: 'length', default: '1rem', description: 'Card padding.' },
             { name: 'editable', type: 'boolean', default: 'true', description: 'Dragging, resizing, selecting, merging and the menus.' },
             { name: 'resize-handle-type', type: "'edges' | 'corners' | 'both'", default: "'both'", description: 'Which grips cards show while editable.' },
+            { name: 'drag-handle-label', type: 'string', default: "'Drag to reorder'", description: 'Accessible name of the drag grip shown when any pointer is coarse. A touch drag starts only from it.' },
             { name: 'items-change', type: 'event', default: '-', description: 'detail is the whole new layout after a move, resize, merge, split, add or delete.' },
             { name: 'selection-change', type: 'event', default: '-', description: 'detail is the selected ids.' },
             { name: 'external-drop', type: 'event', default: '-', description: 'A widget dragged in from elsewhere (application/json { type: "widget", id }); detail has widgetId, targetId and, on empty canvas, x and y.' },

@@ -34,7 +34,7 @@ export interface SelectHost {
     /** Commits the row with this key, as a user pick. */
     select(key: string): void;
     show(): void;
-    hide(): void;
+    hide(options?: { restoreFocus?: 'now' }): void;
     toggle(): void;
     register(part: SelectPart): void;
     unregister(part: SelectPart): void;
@@ -193,13 +193,15 @@ export class GeSelect extends UiElement implements SelectHost {
      * Closes the panel. When focus is inside it, focus goes back to the trigger, since the panel is about to
      * leave; a close from an outside click leaves focus where the user put it.
      */
-    hide(): void {
+    hide(options: { restoreFocus?: 'now' } = {}): void {
         const active = deepActive(document);
         const trigger = this.trigger;
         const inside = !!active && (this.contains(active) || !!this.shadowRoot?.contains(active)) && !trigger?.contains(active) && !trigger?.shadowRoot?.contains(active);
         this.setOpen(false);
         // After the key event: Enter's default action would otherwise click the trigger focus just landed on and reopen the panel.
-        if (inside) setTimeout(() => this.trigger?.focus());
+        // `now` is for Tab: the key's own default action runs after this handler and must start from the trigger.
+        if (inside && options.restoreFocus === 'now') this.trigger?.focus();
+        else if (inside) setTimeout(() => this.trigger?.focus());
     }
 
     select(key: string): void {

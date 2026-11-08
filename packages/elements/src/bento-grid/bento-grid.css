@@ -36,7 +36,6 @@
 }
 .bento-item.editable {
     cursor: grab;
-    touch-action: none;
 }
 .bento-item.editable:hover {
     --_shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
@@ -75,6 +74,24 @@
     font-size: 0.75rem;
     font-weight: 700;
     line-height: 1.3333333;
+}
+/* A touch drag starts only here, so a touch on the widget body scrolls the page. Any coarse pointer counts: a touch laptop's primary pointer is fine. */
+.drag-handle {
+    display: none;
+    position: absolute;
+    top: 0.5rem;
+    inset-inline-start: 0.5rem;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    cursor: grab;
+    touch-action: none;
+}
+@media (any-pointer: coarse) {
+    .drag-handle {
+        display: flex;
+    }
 }
 .options {
     position: absolute;

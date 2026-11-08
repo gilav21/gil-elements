@@ -277,6 +277,20 @@ describe('ge-navigation-menu', () => {
         expect(at()).toBe(button(page, 'learn-trigger'));
     });
 
+    it('leaves the arrow keys to a control in the panel that is not one of its links', async () => {
+        const page = await mount(MARKUP());
+        const field = document.createElement('input');
+        field.setAttribute('aria-label', 'Search the docs');
+        el(page, 'learn-panel').append(field);
+        button(page, 'learn-trigger').focus();
+        await key(page, '{ArrowDown}');
+        field.focus();
+        for (const keys of ['{ArrowDown}', '{ArrowUp}', '{Home}', '{End}']) {
+            await key(page, keys);
+            expect(at()).toBe(field);
+        }
+    });
+
     it('closes the panel when Tab leaves its item, and keeps it open under a pointer that drifts away while the keyboard is in it', async () => {
         const page = await mount(MARKUP());
         button(page, 'learn-trigger').focus();

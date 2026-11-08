@@ -171,6 +171,8 @@ export class GeNavigationMenu extends UiElement implements NavigationMenuHost {
     private moveInContent(event: KeyboardEvent, content: HTMLElement, path: HTMLElement[], rtl: boolean): void {
         const links = focusableIn(content);
         const at = links.findIndex((link) => path.includes(link));
+        // A key pressed in a field or button of the panel that is not one of its links belongs to that control.
+        if (at < 0) return;
         const next = rtl ? 'ArrowLeft' : 'ArrowRight';
         const previous = rtl ? 'ArrowRight' : 'ArrowLeft';
         let to: number;

@@ -1,13 +1,19 @@
 /* shadcn-angular switch: a 2.25rem x 1.25rem pill with a 1rem thumb, and an optional label beside it. */
 :host {
     --_d: var(--density-switch, var(--density, 1));
-    /* Whole-pixel track height: the thumb is the track minus its 2px borders, so a fractional height would split the leftover half pixel unevenly. */
-    --_h: round(calc(1.25rem * var(--_d)), 1px);
+    --_h: calc(1.25rem * var(--_d));
     --_w: calc(2.25rem * var(--_d));
     display: inline-flex;
     flex-shrink: 0;
     cursor: pointer;
     outline: none;
+}
+/* Whole-pixel track height: the thumb is the track minus its borders, so a fractional height would split the leftover half pixel
+   unevenly. round() needs Chrome 125; elsewhere the unsnapped height stays instead of an invalid declaration. */
+@supports (height: round(1px, 1px)) {
+    :host {
+        --_h: round(calc(1.25rem * var(--_d)), 1px);
+    }
 }
 :host([label]) {
     display: flex;
@@ -38,8 +44,9 @@
 .thumb {
     pointer-events: none;
     display: block;
-    width: calc(var(--_h) - 4px);
-    height: calc(var(--_h) - 4px);
+    flex: none;
+    height: 100%;
+    aspect-ratio: 1;
     border-radius: 9999px;
     background-color: var(--background);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);

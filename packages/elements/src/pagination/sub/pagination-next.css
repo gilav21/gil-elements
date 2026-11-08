@@ -1,4 +1,5 @@
 :host {
+    --_nav-d: var(--density-button, var(--density, 1));
     display: contents;
 }
 button {

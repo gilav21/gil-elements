@@ -388,13 +388,22 @@ describe('ge-bento-grid dragging', () => {
         expect(moves).toEqual([]);
     });
 
-    it('moves a widget with a finger: a preview under it while it moves, the layout announced when it lifts, and no page scrolling from it', async () => {
+    it('moves a widget with a finger from its grip: a preview under it while it moves, the layout announced when it lifts', async () => {
         const el = await board();
         const seen = changes(el);
-        expect(getComputedStyle(card(el, 'c')).touchAction).toBe('none');
+        const handle = card(el, 'c').querySelector<HTMLElement>('.drag-handle')!;
+        // The widget body scrolls the page natively; only the grip takes the touch.
+        expect(getComputedStyle(card(el, 'c')).touchAction).toBe('auto');
+        expect(getComputedStyle(handle).touchAction).toBe('none');
+        expect(handle.getAttribute('aria-label')).toBe('Drag to reorder');
         const from = card(el, 'c').getBoundingClientRect();
         const touch = (x: number, y: number) => new Touch({ identifier: 1, target: card(el, 'c'), clientX: x, clientY: y });
+        // A touch on the body starts nothing.
         card(el, 'c').dispatchEvent(new TouchEvent('touchstart', { touches: [touch(from.left + 10, from.top + 10)], bubbles: true, cancelable: true, composed: true }));
+        window.dispatchEvent(new TouchEvent('touchmove', { touches: [touch(from.left + 60, from.top + 60)], bubbles: true, cancelable: true }));
+        await el.updateComplete;
+        expect(el.shadowRoot!.querySelector('.placeholder')).toBeNull();
+        handle.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(from.left + 10, from.top + 10)], bubbles: true, cancelable: true, composed: true }));
         const point = cellCentre(el, 1, 4);
         window.dispatchEvent(new TouchEvent('touchmove', { touches: [touch(point.clientX - 40 + 10, point.clientY - 15 + 10)], bubbles: true, cancelable: true }));
         await el.updateComplete;

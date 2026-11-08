@@ -1,7 +1,8 @@
 // shadcn-angular pagination.component.ts (simple mode) and sub/pagination-*.component.ts
 const NAV = 'mx-auto flex w-full justify-center';
 const NAVBTN = 'inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
-const NAVBTN_CUSTOM = NAVBTN.replace('text-sm font-medium', 'text-sm font-medium h-9 px-4 py-2');
+// Custom-mode previous/next take their size from the density rule in reference.css, not from utilities.
+const NAVBTN_CUSTOM = NAVBTN;
 const DIS = 'disabled:pointer-events-none disabled:opacity-50';
 const LINK = 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 const ON = 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground';
@@ -19,9 +20,9 @@ const pages = (current, total, s = 1) => {
     return [1, -1, ...range(l, r), -1, total];
 };
 const simpleRef = (current, total) =>
-    `<ui-pagination class="contents"><nav role="navigation" aria-label="pagination" class="${NAV}" data-slot="pagination"><ul class="flex flex-row flex-wrap items-center gap-1" data-slot="pagination-content"><li><button type="button" class="${NAVBTN} ${DIS}" data-size="default" ${current <= 1 ? 'disabled' : ''} data-slot="pagination-previous">${PREV}<span>Previous</span></button></li>${pages(current, total)
-        .map((p) => (p === -1 ? `<li><span class="flex h-9 w-9 items-center justify-center" data-slot="pagination-ellipsis" aria-hidden="true">${DOTS}<span class="sr-only">More pages</span></span></li>` : `<li><button type="button" class="${LINK} ${p === current ? ON : OFF}" data-size="icon" ${p === current ? 'aria-current="page"' : ''} data-slot="pagination-link">${p}</button></li>`))
-        .join('')}<li><button type="button" class="${NAVBTN} ${DIS}" data-size="default" ${current >= total ? 'disabled' : ''} data-slot="pagination-next"><span>Next</span>${NEXT}</button></li></ul></nav></ui-pagination>`;
+    `<ui-pagination class="contents"><nav role="navigation" aria-label="pagination" class="${NAV}" data-slot="pagination"><ul class="flex flex-row flex-wrap items-center gap-1" data-slot="pagination-content"><li><button type="button" class="${NAVBTN} ${DIS}" ${current <= 1 ? 'disabled' : ''} data-slot="pagination-previous">${PREV}<span>Previous</span></button></li>${pages(current, total)
+        .map((p) => (p === -1 ? `<li><span class="flex h-9 w-9 items-center justify-center" data-slot="pagination-ellipsis" aria-hidden="true">${DOTS}<span class="sr-only">More pages</span></span></li>` : `<li><button type="button" class="${LINK} ${p === current ? ON : OFF}" ${p === current ? 'aria-current="page"' : ''} data-slot="pagination-link">${p}</button></li>`))
+        .join('')}<li><button type="button" class="${NAVBTN} ${DIS}" ${current >= total ? 'disabled' : ''} data-slot="pagination-next"><span>Next</span>${NEXT}</button></li></ul></nav></ui-pagination>`;
 const simpleEl = (current, total, extra = '') => `<ge-pagination current-page="${current}" total-pages="${total}"${extra}></ge-pagination>`;
 
 // Custom mode.

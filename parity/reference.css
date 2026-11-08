@@ -477,13 +477,14 @@ ui-pagination {
     --_d: var(--density-button, var(--density, 1));
 }
 @layer components {
-    ui-pagination [data-slot="pagination-previous"][data-size],
-    ui-pagination [data-slot="pagination-next"][data-size] {
+    /* Angular scopes these to the pagination template (emulated encapsulation), so only the simple form's own buttons, direct children of an li, match. */
+    ui-pagination li > [data-slot="pagination-previous"],
+    ui-pagination li > [data-slot="pagination-next"] {
         height: calc(2.25rem * var(--_d));
         padding-inline: calc(1rem * var(--_d));
         padding-block: calc(0.5rem * var(--_d));
     }
-    ui-pagination [data-slot="pagination-link"][data-size="icon"] {
+    ui-pagination li > [data-slot="pagination-link"] {
         height: calc(2.25rem * var(--_d));
         width: calc(2.25rem * var(--_d));
     }
@@ -965,5 +966,19 @@ ui-field-mapper {
             gap: calc(1rem * var(--_d));
             padding: calc(1.5rem * var(--_d));
         }
+    }
+}
+
+/* shadcn-angular pagination-previous.component.css and pagination-next.component.css */
+ui-pagination-previous,
+ui-pagination-next {
+    --_d: var(--density-button, var(--density, 1));
+}
+@layer components {
+    [data-slot="pagination-previous"],
+    [data-slot="pagination-next"] {
+        height: calc(2.25rem * var(--_d));
+        padding-inline: calc(1rem * var(--_d));
+        padding-block: calc(0.5rem * var(--_d));
     }
 }

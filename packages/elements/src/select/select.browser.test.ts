@@ -124,7 +124,7 @@ describe('ge-select (projected)', () => {
         expect(visible(panel(page))).toBe(false);
     });
 
-    it('closes on Tab from a row and puts focus back on the trigger instead of leaving for the page', async () => {
+    it('Tab from a row puts focus on the trigger at once, does not commit the highlighted row and does not prevent the key', async () => {
         const page = await mount(MARKUP());
         await openByClick(page);
         await press(page, '{ArrowDown}');
@@ -135,11 +135,11 @@ describe('ge-select (projected)', () => {
         active().dispatchEvent(tab);
         await settle(page);
 
-        expect(tab.defaultPrevented).toBe(true);
+        // Not prevented, so the browser carries on from the trigger: one Tab leaves the select.
+        expect(tab.defaultPrevented).toBe(false);
         expect(select(page).open).toBe(false);
-        await new Promise((r) => setTimeout(r, 20));
         expect(active()).toBe(button(page));
-        expect(active()).not.toBe(el(page, 'outside'));
+        expect(select(page).value).toBeUndefined();
     });
 
     it('ignores a disabled row and a disabled select, and closes from outside', async () => {

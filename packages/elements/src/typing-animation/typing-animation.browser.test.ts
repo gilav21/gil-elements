@@ -134,9 +134,15 @@ describe('ge-typing-animation', () => {
         await advance(el, 10);
         expect(shown(el)).toBe('abcd');
 
+        // Emptied: the text is cleared and nothing runs; filled again, it starts over from the first phrase.
         el.strings = [];
         await advance(el, 5000);
-        expect(shown(el)).toBe('abcd');
+        expect(shown(el)).toBe('');
+        el.strings = ['xy'];
+        await advance(el, 0);
+        expect(shown(el)).toBe('x');
+        await advance(el, 10);
+        expect(shown(el)).toBe('xy');
     });
 
     it('shows the first phrase at once and runs nothing under reduced motion, and starts nothing without phrases', async () => {
