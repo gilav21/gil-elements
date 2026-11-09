@@ -142,7 +142,8 @@ describe('ge-carousel', () => {
         const { page, c, track } = await carousel();
         track.style.scrollSnapType = 'none';
         track.scrollTo({ left: track.clientWidth * 0.7, behavior: 'instant' });
-        await settle(page);
+        // The scroll event arrives a frame later: wait for the index, not for a fixed settle.
+        await until(() => c.currentIndex === 1);
         expect(c.currentIndex).toBe(1);
 
         const empty = await carousel('', 0);
