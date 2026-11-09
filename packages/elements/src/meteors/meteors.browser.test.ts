@@ -26,6 +26,10 @@ const inkCentre = (el: Element) => {
     }
     return { x: sumX / total, y: sumY / total };
 };
+/** Within two steps per channel: the most opaque pixel is not always fully opaque, and premultiplied alpha rounds its colour down by one or two. */
+const expectColour = (actual: (number | undefined)[], expected: number[]) => {
+    expected.forEach((channel, index) => expect(Math.abs((actual[index] ?? Number.NaN) - channel)).toBeLessThanOrEqual(2));
+};
 const colourOfInk = (el: Element) => {
     const data = pixels(el);
     let best = 3;
@@ -54,11 +58,11 @@ describe('ge-meteors', () => {
     it('draws meteors in white, and in the colour asked for, resolving a token', async () => {
         const white = await sky('count="30"');
         expect(ink(white)).toBeGreaterThan(0);
-        expect(colourOfInk(white)).toEqual([255, 255, 255]);
+        expectColour(colourOfInk(white), [255, 255, 255]);
 
         const page = await mount('<div style="position:relative;width:300px;height:200px;--meteor:rgb(255,0,0)"><ge-meteors count="30" color="var(--meteor)"></ge-meteors></div>');
         await frames(3);
-        expect(colourOfInk(page.querySelector('ge-meteors')!)).toEqual([255, 0, 0]);
+        expectColour(colourOfInk(page.querySelector('ge-meteors')!), [255, 0, 0]);
     });
 
     it('draws nothing for count 0, and more ink for a bigger population', async () => {
