@@ -200,20 +200,49 @@ describe('ge-dock', () => {
         await expect.poll(() => bar(el).hasAttribute('data-scrolls')).toBe(false);
     });
 
-    it('below sm the horizontal bar scrolls sideways and keeps the label row inside it; from sm up it paints outside', async () => {
-        const page = await mount(custom());
+    it('below sm the bar is the magnification plus 40px, scrolls sideways, and keeps the label of a magnified item inside it; from sm up it paints outside', async () => {
+        const page = await mount(`<div style="padding-top:40px">${custom('magnification="80"')}</div>`);
         const el = first(page);
         await screen.viewport(500, 800);
         try {
             await frame();
             expect(getComputedStyle(bar(el)).overflowX).toBe('auto');
-            expect(bar(el).getBoundingClientRect().height).toBe(76);
+            // 14px of border and padding, the item at its magnified size, and a 26px row for the label (4px gap + 22px bubble).
+            expect(bar(el).getBoundingClientRect().height).toBe(120);
+
+            const item = dockItems(el)[2]!;
+            const label = item.querySelector('ge-dock-label')!.shadowRoot!.querySelector<HTMLElement>('.label')!;
+            await userEvent.hover(item);
+            // The label must be judged once the item has finished growing; on the first frame it is still 40px and any height passes.
+            await expect.poll(() => Math.max(item.getBoundingClientRect().width, item.getBoundingClientRect().height)).toBeGreaterThanOrEqual(79);
+            await expect.poll(() => getComputedStyle(label).display).toBe('block');
+            const inside = bar(el).getBoundingClientRect();
+            const l = label.getBoundingClientRect();
+            expect(l.top).toBeGreaterThanOrEqual(inside.top - 0.5);
+            expect(l.bottom).toBeLessThanOrEqual(inside.bottom + 0.5);
         } finally {
             await screen.viewport(1280, 800);
         }
         await frame();
         expect(getComputedStyle(bar(el)).overflowX).toBe('visible');
         expect(bar(el).getBoundingClientRect().height).toBe(58);
+    });
+
+    it('sizes the bar below sm from the magnification input: 100px by default', async () => {
+        const page = await mount(custom());
+        const el = first(page);
+        await screen.viewport(500, 800);
+        try {
+            await frame();
+            expect(bar(el).getBoundingClientRect().height).toBe(100);
+            expect(bar(el).style.getPropertyValue('--dock-magnification')).toBe('60px');
+            el.magnification = 90;
+            await el.updateComplete;
+            await frame();
+            expect(bar(el).getBoundingClientRect().height).toBe(130);
+        } finally {
+            await screen.viewport(1280, 800);
+        }
         void page;
     });
 

@@ -202,6 +202,7 @@ export class GeDock extends UiElement {
             part="base"
             data-slot="dock"
             data-position=${this.position}
+            style=${`--dock-magnification:${this.magnification}px`}
             ?data-scrolls=${this.scrolls}
             tabindex="0"
             @pointerdown=${this.onPointer}

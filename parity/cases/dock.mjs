@@ -2,8 +2,8 @@
 // to each item, which is the proposed fix for the label never showing: Angular only reveals it under a `group` ancestor
 // and the dock never adds one.
 const BASE = 'mx-auto w-max max-w-[calc(100vw-2rem)] p-1.5 sm:p-2 flex gap-1.5 sm:gap-2 rounded-2xl border supports-backdrop-blur:bg-white/10 supports-backdrop-blur:dark:bg-black/10 backdrop-blur-md';
-// Below sm the bar scrolls sideways and a scroll container clips both axes, so it is taller (76 vs 50) to keep the label's row inside; from sm up it does not scroll.
-const HORIZONTAL_BAR = 'overflow-x-auto sm:overflow-visible mt-4 sm:mt-8 h-[76px] sm:h-[58px]';
+// Below sm the bar scrolls sideways and a scroll container clips both axes, so its height is the magnification + 40px to keep the label's row inside; from sm up it does not scroll.
+const HORIZONTAL_BAR = 'overflow-x-auto sm:overflow-visible mt-4 sm:mt-8 h-[calc(var(--dock-magnification,60px)_+_40px)] sm:h-[58px]';
 // A column scrolls only once it is taller than max-h (the dock measures that); until then the label beside an item is not clipped.
 const VERTICAL_BAR = 'items-start flex-col h-max max-h-[calc(100vh-2rem)]';
 const BAR = `${BASE} ${HORIZONTAL_BAR}`;
@@ -20,8 +20,8 @@ const ITEMS = [{ label: 'Home', icon: '🏠', active: true }, { label: 'Files', 
 // A column (left/right) is laid out with its length free: the proposed fix for the horizontal bar's fixed height clipping all but one item.
 const VERTICAL = `${BASE} ${VERTICAL_BAR}`;
 // tailwind-merge by hand: a height class passed in replaces the bar's own.
-const barFor = (position, tall) => (tall ? BAR.replace('h-[76px] sm:h-[58px]', tall) : position === 'left' || position === 'right' ? VERTICAL : BAR);
-const refDock = (position, items = ITEMS, tall = '') => `<ui-dock class="contents"><div class="${barFor(position, tall)} ${POSITION[position]}" data-slot="dock" data-position="${position}" tabindex="0">${items.map(refItem).join('')}</div></ui-dock>`;
+const barFor = (position, tall) => (tall ? BAR.replace('h-[calc(var(--dock-magnification,60px)_+_40px)] sm:h-[58px]', tall) : position === 'left' || position === 'right' ? VERTICAL : BAR);
+const refDock = (position, items = ITEMS, tall = '', magnification = 60) => `<ui-dock class="contents"><div class="${barFor(position, tall)} ${POSITION[position]}" data-slot="dock" data-position="${position}" style="--dock-magnification: ${magnification}px" tabindex="0">${items.map(refItem).join('')}</div></ui-dock>`;
 const elDock = (position, items = ITEMS, attrs = '') => `<ge-dock position="${position}"${attrs}>${items.map(elItem).join('')}</ge-dock>`;
 const ICON_STYLE = '<style>.rich::part(base){background:linear-gradient(to bottom in oklab,oklch(74.6% 0.16 232.661),oklch(58.8% 0.158 241.966));border:1px solid color-mix(in oklab,oklch(74.6% 0.16 232.661) 30%,transparent);color:white;border-radius:calc(var(--radius) + 4px)}</style>';
 const RICH = 'bg-gradient-to-b from-sky-400 to-sky-600 border border-sky-400/30 text-white rounded-xl';
@@ -58,3 +58,6 @@ export default {
         { id: 'focus', focus: { ref: '[data-slot=dock]', el: '[data-slot=dock]' }, wrap: 'height:120px;', ref: refDock('bottom'), el: elDock('bottom') },
     ],
 };
+
+// Named exports for dock-narrow.mjs, which renders the same docks in a viewport below sm.
+export { refDock, elDock, ITEMS };

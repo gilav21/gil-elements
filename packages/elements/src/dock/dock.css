@@ -7,9 +7,10 @@
     box-sizing: border-box;
     width: max-content;
     max-width: calc(100vw - 2rem);
-    /* Below sm the bar scrolls sideways, and a scroll container clips both axes, so it is 26px taller (76 vs 50) than its
-       pinned items need, leaving the label's row inside the scrollport. From sm up it does not scroll and the label paints outside. */
-    height: 76px;
+    /* Below sm the bar scrolls sideways, and a scroll container clips both axes, so the label's row must lie inside the scrollport.
+       The hovered item grows to the magnification and the items are pinned to the far edge, so the bar is that size plus 40px: 14px of
+       border and padding and a 26px label row (4px gap + 22px label). From sm up it does not scroll and the label paints outside. */
+    height: calc(var(--dock-magnification, 60px) + 40px);
     margin-inline: auto;
     margin-top: 1rem;
     padding: 0.375rem;
