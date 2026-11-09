@@ -44,7 +44,7 @@ export class ColumnsController<T> {
                 .columns.filter((c) => c.accessorKey !== '_actions')
                 .map((c) => String(c.accessorKey)),
         pinOf: (key) => this.current().columns.find((c) => String(c.accessorKey) === key)?._pin,
-        // Package C replaces the four members below; until then a column cannot be moved, a width is never live and saved state is not applied.
+        // Package C replaces these five inert members (`liveWidth`, `applyState`, `getViewState`, `applyViewState`, `move`); until then a column cannot be moved, a width is never live, and saved state is neither applied nor read as a view token (`applyViewState` reports false, which does NOT mean the token was bad).
         liveWidth: () => undefined,
         getState: () => readColumnState(this.host.config.columns, { widths: this.host.model.get('columnWidths'), visibility: this.host.model.get('columnVisibility'), pins: this.pins, order: this.host.model.get('columnOrder') }),
         applyState: () => undefined,

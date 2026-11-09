@@ -586,10 +586,12 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return this.slotted.get(name) ?? nothing;
     }
 
+    /** @internal Part of the view contract (`DataTableViewHost`), not of the element's public API. */
     isDisabled(row: T): boolean {
         return this.isRowDisabled?.(row) === true || this.isIdDisabled(this.getRowId(row));
     }
 
+    /** @internal Part of the view contract (`DataTableViewHost`), not of the element's public API. */
     slottedNodes(name: string): readonly Node[] | undefined {
         return this.slotted.get(name);
     }

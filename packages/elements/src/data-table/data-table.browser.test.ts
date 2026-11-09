@@ -1,12 +1,14 @@
 import axe from 'axe-core';
 import { html } from 'lit';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { paintedToken, useTheme } from '../test-utils.js';
 import { computeGridAria } from './data-table-aria.js';
 import { bodyRows, mountTable, q, qa, SAMPLE_COLUMNS as COLUMNS, SAMPLE_ROWS as ROWS, type SampleRow as Row, settle, trackTable } from './data-table-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 import type { ColumnDef } from './data-table.types.js';
+
+afterEach(() => document.documentElement.classList.remove('dark'));
 
 const cellTexts = (table: Element, column: string) => qa(table, `[data-slot="table-cell"][data-column="${column}"]`).map((c) => c.textContent!.trim());
 const sortButton = (table: Element, column: string) =>
