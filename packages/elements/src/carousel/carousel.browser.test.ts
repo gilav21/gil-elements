@@ -145,6 +145,8 @@ describe('ge-carousel', () => {
         // The scroll event is delivered asynchronously: wait for the index itself, then let the render finish.
         await until(() => c.currentIndex === 1);
         await settle(page);
+        // The end state, after any further scroll events: the failure then names the index it saw.
+        expect(c.currentIndex).toBe(1);
 
         const empty = await carousel('', 0);
         const log: unknown[] = [];
