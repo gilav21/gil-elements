@@ -63,46 +63,22 @@ export type ComponentOutputs = Record<string, (event: Event) => void>;
 /**
  * How a data cell is drawn. At most one applies, in this order of precedence:
  *
- * 1. `component`: a custom-element tag name, or a framework component handled by a registered {@link CellAdapter}. It is
- *    created per cell; `componentInputs(row)` is assigned as PROPERTIES (never attributes) and `componentOutputs(row)` are
- *    added as event listeners.
+ * 1. `component`: a custom-element tag name. The element is created per cell (and reused while the tag is unchanged);
+ *    `componentInputs(row)` is assigned as PROPERTIES (never attributes) and `componentOutputs(row)` are added as event
+ *    listeners. This is the one way to render a component from any framework: expose it as a custom element (Angular
+ *    Elements, Vue `defineCustomElement`, a React wrapper, Svelte or Solid custom elements) and pass its tag.
  * 2. `cellRenderer`: a function returning a {@link CellRenderResult}.
  * 3. `cell`: a function returning plain text.
  *
- * With none, the raw value is stringified. `resolveCellKind` (data-table-cell-adapters) answers which applies. The same
+ * With none, the raw value is stringified. `resolveCellKind` answers which applies. The same
  * hosts apply to `filterComponent`, `editComponent`, `footerComponent` and `floatingFilterComponent`.
  */
 export interface CellRendering<T> {
-    component?: string | CellComponent;
+    component?: string;
     componentInputs?: (row: T) => Record<string, unknown>;
     componentOutputs?: (row: T) => ComponentOutputs;
     cellRenderer?: (ctx: CellContext<T>) => CellRenderResult;
     cell?: (row: T) => string;
-}
-
-/**
- * A custom-element tag name (`'ge-badge'`) or a framework component (Angular class, React or Vue component) that a
- * registered {@link CellAdapter} recognises. The core never inspects a non-string itself, so it is typed `unknown`.
- */
-export type CellComponent = unknown;
-
-/** What an adapter gets to wire up: values for the component's inputs, and handlers keyed by output name. */
-export interface CellBindings {
-    inputs: Record<string, unknown>;
-    outputs: Record<string, (event: Event) => void>;
-}
-
-/** One mounted framework component. */
-export interface CellInstance {
-    update(ctx: CellContext<unknown>, inputs: Record<string, unknown>): void;
-    dispose(): void;
-}
-
-/** Renders framework components into a host element. Registered with `registerCellAdapter`; detection is the adapter's job. */
-export interface CellAdapter {
-    readonly id: string;
-    matches(component: unknown): boolean;
-    mount(host: HTMLElement, component: unknown, ctx: CellContext<unknown>, bindings: CellBindings): CellInstance;
 }
 
 /**
@@ -120,7 +96,7 @@ export interface ColumnDef<T> extends CellRendering<T> {
     enableGlobalFilter?: boolean;
     filterFn?: (row: T, filterValue: unknown) => boolean;
     /** Custom-element tag name of a custom filter UI; see {@link CellRendering.component} for how it is driven. */
-    filterComponent?: string | CellComponent;
+    filterComponent?: string;
     filterComponentInputs?: Record<string, unknown> | (() => Record<string, unknown>);
     filterComponentOutputs?: ComponentOutputs;
     pin?: 'left' | 'right';
@@ -137,7 +113,7 @@ export interface ColumnDef<T> extends CellRendering<T> {
     treeExpander?: boolean;
     editable?: boolean;
     /** Custom-element tag name of the editor (contract: see the note on {@link ColumnDef}). */
-    editComponent?: string | CellComponent;
+    editComponent?: string;
     editRenderer?: (ctx: CellContext<T>) => CellRenderResult;
     /**
      * Which editor an inline edit opens. `date` uses the library's date picker and writes back in whatever shape the
@@ -149,11 +125,11 @@ export interface ColumnDef<T> extends CellRendering<T> {
     editValidator?: (value: unknown, row: T) => boolean | string;
     footer?: string | ((rows: T[]) => string);
     footerRenderer?: (ctx: FooterContext<T>) => CellRenderResult;
-    footerComponent?: string | CellComponent;
+    footerComponent?: string;
     aggregateFn?: AggregateFn;
     floatingFilter?: boolean;
     floatingFilterRenderer?: (ctx: FilterContext<T>) => CellRenderResult;
-    floatingFilterComponent?: string | CellComponent;
+    floatingFilterComponent?: string;
     enableCellFlash?: boolean;
     /** Conditional formatting: CSS classes applied when a predicate matches the cell value. */
     cellClassRules?: CellClassRule<T>[];
