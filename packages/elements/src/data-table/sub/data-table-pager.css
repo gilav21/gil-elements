@@ -1,4 +1,7 @@
 /* shadcn-angular data-table-pagination: rows per page, "Page X of Y" and four chevron buttons. */
+[data-slot='dt-icon'] {
+    display: inline-flex;
+}
 :host {
     display: block;
 }
