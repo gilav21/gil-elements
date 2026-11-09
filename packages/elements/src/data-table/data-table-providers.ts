@@ -7,9 +7,12 @@ import type { AiProvider } from '../shared/ai.js';
 import type { SlotRegistry } from '../shared/registry.js';
 import type { DataTableLocale } from './data-table.locales.js';
 import type {
+    BodyWindow,
     CellEditError,
     CellRange,
     ColumnDef,
+    DataTableColumnState,
+    DataTableViewState,
     DataTableDisplayRow,
     DataTableExportOptions,
     DataTableExportQuery,
@@ -29,6 +32,7 @@ import type {
     VirtualRenderRange,
 } from './data-table.types.js';
 import type { GlobalFilterFn } from './data-table-query.js';
+import type { TreeIndex } from './data-table-tree.js';
 
 /** Every Angular input a controller reads, as the live value (never a snapshot). Renderer functions are the element's. */
 export interface DataTableConfig<T> {
@@ -93,6 +97,14 @@ export interface QueryService<T> {
     sortedData(): readonly T[];
     /** What the virtual window slices in tree mode: the visible nodes of the page, flattened. */
     visibleTreeRows(): readonly FlattenedTreeRow<T>[];
+    /** The tree rows of the page as drawn (tree mode). */
+    treeRows(): readonly FlattenedTreeRow<T>[];
+    /** Id -> node, parent, children and descendants; rebuilt only when `data`, `getRowId` or `getChildren` change. */
+    treeIndex(): TreeIndex;
+    /** Every group of the sorted rows across pages, in insertion order (copy reads it; collapsed groups included). */
+    groupRows(): readonly { readonly groupKey: string; readonly rows: readonly T[] }[];
+    /** What the virtual window slices: the sorted rows (flat) or the visible tree rows (tree), never the paged list. */
+    rowWindowSource(): readonly T[] | readonly FlattenedTreeRow<T>[];
     /** The page as drawn, with group headers; data rows carry their rendered index. */
     displayRows(): readonly DataTableDisplayRow<T>[];
     /** The data rows of the page in drawn order: `data-row-index` addresses this list. */
@@ -140,10 +152,66 @@ export interface ColumnsService<T> {
     enhancedColumns(): readonly EnhancedColumnDef<T>[];
     /** Column keys keyboard navigation and range selection move across, in drawn order. */
     navigableKeys(): readonly string[];
+    /** `navigableKeys()` plus `_selection` and `_expander`: what the arrow keys traverse (not `_actions`, which holds buttons). */
+    focusableKeys(): readonly string[];
     pinOf(columnKey: string): 'left' | 'right' | undefined;
     setPin(columnKey: string, pin: 'left' | 'right' | undefined): void;
     setVisible(columnKey: string | keyof T, visible: boolean): void;
     showAll(): void;
+    /** Pins the width a drag is showing right now (px), so an incidental render keeps it; `null` ends the drag. */
+    liveWidth(columnKey: string, px: number | null): void;
+    getState(): DataTableColumnState[];
+    /** Merges saved column state in one model batch (widths, visibility, order) plus pins. */
+    applyState(states: readonly DataTableColumnState[] | null | undefined): void;
+    /** Everything a saved view covers: sort, filters, pagination and the column state, as one token (package C implements it). */
+    getViewState(): DataTableViewState | null;
+    /** Restores a saved view in ONE model batch; false (and nothing changed) when the token is refused. */
+    applyViewState(state: DataTableViewState | null | undefined): boolean;
+    /** Moves a column to a visible position among the reorderable ones (bounded; no event, only `columnOrder`). */
+    move(columnKey: string, targetIndex: number): void;
+}
+
+/** Row selection: the one writer of `rowSelection` (always a new object, so `row-selection-change` fires once per command). */
+export interface SelectionService<T> {
+    isSelected(id: string): boolean;
+    isDisabled(row: T): boolean;
+    toggleRow(row: T): void;
+    /** The tree checkbox: a plain toggle or a cascade, by `subRowSelectionMode`. */
+    toggleRowCascade(row: T): void;
+    toggleAll(): void;
+    selectRows(rows: readonly T[]): void;
+    unselectRows(rows: readonly T[]): void;
+    clearSelection(): void;
+    selectAll(): void;
+    /** The header checkbox over ALL filtered rows of every page, disabled rows excluded. */
+    header(): { checked: boolean; indeterminate: boolean; selectableCount: number };
+    /** A tree node with some but not all of its descendants selected. */
+    isIndeterminate(id: string): boolean;
+}
+
+/** Detail rows, tree expansion and group collapse: the owner of `expandedRows`, `subRowExpandedRows` and `collapsedGroups`. */
+export interface ExpansionService<T> {
+    isRowExpanded(id: string): boolean;
+    toggleRow(row: T): void;
+    isAllExpanded(): boolean;
+    toggleAll(): void;
+    isSubRowExpanded(row: T): boolean;
+    toggleSubRow(row: T): void;
+    expandSubRow(row: T): void;
+    collapseSubRow(row: T): void;
+    expandAllSubRows(toDepth?: number): void;
+    collapseAllSubRows(): void;
+    isGroupCollapsed(key: string): boolean;
+    toggleGroup(key: string): void;
+    expandAllGroups(): void;
+    collapseAllGroups(): void;
+}
+
+/** Column width gestures and the measuring that goes with them. */
+export interface ResizeService {
+    autoSizeColumn(columnKey: string): void;
+    autoSizeAllColumns(): void;
+    fitColumnsToViewport(): void;
 }
 
 /** Focus, range and editor state: one owner, because reconciling them after a render writes all of them together. */
@@ -160,8 +228,17 @@ export interface VirtualService {
     active(): boolean;
     /** Rows and columns currently drawn. */
     renderRange(): VirtualRenderRange;
+    /** What the body renders now; `0..items.length` and no padding while virtual scroll is off. */
+    window(): BodyWindow;
     scrollToRow(index: number): void;
     scrollToColumn(columnKey: string): void;
+    scrollToCell(rowIndex: number, columnKey: string): void;
+    /** The minimal scroll that brings a cell inside the viewport, clear of the sticky header, footer and pinned columns. */
+    reveal(rowIndex: number, columnKey?: string): void;
+    /** Keeps rows drawn outside the window for `owner` (`focus`, `edit`); an empty list releases them. */
+    retain(owner: string, rows: readonly number[]): void;
+    /** Re-reads the viewport, the row heights and the column widths, then recomputes what is drawn. */
+    measure(): void;
 }
 
 export interface CellActionSlot<T = unknown> {
@@ -194,6 +271,9 @@ export interface DataTableProviders<T = unknown> {
     columns: ColumnsService<T>;
     interaction: CellInteractionService;
     virtual: VirtualService;
+    selection: SelectionService<T>;
+    expansion: ExpansionService<T>;
+    resize: ResizeService;
     addons: AddonsService<T>;
     loading: LoadingService;
     formatting: FormattingService<T>;

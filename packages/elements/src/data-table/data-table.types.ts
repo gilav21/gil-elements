@@ -361,6 +361,10 @@ export interface FlattenedTreeRow<T> {
     isLeaf: boolean;
     childCount: number;
     isExpanded: boolean;
+    /** Siblings of the filtered, sorted tree (`aria-setsize`). */
+    setSize: number;
+    /** One-based position among them (`aria-posinset`). */
+    posInSet: number;
 }
 
 export interface RowActionContext<T> {
@@ -444,6 +448,26 @@ export interface VirtualRenderRange {
     rowEnd: number;
     colStart: number;
     colEnd: number;
+}
+
+/**
+ * The slice of the body list the renderer draws, and the padding that stands in for the rest. Rows are
+ * `items.slice(start, end)`; padding is written as custom properties (`--ge-dt-pad-top|bottom` on the body,
+ * `--ge-dt-pad-start|end` on the table), never as spacer elements. Without virtual scroll it is `0..items.length` and no padding.
+ */
+export interface BodyWindow {
+    start: number;
+    end: number;
+    /** Block-axis padding in px before the first and after the last drawn row. */
+    padStart: number;
+    padEnd: number;
+    /** The same on the inline axis, for the windowed middle columns. */
+    colPadStart: number;
+    colPadEnd: number;
+    colStart: number;
+    colEnd: number;
+    /** Absolute indices of rows outside `start..end` that stay drawn (the focused or edited row). */
+    retained: readonly number[];
 }
 
 export interface VirtualAutoThreshold {

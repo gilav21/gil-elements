@@ -118,13 +118,13 @@ function isNodeExpanded(id: string, depth: number, o: FlattenOptions<unknown>): 
 export function flattenTree<T>(rows: readonly T[], o: FlattenOptions<T>): FlattenedTreeRow<T>[] {
     const result: FlattenedTreeRow<T>[] = [];
     const walk = (items: readonly T[], depth: number, parentId: string | null, parentRow: T | null, path: string[]): void => {
-        for (const row of items) {
+        for (const [position, row] of items.entries()) {
             const id = o.getId(row);
             const children = o.getChildren(row) ?? [];
             const isLeaf = children.length === 0;
             const isExpanded = !isLeaf && isNodeExpanded(id, depth, o as FlattenOptions<unknown>);
             const rowPath = [...path, id];
-            result.push({ row, depth, parentId, parentRow, path: rowPath, isLeaf, childCount: children.length, isExpanded });
+            result.push({ row, depth, parentId, parentRow, path: rowPath, isLeaf, childCount: children.length, isExpanded, setSize: items.length, posInSet: position + 1 });
             if (isExpanded) walk(children, depth + 1, id, row, rowPath);
         }
     };

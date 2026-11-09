@@ -1,0 +1,52 @@
+/**
+ * Builds the `GridView` the renderer draws, from three package-owned views: `rowsView` (rows: A), `windowView`
+ * (window and focus: B) and `columnsView` (columns: C). This file is the lead's; a package changes its own view
+ * function and the interface next to it, and the shape of `GridView` follows.
+ */
+import { computeGridAria } from './data-table-aria.js';
+import type { GridView } from './data-table-grid.js';
+import { columnsView } from './data-table-grid-head.js';
+import { rowsView } from './data-table-grid-rows.js';
+import { windowView } from './data-table-grid-window.js';
+import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
+
+/** What the view functions read of the element beyond the core host. */
+export interface DataTableViewHost<T> extends DataTableCoreHost<T> {
+    /** Draws the empty state; a string, a Node or a lit template. */
+    readonly renderEmpty: (() => unknown) | undefined;
+    /** Draws the content of a row's detail row (`enable-row-expansion`). */
+    readonly renderDetail: ((row: T) => unknown) | undefined;
+    /** Draws a row that spans every column instead of its cells. */
+    readonly renderFullWidth: ((row: T) => unknown) | undefined;
+    /** `isRowDisabled` or `disabledRowIds` says so. */
+    isDisabled(row: T): boolean;
+    /** The consumer's children of a named slot, as the table holds them. */
+    slottedNodes(name: string): readonly Node[] | undefined;
+}
+
+export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
+    const footer = host.provider('footer');
+    const columns = columnsView(host);
+    const win = windowView(host);
+    const { source, totalRows, ...rows } = rowsView(host);
+    const showFooter = footer?.visible() ?? false;
+    const { colStart, colEnd } = win.window;
+    return {
+        ...columns,
+        ...rows,
+        focusedCell: win.focusedCell,
+        viewportTabbable: win.viewportTabbable,
+        locale: host.resolvedLocale,
+        body: { ...source, window: win.window },
+        // A rendered empty state is one real row (with a spanning cell), so it counts and the footer follows it.
+        aria: computeGridAria({
+            tree: host.config.enableSubRows || !!host.config.groupBy,
+            headerRows: 1,
+            totalDataRows: (win.virtualTotalRows ?? totalRows) || 1,
+            columnCount: columns.columns.length,
+            columnsWindowed: colEnd - colStart < columns.columns.length,
+            footerRows: showFooter ? 1 : 0,
+        }),
+        footer: { visible: showFooter, values: footer?.values() ?? new Map(), rows: requireProvider(host, 'query').sortedData() },
+    };
+}

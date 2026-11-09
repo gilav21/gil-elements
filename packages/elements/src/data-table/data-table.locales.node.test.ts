@@ -43,6 +43,19 @@ describe('data-table locales', () => {
         expect(en.filterResultsAnnouncement).toContain('{count}');
     });
 
+    it('has every wave 4 key, with the placeholders the announcements interpolate', () => {
+        const keys = [
+            'resizeColumnDescription', 'reorderColumnHint', 'pageAnnouncement', 'selectionAnnouncement', 'selectionAnnouncementOne',
+            'selectionClearedAnnouncement', 'columnMovedAnnouncement', 'columnResizedAnnouncement',
+        ] as const satisfies readonly (keyof DataTableLocale)[];
+        for (const key of keys) expect(en[key], key).toBeTruthy();
+        expect(interpolate(en.pageAnnouncement, { page: 2, pages: 5 })).toBe('Page 2 of 5');
+        expect(interpolate(en.selectionAnnouncement, { count: 3 })).toBe('3 rows selected');
+        expect(interpolate(en.columnMovedAnnouncement, { column: 'Age', position: 1, total: 4 })).toBe('Age moved to position 1 of 4');
+        expect(interpolate(en.columnResizedAnnouncement, { column: 'Age', width: 120 })).toBe('Age width 120 pixels');
+        expect(en.resizeColumn).not.toContain('double-click');
+    });
+
     it('resolves an object as it is, a known id, a region id, and falls back to English', () => {
         expect(resolveDataTableLocale(de)).toBe(de);
         expect(resolveDataTableLocale('xx')).toBe(en);

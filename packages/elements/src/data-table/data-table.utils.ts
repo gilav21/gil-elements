@@ -63,6 +63,9 @@ export function isSpecialColumnKey(key: unknown): boolean {
     return SPECIAL_COLUMN_KEYS.has(String(key));
 }
 
+/** The `data-special` value of a column: its key without the underscore (`_selection` -> `selection`). */
+export const specialSlotOf = (column: { accessorKey: PropertyKey }): string => String(column.accessorKey).replace(/^_/, '');
+
 /**
  * The "no filter" test used to skip column filters: `undefined`, `null`, `''`, an empty array (an emptied
  * multiselect), and a date range whose `start` and `end` are both null.

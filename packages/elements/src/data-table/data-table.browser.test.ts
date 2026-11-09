@@ -1,58 +1,13 @@
 import axe from 'axe-core';
 import { html } from 'lit';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
-import '@gilav21/elements-base/tokens.css';
-import './define.js';
 import { paintedToken, useTheme } from '../test-utils.js';
 import { computeGridAria } from './data-table-aria.js';
+import { bodyRows, mountTable, q, qa, SAMPLE_COLUMNS as COLUMNS, SAMPLE_ROWS as ROWS, type SampleRow as Row, settle, trackTable } from './data-table-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 import type { ColumnDef } from './data-table.types.js';
 
-interface Row {
-    id: string;
-    name: string;
-    age: number;
-}
-
-const ROWS: Row[] = [
-    { id: 'a', name: 'Carol', age: 41 },
-    { id: 'b', name: 'Alice', age: 30 },
-    { id: 'c', name: 'Bob', age: 25 },
-    { id: 'd', name: 'Dave', age: 30 },
-];
-const COLUMNS: ColumnDef<Row>[] = [
-    { accessorKey: 'name', header: 'Name', width: '200px' },
-    { accessorKey: 'age', header: 'Age', width: '120px' },
-];
-
-const tables: GeDataTable<Row>[] = [];
-afterEach(() => {
-    for (const table of tables.splice(0)) table.remove();
-    document.documentElement.classList.remove('dark');
-});
-
-async function mountTable(props: Partial<Record<keyof GeDataTable<Row>, unknown>> = {}, attrs: Record<string, string> = {}, container: HTMLElement = document.body): Promise<GeDataTable<Row>> {
-    const table = document.createElement('ge-data-table') as GeDataTable<Row>;
-    for (const [name, value] of Object.entries(attrs)) table.setAttribute(name, value);
-    Object.assign(table, { columns: COLUMNS, data: ROWS, ...props });
-    container.append(table);
-    tables.push(table);
-    await settle(table);
-    return table;
-}
-
-/** The table and the sub-elements it rendered have finished rendering. */
-async function settle(table: GeDataTable<Row>): Promise<void> {
-    await table.updateComplete;
-    const subs = [...table.querySelectorAll<HTMLElement & { updateComplete?: Promise<boolean> }>('ge-data-table-column-header, ge-data-table-pager, ge-checkbox, ge-input')];
-    await Promise.all(subs.map((el) => el.updateComplete));
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-}
-
-const q = (table: Element, selector: string) => table.querySelector<HTMLElement>(selector)!;
-const qa = (table: Element, selector: string) => [...table.querySelectorAll<HTMLElement>(selector)];
-const bodyRows = (table: Element) => qa(table, '[data-slot="table-body"] > [data-slot="table-row"][data-kind="data"]');
 const cellTexts = (table: Element, column: string) => qa(table, `[data-slot="table-cell"][data-column="${column}"]`).map((c) => c.textContent!.trim());
 const sortButton = (table: Element, column: string) =>
     q(table, `[data-column-id="${column}"] ge-data-table-column-header`).shadowRoot!.querySelector('ge-button')!.shadowRoot!.querySelector('button')!;
@@ -389,7 +344,7 @@ describe('ge-data-table states', () => {
         Object.assign(custom, { columns: COLUMNS, data: [] });
         custom.append(slot);
         document.body.append(custom);
-        tables.push(custom);
+        trackTable(custom);
         await settle(custom);
         expect(q(custom, '[data-kind="empty"]').textContent).toContain('Nothing here');
         expect(q(custom, '[data-kind="empty"] p')).toBe(slot);
@@ -436,7 +391,7 @@ describe('ge-data-table states', () => {
         Object.assign(table, { columns: COLUMNS, data: ROWS });
         table.append(start, footer);
         document.body.append(table);
-        tables.push(table);
+        trackTable(table);
         await settle(table);
 
         expect(start.parentElement).toBe(q(table, '[data-slot="data-table-toolbar-start"]'));
@@ -484,12 +439,8 @@ describe('ge-data-table pinned columns', () => {
         { accessorKey: 'x', header: 'X', width: '150px', pin: 'right' },
     ];
     async function pinned(dir: 'ltr' | 'rtl') {
-        const box = document.createElement('div');
-        box.style.cssText = 'width: 500px; height: 300px;';
-        document.body.append(box);
-        const table = await mountTable({ columns: wide(), data: ROWS.map((r) => ({ ...r, x: 'x' })), showPagination: false, showToolbar: false }, { dir }, box);
-        tables.push(table);
-        return { table, box };
+        const table = await mountTable({ columns: wide(), data: ROWS.map((r) => ({ ...r, x: 'x' })), showPagination: false, showToolbar: false }, { dir }, { width: 500, height: 300 });
+        return { table };
     }
     const edges = (el: Element) => {
         const r = el.getBoundingClientRect();
@@ -670,7 +621,7 @@ describe('ge-data-table review fixes', () => {
         const early = document.createElement(tag) as GeDataTable<Row>;
         Object.assign(early, { columns: COLUMNS, data: ROWS, rowSelection: { b: true }, enableRowSelection: true });
         document.body.append(early);
-        tables.push(early);
+        trackTable(early);
         customElements.define(tag, class extends GeDataTable<Row> {});
         await settle(early);
 
@@ -712,7 +663,7 @@ describe('ge-data-table review fixes', () => {
         Object.assign(table, { columns: COLUMNS, data: ROWS });
         table.append(a, b, c);
         document.body.append(table);
-        tables.push(table);
+        trackTable(table);
         await settle(table);
         const inToolbar = () => qa(table, '[data-slot="data-table-toolbar-start"] > button').map((n) => n.textContent);
         expect(inToolbar()).toEqual(['a', 'b', 'c']);

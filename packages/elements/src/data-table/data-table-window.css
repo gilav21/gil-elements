@@ -1,0 +1,5 @@
+/*
+ * Package B (window and focus): virtual padding, retained row, focus ring and scroll-padding rules. Bare rules, scoped under
+ * `ge-data-table [data-slot=...]`: they are appended inside the closing brace of the `ge-data-table` layer of
+ * data-table.css (see data-table-styles.ts), so do not wrap them in `@layer`.
+ */

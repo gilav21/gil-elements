@@ -2,6 +2,7 @@ import { type ColumnLayout, computeColumnLayout, duplicateColumnKeys, isSpecialC
 import type { DataTableCoreHost } from './data-table-host.js';
 import type { ColumnsService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
+import { readColumnState } from './data-table-view-state.js';
 import type { EnhancedColumnDef } from './data-table.types.js';
 
 type Pin = 'left' | 'right' | undefined;
@@ -38,7 +39,18 @@ export class ColumnsController<T> {
             this.current()
                 .columns.filter((c) => !isSpecialColumn(c))
                 .map((c) => String(c.accessorKey)),
+        focusableKeys: () =>
+            this.current()
+                .columns.filter((c) => c.accessorKey !== '_actions')
+                .map((c) => String(c.accessorKey)),
         pinOf: (key) => this.current().columns.find((c) => String(c.accessorKey) === key)?._pin,
+        // Package C replaces the four members below; until then a column cannot be moved, a width is never live and saved state is not applied.
+        liveWidth: () => undefined,
+        getState: () => readColumnState(this.host.config.columns, { widths: this.host.model.get('columnWidths'), visibility: this.host.model.get('columnVisibility'), pins: this.pins, order: this.host.model.get('columnOrder') }),
+        applyState: () => undefined,
+        getViewState: () => null,
+        applyViewState: () => false,
+        move: () => undefined,
         setPin: (key, pin) => {
             this.pins = Object.fromEntries([...Object.entries(this.pins), [key, pin]]);
             this.host.requestRender();

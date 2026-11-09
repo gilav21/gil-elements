@@ -10,6 +10,7 @@ import {
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
+import { buildTreeIndex } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
 import type { ColumnDef, DataTableDisplayRow, DataTableQuery, FlattenedTreeRow, PaginationState, SortDirection, SortState } from './data-table.types.js';
 import { getCellValue, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
@@ -47,6 +48,8 @@ export class QueryController<T> {
         const { config, model } = this.host;
         return activeSorts(config.enableMultiSort, model.get('sortState'), model.get('multiSortState'));
     }
+
+    private readonly indexOf = memoLast(buildTreeIndex<T>);
 
     private readonly rows = memoLast((sorted: T[], page: PaginationState, local: boolean): readonly DataTableDisplayRow<T>[] =>
         (local ? slicePage(sorted, page) : sorted).map((row, index) => ({ kind: 'data', row, index })),
@@ -116,6 +119,11 @@ export class QueryController<T> {
     private readonly service: QueryService<T> = {
         sortedData: () => this.output().sorted,
         visibleTreeRows: (): readonly FlattenedTreeRow<T>[] => [],
+        // Package A fills these in with the tree and group stages.
+        treeRows: (): readonly FlattenedTreeRow<T>[] => [],
+        treeIndex: () => this.indexOf(this.host.model.get('data'), this.host.config.getRowId, this.host.config.getChildren),
+        groupRows: () => [],
+        rowWindowSource: () => this.output().sorted,
         displayRows: () => this.displayRows(),
         renderedRows: () => this.renderedRows(),
         totalItems: () => this.totalItems(),

@@ -18,6 +18,15 @@ describe('DEFAULT_ORDER', () => {
         expect(new Set(ids).size).toBe(ids.length);
     });
 
+    it('lets selection, expansion and resize provide their services, and cell-interaction use the first two lazily', () => {
+        const plan = new Map(DEFAULT_ORDER.map((s) => [s.id, s]));
+        expect(plan.get('selection')?.provides).toEqual(['selection']);
+        expect(plan.get('expansion')?.provides).toEqual(['expansion']);
+        expect(plan.get('resize')?.provides).toEqual(['resize']);
+        expect(plan.get('cell-interaction')?.uses).toEqual(['selection', 'expansion']);
+        expect(plan.get('cell-interaction')?.needs).not.toContain('selection');
+    });
+
     it('starts with columns then query, and ends with the addon host', () => {
         expect(DEFAULT_ORDER.slice(0, 2).map((s) => s.id)).toEqual(['columns', 'query']);
         expect(DEFAULT_ORDER.at(-1)?.id).toBe('addon-host');

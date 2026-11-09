@@ -5,28 +5,23 @@ import '../popover/define.js';
 import '../skeleton/define.js';
 import { adoptSheet } from '../shared/adopt-sheet.js';
 import { THEME_ATTRIBUTE, type ThemeName } from '../shared/theme-presets.js';
-import { computeGridAria } from './data-table-aria.js';
 import { createCellWriter } from './data-table-cell-write.js';
-import { columnCssVars } from './data-table-columns.js';
-import { ColumnsController } from './data-table-columns-controller.js';
-import { type AssembledControllers, assembleControllers, type DataTableControllerFactories } from './data-table-controllers.js';
+import { type AssembledControllers, assembleControllers } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
-import { FooterController } from './data-table-footer-controller.js';
-import { FormattingController } from './data-table-formatting-controller.js';
-import { renderGrid, renderSkeleton, type GridView } from './data-table-grid.js';
+import { createFactories } from './data-table-factories.js';
+import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, requireProvider } from './data-table-host.js';
-import { LoadingController } from './data-table-loading-controller.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
 import type { DataTableConfig, DataTableProviders } from './data-table-providers.js';
-import { QueryController } from './data-table-query-controller.js';
-import { activeSorts, memoLast } from './data-table-query.js';
+import { memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
+import { buildView, type DataTableViewHost } from './data-table-view.js';
 import { type DataTableLocale, interpolate, resolveDataTableLocale, withEnglishFallback } from './data-table.locales.js';
-import type { ColumnDef, DataTableLoadingTrigger, DataTableQuery, PaginationState } from './data-table.types.js';
+import type { ColumnDef, DataTableColumnState, DataTableLoadingTrigger, DataTableQuery, DataTableViewState, PaginationState } from './data-table.types.js';
 import { defaultGetRowId } from './data-table.utils.js';
 import './sub/data-table-column-header.js';
 import './sub/data-table-pager.js';
-import css from './data-table.css?inline';
+import { css } from './data-table-styles.js';
 
 type Mutable<O> = { -readonly [K in keyof O]: O[K] };
 
@@ -47,6 +42,10 @@ interface DataTableExtraInputs<T> {
     renderEmpty: (() => unknown) | undefined;
     /** Draws the loading overlay's content for the trigger that caused it. */
     renderLoader: ((trigger: DataTableLoadingTrigger) => unknown) | undefined;
+    /** Draws the detail row of an expanded row (`enable-row-expansion`). */
+    renderDetail: ((row: T) => unknown) | undefined;
+    /** Draws a row that spans every column in place of its cells. */
+    renderFullWidth: ((row: T) => unknown) | undefined;
 }
 
 type Kind = 'prop' | 'flag' | 'on' | 'number' | 'text' | 'tri' | 'list';
@@ -64,6 +63,8 @@ const INPUTS: Readonly<Record<string, readonly [Kind, unknown]>> = {
     isRowDisabled: ['prop', undefined],
     renderEmpty: ['prop', undefined],
     renderLoader: ['prop', undefined],
+    renderDetail: ['prop', undefined],
+    renderFullWidth: ['prop', undefined],
     virtualAutoThreshold: ['prop', { rows: 500, columns: 20 }],
     showToolbar: ['on', true],
     showColumnVisibilityToggle: ['on', true],
@@ -171,7 +172,7 @@ export interface GeDataTable<T = unknown> extends Mutable<DataTableConfig<T>>, D
  * @attr {string} locale - Language id of the table's text. `en` is built in; others register with `registerDataTableLocale`.
  * @attr {string} theme - Colour preset name.
  */
-export class GeDataTable<T = unknown> extends LitElement implements DataTableCoreHost<T> {
+export class GeDataTable<T = unknown> extends LitElement implements DataTableViewHost<T> {
     static override readonly properties = PROPERTIES;
 
     private readonly store: ModelStore<T> = new ModelStore<T>((name, detail) => this.dispatch(name, detail));
@@ -316,6 +317,115 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
         requireProvider(this, 'columns').showAll();
     }
 
+    // Thin delegations to the services; each does nothing until the controller that provides the service is part of the plan.
+
+    selectRows(rows: readonly T[]): void {
+        this.provider('selection')?.selectRows(rows);
+    }
+
+    unselectRows(rows: readonly T[]): void {
+        this.provider('selection')?.unselectRows(rows);
+    }
+
+    clearSelection(): void {
+        this.provider('selection')?.clearSelection();
+    }
+
+    selectAll(): void {
+        this.provider('selection')?.selectAll();
+    }
+
+    toggleRow(row: T): void {
+        this.provider('selection')?.toggleRow(row);
+    }
+
+    toggleAll(): void {
+        this.provider('selection')?.toggleAll();
+    }
+
+    /** The rows of `data` whose id is selected. A selected id with no row any more is kept in `rowSelection` and not counted here. */
+    get selectedRows(): T[] {
+        const selection = this.store.get('rowSelection');
+        return this.store.get('data').filter((row) => selection[this.getRowId(row)] === true);
+    }
+
+    expandAllGroups(): void {
+        this.provider('expansion')?.expandAllGroups();
+    }
+
+    collapseAllGroups(): void {
+        this.provider('expansion')?.collapseAllGroups();
+    }
+
+    expandAllSubRows(toDepth?: number): void {
+        this.provider('expansion')?.expandAllSubRows(toDepth);
+    }
+
+    collapseAllSubRows(): void {
+        this.provider('expansion')?.collapseAllSubRows();
+    }
+
+    scrollToRow(index: number): void {
+        this.provider('virtual')?.scrollToRow(index);
+    }
+
+    scrollToColumn(columnKey: string): void {
+        this.provider('virtual')?.scrollToColumn(columnKey);
+    }
+
+    scrollToCell(rowIndex: number, columnKey: string): void {
+        this.provider('virtual')?.scrollToCell(rowIndex, columnKey);
+    }
+
+    /** The saved-view token (sort, filters, pagination, column state), or null before the table is set up. */
+    getViewState(): DataTableViewState | null {
+        return this.provider('columns')?.getViewState() ?? null;
+    }
+
+    /** Restores a saved view in one step; false when the token is refused. */
+    applyViewState(state: DataTableViewState | null | undefined): boolean {
+        return this.provider('columns')?.applyViewState(state) ?? false;
+    }
+
+    /** Re-measures the viewport, rows and columns, and draws again. */
+    refresh(): void {
+        this.provider('virtual')?.measure();
+        this.requestUpdate();
+    }
+
+    /** The cell that holds the roving tab stop, as `{ rowIndex, columnKey }` (the drawn row index), or null. */
+    get focusedCell(): CellAddress | null {
+        return this.provider('interaction')?.focusedCell() ?? null;
+    }
+
+    focusCell(rowIndex: number, columnKey: string): void {
+        this.provider('interaction')?.focusCell(rowIndex, columnKey);
+    }
+
+    autoSizeColumn(columnKey: string): void {
+        this.provider('resize')?.autoSizeColumn(columnKey);
+    }
+
+    autoSizeAllColumns(): void {
+        this.provider('resize')?.autoSizeAllColumns();
+    }
+
+    fitColumnsToViewport(): void {
+        this.provider('resize')?.fitColumnsToViewport();
+    }
+
+    moveColumn(columnKey: string, targetIndex: number): void {
+        this.provider('columns')?.move(columnKey, targetIndex);
+    }
+
+    getColumnState(): DataTableColumnState[] {
+        return this.provider('columns')?.getState() ?? [];
+    }
+
+    applyColumnState(states: readonly DataTableColumnState[] | null | undefined): void {
+        this.provider('columns')?.applyState(states);
+    }
+
     // ---- lifecycle --------------------------------------------------------------------------------------------
 
     protected override createRenderRoot(): HTMLElement {
@@ -331,15 +441,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
         if (isServer) return;
         const tree = this.getRootNode();
         this.releaseStyles = adoptSheet(tree instanceof ShadowRoot ? tree : this.ownerDocument, 'ge-data-table', css);
-        const factories: DataTableControllerFactories<T> = {
-            columns: (host) => new ColumnsController(host),
-            query: (host) => new QueryController(host),
-            loading: (host) => new LoadingController(host),
-            formatting: (host) => new FormattingController(host),
-            footer: (host) => new FooterController(host),
-        };
         // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger) survives.
-        this.built ??= assembleControllers(this, factories);
+        this.built ??= assembleControllers(this, createFactories<T>());
         this.built.attachAll();
         this.assembled = this.built;
         this.observer = new MutationObserver(() => {
@@ -483,44 +586,12 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
         return this.slotted.get(name) ?? nothing;
     }
 
-    private view(): { grid: GridView<T>; vars: string } {
-        const columns = requireProvider(this, 'columns').enhancedColumns();
-        const query = requireProvider(this, 'query');
-        const footer = this.provider('footer');
-        const rows = query.renderedRows();
-        const sorts = activeSorts(this.enableMultiSort, this.store.get('sortState'), this.store.get('multiSortState'));
-        const showFooter = footer?.visible() ?? false;
-        const empty = rows.length === 0 ? (this.renderEmpty?.() ?? this.slotted.get('empty')) : undefined;
-        const focus = this.provider('interaction')?.focusedCell() ?? null;
-        const selection = this.store.get('rowSelection');
-        const grid: GridView<T> = {
-            locale: this.resolvedLocale,
-            columns,
-            hasFlexible: columns.some((c) => c._width === 'auto'),
-            rows,
-            // A rendered empty state is one real row (with a spanning cell), so it counts and the footer follows it.
-            aria: computeGridAria({ tree: this.enableSubRows || !!this.groupBy, headerRows: 1, totalDataRows: rows.length || 1, columnCount: columns.length, footerRows: showFooter ? 1 : 0 }),
-            selectable: this.enableRowSelection,
-            resizable: this.enableColumnResize,
-            selection,
-            expanded: this.store.get('expandedRows'),
-            getRowId: (row) => this.getRowId(row),
-            isDisabled: (row) => this.isRowDisabled?.(row) === true || this.isIdDisabled(this.getRowId(row)),
-            formatting: this.provider('formatting'),
-            footer: { visible: showFooter, values: footer?.values() ?? new Map(), rows: query.sortedData() },
-            sortDirection: (key) => query.sortDirection(key),
-            sortIndex: (key) => {
-                const index = sorts.findIndex((s) => s.column === key);
-                return this.enableMultiSort && index !== -1 ? index : null;
-            },
-            onSortRequest: (key, event) => {
-                event.stopPropagation();
-                query.changeSort(key, event.detail.direction, event.detail.multi);
-            },
-            focusedCell: focus as CellAddress | null,
-            empty,
-        };
-        return { grid, vars: columnCssVars(columns) };
+    isDisabled(row: T): boolean {
+        return this.isRowDisabled?.(row) === true || this.isIdDisabled(this.getRowId(row));
+    }
+
+    slottedNodes(name: string): readonly Node[] | undefined {
+        return this.slotted.get(name);
     }
 
     private isIdDisabled(id: string): boolean {
@@ -572,13 +643,12 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
         if (isServer) return nothing;
         const locale = this.resolvedLocale;
         if (this.skeleton) return renderSkeleton(this.skeletonRows, locale.loading);
-        const { grid, vars } = this.view();
+        const grid = buildView(this);
         const query = requireProvider(this, 'query');
-        const focused = grid.focusedCell !== null;
         return html`<output data-slot="data-table-announcer" aria-live="polite" aria-atomic="true">${this.announcement}</output>
             ${this.showToolbar ? this.renderToolbar(locale) : nothing}
-            <div data-slot="data-table-viewport" tabindex=${focused ? '-1' : '0'} @keydown=${(event: KeyboardEvent) => void this.keyHandlers.run(event)}>
-                ${this.renderOverlays(locale)}${renderGrid(grid, vars)}
+            <div data-slot="data-table-viewport" tabindex=${grid.viewportTabbable ? '0' : '-1'} @keydown=${(event: KeyboardEvent) => void this.keyHandlers.run(event)}>
+                ${this.renderOverlays(locale)}${renderGrid(grid)}
             </div>
             ${this.slotted.has('footer') ? html`<div data-slot="data-table-footer-slot">${this.nodes('footer')}</div>` : nothing}
             ${this.showPagination
