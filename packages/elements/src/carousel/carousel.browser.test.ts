@@ -144,12 +144,13 @@ describe('ge-carousel', () => {
         track.scrollTo({ left: track.clientWidth * 0.7, behavior: 'instant' });
         // The scroll event arrives a frame later: wait for the index, not for a fixed settle.
         await until(() => c.currentIndex === 1);
-        expect(c.currentIndex).toBe(1);
 
         const empty = await carousel('', 0);
         const log: unknown[] = [];
         empty.c.addEventListener('slide-change', (e) => log.push((e as CustomEvent).detail));
         empty.track.dispatchEvent(new Event('scroll'));
+        // A negative check: wait past anything the handler could schedule (a frame or two), twice the usual settle.
+        await settle(empty.page);
         await settle(empty.page);
         expect([empty.c.currentIndex, log]).toEqual([0, []]);
     });
