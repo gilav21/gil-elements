@@ -79,8 +79,10 @@
 .drag-handle {
     display: none;
     position: absolute;
+    /* Above the corner and edge grips, and on the left in both directions: the options button holds the right. */
+    z-index: 30;
     top: 0.5rem;
-    inset-inline-start: 0.5rem;
+    left: 0.5rem;
     align-items: center;
     justify-content: center;
     min-width: 2.75rem;
@@ -117,6 +119,8 @@
 .grip {
     position: absolute;
     z-index: 10;
+    /* A touch on a grip resizes: the page must not scroll under it. */
+    touch-action: none;
     transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 .grip.edge:hover {

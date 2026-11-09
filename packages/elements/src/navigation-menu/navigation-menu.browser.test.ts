@@ -291,6 +291,17 @@ describe('ge-navigation-menu', () => {
         }
     });
 
+    it('still enters the links with Down when the panel itself holds focus', async () => {
+        const page = await mount(MARKUP());
+        const panel = el(page, 'learn-panel');
+        panel.tabIndex = -1;
+        button(page, 'learn-trigger').focus();
+        await key(page, '{Enter}');
+        panel.focus();
+        await key(page, '{ArrowDown}');
+        expect(at()).toBe(el(page, 'intro').shadowRoot!.querySelector('a'));
+    });
+
     it('closes the panel when Tab leaves its item, and keeps it open under a pointer that drifts away while the keyboard is in it', async () => {
         const page = await mount(MARKUP());
         button(page, 'learn-trigger').focus();

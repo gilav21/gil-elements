@@ -2,7 +2,6 @@
 const NAV = 'mx-auto flex w-full justify-center';
 const NAVBTN = 'inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-md text-sm font-medium cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 // Custom-mode previous/next take their size from the density rule in reference.css, not from utilities.
-const NAVBTN_CUSTOM = NAVBTN;
 const DIS = 'disabled:pointer-events-none disabled:opacity-50';
 const LINK = 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50';
 const ON = 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground';
@@ -32,8 +31,8 @@ const link = (label, { active = false, size = 'icon', disabled = false } = {}) =
     return `<ui-pagination-item><ui-pagination-link class="contents"><button type="button" class="${LINK} ${active ? ON : OFF} ${dims}" ${active ? 'aria-current="page"' : ''} ${disabled ? 'disabled' : ''} data-slot="pagination-link" data-size="${size}">${label}</button></ui-pagination-link></ui-pagination-item>`;
 };
 const customRef = (inner) => `<ui-pagination class="contents"><nav role="navigation" aria-label="pagination" class="${NAV}" data-slot="pagination"><ui-pagination-content class="flex flex-row items-center gap-1" data-slot="pagination-content">${inner}</ui-pagination-content></nav></ui-pagination>`;
-const prev = (disabled) => `<ui-pagination-item><ui-pagination-previous class="contents"><button type="button" class="${NAVBTN_CUSTOM} ${DIS}" ${disabled ? 'disabled' : ''} data-slot="pagination-previous">${PREV}<span>Previous</span></button></ui-pagination-previous></ui-pagination-item>`;
-const next = `<ui-pagination-item><ui-pagination-next class="contents"><button type="button" class="${NAVBTN_CUSTOM} ${DIS}" data-slot="pagination-next"><span>Next</span>${NEXT}</button></ui-pagination-next></ui-pagination-item>`;
+const prev = (disabled) => `<ui-pagination-item><ui-pagination-previous class="contents"><button type="button" class="${NAVBTN} ${DIS}" ${disabled ? 'disabled' : ''} data-slot="pagination-previous">${PREV}<span>Previous</span></button></ui-pagination-previous></ui-pagination-item>`;
+const next = `<ui-pagination-item><ui-pagination-next class="contents"><button type="button" class="${NAVBTN} ${DIS}" data-slot="pagination-next"><span>Next</span>${NEXT}</button></ui-pagination-next></ui-pagination-item>`;
 const dots = '<ui-pagination-item><ui-pagination-ellipsis class="contents"><span class="flex h-9 w-9 items-center justify-center" data-slot="pagination-ellipsis" aria-hidden="true">' + DOTS + '<span class="sr-only">More pages</span></span></ui-pagination-ellipsis></ui-pagination-item>';
 const elPrev = (d) => `<ge-pagination-item><ge-pagination-previous${d ? ' disabled' : ''}></ge-pagination-previous></ge-pagination-item>`;
 const elLink = (label, attrs = '') => `<ge-pagination-item><ge-pagination-link${attrs}>${label}</ge-pagination-link></ge-pagination-item>`;

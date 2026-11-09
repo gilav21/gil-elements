@@ -73,6 +73,11 @@ export class GeTypingAnimation extends UiElement {
         // Emptied: stop and clear, so a list that fills again starts over from the first phrase.
         if (this.strings.length === 0) this.reset();
         else if (!this.started) this.begin();
+        // Replaced by a shorter list than the phrase being typed: start again instead of stalling on a phrase that is gone.
+        else if (this.stringIndex >= this.strings.length) {
+            this.reset();
+            this.begin();
+        }
     }
 
     override disconnectedCallback(): void {
