@@ -568,6 +568,22 @@ describe('column visibility, pins and state', () => {
         expect((boxes[1] as HTMLElement & { checked: boolean }).checked).toBe(true);
     });
 
+    it('puts back only its own table\'s checkbox, not the same column\'s in another table', async () => {
+        const mount = () => mountTable<SampleRow>({ showPagination: false, columns: makeColumns(2), data: makeRows(3, { columns: 2 }) });
+        const [one, other] = [await mount(), await mount()];
+        const box = (table: GeDataTable<SampleRow>, i: number) => qa(table, '[data-slot="data-table-columns-item"] ge-checkbox')[i] as HTMLElement & { checked: boolean };
+        other.provider('columns')!.setVisible('c1', false);
+        await settle(other);
+        expect(box(other, 1).checked).toBe(false);
+        one.provider('columns')!.setVisible('c0', false);
+        await settle(one);
+        one.provider('columns')!.setVisible('c1', false);
+        await settle(one);
+        await frames(2);
+        expect(box(one, 1).checked).toBe(true);
+        expect(box(other, 1).checked).toBe(false);
+    });
+
     it('moves a pin into the layout', async () => {
         const table = await mountWide({ enableColumnReorder: false });
         table.pinColumn('c2', 'left');

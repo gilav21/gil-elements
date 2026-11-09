@@ -87,7 +87,7 @@ export class ColumnsController<T> {
         const column = config.columns.find((c) => String(c.accessorKey) === key);
         const label = interpolate(locale.toggleColumnAriaLabel, { column: column?.header ?? key });
         this.host.afterRender(() => {
-            for (const box of root.ownerDocument.querySelectorAll<HTMLElement & { checked: boolean }>('ge-checkbox')) {
+            for (const box of root.querySelectorAll<HTMLElement & { checked: boolean }>('[data-slot="data-table-columns-panel"] ge-checkbox')) {
                 if (box.getAttribute('aria-label') === label) box.checked = true;
             }
         });

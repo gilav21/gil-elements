@@ -1,3 +1,4 @@
+import { createListedRows } from './data-table-expansion.js';
 import { cellAddressOf, type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import type { SelectionService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
@@ -12,9 +13,6 @@ import {
     toggleAllSelection,
     toggleId,
 } from './data-table-selection.js';
-import type { FlattenedTreeRow } from './data-table.types.js';
-
-const NO_ROWS: readonly never[] = [];
 
 /** What the element offers beyond the core host: the disabled test needs `isRowDisabled`, which only the element holds. */
 interface DisabledAware<T> {
@@ -46,12 +44,10 @@ export class SelectionController<T> {
         return ids === undefined ? false : 'has' in ids ? ids.has(id) : ids.includes(id);
     }
 
-    private readonly rowsOf = memoLast((visible: readonly FlattenedTreeRow<T>[], sorted: readonly T[], tree: boolean): readonly T[] => (tree ? visible.map((r) => r.row) : sorted));
+    private readonly listedRows = createListedRows<T>();
 
-    /** The rows a header action covers: the filtered rows of EVERY page, or the visible tree rows (expanded nodes only). */
     private listed(): readonly T[] {
-        const tree = this.host.config.enableSubRows;
-        return this.rowsOf(tree ? this.query.visibleTreeRows() : NO_ROWS, tree ? NO_ROWS : this.query.sortedData(), tree);
+        return this.listedRows(this.query, this.host.config.enableSubRows);
     }
 
     private readonly selectableOf = memoLast((rows: readonly T[], _disabledIds: unknown, _disabledFn: unknown, getId: (row: T) => string): string[] =>

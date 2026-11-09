@@ -343,9 +343,10 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.provider('selection')?.toggleAll();
     }
 
-    /** The rows of `data` whose id is selected. A selected id with no row any more is kept in `rowSelection` and not counted here. */
+    /** The rows of `data` (in tree mode, of every level) whose id is selected. A selected id with no row any more is kept in `rowSelection` and not counted here. */
     get selectedRows(): T[] {
         const selection = this.store.get('rowSelection');
+        if (this.config.enableSubRows) return [...requireProvider(this, 'query').treeIndex().nodes].filter(([id]) => selection[id] === true).map(([, node]) => node as T);
         return this.store.get('data').filter((row) => selection[this.getRowId(row)] === true);
     }
 

@@ -332,3 +332,41 @@ describe('listeners', () => {
         expect(added.map(([type]) => type)).toEqual([]);
     });
 });
+
+describe('navigation keys outside the cells', () => {
+    it('are the control\'s own: a header button keeps its focus and the grid takes no focus', async () => {
+        const { table } = await mount({ enableRowExpansion: true }, 3, 5);
+        const button = q(table, '[data-slot="table-head"] [data-action="detail-all"]');
+        button.focus();
+        await press('{ArrowDown}{End}');
+        expect(document.activeElement).toBe(button);
+        expect(at(table)).toBeNull();
+    });
+
+    it('the first key after a click on the viewport lands on the first cell, whichever key it is', async () => {
+        for (const [key, row] of [['{ArrowDown}', 0], ['{ArrowUp}', 0], ['{ArrowRight}', 0]] as const) {
+            const { table } = await mount({}, 3, 5);
+            const view = viewportOf(table);
+            view.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerType: 'mouse' }));
+            view.focus();
+            await press(key);
+            expect(at(table)).toEqual({ rowIndex: row, columnKey: 'c0' });
+            table.parentElement!.remove();
+        }
+    });
+});
+
+describe('the header controls', () => {
+    it('stay natural tab stops: select-all is reached by Tab from before the grid', async () => {
+        const { table, before } = await mount({ enableRowSelection: true }, 3, 5);
+        before.focus();
+        const seen: Element[] = [];
+        for (let i = 0; i < 6 && !seen.some((el) => el.closest('[data-slot="table-head"] ge-checkbox')); i++) {
+            await press('{Tab}');
+            seen.push(document.activeElement!);
+        }
+        expect(seen.some((el) => el.closest('[data-slot="table-head"] ge-checkbox'))).toBe(true);
+        expect(q(table, '[data-slot="table-head"] ge-checkbox').getAttribute('tabindex')).not.toBe('-1');
+        expect(q(table, '[data-slot="table-body"] ge-checkbox').getAttribute('tabindex')).toBe('-1');
+    });
+});

@@ -2,6 +2,7 @@ import {
     allFlagged,
     allNodesExpanded,
     collapseAllNodes,
+    createListedRows,
     depthOf,
     expandAllNodes,
     isFlagged,
@@ -15,9 +16,6 @@ import {
 import { cellAddressOf, type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import type { ExpansionService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
-import type { FlattenedTreeRow } from './data-table.types.js';
-
-const NO_ROWS: readonly never[] = [];
 
 /**
  * Owns `expandedRows` (detail rows), `subRowExpandedRows` (tree nodes) and `collapsedGroups`. Clicks on the expander,
@@ -32,15 +30,13 @@ export class ExpansionController<T> {
         return requireProvider(this.host, 'query');
     }
 
-    private readonly idsOf = memoLast((visible: readonly FlattenedTreeRow<T>[], sorted: readonly T[], tree: boolean, getId: (row: T) => string): string[] =>
-        (tree ? visible.map((r) => r.row) : sorted).map(getId),
-    );
+    private readonly listedRows = createListedRows<T>();
+    private readonly idsOf = memoLast((rows: readonly T[], getId: (row: T) => string): string[] => rows.map(getId));
 
     /** The ids the header expander covers: every filtered row across pages (the visible tree rows in tree mode). */
     private listedIds(): string[] {
         const { config } = this.host;
-        const tree = config.enableSubRows;
-        return this.idsOf(tree ? this.query.visibleTreeRows() : NO_ROWS, tree ? NO_ROWS : this.query.sortedData(), tree, config.getRowId);
+        return this.idsOf(this.listedRows(this.query, config.enableSubRows), config.getRowId);
     }
 
     private get defaultDepth(): number {

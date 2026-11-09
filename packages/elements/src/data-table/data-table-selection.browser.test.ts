@@ -186,13 +186,14 @@ describe('selection by keyboard', () => {
         expect(selectedIds(table)).toEqual([]);
     });
 
-    it('takes the in-cell checkboxes out of the tab order when a roving cell model exists (a stub here, the real controller in the full table)', async () => {
+    it('takes the in-cell checkboxes (not the header ones) out of the tab order when a roving cell model exists (a stub here, the real controller in the full table)', async () => {
         const table = await mountSelectable();
         table.provide('interaction', { focusedCell: () => null, cellRange: () => null, editingCell: () => null, cellEditError: () => null, focusCell() {}, isCellSelected: () => false });
         table.requestRender();
         await settle(table);
         expect(rowCheckbox(table, 'r1').getAttribute('tabindex')).toBe('-1');
-        expect(headCheckbox(table).getAttribute('tabindex')).toBe('-1');
+        // the header is not in the roving grid: its select-all stays a natural tab stop
+        expect(headCheckbox(table).getAttribute('tabindex')).not.toBe('-1');
     });
 });
 
@@ -278,6 +279,14 @@ describe('tree selection', () => {
         expect(bodyRows(table).map((r) => r.dataset['rowId'])).toEqual(['a', 'a1', 'a1x']);
         await click(rowCheckbox(table, 'a'), table);
         expect(selectedIds(table)).toEqual(['a', 'a1', 'a1x']);
+    });
+
+    it('selectedRows returns selected children of every level, in tree order', async () => {
+        const table = await mountTree({ subRowSelectionMode: 'self' });
+        await click(rowCheckbox(table, 'b1'), table);
+        await click(rowCheckbox(table, 'a1x'), table);
+        await click(rowCheckbox(table, 'a'), table);
+        expect(table.selectedRows.map((r) => r.id)).toEqual(['a', 'a1x', 'b1']);
     });
 
     it('header select-all counts the visible tree rows of every page', async () => {

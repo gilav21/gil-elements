@@ -4,23 +4,18 @@
  * `false` a consumer wrote counts as unselected. Nothing prunes stale ids: they stay until the consumer clears them.
  * Ids come from data, so keys are only touched through a `Map` (an id named `__proto__` is an ordinary key).
  */
+import { type Flags, isFlagged, setFlags } from './data-table-expansion.js';
 import { memoLast } from './data-table-query.js';
 import type { TreeIndex } from './data-table-tree.js';
 import type { SubRowSelectionMode } from './data-table.types.js';
 
-export type Selection = Readonly<Record<string, boolean>>;
+/** The same record as an expansion's: an id is selected as `true`, deselecting deletes the key. */
+export type Selection = Flags;
 
-export const isSelectedId = (selection: Selection, id: string): boolean => Object.hasOwn(selection, id) && selection[id] === true;
+export const isSelectedId = isFlagged;
 
 /** A copy of `selection` with every id of `ids` selected (`on`) or removed. */
-export function patchSelection(selection: Selection, ids: Iterable<string>, on: boolean): Record<string, boolean> {
-    const next = new Map(Object.entries(selection));
-    for (const id of ids) {
-        if (on) next.set(id, true);
-        else next.delete(id);
-    }
-    return Object.fromEntries(next);
-}
+export const patchSelection = setFlags;
 
 /** The ids of the rows a header action may touch: disabled rows are left out. */
 export function selectableIds<R>(rows: readonly R[], getId: (row: R) => string, isDisabled: (row: R) => boolean): string[] {

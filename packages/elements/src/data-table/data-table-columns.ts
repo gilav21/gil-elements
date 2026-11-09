@@ -10,7 +10,7 @@ import type { ColumnDef, EnhancedColumnDef } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 import { indexColumns } from './data-table-query.js';
 import { applyKeyOrder } from './data-table-view-state.js';
-import { resolveColumnMinWidth } from './data-table-virtual.js';
+import { parsePx, resolveColumnMinWidth } from './data-table-virtual.js';
 
 type Pin = 'left' | 'right' | undefined;
 
@@ -129,8 +129,8 @@ export const isReorderable = <T>(column: ColumnDef<T>): boolean => !isSpecialCol
 
 /** The width in px of a `<n>px` string, else null (`auto`, `rem`, `%` and `calc()` are not known without layout). */
 export function pxOf(width: string): number | null {
-    const match = /^\s*(\d*\.?\d+)px\s*$/.exec(width);
-    return match ? Number(match[1]) : null;
+    const px = parsePx(width);
+    return px !== null && px >= 0 ? px : null;
 }
 
 export const HEAD_SELECTOR = '[data-slot="table-head"]';

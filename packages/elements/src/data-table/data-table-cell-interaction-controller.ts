@@ -228,13 +228,21 @@ export class CellInteractionController<T> {
         const query = requireProvider(this.host, 'query');
         const keys = requireProvider(this.host, 'columns').focusableKeys();
         const at = cellAddressOf(target) ?? (target.matches(VIEWPORT) || target === this.host.root ? this.focused : null);
+        // A key pressed on a control outside any cell (a header button, a group toggle, a detail widget) is the control's own.
+        if (!at && !target.matches(VIEWPORT) && target !== this.host.root) return false;
         // Nothing focused yet: the first navigation key lands on the first cell.
-        const start = at ?? { rowIndex: 0, columnKey: keys[0] ?? '' };
+        if (!at) {
+            const first = keys[0];
+            if (first === undefined || this.rowCount() === 0) return false;
+            event.preventDefault();
+            this.focusCell(0, first, true);
+            return true;
+        }
         const rows = query.renderedRows();
         const selection = this.host.provider('selection');
         const next = nextFocus(event.key, {
-            row: start.rowIndex,
-            col: nearestColumn(keys, start.columnKey, this.lastColumn),
+            row: at.rowIndex,
+            col: nearestColumn(keys, at.columnKey, this.lastColumn),
             rowCount: rows.length,
             colCount: keys.length,
             isDisabled: (row) => {

@@ -3,7 +3,7 @@
  * `body.items.slice(window.start, window.end)`. Two counters run side by side and are never the same thing:
  * `data-row-index` is the DRAWN index of a data row (group headers and detail rows are not counted; it addresses
  * `renderedRowAt(i)` in every mode), `aria-rowindex` is the ordinal of every real row (group headers, detail rows and
- * data rows alike), starting at the window's first item.
+ * data rows alike), starting at the first item of the list (detail rows above the window included).
  */
 import { html, nothing, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
@@ -12,7 +12,7 @@ import { cellText, styleText } from './data-table-cells.js';
 import { resolveCellKind } from './data-table-cell-kind.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
-import { allNodesExpanded, isFlagged, treeHostKey } from './data-table-expansion.js';
+import { allNodesExpanded, type Flags, isFlagged, treeHostKey } from './data-table-expansion.js';
 import { isGroupingActive } from './data-table-group.js';
 import type { BodyView, GridView } from './data-table-grid.js';
 import { detailId, specialCell, treeHostCell } from './data-table-grid-special.js';
@@ -20,6 +20,8 @@ import { requireProvider } from './data-table-host.js';
 import { chromeIcon, ensureIconElement } from './data-table-icons.js';
 import type { FormattingService } from './data-table-providers.js';
 import { columnParts, columnSpacer } from './data-table-grid-window.js';
+import { memoLast } from './data-table-query.js';
+import type { GetChildren } from './data-table-tree.js';
 import { retainedTopOf } from './data-table-virtual.js';
 import { type DataTableViewHost, dataRowOf } from './data-table-view.js';
 import type { ColumnDef, DataTableDisplayRow, EnhancedColumnDef, FlattenedTreeRow, GroupRow } from './data-table.types.js';
@@ -30,6 +32,8 @@ export interface RowsView<T> {
     source: Pick<BodyView<T>, 'mode' | 'items'>;
     /** Real rows of that list for `aria-rowcount`: group headers and detail rows count, a window does not shrink it. */
     totalRows: number;
+    /** The indexes (ascending) in `source.items` of the rows with an open detail row. */
+    openDetails: readonly number[];
     /** `aria-multiselectable`, `aria-selected` and the select column are drawn. */
     selectable: boolean;
     selection: Readonly<Record<string, boolean>>;
@@ -71,6 +75,38 @@ const uidOf = (owner: object): string => {
     return uid;
 };
 
+const NO_INDEXES: readonly number[] = [];
+
+/** The item indexes, ascending, whose row has an open detail row. */
+function openDetailIndexes<T>(items: readonly BodyItem<T>[], expanded: Flags, getRowId: (row: T) => string): number[] {
+    const open: number[] = [];
+    items.forEach((item, i) => {
+        const row = rowOf(item);
+        if (row !== undefined && isFlagged(expanded, getRowId(row))) open.push(i);
+    });
+    return open;
+}
+
+/** Per table, so two tables never evict each other: the scans a render would repeat while only the scroll position moved. */
+const memos = new WeakMap<object, { open: typeof openDetailIndexes<unknown>; allNodes: typeof allNodesExpanded<unknown> }>();
+const memosOf = (owner: object) => {
+    let memo = memos.get(owner);
+    if (!memo) memos.set(owner, (memo = { open: memoLast(openDetailIndexes<unknown>), allNodes: memoLast(allNodesExpanded<unknown>) }));
+    return memo;
+};
+
+/** How many entries of the ascending `indexes` are below `n`. */
+function countBelow(indexes: readonly number[], n: number): number {
+    let low = 0;
+    let high = indexes.length;
+    while (low < high) {
+        const mid = (low + high) >> 1;
+        if ((indexes[mid] as number) < n) low = mid + 1;
+        else high = mid;
+    }
+    return low;
+}
+
 export function rowsView<T>(host: DataTableViewHost<T>): RowsView<T> {
     const query = requireProvider(host, 'query');
     const { config, model } = host;
@@ -80,10 +116,13 @@ export function rowsView<T>(host: DataTableViewHost<T>): RowsView<T> {
     const expanded = model.get('expandedRows');
     const selection = host.provider('selection');
     const detail = config.enableRowExpansion;
-    const open = detail ? (items as readonly BodyItem<T>[]).filter((item) => { const row = rowOf(item); return row !== undefined && isFlagged(expanded, config.getRowId(row)); }).length : 0;
+    const memo = memosOf(host.root);
+    const getRowId = config.getRowId as (row: unknown) => string;
+    const openDetails = detail ? memo.open(items as readonly BodyItem<unknown>[], expanded, getRowId) : NO_INDEXES;
     return {
         source: { mode: tree ? 'tree' : grouped ? 'group' : 'flat', items },
-        totalRows: items.length + open,
+        totalRows: items.length + openDetails.length,
+        openDetails,
         selectable: config.enableRowSelection,
         selection: model.get('rowSelection'),
         expanded,
@@ -99,7 +138,7 @@ export function rowsView<T>(host: DataTableViewHost<T>): RowsView<T> {
         treeHost: tree ? treeHostKey(requireProvider(host, 'columns').enhancedColumns()) : null,
         selectionHeader: config.enableRowSelection ? (selection?.header() ?? { checked: false, indeterminate: false }) : { checked: false, indeterminate: false },
         allExpanded: detail && (host.provider('expansion')?.isAllExpanded() ?? false),
-        allSubRowsExpanded: tree && allNodesExpanded(model.get('data'), config.getRowId, config.getChildren, model.get('subRowExpandedRows'), config.subRowDefaultExpanded ? -1 : 0),
+        allSubRowsExpanded: tree && memo.allNodes(model.get('data'), getRowId, config.getChildren as GetChildren<unknown>, model.get('subRowExpandedRows'), config.subRowDefaultExpanded ? -1 : 0),
         isIndeterminate: (id) => selection?.isIndeterminate(id) ?? false,
     };
 }
@@ -214,7 +253,9 @@ function spacerRow<T>(v: GridView<T>): TemplateResult {
 function entries<T>(v: GridView<T>): { key: string; template: TemplateResult }[] {
     const { items, window } = v.body;
     const out: { key: string; template: TemplateResult }[] = [];
-    let ordinal = window.start;
+    // The ordinal counts every real row above it, the detail rows of rows above the window included (`aria-rowcount` does).
+    const ordinalOf = (item: number): number => item + countBelow(v.openDetails, item);
+    let ordinal = ordinalOf(window.start);
     for (const [offset, item] of (items.slice(window.start, window.end) as readonly BodyItem<T>[]).entries()) {
         if ('kind' in item && item.kind === 'group') {
             out.push({ key: `g:${item.groupKey}`, template: groupRow(v, item, ordinal++) });
@@ -231,7 +272,7 @@ function entries<T>(v: GridView<T>): { key: string; template: TemplateResult }[]
         const item = items[i] as BodyItem<T> | undefined;
         const row = item && dataRowOf(item);
         if (row === undefined || item === undefined) continue;
-        out.push({ key: `r:${v.getRowId(row)}`, template: dataRow(v, row, i, i, 'kind' in item ? undefined : item, retainedTopOf(window, i)) });
+        out.push({ key: `r:${v.getRowId(row)}`, template: dataRow(v, row, i, ordinalOf(i), 'kind' in item ? undefined : item, retainedTopOf(window, i)) });
     }
     return out;
 }

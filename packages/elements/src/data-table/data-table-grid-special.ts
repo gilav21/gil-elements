@@ -13,7 +13,7 @@ import type { SortDirection, EnhancedColumnDef, FlattenedTreeRow } from './data-
 /** The id of a row's detail row; a row id may hold spaces, which an id attribute and `aria-controls` cannot. */
 export const detailId = (uid: string, rowId: string): string => `ge-dt-${uid}-detail-${encodeURIComponent(rowId)}`;
 
-/** In-cell controls leave the tab order when a roving cell exists: the grid has one tab stop, the keyboard reaches them through the cell. */
+/** Body in-cell controls leave the tab order when a roving cell exists: the grid has one tab stop, the keyboard reaches them through the cell. */
 const tabStop = (roving: boolean): string | typeof nothing => (roving ? '-1' : nothing);
 
 function sortControl<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
@@ -30,16 +30,16 @@ export function specialHead<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown
     const { locale } = v;
     if (key === '_selection') {
         const { checked, indeterminate } = v.selectionHeader;
-        return html`<ge-checkbox aria-label=${locale.selectAllRows} .checked=${checked} .indeterminate=${indeterminate} tabindex=${tabStop(v.roving)}></ge-checkbox>`;
+        return html`<ge-checkbox aria-label=${locale.selectAllRows} .checked=${checked} .indeterminate=${indeterminate}></ge-checkbox>`;
     }
     if (key === '_expander') {
         const all = v.allExpanded;
-        return html`<button type="button" data-slot="data-table-icon-button" data-size="md" data-toggle data-action="detail-all" aria-label=${all ? locale.collapseAllRows : locale.expandAllRows} aria-expanded=${all ? 'true' : 'false'} tabindex=${tabStop(v.roving)}>${chromeIcon('chevrons-down', 'xs')}</button>`;
+        return html`<button type="button" data-slot="data-table-icon-button" data-size="md" data-toggle data-action="detail-all" aria-label=${all ? locale.collapseAllRows : locale.expandAllRows} aria-expanded=${all ? 'true' : 'false'}>${chromeIcon('chevrons-down', 'xs')}</button>`;
     }
     if (key === '_actions') return html`<span data-slot="data-table-sr-only">${locale.actions}</span>`;
     if (key === v.treeHost) {
         const all = v.allSubRowsExpanded;
-        return html`<div data-slot="data-table-head-controls"><button type="button" data-slot="data-table-icon-button" data-toggle data-action="tree-all" aria-label=${all ? locale.collapseAllSubRows : locale.expandAllSubRows} aria-expanded=${all ? 'true' : 'false'} tabindex=${tabStop(v.roving)}>${chromeIcon('chevrons-down', 'xs')}</button>${sortControl(v, c)}</div>`;
+        return html`<div data-slot="data-table-head-controls"><button type="button" data-slot="data-table-icon-button" data-toggle data-action="tree-all" aria-label=${all ? locale.collapseAllSubRows : locale.expandAllSubRows} aria-expanded=${all ? 'true' : 'false'}>${chromeIcon('chevrons-down', 'xs')}</button>${sortControl(v, c)}</div>`;
     }
     return undefined;
 }

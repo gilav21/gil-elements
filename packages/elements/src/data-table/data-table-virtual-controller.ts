@@ -1,5 +1,7 @@
 import type { DataTableCoreHost } from './data-table-host.js';
 import { requireProvider } from './data-table-host.js';
+import { isFlagged } from './data-table-expansion.js';
+import { dataRowOf } from './data-table-view.js';
 import type { VirtualService } from './data-table-providers.js';
 import {
     type BodyWindowShape,
@@ -106,6 +108,7 @@ export class VirtualController<T> {
         this.teardown = [
             host.provide('virtual', this.service),
             host.topics.on('columns', () => this.invalidate()),
+            host.topics.on('expansion', () => this.dropClosedDetails()),
             host.disposables.listen(host.root, 'scroll', (event) => event.target === this.viewport && this.schedule(), { capture: true, passive: true }),
             ...(coarse ? [host.disposables.listen(coarse, 'change', () => this.measure())] : []),
         ];
@@ -196,6 +199,20 @@ export class VirtualController<T> {
             this.prefixDirty = false;
         }
         return this.prefix;
+    }
+
+    /** A collapsed row's detail row leaves the DOM before the observer could report it at 0: its measured height goes with it. */
+    private dropClosedDetails(): void {
+        if (!this.variable) return;
+        const { config, model } = this.host;
+        const expanded = model.get('expandedRows');
+        const gone: Measurement[] = [];
+        for (const [index, { detail }] of this.heights) {
+            const item = this.source?.[index] as Parameters<typeof dataRowOf<T>>[0] | undefined;
+            const row = item && dataRowOf(item);
+            if (detail > 0 && !(row !== undefined && isFlagged(expanded, config.getRowId(row)))) gone.push({ index, detail: true, height: 0 });
+        }
+        if (gone.length > 0) this.applyHeights(gone);
     }
 
     /** Recomputes the window from the current scroll state; true when what is drawn changed. */
@@ -349,7 +366,9 @@ export class VirtualController<T> {
         const rect = (selector: string): number => vp.querySelector<HTMLElement>(selector)?.getBoundingClientRect().height ?? 0;
         let pinStart = 0;
         let pinEnd = 0;
-        this.measuredWidths = new Map();
+        // Only the drawn heads can be read: a windowed-out column keeps the width it had, unless it no longer exists.
+        const keys = new Set(requireProvider(this.host, 'columns').enhancedColumns().map((c) => String(c.accessorKey)));
+        this.measuredWidths = new Map([...this.measuredWidths].filter(([key]) => keys.has(key)));
         for (const head of vp.querySelectorAll<HTMLElement>('[data-slot="table-head"][data-column-id]')) {
             const width = head.getBoundingClientRect().width;
             const pin = head.dataset['pinned'];

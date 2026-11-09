@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { GeDataTable } from './data-table.js';
 import type { ColumnDef } from './data-table.types.js';
-import { ariaIndexes, bodyRows, cellAt, dataIndexes, makeColumns, makeRows, mountTable, q, qa, roving, settle, type SampleRow } from './data-table-fixtures.js';
+import { ariaIndexes, bodyRows, cellAt, dataIndexes, headCell, makeColumns, makeRows, mountTable, q, qa, roving, settle, type SampleRow } from './data-table-fixtures.js';
 import { countConstructions, frames, parkMouse, perf, press, scrollGrid, withRtl } from './data-table-input-fixtures.js';
 
 const ROW = 40;
@@ -167,6 +167,21 @@ describe('column windows', () => {
         expect(qa(table, '[data-slot="data-table-spacer"][aria-hidden="true"]').length).toBeGreaterThan(0);
     });
 
+    it('keeps the measured width of an auto column that is windowed out', async () => {
+        const wide = (): ColumnDef<SampleRow>[] => makeColumns(30).map((c, i) => (i === 0 ? { ...c, width: 'auto' } : c));
+        const table = await mountWide({ columns: wide() });
+        const measured = headCell(table, 'c0').getBoundingClientRect().width;
+        expect(measured).not.toBe(150); // not the stand-in width the controller falls back to
+        await scrollTo(table, { left: 2500 });
+        const first = Math.min(...columnsDrawn(table).map((key) => Number(key.slice(1))));
+        expect(first).toBeGreaterThan(3);
+        table.refresh();
+        await settle(table);
+        await frames(3);
+        const pad = qa(table, '[data-slot="data-table-spacer"][data-edge="start"]')[0]!.getBoundingClientRect().width;
+        expect(Math.abs(pad - (measured + 150 * (first - 1)))).toBeLessThan(2);
+    });
+
     it('does the same right-to-left, with a negative scrollLeft', async () => {
         const table = await mountWide();
         await withRtl(table);
@@ -251,6 +266,53 @@ describe('variable row height', () => {
         expect(qa(table, '[data-kind="detail"]').length).toBe(1);
         expect(view.scrollHeight - before).toBeGreaterThan(100);
         expect(view.scrollHeight - before).toBeLessThan(140);
+    });
+
+    it('gives the height of a detail row back when it is collapsed while scrolled out of the window', async () => {
+        const detail = (): HTMLElement => {
+            const box = document.createElement('div');
+            box.style.height = '120px';
+            return box;
+        };
+        const table = await mountVirtual({ virtualRowHeight: 0, virtualVariableRowHeight: true, enableRowExpansion: true, renderDetail: detail }, {}, { width: 600, height: 400 }, 10000, 2);
+        await frames(3);
+        const view = viewportOf(table);
+        table.expandedRows = { r1: true };
+        await settle(table);
+        await frames(4);
+        await scrollTo(table, { top: 20000 });
+        await frames(3);
+        expect(qa(table, '[data-kind="detail"]').length).toBe(0);
+        const open = view.scrollHeight;
+        table.expandedRows = {};
+        await settle(table);
+        await frames(4);
+        // the detail row (its 120px content and its own padding) leaves the total
+        expect(open - view.scrollHeight).toBeGreaterThan(120);
+        expect(open - view.scrollHeight).toBeLessThan(150);
+    });
+});
+
+describe('aria-rowindex with open detail rows above the window', () => {
+    it('counts them in the drawn rows and in a retained one, as aria-rowcount does', async () => {
+        const detail = (): HTMLElement => Object.assign(document.createElement('div'), { style: 'height:60px' });
+        const table = await mountVirtual({ enableRowExpansion: true, renderDetail: detail }, {}, { width: 600, height: 400 }, 2000, 2);
+        table.expandedRows = { [table.data[0]!.id]: true, [table.data[1]!.id]: true };
+        await settle(table);
+        table.focusCell(5, 'c0');
+        await settle(table);
+        await scrollTo(table, { top: 20000 });
+        await frames(3);
+        const index = (row: HTMLElement): number => Number(row.dataset['rowIndex']);
+        const rowIndex = (row: HTMLElement): number => Number(row.getAttribute('aria-rowindex'));
+        const drawn = bodyRows(table).filter((r) => !r.hasAttribute('data-retained'));
+        expect(drawn.length).toBeGreaterThan(5);
+        expect(index(drawn[0]!)).toBeGreaterThan(10);
+        // header row + the data rows before + the two open detail rows + 1
+        for (const row of drawn) expect(rowIndex(row)).toBe(1 + index(row) + 2 + 1);
+        const retained = bodyRows(table).find((r) => r.hasAttribute('data-retained'))!;
+        expect(rowIndex(retained)).toBe(1 + 5 + 2 + 1);
+        expect(q(table, '[data-slot="table"]').getAttribute('aria-rowcount')).toBe(String(1 + 2000 + 2));
     });
 });
 

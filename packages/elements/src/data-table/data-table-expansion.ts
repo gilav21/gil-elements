@@ -2,8 +2,10 @@
  * Detail rows, tree nodes and group collapse as pure functions over their records. Every write builds a NEW record.
  * Keys come from data (row ids, group values), so they are only touched through a `Map`.
  */
+import type { QueryService } from './data-table-providers.js';
+import { memoLast } from './data-table-query.js';
 import type { GetChildren } from './data-table-tree.js';
-import type { ColumnDef } from './data-table.types.js';
+import type { ColumnDef, FlattenedTreeRow } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 
 export type Flags = Readonly<Record<string, boolean>>;
@@ -21,14 +23,22 @@ export function withFlag(flags: Flags, id: string, value: boolean | undefined): 
 /** Detail rows: an open row is `true`, a closed one has no key. */
 export const toggleFlag = (flags: Flags, id: string): Record<string, boolean> => withFlag(flags, id, isFlagged(flags, id) ? undefined : true);
 
-/** Opens (`on`) or closes every id of `ids`; other keys stay. */
-export function setFlags(flags: Flags, ids: readonly string[], on: boolean): Record<string, boolean> {
+/** Opens (`on`) or closes every id of `ids`; other keys stay. Row selection is the same record, so it writes through here too. */
+export function setFlags(flags: Flags, ids: Iterable<string>, on: boolean): Record<string, boolean> {
     const next = new Map(Object.entries(flags));
     for (const id of ids) {
         if (on) next.set(id, true);
         else next.delete(id);
     }
     return Object.fromEntries(next);
+}
+
+const NO_ROWS: readonly never[] = [];
+
+/** One memo per table: the rows a header action (select all, expand all) covers: every filtered row across pages, or the visible tree rows (expanded nodes only). */
+export function createListedRows<T>(): (query: QueryService<T>, tree: boolean) => readonly T[] {
+    const rowsOf = memoLast((visible: readonly FlattenedTreeRow<T>[], sorted: readonly T[], tree: boolean): readonly T[] => (tree ? visible.map((r) => r.row) : sorted));
+    return (query, tree) => rowsOf(tree ? query.visibleTreeRows() : NO_ROWS, tree ? NO_ROWS : query.sortedData(), tree);
 }
 
 /** Every id is open (false for none). */
