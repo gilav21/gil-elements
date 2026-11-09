@@ -1,7 +1,7 @@
 import { html, nothing, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
 import '../../button/define.js';
-import '../../icon/define.js';
+import { chromeIcon, type ChromeIconName } from '../data-table-icons.js';
 import { sortAriaLabel } from '../data-table-cells.js';
 import { DATA_TABLE_LOCALES } from '../data-table.locales.js';
 import type { SortDirection } from '../data-table.types.js';
@@ -14,7 +14,7 @@ export interface SortRequestDetail {
     multi: boolean;
 }
 
-const ICON: Readonly<Record<string, string>> = { asc: 'arrow-up', desc: 'arrow-down' };
+const ICON: Readonly<Record<string, ChromeIconName>> = { asc: 'arrow-up', desc: 'arrow-down' };
 
 /**
  * The sort button of a data-table column header. It is controlled: a click only asks for the next direction, the
@@ -69,7 +69,7 @@ export class GeDataTableColumnHeader extends UiElement {
         return html`<div part="base" data-slot="data-table-column-header">
             <ge-button variant="ghost" size="sm" aria-label=${label} @click=${this.request}>
                 <span class="title">${this.title}</span>
-                <ge-icon class="sort-icon" name=${ICON[this.direction ?? ''] ?? 'chevrons-up-down'} size="sm"></ge-icon>
+                ${chromeIcon(ICON[this.direction ?? ''] ?? 'chevrons-up-down', 'sm', 'sort-icon')}
                 ${this.sortIndex === null ? nothing : html`<span class="badge" aria-hidden="true">${this.sortIndex + 1}</span>`}
             </ge-button>
         </div>`;

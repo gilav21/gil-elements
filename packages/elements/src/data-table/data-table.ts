@@ -1,6 +1,5 @@
 import { html, isServer, LitElement, nothing, type PropertyDeclaration, type PropertyValues, type TemplateResult } from 'lit';
 import '../checkbox/define.js';
-import '../icon/define.js';
 import '../input/define.js';
 import '../popover/define.js';
 import '../skeleton/define.js';

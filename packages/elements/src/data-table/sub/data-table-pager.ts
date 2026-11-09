@@ -1,6 +1,6 @@
 import { html, unsafeCSS } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
-import '../../icon/define.js';
+import { chromeIcon, type ChromeIconName } from '../data-table-icons.js';
 import '../../pagination/define.js';
 import '../../select/define.js';
 import { isRtl } from '../../shared/menu.js';
@@ -72,10 +72,10 @@ export class GeDataTablePager extends UiElement {
 
     private readonly onSize = (event: CustomEvent<string>): void => this.emit(pageSizeTarget(this.state, event.detail));
 
-    private link(action: PageAction, label: string, icon: string, disabled: boolean, edge = false) {
+    private link(action: PageAction, label: string, icon: ChromeIconName, disabled: boolean, edge = false) {
         return html`<ge-pagination-item class=${edge ? 'edge' : ''}>
             <ge-pagination-link size="icon" ?disabled=${disabled} @click=${() => !disabled && this.emit(pageTarget(this.state, this.total, action))}>
-                <span class="sr-only">${label}</span><ge-icon name=${icon} size="sm"></ge-icon>
+                <span class="sr-only">${label}</span>${chromeIcon(icon, 'sm')}
             </ge-pagination-link>
         </ge-pagination-item>`;
     }
@@ -86,7 +86,7 @@ export class GeDataTablePager extends UiElement {
         const canPrevious = state.pageIndex > 0;
         const canNext = state.pageIndex < pages - 1;
         const rtl = isRtl(this);
-        const [back, backEnd, forward, forwardEnd] = rtl ? ['chevron-right', 'chevrons-right', 'chevron-left', 'chevrons-left'] : ['chevron-left', 'chevrons-left', 'chevron-right', 'chevrons-right'];
+        const [back, backEnd, forward, forwardEnd]: ChromeIconName[] = rtl ? ['chevron-right', 'chevrons-right', 'chevron-left', 'chevrons-left'] : ['chevron-left', 'chevrons-left', 'chevron-right', 'chevrons-right'];
         return html`<div part="base" data-slot="data-table-pagination">
             <div class="spacer"></div>
             <div class="controls">
@@ -101,11 +101,11 @@ export class GeDataTablePager extends UiElement {
                     : null}
                 <ge-pagination>
                     <ge-pagination-content>
-                        ${this.link('first', this.firstLabel, backEnd as string, !canPrevious, true)}
-                        ${this.link('previous', this.previousLabel, back as string, !canPrevious)}
+                        ${this.link('first', this.firstLabel, backEnd as ChromeIconName, !canPrevious, true)}
+                        ${this.link('previous', this.previousLabel, back as ChromeIconName, !canPrevious)}
                         <ge-pagination-item><div class="indicator">${this.pageLabel} ${state.pageIndex + 1} ${this.ofLabel} ${pages}</div></ge-pagination-item>
-                        ${this.link('next', this.nextLabel, forward as string, !canNext)}
-                        ${this.link('last', this.lastLabel, forwardEnd as string, !canNext, true)}
+                        ${this.link('next', this.nextLabel, forward as ChromeIconName, !canNext)}
+                        ${this.link('last', this.lastLabel, forwardEnd as ChromeIconName, !canNext, true)}
                     </ge-pagination-content>
                 </ge-pagination>
             </div>

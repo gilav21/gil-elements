@@ -4,6 +4,7 @@
  * `cellClassRules`). Selection, expansion, tree and grouping state are drawn but not yet wired (wave 4).
  */
 import { html, nothing, type TemplateResult } from 'lit';
+import { chromeIcon, ensureIconElement } from './data-table-icons.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { type GridAria } from './data-table-aria.js';
 import { cellText, sortAriaLabel, styleText } from './data-table-cells.js';
@@ -54,7 +55,7 @@ function headContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
         return html`<ge-checkbox aria-label=${locale.selectAllRows} .checked=${ids.length > 0 && selected === ids.length} .indeterminate=${selected > 0 && selected < ids.length}></ge-checkbox>`;
     }
     if (key === '_expander') {
-        return html`<button type="button" data-slot="data-table-icon-button" data-size="md" data-toggle aria-label=${locale.expandAllRows} aria-expanded="false"><ge-icon name="chevrons-down" size="xs"></ge-icon></button>`;
+        return html`<button type="button" data-slot="data-table-icon-button" data-size="md" data-toggle aria-label=${locale.expandAllRows} aria-expanded="false">${chromeIcon('chevrons-down', 'xs')}</button>`;
     }
     if (key === '_actions') return html`<span data-slot="data-table-sr-only">${locale.actions}</span>`;
     if (c.headerRenderer) return c.headerRenderer({ column: c });
@@ -84,7 +85,7 @@ function formattedText<T>(v: GridView<T>, c: ColumnDef<T>, row: T): unknown {
     return html`<span data-slot="cell-formatted" class=${fmt.class} style=${styleText(fmt.style)}>${fmt.dataBar
         ? html`${fmt.dataBar.track ? html`<span data-slot="cell-data-bar-track" style=${`background-color:${fmt.dataBar.track}`}></span>` : nothing}<span data-slot="cell-data-bar" style=${`width:${fmt.dataBar.width};background-color:${fmt.dataBar.color}`}></span>`
         : nothing}${icon?.name
-        ? html`<ge-icon data-slot="cell-icon" name=${icon.name} size="xs" class=${icon.class ?? ''}></ge-icon>`
+        ? (ensureIconElement(), html`<ge-icon data-slot="cell-icon" name=${icon.name} size="xs" class=${icon.class ?? ''}></ge-icon>`)
         : icon?.glyph
           ? html`<span data-slot="cell-icon" class=${icon.class ?? ''}>${icon.glyph}</span>`
           : nothing}<span data-slot="cell-text">${text}</span></span>`;
@@ -97,7 +98,7 @@ function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInde
     }
     if (key === '_expander') {
         const open = v.expanded[v.getRowId(row)] === true;
-        return html`<button type="button" data-slot="data-table-icon-button" data-size="md" data-toggle aria-label=${open ? v.locale.collapseRow : v.locale.expandRow} aria-expanded=${open ? 'true' : 'false'}><ge-icon name=${open ? 'chevron-up' : 'chevron-down'} size="xs"></ge-icon></button>`;
+        return html`<button type="button" data-slot="data-table-icon-button" data-size="md" data-toggle aria-label=${open ? v.locale.collapseRow : v.locale.expandRow} aria-expanded=${open ? 'true' : 'false'}>${chromeIcon(open ? 'chevron-up' : 'chevron-down', 'xs')}</button>`;
     }
     switch (resolveCellKind(c)) {
         case 'tag':
@@ -131,7 +132,7 @@ function dataRow<T>(v: GridView<T>, row: T, i: number): TemplateResult {
 
 function emptyRow<T>(v: GridView<T>): TemplateResult {
     return html`<div data-slot="table-row" role="row" data-kind="empty" aria-rowindex=${v.aria.dataRowIndex(0)}>
-        <div data-slot="table-cell" role="gridcell" data-kind="empty" aria-colspan=${v.aria.colCount} data-width="full">${v.empty ?? html`<div data-slot="data-table-empty-content"><ge-icon name="circle-off" size="xl"></ge-icon><p>${v.locale.noResultsLabel}</p></div>`}</div>
+        <div data-slot="table-cell" role="gridcell" data-kind="empty" aria-colspan=${v.aria.colCount} data-width="full">${v.empty ?? html`<div data-slot="data-table-empty-content">${chromeIcon('circle-off', 'xl')}<p>${v.locale.noResultsLabel}</p></div>`}</div>
     </div>`;
 }
 
