@@ -9,7 +9,8 @@
     cursor: pointer;
     transition: width 100ms ease-out, height 100ms ease-out, margin 100ms ease-out;
 }
-:host(:hover) {
+:host(:hover),
+:host(:focus-within) {
     --ge-dock-label-display: block;
 }
 :host([bouncing]) {

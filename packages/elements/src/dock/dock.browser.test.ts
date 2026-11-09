@@ -1,6 +1,6 @@
 import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { page as screen, userEvent } from 'vitest/browser';
 import '@gilav21/elements-base/tokens.css';
 import './define.js';
 import { mount, useTheme } from '../test-utils.js';
@@ -150,6 +150,71 @@ describe('ge-dock', () => {
         expect(l.left + l.width / 2).toBeCloseTo(i.left + i.width / 2, 0);
         await userEvent.unhover(item);
         await expect.poll(() => getComputedStyle(label).display).toBe('none');
+    });
+
+    it('opens the label on the side facing away from the dock edge, and shows it for a focused item too', async () => {
+        const items: DockItemData[] = [{ label: 'Home', icon: 'H', href: '#home' }, { label: 'Files', icon: 'F', href: '#files' }];
+        for (const position of ['bottom', 'top', 'left', 'right'] as const) {
+            const page = await mount(`<div style="padding:120px 160px"><ge-dock position="${position}"></ge-dock></div>`);
+            const el = first(page);
+            el.items = items;
+            await el.updateComplete;
+            await frame();
+            const item = el.shadowRoot!.querySelector<HTMLElement>('ge-dock-item')!;
+            const label = item.querySelector('ge-dock-label')!.shadowRoot!.querySelector<HTMLElement>('.label')!;
+            expect(getComputedStyle(label).display).toBe('none');
+
+            item.querySelector<HTMLElement>('a')!.focus();
+            await expect.poll(() => getComputedStyle(label).display).toBe('block');
+            const l = label.getBoundingClientRect();
+            const i = item.getBoundingClientRect();
+            const b = bar(el).getBoundingClientRect();
+            // Past the item on the open side, and outside the bar from sm up, whole rather than clipped.
+            if (position === 'bottom') expect(l.bottom).toBeLessThanOrEqual(i.top);
+            if (position === 'top') expect(l.top).toBeGreaterThanOrEqual(i.bottom);
+            if (position === 'left') expect(l.left).toBeGreaterThanOrEqual(i.right);
+            if (position === 'right') expect(l.right).toBeLessThanOrEqual(i.left);
+            if (position === 'bottom') expect(l.top).toBeLessThan(b.top);
+            if (position === 'left') expect(l.right).toBeGreaterThan(b.right);
+            expect(label.getBoundingClientRect().width).toBeGreaterThan(20);
+            page.remove();
+        }
+    });
+
+    it('a vertical dock scrolls only once it is taller than the screen allows, and stops when the items shrink again', async () => {
+        const many = Array.from({ length: 30 }, (_, index) => ({ icon: String(index) }));
+        const page = await mount('<ge-dock position="left"></ge-dock>');
+        const el = first(page);
+        el.items = [{ icon: 'A' }, { icon: 'B' }];
+        await el.updateComplete;
+        await frame();
+        expect(bar(el).hasAttribute('data-scrolls')).toBe(false);
+        expect(getComputedStyle(bar(el)).overflowY).toBe('visible');
+
+        el.items = many;
+        await expect.poll(() => bar(el).hasAttribute('data-scrolls')).toBe(true);
+        expect(getComputedStyle(bar(el)).overflowY).toBe('auto');
+        expect(getComputedStyle(bar(el)).overflowX).toBe('hidden');
+
+        el.items = [{ icon: 'A' }];
+        await expect.poll(() => bar(el).hasAttribute('data-scrolls')).toBe(false);
+    });
+
+    it('below sm the horizontal bar scrolls sideways and keeps the label row inside it; from sm up it paints outside', async () => {
+        const page = await mount(custom());
+        const el = first(page);
+        await screen.viewport(500, 800);
+        try {
+            await frame();
+            expect(getComputedStyle(bar(el)).overflowX).toBe('auto');
+            expect(bar(el).getBoundingClientRect().height).toBe(76);
+        } finally {
+            await screen.viewport(1280, 800);
+        }
+        await frame();
+        expect(getComputedStyle(bar(el)).overflowX).toBe('visible');
+        expect(bar(el).getBoundingClientRect().height).toBe(58);
+        void page;
     });
 
     it('bounces for 750ms, and a second call while it runs does not restart it', async () => {
