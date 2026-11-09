@@ -1,9 +1,9 @@
 import { type ColumnLayout, computeColumnLayout, duplicateColumnKeys, isSpecialColumn, pinGroupOf } from './data-table-columns.js';
-import { moveToIndex } from './data-table-column-order.js';
+import { baseColumnOrder, moveToIndex } from './data-table-column-order.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import type { ColumnsService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
-import { applyColumnState, applyKeyOrder, applyViewState, type ColumnLayout as ColumnOverrides, readColumnState, readViewState, type ViewModel } from './data-table-view-state.js';
+import { applyColumnState, applyViewState, type ColumnLayout as ColumnOverrides, readColumnState, readViewState, type ViewModel } from './data-table-view-state.js';
 import { interpolate } from './data-table.locales.js';
 import type { DataTableColumnState, EnhancedColumnDef } from './data-table.types.js';
 import { sameRecord } from './data-table.utils.js';
@@ -128,7 +128,7 @@ export class ColumnsController<T> {
         },
         move: (key, targetIndex) => {
             const { config, model } = this.host;
-            const base = applyKeyOrder(config.columns.map((c) => String(c.accessorKey)), model.get('columnOrder'));
+            const base = baseColumnOrder(config.columns, model.get('columnOrder'));
             // Only inside the column's pin group, like a drag: the layout draws the groups apart, so a move across them could not show.
             const next = moveToIndex(base, pinGroupOf(this.current().columns, key) ?? [], key, targetIndex);
             if (next) model.set('columnOrder', next);

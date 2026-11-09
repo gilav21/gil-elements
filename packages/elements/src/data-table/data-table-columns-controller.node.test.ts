@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AriaController } from './data-table-aria-controller.js';
+import { baseColumnOrder, moveColumnKey } from './data-table-column-order.js';
 import { ColumnsController } from './data-table-columns-controller.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import { ModelStore } from './data-table-model.js';
@@ -70,6 +71,16 @@ describe('the columns service', () => {
         service.move('c', 0);
         expect(keys(service)).toEqual(['a', 'c', 'b']);
         expect(events).toEqual(['column-order-change']);
+    });
+
+    it('writes the same columnOrder as a drag would when a key is defined twice', () => {
+        const dup = [...columns, { ...columns[0]! }];
+        const { service, store } = setup(dup);
+        const group = keys(service);
+        service.move('c', 0);
+        const byDrag = moveColumnKey(baseColumnOrder(dup, []), group, 'c', group[0]!, 'before');
+        expect(store.get('columnOrder')).toEqual(byDrag);
+        expect(new Set(store.get('columnOrder')).size).toBe(store.get('columnOrder').length);
     });
 
     it('a live width that was never set changes nothing, so the layout is not recomputed', () => {

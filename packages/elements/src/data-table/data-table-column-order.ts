@@ -5,7 +5,13 @@
  * (the caller passes one pin group, so a drop never crosses a pin boundary). The new order of `group` is written back
  * into the slots `group` held in `base`, so hidden, special and differently pinned columns keep theirs (Angular's merge).
  */
+import { applyKeyOrder } from './data-table-view-state.js';
+
 export type DropSide = 'before' | 'after';
+
+/** The full drawn order the moves start from: the definitions' keys (a duplicated key counts once) in the user's `columnOrder`. */
+export const baseColumnOrder = (columns: readonly { accessorKey: PropertyKey }[], order: readonly string[]): string[] =>
+    applyKeyOrder([...new Set(columns.map((c) => String(c.accessorKey)))], order);
 
 function mergeIntoSlots(base: readonly string[], group: readonly string[], next: readonly string[]): string[] {
     const slots = new Set(group);

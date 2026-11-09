@@ -1,9 +1,8 @@
 import { startAutoScroll, type AutoScrollController } from '../shared/auto-scroll.js';
 import { onLongPress, onPointerDrag } from '../shared/touch.js';
-import { dropSide, moveByOffset, moveColumnKey, type DropSide } from './data-table-column-order.js';
+import { baseColumnOrder, dropSide, moveByOffset, moveColumnKey, type DropSide } from './data-table-column-order.js';
 import { columnCells, HEAD_SELECTOR as HEAD, pinGroupOf } from './data-table-columns.js';
 import { type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
-import { applyKeyOrder } from './data-table-view-state.js';
 import { interpolate } from './data-table.locales.js';
 
 /** A header is a drag only after the pointer moved this far, so a click on its sort button stays a click. */
@@ -54,7 +53,7 @@ export class ColumnDragController<T> {
     }
 
     private baseOrder(): string[] {
-        return applyKeyOrder([...new Set(this.host.config.columns.map((c) => String(c.accessorKey)))], this.host.model.get('columnOrder'));
+        return baseColumnOrder(this.host.config.columns, this.host.model.get('columnOrder'));
     }
 
     private announceMove(key: string, next: readonly string[], group: readonly string[]): void {
