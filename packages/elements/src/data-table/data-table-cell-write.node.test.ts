@@ -8,11 +8,15 @@ interface Row {
     qty: number;
 }
 
-function setup(options: { history?: boolean; validator?: ColumnDef<Row>['editValidator'] } = {}) {
-    let data: Row[] = [
+function setup(options: { history?: boolean; validator?: ColumnDef<Row>['editValidator']; rows?: Row[]; rowAt?: (i: number, data: Row[]) => Row | undefined } = {}) {
+    let data: Row[] = options.rows ?? [
         { id: 'a', name: 'Ann', qty: 1 },
         { id: 'b', name: 'Bob', qty: 2 },
     ];
+    let setCalls = 0;
+    let idCalls = 0;
+    let batchDepth = 0;
+    let batchedSets = 0;
     const events: [string, unknown][] = [];
     const columns: ColumnDef<Row>[] = [
         { accessorKey: 'name', header: 'Name', valueSetter: (r, v) => ({ ...r, name: String(v) }), editValidator: options.validator },
@@ -22,11 +26,24 @@ function setup(options: { history?: boolean; validator?: ColumnDef<Row>['editVal
     const writer = createCellWriter<Row>({
         getData: () => data,
         setData: (next) => {
+            setCalls++;
+            if (batchDepth === 0) batchedSets++;
             data = next;
         },
-        getRowId: (r) => r.id,
+        batch: (fn) => {
+            batchDepth++;
+            try {
+                return fn();
+            } finally {
+                batchDepth--;
+            }
+        },
+        getRowId: (r) => {
+            idCalls++;
+            return r.id;
+        },
         columnByKey: (key) => columns.find((c) => String(c.accessorKey) === key),
-        rowAt: (i) => data[i],
+        rowAt: (i) => (options.rowAt ? options.rowAt(i, data) : data[i]),
         cellValue: (row, column) => row[column.accessorKey as keyof Row],
         historyEnabled: () => options.history ?? true,
         emit: (name, detail) => events.push([name, detail]),
@@ -35,6 +52,10 @@ function setup(options: { history?: boolean; validator?: ColumnDef<Row>['editVal
         writer,
         events,
         data: () => data,
+        counts: () => ({ setCalls, idCalls, batchedSets }),
+        drop: (id: string) => {
+            data = data.filter((r) => r.id !== id);
+        },
         reverse: () => {
             data = [...data].reverse();
         },
@@ -98,12 +119,12 @@ describe('runAsCommand and undo', () => {
         });
         expect(writer.canUndo).toBe(true);
 
-        expect(writer.undo()).toBe(true);
+        expect(writer.undo()).toEqual({ done: true, stale: [] });
         expect(data().map((r) => r.qty)).toEqual([1, 2]);
         expect(writer.canUndo).toBe(false);
         expect(writer.canRedo).toBe(true);
 
-        expect(writer.redo()).toBe(true);
+        expect(writer.redo()).toEqual({ done: true, stale: [] });
         expect(data().map((r) => r.qty)).toEqual([10, 20]);
     });
 
@@ -155,7 +176,96 @@ describe('runAsCommand and undo', () => {
 
     it('has nothing to undo or redo on a fresh table', () => {
         const { writer } = setup();
-        expect(writer.undo()).toBe(false);
-        expect(writer.redo()).toBe(false);
+        expect(writer.undo().done).toBe(false);
+        expect(writer.redo().done).toBe(false);
+    });
+});
+
+describe('writeCells', () => {
+    it('resolves every row before the first write, so a re-sorting rendered list cannot misdirect later cells', () => {
+        // The rendered list is the data sorted by name descending, recomputed on every call, like the query graph.
+        const rows: Row[] = [
+            { id: 'a', name: 'Ann', qty: 1 },
+            { id: 'b', name: 'Bob', qty: 2 },
+            { id: 'c', name: 'Cy', qty: 3 },
+        ];
+        const { writer, data } = setup({ rows, rowAt: (i, d) => [...d].sort((x, y) => y.name.localeCompare(x.name))[i] });
+        // Rendered order: Cy, Bob, Ann. Renaming the first one to 'Aaa' would move it to the end when re-sorted lazily.
+        const results = writer.writeCells([
+            { target: { rowIndex: 0, columnKey: 'name' }, value: 'Aaa' },
+            { target: { rowIndex: 1, columnKey: 'name' }, value: 'Bbb' },
+            { target: { rowIndex: 2, columnKey: 'name' }, value: 'Ccc' },
+        ]);
+        expect(results.map((r) => r.status)).toEqual(['written', 'written', 'written']);
+        expect(data().map((r) => [r.id, r.name])).toEqual([['a', 'Ccc'], ['b', 'Bbb'], ['c', 'Aaa']]);
+    });
+
+    it('validates each cell, reports each rejection, and still writes the rest in one data write', () => {
+        const { writer, events, counts, data } = setup({ validator: (v) => (v === 'bad' ? 'no' : true) });
+        const results = writer.writeCells([
+            { target: { rowIndex: 0, columnKey: 'name' }, value: 'bad' },
+            { target: { rowIndex: 1, columnKey: 'name' }, value: 'good' },
+            { target: { rowIndex: 0, columnKey: 'qty' }, value: 7 },
+        ]);
+        expect(results.map((r) => r.status)).toEqual(['rejected', 'written', 'written']);
+        expect(events).toEqual([['edit-error', expect.objectContaining({ message: 'no', rowIndex: 0 })]]);
+        expect(counts().setCalls).toBe(1);
+        expect(data().map((r) => [r.name, r.qty])).toEqual([['Ann', 7], ['good', 2]]);
+    });
+
+    it('applies two cells of the same row on top of each other', () => {
+        const { writer, data } = setup();
+        writer.writeCells([
+            { target: { rowIndex: 0, columnKey: 'name' }, value: 'Z' },
+            { target: { rowIndex: 0, columnKey: 'qty' }, value: 9 },
+        ]);
+        expect(data()[0]).toEqual({ id: 'a', name: 'Z', qty: 9 });
+    });
+
+    it('writes 1,000 cells in one command as one data write and one undo step, scanning ids O(rows)', () => {
+        const rows = Array.from({ length: 1000 }, (_, i) => ({ id: 'r' + i, name: 'n', qty: i }));
+        const { writer, counts, data } = setup({ rows });
+        writer.runAsCommand(() => {
+            writer.writeCells(rows.map((_, i) => ({ target: { rowIndex: i, columnKey: 'qty' }, value: -i })));
+        });
+        expect(counts().setCalls).toBe(1);
+        expect(counts().batchedSets).toBe(0);
+        expect(counts().idCalls).toBeLessThan(5000);
+        writer.undo();
+        expect(data().map((r) => r.qty)).toEqual(rows.map((r) => r.qty));
+        expect(counts().setCalls).toBe(2);
+    });
+
+    it('holds a command of several writeCells calls inside one batch with one setData each, not one per cell', () => {
+        const { writer, counts } = setup();
+        writer.runAsCommand(() => {
+            writer.writeCell({ rowIndex: 0, columnKey: 'qty' }, 5);
+            writer.writeCell({ rowIndex: 1, columnKey: 'qty' }, 6);
+        });
+        expect(counts().batchedSets).toBe(0);
+    });
+});
+
+describe('stale history entries', () => {
+    it('reports an undo whose row is gone, and applies the other entries of the step', () => {
+        const { writer, drop, data, events } = setup();
+        writer.runAsCommand(() => {
+            writer.writeCell({ rowIndex: 0, columnKey: 'qty' }, 10);
+            writer.writeCell({ rowIndex: 1, columnKey: 'qty' }, 20);
+        });
+        drop('a');
+        events.length = 0;
+
+        expect(writer.undo()).toEqual({ done: true, stale: [{ rowId: 'a', columnKey: 'qty', reason: 'row' }] });
+        expect(data().map((r) => [r.id, r.qty])).toEqual([['b', 2]]);
+        expect(events.map(([n]) => n)).toEqual(['cell-edit', 'edit-undo']);
+    });
+
+    it('reports a redo whose row is gone', () => {
+        const { writer, drop } = setup();
+        writer.runAsCommand(() => writer.writeCell({ rowIndex: 0, columnKey: 'qty' }, 10));
+        writer.undo();
+        drop('a');
+        expect(writer.redo().stale).toEqual([{ rowId: 'a', columnKey: 'qty', reason: 'row' }]);
     });
 });

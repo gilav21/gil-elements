@@ -131,6 +131,12 @@ describe('parseClipboardGrid', () => {
         expect(parseClipboardGrid('5" pipe\tb')).toEqual([['5" pipe', 'b']]);
         expect(parseClipboardGrid('"unterminated\nrest')).toEqual([['unterminated\nrest']]);
     });
+    it('does not split a sentence or an uneven list at commas, but reads consistent rows as CSV', () => {
+        expect(parseClipboardGrid('Hello, world')).toEqual([['Hello, world']]);
+        expect(parseClipboardGrid('apples, pears\nkiwis')).toEqual([['apples, pears'], ['kiwis']]);
+        expect(parseClipboardGrid('a,b,c\n1,2,3')).toEqual([['a', 'b', 'c'], ['1', '2', '3']]);
+        expect(parseClipboardGrid('"a,b"')).toEqual([['a,b']]);
+    });
     it('keeps a plain column of lines', () => {
         expect(parseClipboardGrid('one\ntwo')).toEqual([['one'], ['two']]);
         expect(parseClipboardGrid('a\n\nb')).toEqual([['a'], [''], ['b']]);

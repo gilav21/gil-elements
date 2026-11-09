@@ -159,6 +159,38 @@ describe('AddonSet', () => {
         expect(log).toEqual(['stop full', 'start a undefined', 'start b undefined']);
     });
 
+    it('does not re-run setup or teardown when re-configured with equal options, even freshly built ones', () => {
+        const { set, addon, log } = setup();
+        addon('a');
+        set.start();
+        set.configure('a', { a: { formats: ['csv'] } });
+        set.configure('a', { a: { formats: ['csv'] } });
+        set.use({ id: 'u', setup: () => undefined });
+        expect(log).toEqual(['start a {"formats":["csv"]}']);
+    });
+
+    it('keeps an enabled bundle running across configure() and use()', () => {
+        const { set, addon, log } = setup();
+        addon('a');
+        addon('full', ['a']);
+        set.start();
+        set.configure('full', { full: { x: 1 } });
+        set.configure('full', { full: { x: 1 } });
+        const off = set.use({ id: 'other', setup: () => undefined });
+        off();
+        expect(log).toEqual(['start full {"full":{"x":1}}']);
+    });
+
+    it('warns once per unknown id however often it syncs', () => {
+        const { set, warn } = setup();
+        set.start();
+        set.configure('nope', {});
+        set.configure('nope', { nope: true });
+        set.sync();
+        set.sync();
+        expect(warn).toHaveBeenCalledTimes(1);
+    });
+
     it('stop() tears everything down', () => {
         const { set, addon, log } = setup();
         addon('a');

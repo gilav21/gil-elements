@@ -7,6 +7,7 @@ export function resolveAddonLocale<T extends object>(
     host: { readonly resolvedLocale: { readonly code: string } },
     override?: string | T,
 ): T {
-    if (typeof override === 'object') return override;
-    return table[override ?? host.resolvedLocale.code] ?? table.en;
+    if (typeof override === 'object' && override !== null) return override;
+    const code = typeof override === 'string' ? override : host.resolvedLocale.code;
+    return (Object.hasOwn(table, code) ? table[code] : undefined) ?? table.en;
 }

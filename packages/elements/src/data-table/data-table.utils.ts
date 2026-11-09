@@ -4,7 +4,6 @@
  */
 import type { AggregateFn, ColumnDef } from './data-table.types.js';
 
-/** Text for a cell value. Total: a cyclic object or a BigInt inside one reads as its `String()` instead of throwing. */
 /** The value as a number, or `null` when it holds none. `Number()` alone turns `null`, `''`, whitespace and `false` into 0. */
 export function toAggregatableNumber(value: unknown): number | null {
     if (typeof value === 'number') return Number.isFinite(value) ? value : null;
@@ -13,6 +12,7 @@ export function toAggregatableNumber(value: unknown): number | null {
     return Number.isFinite(n) ? n : null;
 }
 
+/** Text for a cell value. Total: a cyclic object or a BigInt inside one reads as its `String()` instead of throwing; a Date reads as its ISO text. */
 export function stringifyValue(value: unknown): string {
     switch (typeof value) {
         case 'string':
@@ -44,7 +44,8 @@ export function stringifyValue(value: unknown): string {
 export function getCellValue<T>(row: T, key: string | keyof T, column?: Pick<ColumnDef<T>, 'accessorFn'>): unknown {
     if (column?.accessorFn) return column.accessorFn(row);
     const name = String(key);
-    if (name.includes('.')) {
+    // A key that is itself an own property (a pivot column named `pivot:2.5`) is not a path.
+    if (name.includes('.') && !(typeof row === 'object' && row !== null && Object.hasOwn(row, name))) {
         let value: unknown = row;
         for (const segment of name.split('.')) {
             if (value === null || value === undefined) return undefined;

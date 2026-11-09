@@ -180,7 +180,12 @@ export class ModelStore<T> {
     }
 
     private write<K extends ModelKey>(key: K, value: ModelValues<T>[K], origin: ModelOrigin): void {
-        if (Object.is(this.values[key], value)) return;
+        if (Object.is(this.values[key], value)) {
+            // The consumer confirming a value the table just set in this batch still takes ownership of it: no echo.
+            const held = this.pending?.get(key);
+            if (held && origin === 'property') held.internal = false;
+            return;
+        }
         this.batch(() => {
             const pending = (this.pending ??= new Map());
             const entry = pending.get(key) ?? { start: this.values[key], internal: false };

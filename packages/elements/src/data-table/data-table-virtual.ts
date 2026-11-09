@@ -10,6 +10,7 @@
  * them is decided with the virtual controller.
  */
 import type { VirtualAutoThreshold } from './data-table.types.js';
+import { isSpecialColumnKey } from './data-table.utils.js';
 
 export interface RowRange {
     readonly start: number;
@@ -167,7 +168,7 @@ export const DEFAULT_COLUMN_MIN_WIDTH = '80px';
 export function resolveColumnMinWidth(col: { accessorKey?: PropertyKey; minWidth?: string }): string {
     if (col.minWidth) return col.minWidth;
     const key = String(col.accessorKey);
-    return key === '_selection' || key === '_expander' || key === '_actions' ? '0px' : DEFAULT_COLUMN_MIN_WIDTH;
+    return isSpecialColumnKey(key) ? '0px' : DEFAULT_COLUMN_MIN_WIDTH;
 }
 
 /** A CSS length in pixels: `px`, `rem` and `em` (against `rootPx`) or a bare number; anything else (`%`, `calc()`) is unknown. */

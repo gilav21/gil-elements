@@ -72,6 +72,17 @@ describe('property writes: the consumer changes a state', () => {
         expect(log).toEqual([]);
     });
 
+    it('also win when they write the very value the table just set, which then announces nothing', () => {
+        const { store, log } = make();
+        const sort = { column: 'a', direction: 'asc' as const };
+        store.batch(() => {
+            store.set('sortState', sort);
+            store.assign('sortState', sort);
+        });
+        expect(log).toEqual([]);
+        expect(store.get('sortState')).toBe(sort);
+    });
+
     it('lose to nothing: an internal change after a property write is announced with the final value', () => {
         const { store, log } = make();
         store.batch(() => {

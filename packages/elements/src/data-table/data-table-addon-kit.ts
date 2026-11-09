@@ -87,6 +87,16 @@ export function parseAddonIds(attribute: string): string[] {
     return [...new Set(attribute.split(/[\s,]+/).filter(Boolean))];
 }
 
+/** Plain data (objects, arrays, primitives) by value; anything else (functions, class instances) by identity. */
+function sameValue(a: unknown, b: unknown): boolean {
+    if (Object.is(a, b)) return true;
+    if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
+    const plain = (v: object): boolean => Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype;
+    if (!plain(a) || !plain(b) || Array.isArray(a) !== Array.isArray(b)) return false;
+    const ka = Object.keys(a);
+    return ka.length === Object.keys(b).length && ka.every((k) => Object.hasOwn(b, k) && sameValue((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+}
+
 /**
  * Which addons run and with what, for one table: `use()`d ones, the `addons` attribute resolved through the registry of
  * defined addons, and `addonOptions`. `sync()` is idempotent; it only tears down what is no longer wanted or whose
@@ -99,6 +109,7 @@ export class AddonSet<T = unknown> {
     private optionsMap: Readonly<Record<string, unknown>> = {};
     private settings: Readonly<Record<string, unknown>> = {};
     private started = false;
+    private readonly warned = new Set<string>();
 
     constructor(
         private readonly host: DataTableAddonHost<T>,
@@ -153,10 +164,18 @@ export class AddonSet<T = unknown> {
         }
     }
 
-    /** `addonOptions` with the options given to `use()` on top; rebuilt only when either changes, so an addon keeps the identity of its options. */
+    /**
+     * `addonOptions` with the options given to `use()` on top. Every entry that is equal by value to the previous one keeps
+     * the previous object, and the map itself is kept while no entry changed, so a re-configure with the same options
+     * (even freshly built objects) does not restart an addon, and a bundle, whose options are the whole map, is not torn down.
+     */
     private merge(): void {
         const used = [...this.used].flatMap(([id, { options }]) => (options === undefined ? [] : [[id, options] as const]));
-        this.settings = { ...this.optionsMap, ...Object.fromEntries(used) };
+        const next: Record<string, unknown> = { ...this.optionsMap, ...Object.fromEntries(used) };
+        for (const key of Object.keys(next)) if (sameValue(this.settings[key], next[key])) next[key] = this.settings[key];
+        const keys = Object.keys(next);
+        const unchanged = keys.length === Object.keys(this.settings).length && keys.every((k) => Object.hasOwn(this.settings, k) && Object.is(this.settings[k], next[k]));
+        if (!unchanged) this.settings = next;
     }
 
     private wanted(): Map<string, DataTableAddon<T>> {
@@ -164,7 +183,10 @@ export class AddonSet<T = unknown> {
         for (const id of this.ids) {
             const addon = this.registry.get(id);
             if (addon) wanted.set(id, addon);
-            else this.warn(`[ge-data-table] unknown addon "${id}": import its define module first.`);
+            else if (!this.warned.has(id)) {
+                this.warned.add(id);
+                this.warn(`[ge-data-table] unknown addon "${id}": import its define module first.`);
+            }
         }
         for (const [id, bundle] of [...wanted]) {
             if (bundle.covers && this.optionsFor(id, bundle) !== false) for (const covered of bundle.covers) wanted.delete(covered);

@@ -10,7 +10,9 @@
  * | root, cellAt, rowAt, *AddressOf | CellInteraction, Clipboard, Resize, RowDrag, Virtual, Aria, AddonHost       |
  * | emit                            | Query (`query`), Resize, RowDrag, Clipboard, Ai, CellInteraction            |
  * | announce                        | Aria (sort/filter), CellInteraction (edit errors), Clipboard, Ai            |
- * | writeCell, runAsCommand         | CellInteraction (commit), Clipboard (paste), CellInteraction (fill), Ai     |
+ * | writeCells, writeCell,          | CellInteraction (commit: writeCell; fill: writeCells), Clipboard (paste:    |
+ * | runAsCommand                    | writeCells), Ai (writeCells, no runAsCommand: not undoable). Multi-cell     |
+ * |                                 | gestures MUST use writeCells: rows resolved before the first write         |
  * | undo, redo, canUndo, canRedo    | CellInteraction (Ctrl+Z / Y), the public `undoEdit()` / `redoEdit()`        |
  * | provide, provider               | every controller that offers or consumes a service (data-table-providers)   |
  * | topics                          | every controller whose output another reads (see the registry's plan)       |
@@ -22,7 +24,7 @@
 import type { Disposables, TopicBus } from '../shared/registry.js';
 import type { DataTableLocale } from './data-table.locales.js';
 import type { DataTableEventMap } from './data-table-events.js';
-import type { CellTarget, CellWriteOptions, CellWriteResult } from './data-table-cell-write.js';
+import type { CellTarget, CellWriteOptions, CellWriteRequest, CellWriteResult, HistoryResult } from './data-table-cell-write.js';
 import type { ModelStore } from './data-table-model.js';
 import type { DataTableConfig, DataTableProviders } from './data-table-providers.js';
 
@@ -90,11 +92,14 @@ export interface DataTableCoreHost<T = unknown> {
     emit<K extends keyof DataTableEventMap<T>>(name: K, detail: DataTableEventMap<T>[K]): void;
     /** Writes to the polite live region; identical consecutive messages are still spoken. */
     announce(message: string): void;
+    /** Many cells at once (fill, paste, AI): all rows resolved before the first write, one data write, results in request order. */
+    writeCells(requests: readonly CellWriteRequest[], options?: CellWriteOptions): CellWriteResult<T>[];
     writeCell(target: CellTarget, value: unknown, options?: CellWriteOptions): CellWriteResult<T>;
     /** Makes every write inside `fn` one undo step (a no-op wrapper while `enableEditHistory` is off). */
     runAsCommand<R>(fn: () => R): R;
-    undo(): boolean;
-    redo(): boolean;
+    /** Entries whose row or column is gone come back in `stale`; the rest are applied. */
+    undo(): HistoryResult;
+    redo(): HistoryResult;
     readonly canUndo: boolean;
     readonly canRedo: boolean;
     /** Plugs a service in; the returned teardown unplugs exactly this one. */
