@@ -4,6 +4,8 @@ import { defaultTrue } from '../shared/chart/chart-base.js';
 import { WidgetCache } from '../shared/widget-cache.js';
 import css from './page-builder.css?inline';
 import type { ComponentMeta, PageBuilderViewMode, PageDashboardItem, PageData } from './page-builder.types.js';
+import { interpolate } from '../shared/interpolate.js';
+import { resolvePageBuilderLocale, type PageBuilderLocale } from './page-builder.locales.js';
 import { isPageData, nextFreeRow, normaliseLength, toDashboardItem, withInputs } from './page-builder.utils.js';
 import type { PropertyChange } from './sub/property-editor.js';
 
@@ -35,6 +37,7 @@ const EXPORT_NAME = 'page-builder-export.json';
  * @prop {PageData | null} data - Layout to load. A new value replaces the board, like Import.
  * @attr {boolean} enable-save - Shows the Save button (default true; `enable-save="false"` hides it).
  * @attr {boolean} enable-export - Shows the Export button, which downloads the layout as JSON (default false).
+ * @attr {string} locale - Locale id or a dictionary object for the builder's own words; defaults to the page's `lang`, then `en`. Component names, categories and input labels come from `components` and are not translated. The inspector follows the same language by its code, so a custom dictionary object localises the builder only.
  */
 export class GePageBuilder extends UiElement {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];
@@ -43,6 +46,7 @@ export class GePageBuilder extends UiElement {
         data: { attribute: false },
         enableSave: { attribute: 'enable-save', converter: defaultTrue, reflect: true },
         enableExport: { attribute: 'enable-export', type: Boolean, reflect: true },
+        locale: {},
         viewMode: { state: true },
         items: { state: true },
         selectedItemId: { state: true },
@@ -62,6 +66,7 @@ export class GePageBuilder extends UiElement {
     declare data: PageData | null;
     declare enableSave: boolean;
     declare enableExport: boolean;
+    declare locale: string | PageBuilderLocale;
     declare viewMode: PageBuilderViewMode;
     declare items: PageDashboardItem[];
     declare selectedItemId: string | null;
@@ -80,12 +85,22 @@ export class GePageBuilder extends UiElement {
     private simulation: ReturnType<typeof setInterval> | undefined;
     private lastAppliedData: PageData | null = null;
 
+    private get t(): PageBuilderLocale {
+        return resolvePageBuilderLocale(this.locale);
+    }
+
+    /** A sample CSS value as a placeholder ("e.g. 1rem"). */
+    private example(value: string): string {
+        return interpolate(this.t.exampleValue, { value });
+    }
+
     constructor() {
         super();
         this.components = [];
         this.data = null;
         this.enableSave = true;
         this.enableExport = false;
+        this.locale = '';
         this.viewMode = 'edit';
         this.items = [];
         this.selectedItemId = null;
@@ -275,13 +290,13 @@ export class GePageBuilder extends UiElement {
         try {
             const parsed: unknown = JSON.parse(text);
             if (!isPageData(parsed)) {
-                alert('Invalid layout file format');
+                alert(this.t.invalidLayout);
                 return;
             }
             this.lastAppliedData = parsed;
             this.applyLayout(parsed);
         } catch {
-            alert('Failed to parse layout file');
+            alert(this.t.parseFailed);
         }
     }
 
@@ -361,8 +376,8 @@ export class GePageBuilder extends UiElement {
     // ---- rendering ----------------------------------------------------------------------------------------
 
     private renderPalette() {
-        return html`<aside aria-label="Components" class="palette">
-            <div class="panel-title"><ge-icon name="box" size="sm" class="muted"></ge-icon>Components</div>
+        return html`<aside aria-label=${this.t.components} class="palette">
+            <div class="panel-title"><ge-icon name="box" size="sm" class="muted"></ge-icon>${this.t.components}</div>
             <div class="palette-body">
                 ${this.categories.map(
                     (category) => html`<div>
@@ -387,22 +402,22 @@ export class GePageBuilder extends UiElement {
         const preview = this.viewMode === 'preview';
         const simulating = this.simulatingData;
         return html`<header class="toolbar">
-            <div class="count"><ge-icon name="layers" size="sm"></ge-icon><span>${this.items.length} Items</span></div>
+            <div class="count"><ge-icon name="layers" size="sm"></ge-icon><span>${interpolate(this.t.itemsCount, { count: this.items.length })}</span></div>
             <div class="actions">
                 <div class="sim-group">
-                    <button type="button" class="sim" ?data-active=${simulating} title="Toggle Live Data Simulation" @click=${() => this.toggleSimulatedData()}>
+                    <button type="button" class="sim" ?data-active=${simulating} title=${this.t.toggleSimulationTitle} @click=${() => this.toggleSimulatedData()}>
                         <ge-icon name=${simulating ? 'refresh-cw' : 'loader'} size="14" class=${simulating ? 'spin' : ''}></ge-icon>
-                        <span>${simulating ? 'Stop Sim' : 'Live Demo'}</span>
+                        <span>${simulating ? this.t.stopSim : this.t.liveDemo}</span>
                     </button>
                 </div>
-                <button type="button" class="tool" ?data-active=${preview} title=${preview ? 'Switch to Edit Mode' : 'Switch to Preview Mode'} @click=${() => this.toggleViewMode()}>
-                    <ge-icon name=${preview ? 'pencil' : 'eye'} size="sm"></ge-icon><span>${preview ? 'Edit' : 'Preview'}</span>
+                <button type="button" class="tool" ?data-active=${preview} title=${preview ? this.t.switchToEditTitle : this.t.switchToPreviewTitle} @click=${() => this.toggleViewMode()}>
+                    <ge-icon name=${preview ? 'pencil' : 'eye'} size="sm"></ge-icon><span>${preview ? this.t.edit : this.t.preview}</span>
                 </button>
                 <div class="divider"></div>
-                <button type="button" class="tool danger" title="Clear Board" @click=${() => this.clearBoard()}><ge-icon name="trash-2" size="sm"></ge-icon><span>Clear</span></button>
-                <button type="button" class="tool import" title="Import Layout" @click=${() => void this.importJson()}><ge-icon name="upload" size="sm"></ge-icon>Import</button>
-                ${this.enableSave ? html`<button type="button" class="primary" title="Save Layout" @click=${() => this.saveJson()}><ge-icon name="save" size="sm"></ge-icon>Save</button>` : nothing}
-                ${this.enableExport ? html`<button type="button" class="outline" title="Export Layout as File" @click=${() => void this.exportJson()}><ge-icon name="download" size="sm"></ge-icon>Export</button>` : nothing}
+                <button type="button" class="tool danger" title=${this.t.clearBoardTitle} @click=${() => this.clearBoard()}><ge-icon name="trash-2" size="sm"></ge-icon><span>${this.t.clear}</span></button>
+                <button type="button" class="tool import" title=${this.t.importLayoutTitle} @click=${() => void this.importJson()}><ge-icon name="upload" size="sm"></ge-icon>${this.t.import}</button>
+                ${this.enableSave ? html`<button type="button" class="primary" title=${this.t.saveLayoutTitle} @click=${() => this.saveJson()}><ge-icon name="save" size="sm"></ge-icon>${this.t.save}</button>` : nothing}
+                ${this.enableExport ? html`<button type="button" class="outline" title=${this.t.exportLayoutTitle} @click=${() => void this.exportJson()}><ge-icon name="download" size="sm"></ge-icon>${this.t.export}</button>` : nothing}
             </div>
         </header>`;
     }
@@ -411,7 +426,7 @@ export class GePageBuilder extends UiElement {
         return html`<div class="canvas-scroll">
             <div class="canvas">
                 ${this.items.length === 0
-                    ? html`<div class="canvas-empty"><div class="canvas-empty-icon"><ge-icon name="layout-template" size="xl"></ge-icon></div><p>Drag components here to build your page</p></div>`
+                    ? html`<div class="canvas-empty"><div class="canvas-empty-icon"><ge-icon name="layout-template" size="xl"></ge-icon></div><p>${this.t.emptyCanvas}</p></div>`
                     : nothing}
                 <ge-bento-grid
                     .items=${this.items}
@@ -450,47 +465,48 @@ export class GePageBuilder extends UiElement {
         const radius = (value: string, cls: string, text: string) => html`<button type="button" class="chip ${cls}" @click=${() => (this.gridBorderRadius = value)}>${text}</button>`;
         return html`<div class="grid-settings">
             <div class="settings-block">
-                <div class="block-title"><ge-icon name="grid" size="12"></ge-icon>Layout Configuration</div>
+                <div class="block-title"><ge-icon name="grid" size="12"></ge-icon>${this.t.layoutConfiguration}</div>
                 <div class="settings-card">
-                    ${this.lengthField('pb-row-height', 'Row Height', 'gridRowHeight', 'e.g. 100px')}
-                    ${this.lengthField('pb-gap-size', 'Gap Size', 'gridGap', 'e.g. 1rem')}
+                    ${this.lengthField('pb-row-height', this.t.rowHeight, 'gridRowHeight', this.example('100px'))}
+                    ${this.lengthField('pb-gap-size', this.t.gapSize, 'gridGap', this.example('1rem'))}
                     <div class="group tall">
                         <div class="switch-line">
-                            <div class="switch-title"><ge-icon name="box-select" size="12" class="muted"></ge-icon><span>Square Cells (Symmetry)</span></div>
-                            ${this.switchButton('Square Cells (Symmetry)', square, () => this.toggleSquareCells())}
+                            <div class="switch-title"><ge-icon name="box-select" size="12" class="muted"></ge-icon><span>${this.t.squareCells}</span></div>
+                            ${this.switchButton(this.t.squareCells, square, () => this.toggleSquareCells())}
                         </div>
                         ${square
                             ? nothing
-                            : html`<div class="setting"><span class="sub-title">Column Configuration</span>
+                            : html`<div class="setting"><span class="sub-title">${this.t.columnConfiguration}</span>
                                 <div class="two">
-                                    <div class="mini"><span class="mini-label">Count</span><input class="field small" type="number" .value=${String(this.gridCols)} @input=${(e: Event) => { const value = (e.target as HTMLInputElement).valueAsNumber; if (Number.isFinite(value)) this.gridCols = value; }} /></div>
-                                    <div class="mini"><span class="mini-label">Width</span><input class="field small" type="text" placeholder="1fr or px" .value=${this.gridColumnWidth} @input=${(e: Event) => this.setLength('gridColumnWidth', (e.target as HTMLInputElement).value)} @blur=${() => this.commitLength('gridColumnWidth')} /></div>
+                                    <div class="mini"><span class="mini-label">${this.t.count}</span><input class="field small" type="number" .value=${String(this.gridCols)} @input=${(e: Event) => { const value = (e.target as HTMLInputElement).valueAsNumber; if (Number.isFinite(value)) this.gridCols = value; }} /></div>
+                                    <div class="mini"><span class="mini-label">${this.t.width}</span><input class="field small" type="text" placeholder=${this.t.columnWidthPlaceholder} .value=${this.gridColumnWidth} @input=${(e: Event) => this.setLength('gridColumnWidth', (e.target as HTMLInputElement).value)} @blur=${() => this.commitLength('gridColumnWidth')} /></div>
                                 </div></div>`}
                     </div>
                     <div class="group">
-                        <div class="switch-line"><span class="switch-text">Show Borders (Preview)</span>${this.switchButton('Show Borders (Preview)', this.gridShowBorders, () => (this.gridShowBorders = !this.gridShowBorders))}</div>
+                        <div class="switch-line"><span class="switch-text">${this.t.showBorders}</span>${this.switchButton(this.t.showBorders, this.gridShowBorders, () => (this.gridShowBorders = !this.gridShowBorders))}</div>
                     </div>
-                    ${this.lengthField('pb-border-radius', 'Border Radius', 'gridBorderRadius', 'e.g. 0.75rem', html`<div class="chips">${radius('0px', 'sharp', '0')}${radius('0.75rem', 'medium', 'M')}${radius('1.5rem', 'large', 'L')}</div>`)}
+                    ${this.lengthField('pb-border-radius', this.t.borderRadius, 'gridBorderRadius', this.example('0.75rem'), html`<div class="chips">${radius('0px', 'sharp', '0')}${radius('0.75rem', 'medium', 'M')}${radius('1.5rem', 'large', 'L')}</div>`)}
                     <div class="group">
-                        ${this.lengthField('pb-item-padding', 'Item Padding (Fix Snapping)', 'gridItemPadding', 'e.g. 1rem', html`<button type="button" class="none" @click=${() => (this.gridItemPadding = '0px')}>None</button>`)}
-                        <p class="hint">Reduce padding to allow items to fit in very small rows (&lt; 30px).</p>
+                        ${this.lengthField('pb-item-padding', this.t.itemPadding, 'gridItemPadding', this.example('1rem'), html`<button type="button" class="none" @click=${() => (this.gridItemPadding = '0px')}>${this.t.none}</button>`)}
+                        <p class="hint">${this.t.itemPaddingHint}</p>
                     </div>
                 </div>
             </div>
-            <div class="tip"><p class="tip-title">Tip:</p>Use standard CSS units like px, rem, or vh to customize your grid's spacing.</div>
+            <div class="tip"><p class="tip-title">${this.t.tip}</p>${this.t.tipBody}</div>
         </div>`;
     }
 
     private renderInspector() {
         const selected = this.selectedItemId;
-        return html`<aside aria-label="Properties" class="inspector">
-            <div class="panel-title"><ge-icon name="settings-2" size="sm" class="muted"></ge-icon>${selected ? 'Properties' : 'Grid Settings'}</div>
+        return html`<aside aria-label=${this.t.properties} class="inspector">
+            <div class="panel-title"><ge-icon name="settings-2" size="sm" class="muted"></ge-icon>${selected ? this.t.properties : this.t.gridSettings}</div>
             <div class="inspector-body">
                 ${selected
                     ? html`<ge-property-editor
                           .item=${this.selectedItem}
                           .componentMeta=${this.selectedMeta}
                           .loading=${!this.widgets.element(selected)}
+                          .locale=${this.t.code}
                           @item-change=${(e: CustomEvent<PropertyChange>) => this.onItemChange(e.detail)}
                           @delete=${() => this.onDeleteItem()}
                       ></ge-property-editor>`
@@ -500,10 +516,10 @@ export class GePageBuilder extends UiElement {
     }
 
     protected override render() {
-        return html`<div class="shell" data-slot="page-builder-shell">
+        return html`<div class="shell" data-slot="page-builder-shell" dir=${this.t.rtl ? 'rtl' : nothing}>
             ${this.renderPalette()}
             <main class="main">${this.renderToolbar()}${this.renderCanvas()}</main>
-            <input type="file" accept=".json" hidden aria-label="Import JSON" @change=${(e: Event) => void this.onFileChosen(e)} />
+            <input type="file" accept=".json" hidden aria-label=${this.t.importJsonLabel} @change=${(e: Event) => void this.onFileChosen(e)} />
             ${this.viewMode === 'edit' ? this.renderInspector() : nothing}
         </div>`;
     }

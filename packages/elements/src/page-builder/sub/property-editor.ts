@@ -1,7 +1,9 @@
 import { html, nothing, unsafeCSS, type TemplateResult } from 'lit';
 import { UiElement } from '@gilav21/elements-base';
 import css from './property-editor.css?inline';
+import { interpolate } from '../../shared/interpolate.js';
 import type { ComponentMeta, InputDefinition, PageDashboardItem } from '../page-builder.types.js';
+import { resolvePropertyEditorLocale, type PropertyEditorLocale } from './property-editor.locales.js';
 
 /** `detail` of `item-change`. `prop` is `bindings` for the whole bindings map, a geometry field (`x`, `y`, `cols`, `rows`), or a widget input name. */
 export interface PropertyChange {
@@ -31,6 +33,7 @@ const numberValue = (event: Event): number | null => {
  * @prop {PageDashboardItem | null} item - The widget being edited. `null` shows the empty state.
  * @prop {ComponentMeta | null} componentMeta - Which inputs to offer and with what control. Without it only the size fields show.
  * @attr {boolean} loading - Shows a placeholder while the widget's details are still being worked out. Visual only.
+ * @attr {string} locale - Locale id or a dictionary object for the inspector's own words; defaults to the page's `lang`, then `en`. Input names and labels come from `componentMeta` and are not translated.
  */
 export class GePropertyEditor extends UiElement {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];
@@ -38,17 +41,24 @@ export class GePropertyEditor extends UiElement {
         item: { attribute: false },
         componentMeta: { attribute: false },
         loading: { type: Boolean, reflect: true },
+        locale: {},
     };
 
     declare item: PageDashboardItem | null;
     declare componentMeta: ComponentMeta | null;
     declare loading: boolean;
+    declare locale: string | PropertyEditorLocale;
 
     constructor() {
         super();
         this.item = null;
         this.componentMeta = null;
         this.loading = false;
+        this.locale = '';
+    }
+
+    private get text(): PropertyEditorLocale {
+        return resolvePropertyEditorLocale(this.locale);
     }
 
     override connectedCallback(): void {
@@ -94,7 +104,7 @@ export class GePropertyEditor extends UiElement {
         const value = this.item?.inputs?.[def.name];
         if (this.hasBinding(def.name)) {
             return html`<div class="with-icon">
-                <input id=${id} class="text-input bound-input" type="text" placeholder="e.g. user.name" .value=${this.item?.bindings?.[def.name] ?? ''} @input=${(e: Event) => this.setBinding(def.name, inputValue(e))} />
+                <input id=${id} class="text-input bound-input" type="text" placeholder=${this.text.bindingPlaceholder} .value=${this.item?.bindings?.[def.name] ?? ''} @input=${(e: Event) => this.setBinding(def.name, inputValue(e))} />
                 <span class="bound-mark">@</span>
             </div>`;
         }
@@ -102,7 +112,7 @@ export class GePropertyEditor extends UiElement {
             case 'boolean':
                 return html`<div class="switch-row"><span class="switch-label">${label}</span><ge-switch ?checked=${!!value} aria-label=${label} @change=${(e: Event) => this.emit(def.name, (e.target as HTMLInputElement).checked)}></ge-switch></div>`;
             case 'select':
-                return html`<ge-select .options=${def.options ?? []} .value=${value ?? ''} placeholder=${`Select ${label}`} @value-change=${(e: CustomEvent) => this.emit(def.name, e.detail)}></ge-select>`;
+                return html`<ge-select .options=${def.options ?? []} .value=${value ?? ''} placeholder=${interpolate(this.text.selectPlaceholder, { label })} @value-change=${(e: CustomEvent) => this.emit(def.name, e.detail)}></ge-select>`;
             default:
                 return html`<input id=${id} class="text-input" type=${def.type === 'number' ? 'number' : 'text'} .value=${value === undefined || value === null ? '' : displayText(value)} @input=${(e: Event) => this.emit(def.name, def.type === 'number' ? numberValue(e) : inputValue(e))} />`;
         }
@@ -110,13 +120,13 @@ export class GePropertyEditor extends UiElement {
 
     private renderSettings(inputs: InputDefinition[]) {
         return html`<div class="section">
-                <div class="section-head"><h4>Settings</h4><span class="tag">Props</span></div>
+                <div class="section-head"><h4>${this.text.settings}</h4><span class="tag">${this.text.props}</span></div>
                 ${inputs.map((def) => {
                     const bound = this.hasBinding(def.name);
                     return html`<div class="setting">
                         <div class="setting-head">
                             <label for=${`pe-prop-${def.name}`} class="setting-label">${def.label || def.name}</label>
-                            <button type="button" class="bind-toggle" ?data-bound=${bound} title="Toggle Data Binding" @click=${() => this.toggleBinding(def.name)}><ge-icon name="box" size="xs"></ge-icon>${bound ? 'Bound' : 'Static'}</button>
+                            <button type="button" class="bind-toggle" ?data-bound=${bound} title=${this.text.toggleBinding} @click=${() => this.toggleBinding(def.name)}><ge-icon name="box" size="xs"></ge-icon>${bound ? this.text.bound : this.text.static}</button>
                         </div>
                         ${this.renderControl(def)}
                     </div>`;
@@ -141,23 +151,23 @@ export class GePropertyEditor extends UiElement {
                 <div class="head-text"><h3>${meta?.name}</h3><p>${item.id}</p></div>
             </div>
             <div class="section">
-                <div class="section-head"><h4>Layout</h4><span class="tag">Grid Config</span></div>
-                <div class="two">${this.numberField('Columns (Width)', 'pe-cols', 'columns-2', item.cols, 'cols', 12)}${this.numberField('Rows (Height)', 'pe-rows', 'rows-2', item.rows, 'rows')}</div>
+                <div class="section-head"><h4>${this.text.layout}</h4><span class="tag">${this.text.gridConfig}</span></div>
+                <div class="two">${this.numberField(this.text.columnsWidth, 'pe-cols', 'columns-2', item.cols, 'cols', 12)}${this.numberField(this.text.rowsHeight, 'pe-rows', 'rows-2', item.rows, 'rows')}</div>
             </div>
             <div class="rule"></div>
             ${inputs.length ? this.renderSettings(inputs) : nothing}
-            <div class="delete-row"><button type="button" class="delete" @click=${() => this.dispatchEvent(new CustomEvent('delete', { bubbles: true, composed: true }))}><ge-icon name="trash-2" size="sm"></ge-icon>Delete Component</button></div>`;
+            <div class="delete-row"><button type="button" class="delete" @click=${() => this.dispatchEvent(new CustomEvent('delete', { bubbles: true, composed: true }))}><ge-icon name="trash-2" size="sm"></ge-icon>${this.text.deleteComponent}</button></div>`;
     }
 
     protected override render() {
         const item = this.item;
         if (!item) {
-            return html`<div class="panel"><div class="body"><div class="empty">
+            return html`<div class="panel" dir=${this.text.rtl ? 'rtl' : nothing}><div class="body"><div class="empty">
                 <div class="empty-icon"><ge-icon name="mouse-pointer-click" size="xl"></ge-icon></div>
-                <h3>No Selection</h3>
-                <p>Select an item on the board to edit its layout and properties.</p>
+                <h3>${this.text.noSelection}</h3>
+                <p>${this.text.noSelectionHint}</p>
             </div></div></div>`;
         }
-        return html`<div class="panel"><div class="body"><div class="content">${this.loading ? this.renderLoading() : this.renderEditor(item)}</div></div></div>`;
+        return html`<div class="panel" dir=${this.text.rtl ? 'rtl' : nothing}><div class="body"><div class="content">${this.loading ? this.renderLoading() : this.renderEditor(item)}</div></div></div>`;
     }
 }

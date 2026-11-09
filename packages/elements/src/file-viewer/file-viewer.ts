@@ -2,6 +2,7 @@ import { html, nothing, svg, unsafeCSS, type PropertyValues, type TemplateResult
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { UiElement } from '@gilav21/elements-base';
 import css from './file-viewer.css?inline';
+import { resolveFileViewerLocale, type FileViewerLocale } from './file-viewer.locales.js';
 import type { FileTypeResult, FileViewerType } from './parsers/file-type-detector.js';
 import { detectDocumentRtl, renderDocxComments, renderDocxFootnotes, renderDocxHeadersFooters, renderDocxToHtml, renderSlideToHtml } from './file-viewer.render.js';
 import type { PixelPerfectPage } from './parsers/pdf-pixel-perfect.js';
@@ -69,6 +70,7 @@ const ICON_FILE = icon(svg`<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 
  * @attr {number} zoom - Initial zoom factor (1 = 100%). A seed: the toolbar clamps to 0.25-3 in 0.25 steps and reports through `zoom-change`.
  * @attr {number} page - Initial 1-based page or slide for PDF and PPT/PPTX. A seed, like `zoom`.
  * @attr {string} filename - Overrides the title-bar name. Falls back to `File.name`, the URL's last segment, or `File`.
+ * @attr {string} locale - Locale id or a dictionary object for the viewer's own words (button labels, notices, error messages); defaults to the page's `lang`, then `en`. File names and document content are never translated.
  * @csspart frame - The bordered frame.
  */
 export class GeFileViewer extends UiElement {
@@ -81,6 +83,7 @@ export class GeFileViewer extends UiElement {
         zoom: { type: Number },
         page: { type: Number },
         filename: {},
+        locale: {},
         state: { state: true },
         errorMessage: { state: true },
         detectedType: { state: true },
@@ -108,6 +111,7 @@ export class GeFileViewer extends UiElement {
     declare zoom: number;
     declare page: number;
     declare filename: string;
+    declare locale: string | FileViewerLocale;
     declare state: ViewerState;
     declare errorMessage: string;
     declare detectedType: FileViewerType;
@@ -140,6 +144,7 @@ export class GeFileViewer extends UiElement {
         this.zoom = 1;
         this.page = 1;
         this.filename = '';
+        this.locale = '';
         this.state = 'idle';
         this.errorMessage = '';
         this.detectedType = 'unknown';
@@ -184,9 +189,13 @@ export class GeFileViewer extends UiElement {
 
     // ---- derived data -------------------------------------------------------------------------------------
 
+    private get text(): FileViewerLocale {
+        return resolveFileViewerLocale(this.locale);
+    }
+
     private get displayFilename(): string {
         if (this.filename) return this.filename;
-        return this.file instanceof File ? this.file.name : 'File';
+        return this.file instanceof File ? this.file.name : this.text.defaultFilename;
     }
 
     private get xlsxHeaderRow(): string[] | null {
@@ -271,7 +280,7 @@ export class GeFileViewer extends UiElement {
             const file = new File([blob], this.filenameFromUrl(url), { type: blob.type });
             await this.loadFile(file, token);
         } catch (error) {
-            if (token === this.loadToken) this.fail(error instanceof Error ? error.message : 'Failed to load file');
+            if (token === this.loadToken) this.fail(error instanceof Error ? error.message : this.text.loadFailed);
         }
     }
 
@@ -298,7 +307,7 @@ export class GeFileViewer extends UiElement {
             this.state = 'loaded';
             this.dispatchEvent(new CustomEvent<FileViewerLoadedEvent>('loaded', { detail: { type: found.type, filename: this.displayFilename }, bubbles: true, composed: true }));
         } catch (error) {
-            if (token === this.loadToken) this.fail(error instanceof Error ? error.message : 'Failed to process file');
+            if (token === this.loadToken) this.fail(error instanceof Error ? error.message : this.text.processFailed);
         }
     }
 
@@ -347,7 +356,7 @@ export class GeFileViewer extends UiElement {
         }
         const { sanitizeSvg } = await import('./parsers/svg-sanitizer.js');
         const sanitized = sanitizeSvg(new TextDecoder().decode(bytes));
-        if (!sanitized) throw new Error('Invalid or unsafe SVG file');
+        if (!sanitized) throw new Error(this.text.invalidSvg);
         this.imageSrc = this.blobUrl(new Blob([sanitized], { type: 'image/svg+xml' }));
     }
 
@@ -406,22 +415,22 @@ export class GeFileViewer extends UiElement {
         return html`<button type="button" class="tool" aria-label=${label} ?disabled=${disabled} @click=${click}>${body}</button>`;
     }
 
-    private renderToolbar() {
+    private renderToolbar(dir: unknown) {
         const type = this.detectedType;
         const download = this.downloadUrl;
-        return html`<div class="toolbar" data-slot="file-viewer-toolbar">
+        return html`<div class="toolbar" data-slot="file-viewer-toolbar" dir=${dir}>
             <div class="title">
                 <span class="name">${this.displayFilename}</span>
                 ${type && type !== 'unknown' ? html`<span class="kind">${type}</span>` : nothing}
             </div>
             <div class="tools">
                 ${PAGINATED.has(type)
-                    ? html`${this.button('Previous page', ICON_PREV, this.currentPage <= 1, () => this.prevPage())}<span class="counter pages">${this.currentPage} / ${this.totalPages}</span>${this.button('Next page', ICON_NEXT, this.currentPage >= this.totalPages, () => this.nextPage())}`
+                    ? html`${this.button(this.text.previousPage, ICON_PREV, this.currentPage <= 1, () => this.prevPage())}<span class="counter pages">${this.currentPage} / ${this.totalPages}</span>${this.button(this.text.nextPage, ICON_NEXT, this.currentPage >= this.totalPages, () => this.nextPage())}`
                     : nothing}
                 ${ZOOMABLE.has(type)
-                    ? html`${this.button('Zoom out', ICON_ZOOM_OUT, this.currentZoom <= ZOOM_MIN, () => this.zoomOut())}<span class="counter zoom">${`${Math.round(this.currentZoom * 100)}%`}</span>${this.button('Zoom in', ICON_ZOOM_IN, this.currentZoom >= ZOOM_MAX, () => this.zoomIn())}`
+                    ? html`${this.button(this.text.zoomOut, ICON_ZOOM_OUT, this.currentZoom <= ZOOM_MIN, () => this.zoomOut())}<span class="counter zoom">${`${Math.round(this.currentZoom * 100)}%`}</span>${this.button(this.text.zoomIn, ICON_ZOOM_IN, this.currentZoom >= ZOOM_MAX, () => this.zoomIn())}`
                     : nothing}
-                ${download ? html`<a class="tool" href=${download} download=${this.displayFilename} title="Download">${ICON_DOWNLOAD}</a>` : nothing}
+                ${download ? html`<a class="tool" href=${download} download=${this.displayFilename} title=${this.text.download}>${ICON_DOWNLOAD}</a>` : nothing}
             </div>
         </div>`;
     }
@@ -434,7 +443,7 @@ export class GeFileViewer extends UiElement {
         const zoom = this.currentZoom;
         switch (this.detectedType) {
             case 'image':
-                return html`<div class="image-box"><img src=${this.imageSrc} alt=${this.displayFilename} style=${`transform:scale(${zoom});transform-origin:center center`} @error=${this.onMediaError('Failed to load image')} /></div>`;
+                return html`<div class="image-box"><img src=${this.imageSrc} alt=${this.displayFilename} style=${`transform:scale(${zoom});transform-origin:center center`} @error=${this.onMediaError(this.text.imageLoadFailed)} /></div>`;
             case 'pdf':
                 return this.renderPdf(zoom);
             case 'xlsx':
@@ -448,11 +457,11 @@ export class GeFileViewer extends UiElement {
             case 'text':
                 return html`<div class="text" style=${`zoom:${zoom}`}><pre>${this.textContent}</pre></div>`;
             case 'video':
-                return html`<div class="media-box"><video controls src=${this.mediaSrc} @error=${this.onMediaError('Failed to load video. The format may not be supported by your browser.')}><track kind="captions" src="" default />Your browser does not support the video element.</video></div>`;
+                return html`<div class="media-box"><video controls src=${this.mediaSrc} @error=${this.onMediaError(this.text.videoLoadFailed)}><track kind="captions" src="" default />${this.text.videoUnsupported}</video></div>`;
             case 'audio':
-                return html`<div class="audio-box"><audio controls src=${this.mediaSrc} @error=${this.onMediaError('Failed to load audio. The format may not be supported by your browser.')}>Your browser does not support the audio element.</audio></div>`;
+                return html`<div class="audio-box"><audio controls src=${this.mediaSrc} @error=${this.onMediaError(this.text.audioLoadFailed)}>${this.text.audioUnsupported}</audio></div>`;
             default:
-                return html`<div class="fill center notice">${ICON_FILE}<p>Preview not available for this file type.</p>${this.renderDownloadLink('Download file', nothing)}</div>`;
+                return html`<div class="fill center notice" dir=${this.text.rtl ? 'rtl' : nothing}>${ICON_FILE}<p>${this.text.previewUnavailable}</p>${this.renderDownloadLink(this.text.downloadFile, nothing)}</div>`;
         }
     }
 
@@ -472,7 +481,7 @@ export class GeFileViewer extends UiElement {
         const names = this.workbook?.sheets.map((sheet) => sheet.name) ?? [];
         const header = this.xlsxHeaderRow;
         return html`<div class="sheet">
-            ${this.workbook?.truncated ? html`<div class="truncated">Showing first 10,000 rows. Download the file to see all data.</div>` : nothing}
+            ${this.workbook?.truncated ? html`<div class="truncated">${this.text.xlsxTruncated}</div>` : nothing}
             <div class="grid-scroll">
                 <table class="cells">
                     <thead>${header ? html`<tr>${header.map((cell) => html`<th>${cell}</th>`)}</tr>` : nothing}</thead>
@@ -490,7 +499,7 @@ export class GeFileViewer extends UiElement {
             case 'loading':
                 return html`<div class="fill center"><ge-spinner size="lg"></ge-spinner></div>`;
             case 'error':
-                return html`<div class="fill center notice">${ICON_ERROR}<p class="message">${this.errorMessage}</p>${this.renderDownloadLink('Download file', ICON_DOWNLOAD_SMALL)}</div>`;
+                return html`<div class="fill center notice" dir=${this.text.rtl ? 'rtl' : nothing}>${ICON_ERROR}<p class="message">${this.errorMessage}</p>${this.renderDownloadLink(this.text.downloadFile, ICON_DOWNLOAD_SMALL)}</div>`;
             case 'loaded':
                 return this.renderLoaded();
             default:
@@ -499,10 +508,11 @@ export class GeFileViewer extends UiElement {
     }
 
     protected override render() {
+        const rtl = this.text.rtl ? 'rtl' : nothing;
         return html`<div part="frame" class="frame" data-slot="file-viewer" style=${`height:${this.height}`}>
             ${this.custom
                 ? html`<slot></slot>`
-                : html`${this.renderToolbar()}<div class="content" tabindex="0" data-slot="file-viewer-content">${this.renderContent()}</div>`}
+                : html`${this.renderToolbar(rtl)}<div class="content" tabindex="0" data-slot="file-viewer-content">${this.renderContent()}</div>`}
         </div>`;
     }
 }

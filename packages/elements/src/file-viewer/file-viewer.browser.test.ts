@@ -30,6 +30,26 @@ async function open(viewer: GeFileViewer, bytes: Uint8Array, name: string, type 
 }
 
 describe('ge-file-viewer', () => {
+    it('speaks the locale: button labels and notices, the chrome right-to-left, and a custom dictionary as given', async () => {
+        const viewer = await viewerOf('locale="he"');
+        await open(viewer, new Uint8Array([0, 1, 2, 3]), 'data.bin', 'unknown');
+        expect(q(viewer, '.toolbar')!.getAttribute('dir')).toBe('rtl');
+        expect(text(viewer, '.notice p')).toBe('אין תצוגה מקדימה לסוג קובץ זה.');
+        expect(q(viewer, '.notice .link')!.textContent!.trim()).toBe('הורדת הקובץ');
+
+        const text2 = await viewerOf('locale="de"');
+        await open(text2, sampleText(), 'a.txt');
+        expect(q(text2, '.toolbar')!.hasAttribute('dir')).toBe(false);
+        expect(q(text2, '.tool[aria-label]')!.getAttribute('aria-label')).toBe('Verkleinern');
+        expect(q(text2, 'a.tool')!.getAttribute('title')).toBe('Herunterladen');
+
+        const custom = await viewerOf();
+        custom.locale = { code: 'xx', previousPage: 'Back', nextPage: 'Forward', zoomOut: 'Smaller', zoomIn: 'Bigger', download: 'Fetch', downloadFile: 'Fetch file', previewUnavailable: 'No preview', xlsxTruncated: 'Cut', imageLoadFailed: 'No image', videoLoadFailed: 'No video', audioLoadFailed: 'No audio', videoUnsupported: 'No video element', audioUnsupported: 'No audio element', loadFailed: 'No load', processFailed: 'No process', invalidSvg: 'Bad SVG', defaultFilename: 'Thing' };
+        await open(custom, sampleText(), 'a.txt');
+        expect(q(custom, '.tool[aria-label="Smaller"]')).not.toBeNull();
+        expect(q(custom, 'a.tool')!.getAttribute('title')).toBe('Fetch');
+    });
+
     it('shows an empty frame with the toolbar and no content before any file is set', async () => {
         const viewer = await viewerOf();
         expect(q(viewer, '.toolbar')).not.toBeNull();
