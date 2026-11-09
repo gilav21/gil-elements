@@ -8,6 +8,7 @@
  */
 import type { ColumnDef, EnhancedColumnDef } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
+import { indexColumns } from './data-table-query.js';
 import { applyKeyOrder } from './data-table-view-state.js';
 import { resolveColumnMinWidth } from './data-table-virtual.js';
 
@@ -51,7 +52,8 @@ const sum = (terms: readonly string[]): string => (terms.length === 0 ? '0px' : 
 
 export function computeColumnLayout<T>(i: ColumnLayoutInput<T>): ColumnLayout<T> {
     const visible = i.columns.filter((c) => own(i.visibility, String(c.accessorKey)) !== false);
-    const byKey = new Map(visible.map((c) => [String(c.accessorKey), c] as const));
+    // First wins, as in the query code (indexColumns): the column that is drawn is the one that is sorted and filtered.
+    const byKey = indexColumns(visible);
     const ordered = applyKeyOrder([...byKey.keys()], i.order).flatMap((key) => byKey.get(key) ?? []);
     const all = withSpecialColumns(ordered, i);
 
@@ -105,6 +107,18 @@ export function columnCssVars<T>(columns: readonly EnhancedColumnDef<T>[]): stri
 /** The inline style of one head, body or footer cell of column `n`: it points at the table's variables. */
 export function cellVarsStyle<T>(column: EnhancedColumnDef<T>, n: number): string {
     return `--ge-dt-w:var(--ge-dt-col-${n});--ge-dt-min:var(--ge-dt-colmin-${n});${column._pinOffset === undefined ? '' : `--ge-dt-pin:var(--ge-dt-pin-${n})`}`;
+}
+
+/** The accessor keys that more than one column uses, in first-seen order. */
+export function duplicateColumnKeys<T>(columns: readonly ColumnDef<T>[]): string[] {
+    const seen = new Set<string>();
+    const dupes = new Set<string>();
+    for (const c of columns) {
+        const key = String(c.accessorKey);
+        if (seen.has(key)) dupes.add(key);
+        seen.add(key);
+    }
+    return [...dupes];
 }
 
 /** Special columns draw their own content (checkbox, expander, actions) and are never data. */

@@ -79,6 +79,15 @@ export class QueryController<T> {
         else if (this.service.sortDirection(key) !== null) this.host.announce(interpolate(locale.sortRemovedAnnouncement, { column }));
     }
 
+    /** A page past the end (the data shrank, or the page size grew) goes back to the last page, announced like any page change. */
+    private clampPage(): void {
+        const page = this.host.model.get('paginationState');
+        const { config } = this.host;
+        // Server rows with no known total say nothing about how many pages there are.
+        if (!config.showPagination || (!config.localPagination && config.total === undefined) || page.pageSize <= 0 || page.pageIndex === 0) return;
+        if (page.pageIndex > Math.max(0, Math.ceil(this.totalItems() / page.pageSize) - 1)) this.service.changePage(page);
+    }
+
     private resetPage(): void {
         const page = this.host.model.get('paginationState');
         if (page.pageIndex === 0) return;
@@ -97,7 +106,9 @@ export class QueryController<T> {
         this.cancelAnnounce?.();
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
-            const count = this.output().filtered.length;
+            // Server filtering: the held rows are not the matches, so use the server's total or say nothing.
+            const count = this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total;
+            if (count === undefined) return;
             this.host.announce(interpolate(count === 1 ? locale.filterResultAnnouncement : locale.filterResultsAnnouncement, { count, value }));
         }, FILTER_ANNOUNCE_MS);
     }
@@ -206,6 +217,7 @@ export class QueryController<T> {
     }
 
     hostUpdate(): void {
+        this.clampPage();
         const next = this.displayRows();
         if (next !== this.lastRows) {
             this.lastRows = next;

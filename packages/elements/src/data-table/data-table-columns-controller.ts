@@ -1,4 +1,4 @@
-import { type ColumnLayout, computeColumnLayout, isSpecialColumn } from './data-table-columns.js';
+import { type ColumnLayout, computeColumnLayout, duplicateColumnKeys, isSpecialColumn } from './data-table-columns.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import type { ColumnsService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
@@ -10,6 +10,7 @@ type Pin = 'left' | 'right' | undefined;
 export class ColumnsController<T> {
     private pins: Readonly<Record<string, Pin>> = {};
     private last: ColumnLayout<T> | null = null;
+    private warned: unknown = null;
 
     private readonly layout = memoLast(
         (columns: DataTableCoreHost<T>['config']['columns'], widths: Record<string, string>, visibility: Record<string, boolean>, order: string[], pins: Readonly<Record<string, Pin>>, selection: boolean, expansion: boolean) =>
@@ -63,6 +64,12 @@ export class ColumnsController<T> {
     }
 
     hostUpdate(): void {
+        const { columns } = this.host.config;
+        if (this.warned !== columns) {
+            this.warned = columns;
+            const dupes = duplicateColumnKeys(columns);
+            if (dupes.length > 0) console.warn(`[ge-data-table] Duplicate accessorKey values: [${dupes.join(', ')}]. Only the first column of each key is drawn.`);
+        }
         const next = this.current();
         if (next !== this.last) {
             this.last = next;

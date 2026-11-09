@@ -60,3 +60,13 @@ describe('column custom properties', () => {
         expect(cellVarsStyle(columns[1]!, 1)).toBe('--ge-dt-w:var(--ge-dt-col-1);--ge-dt-min:var(--ge-dt-colmin-1);');
     });
 });
+
+describe('duplicate accessor keys', () => {
+    it('draws the first column of a key, as the query code does, and reports the key', async () => {
+        const { duplicateColumnKeys } = await import('./data-table-columns.js');
+        const columns = [col('a', { header: 'first' }), col('b'), col('a', { header: 'second' })];
+        expect(layout(columns).columns.map((c) => c.header)).toEqual(['first', 'b']);
+        expect(duplicateColumnKeys(columns)).toEqual(['a']);
+        expect(duplicateColumnKeys([col('a'), col('b')])).toEqual([]);
+    });
+});

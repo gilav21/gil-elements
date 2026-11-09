@@ -5,7 +5,8 @@ import { highlightCodeBlocks, stripCodeHighlighting } from '../shared/code-highl
 import { THEME_ATTRIBUTE, type ThemeName } from '../shared/theme-presets.js';
 import { RichTextCommandRegistry } from './rich-text-command-registry.js';
 import { RICH_TEXT_CONTROLLERS, type RichTextControllerFactory, type RichTextRenderingController } from './rich-text-controllers.js';
-import { adoptRichTextContentStyles, adoptSheet } from './rich-text-content.js';
+import { adoptSheet } from '../shared/adopt-sheet.js';
+import { adoptRichTextContentStyles } from './rich-text-content.js';
 import { ZERO_WIDTH, offsetAfterSweep } from './rich-text-dom.js';
 import type {
     CommitOptions,

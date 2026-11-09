@@ -633,3 +633,158 @@ describe('ge-data-table styles and lifecycle', () => {
         expect(result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
     });
 });
+
+describe('ge-data-table review fixes', () => {
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+    const many = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `r${i}`, name: `n${i}`, age: i }));
+
+    it('takes property writes while detached, renders nothing meanwhile, and shows them on reconnect', async () => {
+        const table = await mountTable();
+        table.remove();
+        table.data = [{ id: 'z', name: 'Zed', age: 9 }];
+        table.loading = true;
+        await table.updateComplete;
+        document.body.append(table);
+        await settle(table);
+
+        expect(cellTexts(table, 'name')).toEqual(['Zed']);
+        expect(table.querySelector('[data-slot="data-table-loader"]')).not.toBeNull();
+    });
+
+    it('runs every after-render task, also those queued by a second update before the frame', async () => {
+        const table = await mountTable();
+        const ran: string[] = [];
+        table.afterRender(() => ran.push('a'));
+        await table.updateComplete;
+        table.afterRender(() => ran.push('b'));
+        await table.updateComplete;
+        await frame();
+        await frame();
+
+        expect(ran).toEqual(['a', 'b']);
+    });
+
+    it('keeps model states written before the element upgraded', async () => {
+        const { GeDataTable } = await import('./data-table.js');
+        const tag = `ge-dt-late-${Math.random().toString(36).slice(2, 8)}`;
+        const early = document.createElement(tag) as GeDataTable<Row>;
+        Object.assign(early, { columns: COLUMNS, data: ROWS, rowSelection: { b: true }, enableRowSelection: true });
+        document.body.append(early);
+        tables.push(early);
+        customElements.define(tag, class extends GeDataTable<Row> {});
+        await settle(early);
+
+        expect(cellTexts(early, 'name')).toEqual(['Carol', 'Alice', 'Bob', 'Dave']);
+        expect(bodyRows(early).filter((r) => r.dataset['state'] === 'selected').map((r) => r.dataset['rowId'])).toEqual(['b']);
+        expect(Object.hasOwn(early, 'data')).toBe(false);
+    });
+
+    it('goes back to the last page when the data shrinks or the page size grows, and says so', async () => {
+        const table = await mountTable({ data: many(100) });
+        table.paginationState = { pageIndex: 5, pageSize: 10 };
+        await settle(table);
+        const pages: unknown[] = [];
+        table.addEventListener('page-change', (e) => pages.push((e as CustomEvent).detail));
+
+        table.data = many(15);
+        await settle(table);
+        expect(table.paginationState).toEqual({ pageIndex: 1, pageSize: 10 });
+        expect(pages).toEqual([{ pageIndex: 1, pageSize: 10 }]);
+        expect(bodyRows(table)).toHaveLength(5);
+
+        table.data = many(100);
+        table.paginationState = { pageIndex: 4, pageSize: 50 };
+        await settle(table);
+        expect(table.paginationState).toEqual({ pageIndex: 1, pageSize: 50 });
+    });
+
+    it('leaves a server page alone when no total is known', async () => {
+        const table = await mountTable({ data: many(10), localPagination: false });
+        table.paginationState = { pageIndex: 3, pageSize: 10 };
+        await settle(table);
+        expect(table.paginationState.pageIndex).toBe(3);
+    });
+
+    it('lets the consumer remove or replace a slotted node, with node.remove(), removeChild or replaceChild', async () => {
+        const slotted = (text: string) => Object.assign(document.createElement('button'), { slot: 'toolbar-start', textContent: text });
+        const [a, b, c] = [slotted('a'), slotted('b'), slotted('c')];
+        const table = document.createElement('ge-data-table') as GeDataTable<Row>;
+        Object.assign(table, { columns: COLUMNS, data: ROWS });
+        table.append(a, b, c);
+        document.body.append(table);
+        tables.push(table);
+        await settle(table);
+        const inToolbar = () => qa(table, '[data-slot="data-table-toolbar-start"] > button').map((n) => n.textContent);
+        expect(inToolbar()).toEqual(['a', 'b', 'c']);
+
+        a.remove();
+        await settle(table);
+        expect(inToolbar()).toEqual(['b', 'c']);
+
+        expect(() => table.removeChild(b)).not.toThrow();
+        await settle(table);
+        expect(inToolbar()).toEqual(['c']);
+
+        const d = slotted('d');
+        expect(() => table.replaceChild(d, c)).not.toThrow();
+        await settle(table);
+        expect(inToolbar()).toEqual(['d']);
+
+        table.data = [...ROWS];
+        table.showToolbar = false;
+        await settle(table);
+        table.showToolbar = true;
+        await settle(table);
+        expect(inToolbar()).toEqual(['d']);
+    });
+
+    it('keeps a runtime pin, and the table stays silent, across a reconnect', async () => {
+        const table = await mountTable();
+        const events: string[] = [];
+        const dispatch = table.dispatchEvent.bind(table);
+        table.dispatchEvent = (event: Event) => (events.push(event.type), dispatch(event));
+        table.pinColumn('age', 'left');
+        await settle(table);
+        expect(headerOf(table, 'age').dataset['pinned']).toBe('left');
+
+        table.remove();
+        document.body.append(table);
+        await settle(table);
+        expect(headerOf(table, 'age').dataset['pinned']).toBe('left');
+        expect(events).toEqual([]);
+    });
+
+    it('draws and sorts the first of two columns that share an accessorKey, and warns once', async () => {
+        const warnings: string[] = [];
+        const warn = console.warn;
+        console.warn = (message: string) => warnings.push(String(message));
+        try {
+            const table = await mountTable({ columns: [{ accessorKey: 'name', header: 'First' }, { accessorKey: 'name', header: 'Second' }, COLUMNS[1]!] });
+            table.requestRender();
+            await settle(table);
+            expect(qa(table, '[data-slot="table-head"][role="columnheader"]').map((h) => h.dataset['columnId'])).toEqual(['name', 'age']);
+            expect(q(table, '[data-column-id="name"] ge-data-table-column-header').title).toBe('First');
+            expect(warnings.filter((w) => w.includes('Duplicate accessorKey'))).toHaveLength(1);
+        } finally {
+            console.warn = warn;
+        }
+    });
+
+    it('announces a server-side filter with the server total, and stays silent without one', async () => {
+        const announcement = (table: Element) => q(table, '[data-slot="data-table-announcer"]').textContent!.replaceAll('​', '').trim();
+        const type = async (table: GeDataTable<Row>, text: string) => {
+            const inner = q(table, '[data-slot="data-table-filter"] ge-input').shadowRoot!.querySelector('input')!;
+            inner.value = text;
+            inner.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
+            await new Promise((resolve) => setTimeout(resolve, 650));
+            await settle(table);
+        };
+        const withTotal = await mountTable({ data: many(10), localFiltering: false, localPagination: false, total: 77 });
+        await type(withTotal, 'x');
+        expect(announcement(withTotal)).toBe('77 results found for "x"');
+
+        const without = await mountTable({ data: many(10), localFiltering: false, localPagination: false });
+        await type(without, 'x');
+        expect(announcement(without)).toBe('');
+    });
+});

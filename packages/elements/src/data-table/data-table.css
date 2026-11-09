@@ -33,7 +33,6 @@
         --ge-dt-row-height: 40px;
         --ge-dt-header-bg: var(--background);
         --ge-dt-cell-bg: var(--background);
-        --ge-dt-pin-shadow: none;
         /* The expander column: 40px, 64px on a touch screen (cmp 228, 2384). The render code reads it as var(--ge-dt-expander-w). */
         --ge-dt-expander-w: 40px;
         display: block;
@@ -486,9 +485,6 @@
     }
     ge-data-table [data-slot="table-head"][data-pinned] {
         z-index: 30;
-    }
-    ge-data-table [data-slot="table-cell"][data-pinned][data-edge] {
-        box-shadow: var(--ge-dt-pin-shadow);
     }
 
     /* Cell states (cmp 3159-3183). Focus ring: ring-2 ring-primary ring-inset. */

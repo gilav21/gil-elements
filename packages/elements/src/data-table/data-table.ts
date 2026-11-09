@@ -192,6 +192,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
         historyEnabled: () => this.enableEditHistory,
         emit: (...event) => this.emit(event[0], event[1] as never),
     });
+    private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
     private releaseStyles: (() => void) | null = null;
     private observer: MutationObserver | null = null;
@@ -204,8 +205,17 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
 
     constructor() {
         super();
+        // A model state written before the element upgraded is an own property that would shadow the accessor: take it back.
+        const early = MODEL_KEYS.filter((key) => Object.hasOwn(this, key)).map((key) => [key, (this as Record<string, unknown>)[key]] as const);
+        for (const [key] of early) delete (this as Record<string, unknown>)[key];
         Object.assign(this, Object.fromEntries(Object.entries(INPUTS).map(([name, [, value]]) => [name, value])));
         this.store.onFlush(() => this.requestUpdate());
+        for (const [key, value] of early) Object.assign(this, { [key]: value });
+    }
+
+    /** No controllers, no services: nothing can render, so a property written while detached waits for the next connect. */
+    protected override shouldUpdate(): boolean {
+        return isServer || this.assembled !== null;
     }
 
     // ---- the host contract ------------------------------------------------------------------------------------
@@ -329,13 +339,16 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
             formatting: (host) => new FormattingController(host),
             footer: (host) => new FooterController(host),
         };
-        this.assembled = assembleControllers(this, factories);
-        this.assembled.attachAll();
+        // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger) survives.
+        this.built ??= assembleControllers(this, factories);
+        this.built.attachAll();
+        this.assembled = this.built;
         this.observer = new MutationObserver(() => {
             this.harvest();
             this.requestUpdate();
         });
         this.observer.observe(this, { childList: true });
+        this.requestUpdate();
     }
 
     override disconnectedCallback(): void {
@@ -348,6 +361,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
             this.assembled = null;
             this.providers.clear();
             cancelAnimationFrame(this.frame);
+            this.frame = 0;
             this.disposables.dispose();
             this.releaseStyles?.();
             this.releaseStyles = null;
@@ -361,6 +375,63 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
             if (slot === null || !SLOT_NAMES.has(slot) || child === this.renderRoot) continue;
             this.slotted.set(slot, [...(this.slotted.get(slot) ?? []), child]);
             child.remove();
+            // The consumer still holds this node: its own `remove()` must retire it, not leave it to reappear at the next render.
+            Object.defineProperty(child, 'remove', {
+                configurable: true,
+                value: () => {
+                    // Lit clears a template part with `remove()` too; that is a re-render, not the consumer letting go.
+                    if (!this.rendering) this.unharvest(child);
+                    Element.prototype.remove.call(child);
+                },
+            });
+        }
+    }
+
+    private isHarvested(node: Node): boolean {
+        return [...this.slotted.values()].some((list) => list.includes(node));
+    }
+
+    /** Forgets a harvested node (the consumer removed or replaced it); true when it was one. */
+    private unharvest(node: Node): boolean {
+        let found = false;
+        for (const [name, list] of this.slotted) {
+            const rest = list.filter((n) => n !== node);
+            if (rest.length === list.length) continue;
+            found = true;
+            if (rest.length > 0) this.slotted.set(name, rest);
+            else this.slotted.delete(name);
+        }
+        if (found) this.requestUpdate();
+        return found;
+    }
+
+    // Harvested nodes live in the render root, but the consumer still thinks they are children of the element:
+    // its `parent.removeChild(node)` and friends must work, as they do for a node of a real slot.
+    override removeChild<N extends Node>(child: N): N {
+        if (!this.unharvest(child)) return super.removeChild(child);
+        child.parentNode?.removeChild(child);
+        return child;
+    }
+
+    override replaceChild<N extends Node>(node: Node, child: N): N {
+        if (!this.unharvest(child)) return super.replaceChild(node, child);
+        child.parentNode?.removeChild(child);
+        this.append(node);
+        return child;
+    }
+
+    override insertBefore<N extends Node>(node: N, child: Node | null): N {
+        return super.insertBefore(node, child !== null && this.isHarvested(child) ? null : child);
+    }
+
+    private rendering = false;
+
+    protected override update(changed: PropertyValues): void {
+        this.rendering = true;
+        try {
+            super.update(changed);
+        } finally {
+            this.rendering = false;
         }
     }
 
@@ -399,10 +470,12 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableCor
     }
 
     protected override updated(): void {
-        const tasks = this.afterTasks.splice(0);
-        if (tasks.length === 0) return;
-        cancelAnimationFrame(this.frame);
-        this.frame = requestAnimationFrame(() => tasks.forEach((task) => task()));
+        // One frame runs every task queued by then (also those of an update that came while it was pending); none is dropped.
+        if (this.afterTasks.length === 0 || this.frame !== 0) return;
+        this.frame = requestAnimationFrame(() => {
+            this.frame = 0;
+            for (const task of this.afterTasks.splice(0)) task();
+        });
     }
 
     // ---- rendering --------------------------------------------------------------------------------------------
