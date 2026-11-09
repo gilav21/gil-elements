@@ -4,6 +4,8 @@ import { refDock, elDock, ITEMS } from './dock.mjs';
 
 export default {
     name: 'dock-narrow',
+    // Its own page: the page takes the first case's width, so a shared one would shrink every case packed behind it.
+    isolated: true,
     width: 500,
     items: [
         { id: 'bottom', wrap: 'height:160px;', ref: refDock('bottom'), el: elDock('bottom') },
