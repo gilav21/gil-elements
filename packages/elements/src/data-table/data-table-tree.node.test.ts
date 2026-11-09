@@ -46,9 +46,23 @@ describe('buildTreeFromFlat', () => {
     it('returns an empty tree for empty input', () => {
         expect(build([])).toEqual([]);
     });
-    it('drops orphans and pure cycles (documented)', () => {
-        expect(build([{ id: 'x', parentId: 'missing', name: 'o' }])).toEqual([]);
-        expect(build([{ id: 'a', parentId: 'b', name: '' }, { id: 'b', parentId: 'a', name: '' }])).toEqual([]);
+    it('surfaces an orphan at the root instead of dropping it', () => {
+        const tree = build([{ id: 'a', parentId: null, name: 'A' }, { id: 'x', parentId: 'missing', name: 'o' }, { id: 'x1', parentId: 'x', name: 'o child' }]);
+        expect(tree.map((node) => node.id)).toEqual(['a', 'x']);
+        expect(JSON.stringify(tree[1])).toContain('x1');
+    });
+    it('breaks a cycle at its first row, and a self-parent row becomes a root', () => {
+        const cycle = build([{ id: 'a', parentId: 'b', name: '' }, { id: 'b', parentId: 'a', name: '' }, { id: 'e', parentId: null, name: '' }]);
+        expect(cycle.map((node) => node.id)).toEqual(['e', 'a']);
+        expect(JSON.stringify(cycle[1])).toContain('"b"');
+        expect(build([{ id: 's', parentId: 's', name: '' }]).map((node) => node.id)).toEqual(['s']);
+    });
+    it('keeps every row exactly once whatever the links', () => {
+        const rows: Node[] = [{ id: 'a', parentId: 'c', name: '' }, { id: 'b', parentId: 'a', name: '' }, { id: 'c', parentId: 'b', name: '' }, { id: 'd', parentId: 'zz', name: '' }, { id: 'e', parentId: 'e', name: '' }];
+        const seen: string[] = [];
+        const walk = (nodes: Node[]): void => nodes.forEach((node) => { seen.push(node.id); walk((node as Node & { children?: Node[] }).children ?? []); });
+        walk(build(rows));
+        expect(seen.sort()).toEqual(['a', 'b', 'c', 'd', 'e']);
     });
     it('does not mutate its input', () => {
         const copy = JSON.stringify(flat);

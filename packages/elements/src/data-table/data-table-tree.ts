@@ -6,8 +6,8 @@ export type GetChildren<T> = (row: T) => T[] | null | undefined;
 export type SetChildren<T> = (row: T, children: T[]) => T;
 
 /**
- * Builds a tree from a flat list. Roots are the rows whose parent id is `null`; a row whose parent is not in the list
- * (an orphan), or a cycle with no root, is not reachable and is dropped.
+ * Builds a tree from a flat list. Roots are the rows whose parent id is `null` or names no row in the list (an orphan
+ * surfaces at the root rather than vanishing); a cycle, which has no root, is broken at its first row in list order.
  */
 export function buildTreeFromFlat<T>(
     rows: readonly T[],
@@ -15,18 +15,29 @@ export function buildTreeFromFlat<T>(
     getParentId: (row: T) => string | null,
     setChildren: (row: T, children: T[]) => T,
 ): T[] {
-    const byParent = new Map<string | null, T[]>();
+    const ids = new Set(rows.map(getId));
+    const roots: T[] = [];
+    const byParent = new Map<string, T[]>();
     for (const row of rows) {
         const parentId = getParentId(row);
+        if (parentId === null || !ids.has(parentId)) {
+            roots.push(row);
+            continue;
+        }
         const siblings = byParent.get(parentId);
         if (siblings) siblings.push(row);
         else byParent.set(parentId, [row]);
     }
+    const placed = new Set<string>();
     const attach = (row: T): T => {
-        const children = byParent.get(getId(row));
-        return children?.length ? setChildren(row, children.map(attach)) : row;
+        placed.add(getId(row));
+        const children = (byParent.get(getId(row)) ?? []).filter((child) => !placed.has(getId(child)));
+        return children.length ? setChildren(row, children.map(attach)) : row;
     };
-    return (byParent.get(null) ?? []).map(attach);
+    const tree = roots.map(attach);
+    // What is left is a cycle (or hangs off one), so it has no root: start it at its first row.
+    for (const row of rows) if (!placed.has(getId(row))) tree.push(attach(row));
+    return tree;
 }
 
 export interface TreeFilterInput<T> {

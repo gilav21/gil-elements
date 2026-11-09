@@ -133,3 +133,13 @@ describe('column min width', () => {
         expect(columnMinWidthPx({ accessorKey: '_actions' })).toBe(0);
     });
 });
+
+describe('columnMinWidthPx units', () => {
+    it('reads px and rem, and falls back to the default floor for a length it cannot measure', () => {
+        expect(columnMinWidthPx({ accessorKey: 'a', minWidth: '10rem' })).toBe(160);
+        expect(columnMinWidthPx({ accessorKey: 'a', minWidth: '10rem' }, 20)).toBe(200);
+        expect(columnMinWidthPx({ accessorKey: 'a', minWidth: '20%' })).toBe(80);
+        expect(columnMinWidthPx({ accessorKey: 'a', minWidth: 'calc(1px + 2px)' })).toBe(80);
+        expect(columnMinWidthPx({ accessorKey: 'a', minWidth: '90' })).toBe(90);
+    });
+});

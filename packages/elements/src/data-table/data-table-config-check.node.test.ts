@@ -88,3 +88,14 @@ describe('validateConfig', () => {
         for (const m of check({ enableFloatingFilters: true })) expect(m.startsWith('[ge-data-table]')).toBe(true);
     });
 });
+
+describe('validateConfig row ids', () => {
+    it('does not warn about the default id when every row carries an id', () => {
+        const rows = [{ id: 1 }, { id: 2 }];
+        expect(check({ enableSubRows: true, enableCellFlash: true, data: rows })).toEqual([]);
+    });
+    it('warns when some rows have no id, or there is no data to tell', () => {
+        expect(check({ enableSubRows: true, data: [{ id: 1 }, {}] }).join(' ')).toContain('getRowId');
+        expect(check({ enableCellFlash: true }).join(' ')).toContain('getRowId');
+    });
+});

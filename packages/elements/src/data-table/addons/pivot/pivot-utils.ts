@@ -2,6 +2,7 @@
  * Pivot a flat dataset into rows x columns x one aggregated value. Pure; bind the result's `columns` and `rows` to a
  * data table.
  */
+import { toAggregatableNumber } from '../../data-table.utils.js';
 
 /**
  * Aggregate applied at each pivot cell. `count` counts the source rows in the cell, whatever their values. The others
@@ -40,13 +41,7 @@ export const PIVOT_TOTAL_KEY = '__total__';
 
 const defaultGetValue = (row: unknown, key: string): unknown => (row as Record<string, unknown> | null)?.[key];
 
-/** The value as a number, or `null` when it holds none. `Number()` alone turns `null`, `''`, whitespace and `false` into 0. */
-export function toAggregatableNumber(value: unknown): number | null {
-    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-    if (typeof value !== 'string' || value.trim() === '') return null;
-    const n = Number(value);
-    return Number.isFinite(n) ? n : null;
-}
+export { toAggregatableNumber };
 
 function aggregateNumbers(values: readonly number[], fn: PivotAggregate): number | null {
     if (fn === 'count') return values.length;

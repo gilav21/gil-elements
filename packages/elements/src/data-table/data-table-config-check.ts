@@ -37,6 +37,8 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         if (cond) warnings.push(`${PREFIX} ${message}`);
     };
     const customId = !!c.getRowId && c.getRowId !== (defaultGetRowId as unknown);
+    // The default id is `row.id` when every row has one, so that data needs no custom getRowId.
+    const stableIds = customId || (!!c.data?.length && c.data.every((row) => typeof row === 'object' && row !== null && (row as { id?: unknown }).id != null));
     const dataLength = c.data?.length ?? 0;
 
     warn(
@@ -59,10 +61,10 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     );
     warn(c.groupBy && (c.enableSubRows || c.virtualActive), 'group-by is set together with enable-sub-rows or virtual scroll. Row grouping is mutually exclusive with these and is ignored.');
     warn(
-        c.enableSubRows && !customId,
-        'enable-sub-rows is active without a custom getRowId. The default id is an object identity, which does not survive replacing rows; provide a stable unique id.',
+        c.enableSubRows && !stableIds,
+        'enable-sub-rows is active without a custom getRowId and rows without an `id`. The default id is an object identity, which does not survive replacing rows; provide a stable unique id.',
     );
-    warn(c.enableCellFlash && !customId, 'enable-cell-flash is active without a custom getRowId. Flash detection needs stable row ids across data updates.');
+    warn(c.enableCellFlash && !stableIds, 'enable-cell-flash is active without a custom getRowId and rows without an `id`. Flash detection needs stable row ids across data updates.');
     warn(
         c.enableFloatingFilters && !c.columns.some((col) => col.enableFiltering),
         'enable-floating-filters is true but no column has enableFiltering set. The floating filter row will be empty.',

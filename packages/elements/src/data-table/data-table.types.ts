@@ -261,7 +261,8 @@ export interface DataTableColumnState {
     columnKey: string;
     width?: string;
     visible?: boolean;
-    pin?: 'left' | 'right';
+    /** `null` is an explicit unpin, which survives JSON where an undefined key would not. */
+    pin?: 'left' | 'right' | null;
     order?: number;
 }
 

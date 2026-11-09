@@ -13,7 +13,7 @@ import type {
     SortDirection,
     SortState,
 } from './data-table.types.js';
-import { getCellValue, isFilterValueEmpty, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
+import { getCellValue, isFilterValueEmpty, isSpecialColumnKey, stringifyValue, toAggregatableNumber } from './data-table.utils.js';
 
 export type GlobalFilterFn<T> = (row: T, filter: string, columns: ColumnDef<T>[]) => boolean;
 
@@ -31,17 +31,24 @@ const lower = (value: unknown): string => stringifyValue(value).toLowerCase();
 
 /** Case-insensitive substring match on the stringified cell, the default text filter. */
 export function textIncludes(cell: unknown, needle: unknown): boolean {
-    return String(cell).toLowerCase().includes(String(needle).toLowerCase());
+    return lower(cell).includes(lower(needle));
 }
 
 // ---- advanced filter -------------------------------------------------------------------------------------------
 
 function looseEquals(cell: unknown, value: unknown): boolean {
-    const a = Number(cell);
-    const b = Number(value);
-    if (Number.isFinite(a) && Number.isFinite(b)) return a === b;
+    const a = toAggregatableNumber(cell);
+    const b = toAggregatableNumber(value);
+    if (a !== null && b !== null) return a === b;
     return lower(cell) === lower(value);
 }
+
+/** A numeric comparison; an empty or non-numeric side never matches (only `isEmpty` selects blanks). */
+const compare = (test: (a: number, b: number) => boolean) => (cell: unknown, value: unknown): boolean => {
+    const a = toAggregatableNumber(cell);
+    const b = toAggregatableNumber(value);
+    return a !== null && b !== null && test(a, b);
+};
 
 const FILTER_OPS = new Map<string, (cell: unknown, value: unknown) => boolean>([
     ['isEmpty', (cell) => stringifyValue(cell).trim() === ''],
@@ -52,10 +59,10 @@ const FILTER_OPS = new Map<string, (cell: unknown, value: unknown) => boolean>([
     ['notContains', (cell, value) => !lower(cell).includes(lower(value))],
     ['startsWith', (cell, value) => lower(cell).startsWith(lower(value))],
     ['endsWith', (cell, value) => lower(cell).endsWith(lower(value))],
-    ['gt', (cell, value) => Number(cell) > Number(value)],
-    ['gte', (cell, value) => Number(cell) >= Number(value)],
-    ['lt', (cell, value) => Number(cell) < Number(value)],
-    ['lte', (cell, value) => Number(cell) <= Number(value)],
+    ['gt', compare((a, b) => a > b)],
+    ['gte', compare((a, b) => a >= b)],
+    ['lt', compare((a, b) => a < b)],
+    ['lte', compare((a, b) => a <= b)],
 ]);
 
 /** Tests one cell against an advanced-filter operator. An unknown operator (stale saved view) matches everything. */
@@ -108,7 +115,7 @@ export function buildFilterMatchers<T>(f: RowFilters<T>): { global: ((row: T) =>
         const searchable = dataColumns.filter((col) => col.enableGlobalFilter !== false);
         global = fn
             ? (row) => fn(row, needle, dataColumns)
-            : (row) => searchable.some((col) => String(getCellValue(row, col.accessorKey, col)).toLowerCase().includes(needle));
+            : (row) => searchable.some((col) => lower(getCellValue(row, col.accessorKey, col)).includes(needle));
     }
 
     const byKey = indexColumns(f.columns);

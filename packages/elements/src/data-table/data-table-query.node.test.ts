@@ -8,6 +8,7 @@ import {
     evaluateAdvancedFilter,
     filterRows,
     matchesCondition,
+    textIncludes,
     nextSortChain,
     pagesLocally,
     slicePage,
@@ -235,5 +236,26 @@ describe('createQueryPipeline', () => {
         const t = performance.now();
         run(input({ data, globalFilter: 'n1', sorts: [{ column: 'age', direction: 'desc' }] }));
         expect(performance.now() - t).toBeLessThan(500);
+    });
+});
+
+describe('empty cells and text in filters', () => {
+    it('never read a blank as zero in a numeric rule, and only isEmpty selects it', () => {
+        for (const blank of [null, undefined, '', '  ']) {
+            expect(matchesCondition(blank, 'lt', 5)).toBe(false);
+            expect(matchesCondition(blank, 'lte', 5)).toBe(false);
+            expect(matchesCondition(blank, 'gte', 0)).toBe(false);
+            expect(matchesCondition(blank, 'equals', 0)).toBe(false);
+            expect(matchesCondition(blank, 'isEmpty', '')).toBe(true);
+        }
+        expect(matchesCondition(0, 'equals', 0)).toBe(true);
+        expect(matchesCondition(3, 'lt', 5)).toBe(true);
+    });
+    it('matches a Date by its ISO text and an empty cell by nothing in the default search', () => {
+        expect(matchesCondition(new Date('2026-01-01T00:00:00.000Z'), 'startsWith', '2026-01')).toBe(true);
+        expect(textIncludes(null, 'null')).toBe(false);
+        expect(textIncludes(undefined, 'undef')).toBe(false);
+        expect(textIncludes({ a: 1 }, 'object')).toBe(false);
+        expect(textIncludes('Alice', 'LIC')).toBe(true);
     });
 });

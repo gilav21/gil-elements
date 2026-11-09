@@ -41,15 +41,21 @@ describe('readColumnState', () => {
     it('reports width, visibility, pin and order, with definition values as defaults', () => {
         const layout: ColumnLayout = { widths: { age: '90px' }, visibility: { id: false }, pins: {}, order: ['age', 'id', 'name'] };
         expect(readColumnState(COLS, layout)).toEqual([
-            { columnKey: 'id', width: '60px', visible: false, pin: undefined, order: 1 },
+            { columnKey: 'id', width: '60px', visible: false, pin: null, order: 1 },
             { columnKey: 'name', width: undefined, visible: true, pin: 'left', order: 2 },
-            { columnKey: 'age', width: '90px', visible: true, pin: undefined, order: 0 },
+            { columnKey: 'age', width: '90px', visible: true, pin: null, order: 0 },
         ]);
     });
     it('a runtime unpin (own undefined entry) overrides the definition pin', () => {
         const state = readColumnState(COLS, { ...EMPTY_LAYOUT, pins: { name: undefined } });
-        expect(state[1]).toMatchObject({ pin: undefined });
-        expect('pin' in (state[1] ?? {})).toBe(true);
+        expect(state[1]).toMatchObject({ pin: null });
+        // null, so that the unpin survives a JSON round trip (an undefined key is dropped there)
+        expect(JSON.parse(JSON.stringify(state[1]))).toHaveProperty('pin', null);
+    });
+    it('a saved view that unpinned a column still unpins it after JSON', () => {
+        const saved = JSON.parse(JSON.stringify(readColumnState(COLS, { ...EMPTY_LAYOUT, pins: { name: undefined } })));
+        const restored = applyColumnState({ ...EMPTY_LAYOUT, pins: { name: 'right' } }, saved);
+        expect(restored.pins['name']).toBeUndefined();
     });
 });
 
@@ -131,6 +137,8 @@ describe('saved views', () => {
         expect(applyViewState(MODEL, { ...good, pagination: { pageIndex: 1.5, pageSize: 10 } })).toBeNull();
         expect(applyViewState(MODEL, { ...good, pagination: { pageIndex: 0, pageSize: 0 } })).toBeNull();
         expect(applyViewState(MODEL, { ...good, columns: 'x' as never })).toBeNull();
+        expect(applyViewState(MODEL, { ...good, columns: [null] as never })).toBeNull();
+        expect(applyViewState(MODEL, { ...good, columns: [{ width: '1px' }] as never })).toBeNull();
         expect(applyViewState(MODEL, { ...good, sort: null as never })).toBeNull();
         expect(applyViewState(MODEL, { ...good, sortStates: [null] as never })).toBeNull();
         expect(applyViewState(MODEL, { ...good, columnFilters: [] as never })).toBeNull();

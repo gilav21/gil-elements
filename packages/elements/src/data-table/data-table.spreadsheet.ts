@@ -8,7 +8,8 @@ export { guardSpreadsheetFormula, restoreSpreadsheetText } from '../shared/formu
  * runs a cell as a formula. The paste path undoes the guard with `restoreSpreadsheetText`.
  */
 export function toClipboardText(grid: readonly (readonly string[])[]): string {
-    return grid.map((cells) => cells.map(guardSpreadsheetFormula).join('\t')).join('\n');
+    const quote = (cell: string): string => (/[\t\r\n"]/.test(cell) ? `"${cell.replaceAll('"', '""')}"` : cell);
+    return grid.map((cells) => cells.map((cell) => quote(guardSpreadsheetFormula(cell))).join('\t')).join('\n');
 }
 
 /**

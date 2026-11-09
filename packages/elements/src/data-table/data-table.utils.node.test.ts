@@ -106,6 +106,15 @@ describe('computeAggregateValue', () => {
         expect(computeAggregateValue(values, 'min')).toBe('10');
         expect(computeAggregateValue(values, 'max')).toBe('40');
     });
+    it('skips empty cells instead of reading them as zero', () => {
+        for (const empty of [null, undefined, '', '   ']) {
+            expect(computeAggregateValue([empty, 5], 'min')).toBe('5');
+            expect(computeAggregateValue([empty, 5], 'avg')).toBe('5');
+            expect(computeAggregateValue([empty, 5], 'sum')).toBe('5');
+            expect(computeAggregateValue([empty], 'max')).toBe('');
+        }
+        expect(computeAggregateValue([0, 5], 'min')).toBe('0');
+    });
     it('counts every value, numeric or not', () => {
         expect(computeAggregateValue(['Alice', 10, 20], 'count')).toBe('3');
         expect(computeAggregateValue([], 'count')).toBe('0');
@@ -127,8 +136,9 @@ describe('computeAggregateValue', () => {
         expect(computeAggregateValue(big, 'max')).toBe('299999');
         expect(computeAggregateValue(big, 'min')).toBe('0');
     });
-    it('treats null and blank as 0 like Angular (Number coercion)', () => {
-        expect(computeAggregateValue([null, 5], 'min')).toBe('0');
+    it('formats a Date as its ISO text, not a quoted JSON string', () => {
+        expect(stringifyValue(new Date('2026-01-01T00:00:00.000Z'))).toBe('2026-01-01T00:00:00.000Z');
+        expect(stringifyValue(new Date('nope'))).toBe('');
     });
 });
 

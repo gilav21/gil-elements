@@ -123,6 +123,16 @@ describe('parseClipboardGrid', () => {
     });
     it('keeps one cell per line without a delimiter, and keeps an inner empty line', () => {
         expect(parseClipboardGrid('one\ntwo')).toEqual([['one'], ['two']]);
+    });
+    it('keeps a quoted cell with a line break in one cell, tab- or comma-separated, as Excel and Sheets send it', () => {
+        expect(parseClipboardGrid('"a\nb",c\n1,2')).toEqual([['a\nb', 'c'], ['1', '2']]);
+        expect(parseClipboardGrid('"a\nb"\tc\n1\t2')).toEqual([['a\nb', 'c'], ['1', '2']]);
+        expect(parseClipboardGrid('"say ""hi"""\t"x\ty"\r\n1\t2\r\n')).toEqual([['say "hi"', 'x\ty'], ['1', '2']]);
+        expect(parseClipboardGrid('5" pipe\tb')).toEqual([['5" pipe', 'b']]);
+        expect(parseClipboardGrid('"unterminated\nrest')).toEqual([['unterminated\nrest']]);
+    });
+    it('keeps a plain column of lines', () => {
+        expect(parseClipboardGrid('one\ntwo')).toEqual([['one'], ['two']]);
         expect(parseClipboardGrid('a\n\nb')).toEqual([['a'], [''], ['b']]);
     });
     it('treats a lone newline as one empty cell', () => {
@@ -134,7 +144,8 @@ describe('paste coercion and planning', () => {
     it('coerces to the type of the current value', () => {
         expect(coercePasteValue('12.5', 1)).toBe(12.5);
         expect(coercePasteValue('abc', 1)).toBe('abc');
-        expect(coercePasteValue('', 1)).toBe(0);
+        expect(coercePasteValue('', 1)).toBeNull();
+        expect(coercePasteValue('   ', 1)).toBeNull();
         expect(coercePasteValue('TRUE', false)).toBe(true);
         expect(coercePasteValue('no', true)).toBe(false);
         expect(coercePasteValue('12', 'text')).toBe('12');

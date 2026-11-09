@@ -19,6 +19,7 @@ import {
 
 type Pin = 'left' | 'right' | undefined;
 
+
 /** The per-column overrides a user builds up at runtime, keyed by `accessorKey`. */
 export interface ColumnLayout {
     widths: Readonly<Record<string, string>>;
@@ -63,7 +64,8 @@ export function readColumnState<T>(columns: readonly ColumnDef<T>[], layout: Col
             columnKey: key,
             width: own(layout.widths, key) ?? col.width,
             visible: own(layout.visibility, key) !== false,
-            pin: Object.hasOwn(layout.pins, key) ? layout.pins[key] : col.pin,
+            // `null`, not `undefined`: a saved view goes through JSON, which drops an undefined key and so could never unpin.
+            pin: (Object.hasOwn(layout.pins, key) ? layout.pins[key] : col.pin) ?? null,
             order: order.get(key),
         };
     });
@@ -86,7 +88,7 @@ export function applyColumnState(layout: ColumnLayout, states: readonly DataTabl
         const key = String(state.columnKey);
         if (state.visible !== undefined) visibility.push([key, state.visible]);
         if (state.width) widths.push([key, state.width]);
-        if ('pin' in state) pins.push([key, state.pin]);
+        if ('pin' in state) pins.push([key, state.pin ?? undefined]);
         if (state.order !== undefined) ordered.push({ key, order: state.order });
     }
     return {
@@ -129,6 +131,7 @@ function isReadableToken(s: DataTableViewState): boolean {
     const page = s.pagination as Partial<PaginationState> | undefined;
     return (
         Array.isArray(s.columns) &&
+        s.columns.every((column) => isObject(column) && (typeof column['columnKey'] === 'string' || typeof column['columnKey'] === 'number')) &&
         isSort(s.sort) &&
         Array.isArray(s.sortStates) &&
         s.sortStates.every(isSort) &&

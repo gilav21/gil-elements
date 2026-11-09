@@ -4,7 +4,7 @@
  * among the navigable keys (the data columns, in drawn order).
  */
 import type { CellRange, ColumnDef, RangeAggregateStats, RangeChartPayload } from './data-table.types.js';
-import { computeAggregateValue, getCellValue, stringifyValue } from './data-table.utils.js';
+import { computeAggregateValue, getCellValue, stringifyValue, toAggregatableNumber } from './data-table.utils.js';
 
 export interface NormalizedRange {
     minRow: number;
@@ -97,7 +97,7 @@ export function readRangeColumns<T>(
     return found.map(({ key, header, values }) => ({ key, header, values }));
 }
 
-const isNumeric = (v: unknown): boolean => Number.isFinite(Number(v));
+const isNumeric = (v: unknown): boolean => toAggregatableNumber(v) !== null;
 
 /** Sum/Avg/Count/Min/Max of a multi-cell range; `null` for fewer than two cells. */
 export function rangeStats(cols: readonly RangeColumn[]): RangeAggregateStats | null {
@@ -122,53 +122,68 @@ export function rangeChartPayload(cols: readonly RangeColumn[]): RangeChartPaylo
     const label = cols.find((c) => !numeric.includes(c));
     return {
         categories: label ? label.values.map(stringifyValue) : Array.from({ length: rowCount }, (...[, i]) => `Row ${i + 1}`),
-        series: numeric.map((c) => ({ name: c.header, values: c.values.map((v) => (isNumeric(v) ? Number(v) : 0)) })),
+        series: numeric.map((c) => ({ name: c.header, values: c.values.map((v) => toAggregatableNumber(v) ?? 0) })),
     };
 }
 
 // ---- paste ---------------------------------------------------------------------------------------------------
 
-function parseCsvLine(line: string): string[] {
-    const cells: string[] = [];
-    let current = '';
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-        const ch = line.charAt(i);
-        if (ch === '"') {
-            if (inQuotes && line.charAt(i + 1) === '"') {
-                current += '"';
+/** Splits delimited text into rows of cells. A cell that starts with a quote may hold the delimiter, doubled quotes and line breaks. */
+function parseDelimited(text: string, delimiter: string): string[][] {
+    const rows: string[][] = [];
+    let row: string[] = [];
+    let cell = '';
+    let quoted = false;
+    let atStart = true;
+    for (let i = 0; i < text.length; i++) {
+        const ch = text.charAt(i);
+        if (quoted) {
+            if (ch !== '"') cell += ch;
+            else if (text.charAt(i + 1) === '"') {
+                cell += '"';
                 i++;
-            } else {
-                inQuotes = !inQuotes;
-            }
-        } else if (ch === ',' && !inQuotes) {
-            cells.push(current);
-            current = '';
+            } else quoted = false;
+        } else if (ch === '"' && atStart) {
+            quoted = true;
+            atStart = false;
+        } else if (ch === delimiter) {
+            row.push(cell);
+            cell = '';
+            atStart = true;
+        } else if (ch === '\n' || ch === '\r') {
+            if (ch === '\r' && text.charAt(i + 1) === '\n') i++;
+            row.push(cell);
+            rows.push(row);
+            row = [];
+            cell = '';
+            atStart = true;
         } else {
-            current += ch;
+            cell += ch;
+            atStart = false;
         }
     }
-    cells.push(current);
-    return cells;
+    row.push(cell);
+    rows.push(row);
+    return rows;
 }
 
 /**
- * Parses clipboard text into a grid of cell strings: tab-separated when any line holds a tab (Excel, the table's own
- * copy), else comma-separated with quoted-cell support. A single trailing newline is dropped. A quoted cell cannot
- * span lines (a limitation shared with Angular).
+ * Parses clipboard text into a grid of cell strings: tab-separated when that gives more than one column (Excel, Sheets, the
+ * table's own copy), else comma-separated. Quoted cells may span lines and hold the delimiter. One trailing line break is dropped.
  */
 export function parseClipboardGrid(text: string): string[][] {
     if (text === '') return [];
-    const normalized = text.replaceAll(/\r\n?/g, '\n');
-    const lines = (normalized.endsWith('\n') ? normalized.slice(0, -1) : normalized).split('\n');
-    return lines.some((line) => line.includes('\t')) ? lines.map((line) => line.split('\t')) : lines.map(parseCsvLine);
+    const body = text.replace(/(\r\n|\n|\r)$/, '');
+    const tabbed = parseDelimited(body, '\t');
+    return tabbed.some((row) => row.length > 1) ? tabbed : parseDelimited(body, ',');
 }
 
 /** Pasted text takes the type of the value it replaces: numbers stay numbers when the text parses, booleans follow `true`. */
 export function coercePasteValue(raw: string, current: unknown): unknown {
     if (typeof current === 'number') {
-        const num = Number(raw);
-        return Number.isFinite(num) ? num : raw;
+        // A blank cell clears a number rather than writing 0; text that is no number is kept as typed.
+        if (raw.trim() === '') return null;
+        return toAggregatableNumber(raw) ?? raw;
     }
     return typeof current === 'boolean' ? raw.toLowerCase() === 'true' : raw;
 }

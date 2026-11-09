@@ -5,6 +5,14 @@
 import type { AggregateFn, ColumnDef } from './data-table.types.js';
 
 /** Text for a cell value. Total: a cyclic object or a BigInt inside one reads as its `String()` instead of throwing. */
+/** The value as a number, or `null` when it holds none. `Number()` alone turns `null`, `''`, whitespace and `false` into 0. */
+export function toAggregatableNumber(value: unknown): number | null {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if (typeof value !== 'string' || value.trim() === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+}
+
 export function stringifyValue(value: unknown): string {
     switch (typeof value) {
         case 'string':
@@ -18,6 +26,8 @@ export function stringifyValue(value: unknown): string {
             return '';
         default:
             if (value == null) return '';
+            // A Date as its ISO text, not a quoted JSON string (which no `startsWith` or `equals` could match).
+            if (value instanceof Date) return Number.isNaN(value.getTime()) ? '' : value.toISOString();
             try {
                 return JSON.stringify(value) ?? '';
             } catch {
@@ -109,7 +119,7 @@ export function findDuplicateRowIds<T>(rows: readonly T[], getId: (row: T) => st
 export function computeAggregateValue(values: readonly unknown[], fn: AggregateFn): string {
     if (typeof fn === 'function') return fn([...values]);
 
-    const nums = values.map(Number).filter(Number.isFinite);
+    const nums = values.map(toAggregatableNumber).filter((n): n is number => n !== null);
     if (nums.length === 0 && fn !== 'count') return '';
     const sum = () => nums.reduce((a, b) => a + b, 0);
 

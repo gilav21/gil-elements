@@ -170,8 +170,15 @@ export function resolveColumnMinWidth(col: { accessorKey?: PropertyKey; minWidth
     return key === '_selection' || key === '_expander' || key === '_actions' ? '0px' : DEFAULT_COLUMN_MIN_WIDTH;
 }
 
-/** The pixel floor resize and auto-fit clamp to; `minWidth` is read as pixels, falling back to the default floor. */
-export function columnMinWidthPx(col: { accessorKey?: PropertyKey; minWidth?: string }): number {
-    const px = Number.parseFloat(resolveColumnMinWidth(col));
-    return Number.isFinite(px) ? px : Number.parseFloat(DEFAULT_COLUMN_MIN_WIDTH);
+/** A CSS length in pixels: `px`, `rem` and `em` (against `rootPx`) or a bare number; anything else (`%`, `calc()`) is unknown. */
+function lengthToPx(length: string, rootPx: number): number | null {
+    const match = /^\s*(-?\d*\.?\d+)\s*(px|rem|em)?\s*$/.exec(length);
+    if (!match) return null;
+    const value = Number(match[1]);
+    return match[2] === 'rem' || match[2] === 'em' ? value * rootPx : value;
+}
+
+/** The pixel floor resize and auto-fit clamp to: `minWidth` in px or rem, else the default floor. */
+export function columnMinWidthPx(col: { accessorKey?: PropertyKey; minWidth?: string }, rootPx = 16): number {
+    return lengthToPx(resolveColumnMinWidth(col), rootPx) ?? Number.parseFloat(DEFAULT_COLUMN_MIN_WIDTH);
 }

@@ -31,3 +31,10 @@ describe('cssString', () => {
         expect(cssString('a\rb\fc')).toBe('"a\\d b\\c c"');
     });
 });
+
+
+describe('toClipboardText quoting', () => {
+    it('quotes a cell with a tab, line break or quote, so a paste or Excel keeps it in one cell', () => {
+        expect(toClipboardText([['a\nb', 'c'], ['x\ty', 'say "hi"']])).toBe('"a\nb"\tc\n"x\ty"\t"say ""hi"""');
+    });
+});
