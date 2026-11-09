@@ -26,11 +26,11 @@ describe('computeGridAria', () => {
     it('is a treegrid in tree mode', () => {
         expect(computeGridAria({ tree: true, headerRows: 1, totalDataRows: 0, columnCount: 0 }).role).toBe('treegrid');
     });
-    it('numbers windowed rows absolutely and counts the whole dataset', () => {
-        const aria = computeGridAria({ tree: false, headerRows: 1, totalDataRows: 5000, columnCount: 30, firstRenderedRow: 120 });
+    it('numbers rows by their ordinal and counts the whole dataset', () => {
+        const aria = computeGridAria({ tree: false, headerRows: 1, totalDataRows: 5000, columnCount: 30 });
         expect(aria.rowCount).toBe(5001);
-        expect(aria.dataRowIndex(0)).toBe(122);
-        expect(aria.dataRowIndex(2)).toBe(124);
+        expect(aria.dataRowIndex(122)).toBe(124);
+        expect(aria.dataRowIndex(0)).toBe(2);
     });
     it('numbers columns absolutely, windowed or not', () => {
         const aria = computeGridAria({ tree: false, headerRows: 1, totalDataRows: 5, columnCount: 30 });
@@ -38,10 +38,8 @@ describe('computeGridAria', () => {
         expect(aria.colIndex(17)).toBe(18);
         expect(aria.colCount).toBe(30);
     });
-    it('gives a retained row outside the window its absolute index, header and footer counted as the grid does', () => {
-        const aria = computeGridAria({ tree: false, headerRows: 1, totalDataRows: 10000, columnCount: 3, firstRenderedRow: 5000, footerRows: 1 });
-        expect(aria.retainedRowIndex(100)).toBe(102);
-        expect(aria.retainedRowIndex(9999)).toBe(10001);
+    it('counts the footer row in the row count and puts it after the last row', () => {
+        const aria = computeGridAria({ tree: false, headerRows: 1, totalDataRows: 10000, columnCount: 3, footerRows: 1 });
         expect(aria.rowCount).toBe(10002);
         expect(aria.footerRowIndex()).toBe(10002);
     });

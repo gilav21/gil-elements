@@ -178,7 +178,7 @@ function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInde
 function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined): TemplateResult {
     const key = String(c.accessorKey);
     const focused = v.focusedCell?.rowIndex === rowIndex && v.focusedCell.columnKey === key;
-    return html`<div data-slot="table-cell" role="gridcell" aria-colindex=${v.aria.colIndex(n) ?? nothing} data-column=${key} data-row-index=${rowIndex}
+    return html`<div data-slot="table-cell" role="gridcell" aria-colindex=${v.aria.colIndex(n)} data-column=${key} data-row-index=${rowIndex}
         data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(key) ? specialSlotOf(c) : nothing}
         data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, row, rowIndex, node)}</div>`;
 }

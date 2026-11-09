@@ -479,7 +479,7 @@ export class VirtualController<T> {
         this.schedule();
     }
 
-    /** `refresh()`: reads the scroller, the row heights and the column widths again. */
+    /** `refresh()`: reads the scroller, the row heights of the drawn rows and the column widths again. */
     private measure(): void {
         this.bind();
         if (!this.viewport) return;
@@ -487,9 +487,8 @@ export class VirtualController<T> {
         this.scrollInline = Math.abs(this.viewport.scrollLeft);
         this.measureChrome();
         this.readRowHeight();
+        // Heights already measured stay (the unmeasured rows follow the new row height): clearing them would move the scroll position.
         if (this.variable) {
-            this.heights.clear();
-            this.byId.clear();
             this.prefixDirty = true;
             this.applyHeights(this.readRows());
         }
@@ -551,6 +550,7 @@ export class VirtualController<T> {
         if (!vp) return;
         const { headH, footH, pinStart, pinEnd } = this.chrome;
         let top = vp.scrollTop;
+        const current = Math.abs(vp.scrollLeft); // live: the cached offset is stale until the frame after a scroll
         const rowTop = this.activeNow ? this.rowTopIn(rowIndex) : this.rowRectIn(rowIndex);
         if (rowTop) top = revealOffset(headH + rowTop.top, headH + rowTop.top + rowTop.size, vp.scrollTop, vp.clientHeight, headH, footH);
         let inline: number | undefined;
@@ -561,10 +561,10 @@ export class VirtualController<T> {
             if (at !== undefined) {
                 const x = this.activeNow ? pinStart + at : at;
                 const width = this.activeNow ? this.widthOf(column) : (this.measuredWidths.get(String(column.accessorKey)) ?? this.widthOf(column));
-                inline = revealOffset(x, x + width, this.scrollInline, vp.clientWidth, pinStart, pinEnd);
+                inline = revealOffset(x, x + width, current, vp.clientWidth, pinStart, pinEnd);
             }
         }
-        if (top !== vp.scrollTop || (inline !== undefined && inline !== this.scrollInline)) this.moveTo(top, inline);
+        if (top !== vp.scrollTop || (inline !== undefined && inline !== current)) this.moveTo(top, inline);
     }
 
     private rowTopIn(index: number): { top: number; size: number } | null {

@@ -13,14 +13,14 @@ interface Row {
 }
 const columns: ColumnDef<Row>[] = ['a', 'b', 'c'].map((key) => ({ accessorKey: key as keyof Row & string, header: key.toUpperCase(), width: '100px' }));
 
-function setup() {
+function setup(cols: ColumnDef<Row>[] = columns) {
     const events: string[] = [];
     const store = new ModelStore<Row>((name) => events.push(name));
     const provided = new Map<string, unknown>();
     const announced: string[] = [];
     const disposables = new Disposables();
     const host = {
-        config: { columns, enableRowSelection: false, enableRowExpansion: false, enableSubRows: false, getRowId: (row: Row) => row.id },
+        config: { columns: cols, enableRowSelection: false, enableRowExpansion: false, enableSubRows: false, getRowId: (row: Row) => row.id },
         model: store,
         root: {},
         provide: (key: string, value: unknown) => (provided.set(key, value), () => provided.delete(key)),
@@ -58,6 +58,27 @@ describe('the columns service', () => {
         service.move('a', 0);
         expect(keys(service)).toEqual(['a', 'b', 'c']);
         expect(events).toEqual(['column-order-change', 'column-order-change']);
+    });
+
+    it('moves a column only inside its pin group, like a drag', () => {
+        const { service, events, store } = setup(columns.map((c, i) => (i === 0 ? { ...c, pin: 'left' as const } : c)));
+        expect(keys(service)).toEqual(['a', 'b', 'c']);
+        service.move('b', 0);
+        service.move('a', 2);
+        expect(events).toEqual([]);
+        expect(store.get('columnOrder')).toEqual([]);
+        service.move('c', 0);
+        expect(keys(service)).toEqual(['a', 'c', 'b']);
+        expect(events).toEqual(['column-order-change']);
+    });
+
+    it('a live width that was never set changes nothing, so the layout is not recomputed', () => {
+        const { service } = setup();
+        const before = service.enhancedColumns();
+        service.liveWidth('b', null);
+        expect(service.enhancedColumns()).toBe(before);
+        service.liveWidth('b', 130);
+        expect(service.enhancedColumns()).not.toBe(before);
     });
 
     it('refuses to hide the last visible data column', () => {

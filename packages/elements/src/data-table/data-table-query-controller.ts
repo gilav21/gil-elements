@@ -150,8 +150,11 @@ export class QueryController<T> {
         return this.rows(this.output().sorted, page, this.pagesLocally());
     }
 
+    private readonly dataRowsOf = memoLast((display: readonly DataTableDisplayRow<T>[]): readonly T[] => display.flatMap((r) => (r.kind === 'data' ? [r.row] : [])));
+
+    /** The drawn data rows; one list per display list, since keys, clicks and selection ask for it often. */
     private renderedRows(): readonly T[] {
-        return this.displayRows().flatMap((r) => (r.kind === 'data' ? [r.row] : []));
+        return this.dataRowsOf(this.displayRows());
     }
 
     /** The rows the pager counts: grouped display rows (headers included), roots or visible tree rows, or the sorted rows. */

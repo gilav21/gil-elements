@@ -45,7 +45,7 @@ export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
         aria: computeGridAria({
             tree: source.mode !== 'flat', // a treegrid only while group headers or tree nodes are drawn (grouping is off under virtual scroll)
             headerRows: 1,
-            totalDataRows: (win.virtualTotalRows ?? totalRows) || 1,
+            totalDataRows: totalRows || 1,
             columnCount: columns.columns.length,
             footerRows: showFooter ? 1 : 0,
         }),

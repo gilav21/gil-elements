@@ -10,11 +10,6 @@ import type { BodyWindow, EnhancedColumnDef } from './data-table.types.js';
 
 export interface WindowView {
     window: BodyWindow;
-    /**
-     * Rows of the whole dataset under virtual scroll, for `aria-rowcount`; null: the rows view already counts the whole
-     * list there (the window slices the list it draws from, it does not page it), details included.
-     */
-    virtualTotalRows: number | null;
     focusedCell: CellAddress | null;
     /** The viewport is the tab stop: no drawn cell holds the roving tabindex. */
     viewportTabbable: boolean;
@@ -44,7 +39,6 @@ export function windowView<T>(host: DataTableViewHost<T>): WindowView {
     const focusedCell = host.provider('interaction')?.focusedCell() ?? null;
     return {
         window,
-        virtualTotalRows: null,
         focusedCell,
         viewportTabbable: focusedCell === null || !cellDrawn(focusedCell, columns, window, rows),
     };

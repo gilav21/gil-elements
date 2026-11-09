@@ -47,7 +47,7 @@ describe('tree nodes', () => {
 
     it('expandAll replaces the record, to a depth or fully', () => {
         expect(expandAllNodes(TREE, getId, getChildren)).toEqual({ a: true, a1: true, b: true });
-        expect(expandAllNodes(TREE, getId, getChildren, 1)).toEqual({ a: true, b: true });
+        expect(expandAllNodes(TREE, getId, getChildren, 1)).toEqual({ a: true, a1: false, b: true });
     });
 
     it('collapseAll pins false on every parent', () => {

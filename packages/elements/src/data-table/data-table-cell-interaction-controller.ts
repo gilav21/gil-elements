@@ -1,4 +1,4 @@
-import { type CellAddress, cellAddressOf, type DataTableCoreHost, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import type { CellEditError, CellRange, EditingCell } from './data-table.types.js';
@@ -47,14 +47,14 @@ export class CellInteractionController<T> {
         this.teardown = [
             host.provide('interaction', this.service),
             host.addKeyHandler(100, (event) => this.onKey(event)),
-            disposables.listen<PointerEvent>(root, 'pointerdown', (event) => this.onPointerDown(event)),
-            disposables.listen<PointerEvent>(root, 'pointerup', (event) => this.onPointerUp(event)),
+            disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event))),
+            disposables.listen<PointerEvent>(root, 'pointerup', ownEvents(root, (event: PointerEvent) => this.onPointerUp(event))),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => !root.contains(event.target as Node) && (this.within = false), true),
             disposables.listen(root.ownerDocument.defaultView ?? window, 'blur', () => (this.within = false)),
             disposables.listen(root, 'pointercancel', () => (this.pointer = false)),
             disposables.listen(root, 'keydown', () => (this.pointer = false), true),
-            disposables.listen<FocusEvent>(root, 'focusin', (event) => this.onFocusIn(event)),
-            disposables.listen<FocusEvent>(root, 'focusout', (event) => this.onFocusOut(event)),
+            disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => this.onFocusIn(event))),
+            disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
             disposables.add(() => this.observer?.disconnect()),
         ];
         // wave 5: the editor's own listeners and the commit / cancel keys join the ones above.
@@ -227,7 +227,6 @@ export class CellInteractionController<T> {
         if (event.defaultPrevented || event.isComposing || event.altKey) return false;
         const target = event.target as Element;
         if (target.closest(TEXT_FIELD) || (event.composedPath()[0] as Element | undefined)?.matches?.(TEXT_FIELD)) return false;
-        if (this.activate(event, target)) return true;
         if (!NAVIGATION_KEYS.has(event.key)) return false;
         const query = requireProvider(this.host, 'query');
         const keys = requireProvider(this.host, 'columns').focusableKeys();
@@ -261,15 +260,6 @@ export class CellInteractionController<T> {
         if (!next || key === undefined) return false;
         event.preventDefault();
         this.focusCell(next.row, key, true);
-        return true;
-    }
-
-    /** Enter or Space on the cell of a detail expander presses its button; the selection cell is the selection controller's (Space). */
-    private activate(event: KeyboardEvent, target: Element): boolean {
-        if ((event.key !== 'Enter' && event.key !== ' ') || event.ctrlKey || event.metaKey || event.shiftKey) return false;
-        if (!target.matches('[data-slot="table-cell"][data-special="expander"]')) return false;
-        event.preventDefault();
-        target.querySelector<HTMLElement>('[data-toggle]')?.click();
         return true;
     }
 }

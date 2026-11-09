@@ -1,8 +1,8 @@
 import { startAutoScroll, type AutoScrollController } from '../shared/auto-scroll.js';
 import { onLongPress, onPointerDrag } from '../shared/touch.js';
 import { dropSide, moveByOffset, moveColumnKey, type DropSide } from './data-table-column-order.js';
-import { columnCells, HEAD_SELECTOR as HEAD, isReorderable } from './data-table-columns.js';
-import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
+import { columnCells, HEAD_SELECTOR as HEAD, pinGroupOf } from './data-table-columns.js';
+import { type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
 import { applyKeyOrder } from './data-table-view-state.js';
 import { interpolate } from './data-table.locales.js';
 
@@ -48,12 +48,9 @@ export class ColumnDragController<T> {
         return this.host.root.ownerDocument.defaultView?.getComputedStyle(this.host.root).direction === 'rtl';
     }
 
-    /** The visible reorderable keys that share `key`'s pin group, in drawn order; null when `key` cannot move. */
+    /** The keys that may trade places with `key`; null when it cannot move. */
     private groupOf(key: string): string[] | null {
-        const columns = this.columns().enhancedColumns();
-        const source = columns.find((c) => String(c.accessorKey) === key);
-        if (!source || !isReorderable(source) || !this.host.config.enableColumnReorder) return null;
-        return columns.filter((c) => isReorderable(c) && c._pin === source._pin).map((c) => String(c.accessorKey));
+        return this.host.config.enableColumnReorder ? pinGroupOf(this.columns().enhancedColumns(), key) : null;
     }
 
     private baseOrder(): string[] {
@@ -226,7 +223,7 @@ export class ColumnDragController<T> {
     attach(): void {
         const { root, disposables } = this.host;
         this.teardown.push(
-            disposables.listen<PointerEvent>(root, 'pointerdown', this.onDown),
+            disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, this.onDown)),
             this.host.addKeyHandler(30, (event) => this.handleKey(event)),
             disposables.add(onLongPress(root, this.onLongPress)),
         );

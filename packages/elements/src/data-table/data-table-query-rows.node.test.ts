@@ -220,3 +220,15 @@ describe('grouping stages', () => {
         expect(query.displayRows()).not.toBe(first);
     });
 });
+
+describe('the drawn data rows', () => {
+    it('are one list per display list, and follow it when it changes', () => {
+        const { query, model } = setup({ showPagination: false }, [leaf('a'), leaf('b')]);
+        const first = query.renderedRows();
+        expect(first.map((r) => r.id)).toEqual(['a', 'b']);
+        expect(query.renderedRows()).toBe(first);
+        expect(query.renderedRowAt(1)?.id).toBe('b');
+        model.set('data', [leaf('c')]);
+        expect(query.renderedRows().map((r) => r.id)).toEqual(['c']);
+    });
+});

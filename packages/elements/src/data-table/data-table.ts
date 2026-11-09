@@ -10,7 +10,7 @@ import { type AssembledControllers, assembleControllers } from './data-table-con
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
-import { type CellAddress, type DataTableCoreHost, type DataTableTopic, requireProvider } from './data-table-host.js';
+import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
 import type { DataTableConfig, DataTableProviders } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
@@ -651,7 +651,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         const query = requireProvider(this, 'query');
         return html`<output data-slot="data-table-announcer" aria-live="polite" aria-atomic="true">${this.announcement}</output>
             ${this.showToolbar ? this.renderToolbar(locale) : nothing}
-            <div data-slot="data-table-viewport" tabindex=${grid.viewportTabbable ? '0' : '-1'} @keydown=${(event: KeyboardEvent) => void this.keyHandlers.run(event)}>
+            <div data-slot="data-table-viewport" tabindex=${grid.viewportTabbable ? '0' : '-1'} @keydown=${(event: KeyboardEvent) => ownsTarget(this, event.target) && void this.keyHandlers.run(event)}>
                 ${this.renderOverlays(locale)}${renderGrid(grid)}
             </div>
             ${this.slotted.has('footer') ? html`<div data-slot="data-table-footer-slot">${this.nodes('footer')}</div>` : nothing}

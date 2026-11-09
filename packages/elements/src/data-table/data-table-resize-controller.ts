@@ -1,6 +1,6 @@
 import { isSecondaryTouch } from '../shared/touch.js';
 import { columnCells, HEAD_SELECTOR as HEAD } from './data-table-columns.js';
-import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
+import { type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
 import type { ResizeService } from './data-table-providers.js';
 import { columnMinWidthPx } from './data-table-virtual.js';
 import { interpolate } from './data-table.locales.js';
@@ -26,7 +26,7 @@ interface Drag {
     readonly startY: number;
     readonly startWidth: number;
     readonly floor: number;
-    /** `1`, or `-1` in rtl: the end edge moves the other way. */
+    /** `1`, or `-1` in rtl or for a column pinned to the end: the edge moves the other way. */
     readonly sign: number;
     readonly oldWidth: string;
     /** The inline value of the column's custom property before the drag, put back on cancel. */
@@ -131,7 +131,8 @@ export class ResizeController<T> {
             startY: event.clientY,
             startWidth,
             floor: columnMinWidthPx(column, this.rootFontPx()),
-            sign: direction === 'rtl' ? -1 : 1,
+            // The end edge moves with the pointer, unless the column is pinned to the end: it is anchored there and grows toward the start.
+            sign: (direction === 'rtl' ? -1 : 1) * (column._pin === 'right' ? -1 : 1),
             oldWidth: this.declaredWidth(key, column),
             original: table.style.getPropertyValue(name),
             wasAuto: column._width === 'auto',
@@ -140,8 +141,11 @@ export class ResizeController<T> {
             travel: 0,
             stop: () => stops.forEach((stop) => stop()),
         };
-        // An auto column ignores `--ge-dt-col-N`; it is fixed from the first move (a render after the commit says so too).
-        if (this.drag.wasAuto) this.setFixed(key, true);
+        // An auto column ignores `--ge-dt-col-N`: it keeps the width it has, then is fixed (a render after the commit says so too).
+        if (this.drag.wasAuto) {
+            table.style.setProperty(name, px(startWidth));
+            this.setFixed(key, true);
+        }
     };
 
     private readonly onMove = (event: PointerEvent): void => {
@@ -317,21 +321,21 @@ export class ResizeController<T> {
         this.unprovide = this.host.provide('resize', this.service);
         this.removeKeys = this.host.addKeyHandler(20, (event) => this.handleKey(event));
         this.teardown.push(
-            disposables.listen<PointerEvent>(root, 'pointerdown', this.onDown),
-            disposables.listen<MouseEvent>(root, 'dblclick', (event) => {
+            disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, this.onDown)),
+            disposables.listen<MouseEvent>(root, 'dblclick', ownEvents(root, (event: MouseEvent) => {
                 const handle = (event.target as Element).closest?.<HTMLElement>(HANDLE);
                 const key = handle?.closest<HTMLElement>(HEAD)?.dataset['columnId'];
                 if (key === undefined) return;
                 event.preventDefault();
                 // A double tap already fitted the column; the browser's own `dblclick` for it must not fit it twice.
                 if (performance.now() - this.lastFit > 600) this.autoSizeColumn(key);
-            }),
+            })),
             // The separator's value is the measured width when it takes focus: a `rem`, `%` or `auto` width has no px string to render.
-            disposables.listen<FocusEvent>(root, 'focusin', (event) => {
+            disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => {
                 const handle = (event.target as Element).closest?.<HTMLElement>(HANDLE);
                 const width = handle?.closest(HEAD)?.getBoundingClientRect().width;
                 if (handle && width) handle.setAttribute('aria-valuenow', String(Math.round(width)));
-            }),
+            })),
         );
     }
 

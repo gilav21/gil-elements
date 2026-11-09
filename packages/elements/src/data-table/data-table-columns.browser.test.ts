@@ -145,6 +145,35 @@ describe('column resize by mouse', () => {
         expect(q(table, '[data-slot="table"]').style.getPropertyValue('--ge-dt-pin-1')).toBe('calc(150px)');
     });
 
+    it('keeps the width of an auto column while the handle is held without moving, and after a click', async () => {
+        const table = await mountResizable({ columns: [{ accessorKey: 'name', header: 'Name' }, { accessorKey: 'age', header: 'Age', width: '120px' }] });
+        const before = widthOf(headCell(table, 'name'));
+        const hold = mouseDrag(onHandle(table, 'name'), { dx: 0, dy: 0 }, { holdMs: 300 });
+        await sleep(150);
+        expect(widthOf(headCell(table, 'name'))).toBe(before);
+        await hold;
+        await settle(table);
+        expect(widthOf(headCell(table, 'name'))).toBe(before);
+        expect(headCell(table, 'name').dataset['width']).toBe('auto');
+    });
+
+    describe('a column pinned to the end', () => {
+        const mountEnd = () => mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 400, height: 300 });
+        const grow = async (rtl: boolean): Promise<void> => {
+            const table = await mountEnd();
+            if (rtl) await withRtl(table);
+            const head = () => headCell(table, 'c3').getBoundingClientRect();
+            const [width, edge] = [head().width, rtl ? head().left : head().right];
+            // the end edge is anchored at the viewport: the column grows toward the start, under the pointer
+            await mouseDrag(onHandle(table, 'c3', rtl), { dx: rtl ? 40 : -40, dy: 0 });
+            await settle(table);
+            expect(head().width).toBe(width + 40);
+            expect(rtl ? head().left : head().right).toBeCloseTo(edge, 0);
+        };
+        it('grows toward the start when dragged that way, left to right', () => grow(false));
+        it('grows toward the start when dragged that way, right to left', () => grow(true));
+    });
+
     it('resizes a column that has no width (auto) and fixes it', async () => {
         const table = await mountResizable({ columns: [{ accessorKey: 'name', header: 'Name' }, { accessorKey: 'age', header: 'Age', width: '120px' }] });
         const before = widthOf(headCell(table, 'name'));

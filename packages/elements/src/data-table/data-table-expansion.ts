@@ -77,14 +77,14 @@ export function parentIds<T>(rows: readonly T[], getId: (row: T) => string, getC
     return ids;
 }
 
-/** `expandAllSubRows`: REPLACES the record, every node above `toDepth` (all when `-1`) is `true`. */
+/** `expandAllSubRows`: REPLACES the record, every node above `toDepth` (all when `-1`) is `true` and the deeper ones are pinned `false`, which beats a default-expanded rule. */
 export function expandAllNodes<T>(rows: readonly T[], getId: (row: T) => string, getChildren: GetChildren<T>, toDepth = -1): Record<string, boolean> {
     const next = new Map<string, boolean>();
     const walk = (list: readonly T[], depth: number): void => {
         for (const row of list) {
             const children = getChildren(row);
             if (!children?.length) continue;
-            if (toDepth === -1 || depth < toDepth) next.set(getId(row), true);
+            next.set(getId(row), toDepth === -1 || depth < toDepth);
             walk(children, depth + 1);
         }
     };

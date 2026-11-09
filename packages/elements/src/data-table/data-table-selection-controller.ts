@@ -1,5 +1,5 @@
 import { createListedRows } from './data-table-expansion.js';
-import { cellAddressOf, type DataTableCoreHost, requireProvider } from './data-table-host.js';
+import { cellAddressOf, type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
 import type { SelectionService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
 import {
@@ -13,6 +13,7 @@ import {
     toggleAllSelection,
     toggleId,
 } from './data-table-selection.js';
+import { sameRecord } from './data-table.utils.js';
 
 /** What the element offers beyond the core host: the disabled test needs `isRowDisabled`, which only the element holds. */
 interface DisabledAware<T> {
@@ -61,7 +62,9 @@ export class SelectionController<T> {
 
     private readonly headerOf = memoLast((selection: Record<string, boolean>, selectable: string[]) => headerState(selection, selectable));
 
+    /** A write that changes nothing (every row disabled, no rows) is no change: no event, no announcement. */
     private write(next: Record<string, boolean>): void {
+        if (sameRecord(next, this.host.model.get('rowSelection'))) return;
         this.host.model.set('rowSelection', next);
     }
 
@@ -164,8 +167,8 @@ export class SelectionController<T> {
         this.teardowns = [
             host.provide('selection', this.service),
             host.model.subscribe('rowSelection', () => host.topics.emit('selection')),
-            host.disposables.listen<MouseEvent>(host.root, 'click', this.onClick, true),
-            host.disposables.listen(host.root, 'change', this.onChange),
+            host.disposables.listen<MouseEvent>(host.root, 'click', ownEvents(host.root, this.onClick), true),
+            host.disposables.listen(host.root, 'change', ownEvents(host.root, this.onChange)),
             host.addKeyHandler(50, this.onKey),
         ];
     }

@@ -1,4 +1,4 @@
-import { type ColumnLayout, computeColumnLayout, duplicateColumnKeys, isReorderable, isSpecialColumn } from './data-table-columns.js';
+import { type ColumnLayout, computeColumnLayout, duplicateColumnKeys, isSpecialColumn, pinGroupOf } from './data-table-columns.js';
 import { moveToIndex } from './data-table-column-order.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import type { ColumnsService } from './data-table-providers.js';
@@ -6,13 +6,9 @@ import { memoLast } from './data-table-query.js';
 import { applyColumnState, applyKeyOrder, applyViewState, type ColumnLayout as ColumnOverrides, readColumnState, readViewState, type ViewModel } from './data-table-view-state.js';
 import { interpolate } from './data-table.locales.js';
 import type { DataTableColumnState, EnhancedColumnDef } from './data-table.types.js';
+import { sameRecord } from './data-table.utils.js';
 
 type Pin = 'left' | 'right' | undefined;
-
-const sameRecord = <V>(a: Readonly<Record<string, V>>, b: Readonly<Record<string, V>>): boolean => {
-    const keys = Object.keys(a);
-    return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && Object.is(a[key], b[key]));
-};
 
 /** Resolves the drawn columns from the definitions and the user's runtime overrides, and serves them as `columns`. */
 export class ColumnsController<T> {
@@ -105,6 +101,7 @@ export class ColumnsController<T> {
                 .map((c) => String(c.accessorKey)),
         pinOf: (key) => this.current().columns.find((c) => String(c.accessorKey) === key)?._pin,
         liveWidth: (key, px) => {
+            if (px === null && !this.live.has(key)) return;
             const next = new Map(this.live);
             if (px === null) next.delete(key);
             else next.set(key, px);
@@ -132,10 +129,8 @@ export class ColumnsController<T> {
         move: (key, targetIndex) => {
             const { config, model } = this.host;
             const base = applyKeyOrder(config.columns.map((c) => String(c.accessorKey)), model.get('columnOrder'));
-            const group = this.current()
-                .columns.filter(isReorderable)
-                .map((c) => String(c.accessorKey));
-            const next = moveToIndex(base, group, key, targetIndex);
+            // Only inside the column's pin group, like a drag: the layout draws the groups apart, so a move across them could not show.
+            const next = moveToIndex(base, pinGroupOf(this.current().columns, key) ?? [], key, targetIndex);
             if (next) model.set('columnOrder', next);
         },
         setPin: (key, pin) => {

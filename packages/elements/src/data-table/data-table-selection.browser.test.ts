@@ -128,13 +128,25 @@ describe('the header checkbox', () => {
         expect(selectedIds(table)).toEqual(['r24']);
     });
 
+    it('selectRows([]), unselectRows([]) and unselecting what is not selected fire no change', async () => {
+        const table = await mountSelectable({ rowSelection: { r1: true } });
+        const events = record(table, 'row-selection-change');
+        table.selectRows([]);
+        table.unselectRows([]);
+        table.unselectRows([table.data[3]!]);
+        table.selectRows([table.data[2]!]);
+        await settle(table);
+        expect(events).toHaveLength(1);
+        expect(selectedIds(table)).toEqual(['r1', 'r2']);
+    });
+
     it('does nothing when every selectable row is disabled', async () => {
         const table = await mountSelectable({ data: makeRows(2), disabledRowIds: ['r0', 'r1'] });
         const events = record(table, 'row-selection-change');
         await click(headCheckbox(table), table);
         expect(table.rowSelection).toEqual({});
         expect((headCheckbox(table) as HTMLElement & { checked: boolean }).checked).toBe(false);
-        expect(events.length).toBeLessThanOrEqual(1);
+        expect(events).toEqual([]);
     });
 });
 

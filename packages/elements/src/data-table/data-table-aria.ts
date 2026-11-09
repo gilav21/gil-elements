@@ -5,7 +5,7 @@
  * - The header row is row 1, so data starts at 2. Decorative spacer rows and filler cells (`aria-hidden` /
  *   `role="presentation"`) are not counted: the caller numbers only the rows and cells it renders as real ones.
  * - `aria-rowcount` is the dataset's, not the rendered window's; a data row's index is absolute
- *   (`headerRows + windowStart + ordinal + 1`).
+ *   (`headerRows + ordinal + 1`, the ordinal counting every real row above it).
  * - `aria-colindex` is always emitted: a cell is addressed by its ABSOLUTE position among all columns, so it stays right
  *   while the middle columns are windowed (Angular leaves it off then; decision D7).
  * - The role is `treegrid` in tree mode, `grid` otherwise. Only tree rows carry `aria-level` / `aria-expanded`,
@@ -21,8 +21,6 @@ export interface GridAriaInput {
     totalDataRows: number;
     /** All columns, windowed or not (`aria-colcount`). */
     columnCount: number;
-    /** Absolute index of the first rendered data row under virtual scroll; 0 otherwise. */
-    firstRenderedRow?: number;
     /** 1 when a footer row is rendered, else 0. */
     footerRows?: number;
 }
@@ -35,8 +33,6 @@ export interface GridAria {
     headerRowIndex(position: number): number;
     /** `aria-rowindex` of the data row at zero-based ordinal `ordinal` among the rendered data rows. */
     dataRowIndex(ordinal: number): number;
-    /** `aria-rowindex` of a row drawn outside the window (a retained one) at absolute data index `index`. */
-    retainedRowIndex(index: number): number;
     /** `aria-rowindex` of the footer row: after the last row of the dataset. */
     footerRowIndex(): number;
     /** `aria-colindex` of the cell at the zero-based ABSOLUTE position among all columns. */
@@ -47,14 +43,12 @@ const count = (n: number): number => (Number.isFinite(n) && n > 0 ? Math.floor(n
 
 export function computeGridAria(input: GridAriaInput): GridAria {
     const headerRows = count(input.headerRows);
-    const offset = count(input.firstRenderedRow ?? 0);
     return {
         role: input.tree ? 'treegrid' : 'grid',
         rowCount: headerRows + count(input.totalDataRows) + count(input.footerRows ?? 0),
         colCount: count(input.columnCount),
         headerRowIndex: (position) => position + 1,
-        dataRowIndex: (ordinal) => headerRows + offset + ordinal + 1,
-        retainedRowIndex: (index) => headerRows + count(index) + 1,
+        dataRowIndex: (ordinal) => headerRows + ordinal + 1,
         footerRowIndex: () => headerRows + count(input.totalDataRows) + 1,
         colIndex: (position) => position + 1,
     };

@@ -231,3 +231,9 @@ export function toEditedDateValue(picked: Date | null, previous: unknown): unkno
     if (picked === null) return null;
     return typeof previous === 'string' ? toLocalDateString(picked) : picked;
 }
+
+/** Same keys, same values (by identity). */
+export const sameRecord = <V>(a: Readonly<Record<string, V>>, b: Readonly<Record<string, V>>): boolean => {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && Object.is(a[key], b[key]));
+};

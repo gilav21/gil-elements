@@ -264,6 +264,23 @@ describe('variable row height', () => {
         expect(Math.abs(view.scrollHeight - scrollHeight)).toBeLessThan(1.5);
     });
 
+    it('refresh() keeps the first visible row where it is', async () => {
+        const table = await mountVariable();
+        await scrollTo(table, { top: 30000 });
+        await frames(3);
+        const head = q(table, '[data-slot="table-header"]').getBoundingClientRect();
+        const first = () => bodyRows(table).find((r) => r.getBoundingClientRect().top >= head.bottom - 1)!;
+        const [id, top] = [first().dataset['rowId'], first().getBoundingClientRect().top];
+        const { scrollTop, scrollHeight } = viewportOf(table);
+        table.refresh();
+        await settle(table);
+        await frames(4);
+        expect(first().dataset['rowId']).toBe(id);
+        expect(Math.abs(first().getBoundingClientRect().top - top)).toBeLessThan(1.5);
+        expect(Math.abs(viewportOf(table).scrollTop - scrollTop)).toBeLessThan(1.5);
+        expect(Math.abs(viewportOf(table).scrollHeight - scrollHeight)).toBeLessThan(1.5);
+    });
+
     it('measures an open detail row into the total height', async () => {
         const detail = (): HTMLElement => {
             const box = document.createElement('div');
@@ -348,6 +365,17 @@ describe('aria-rowindex with open detail rows above the window', () => {
         const retained = bodyRows(table).find((r) => r.hasAttribute('data-retained'))!;
         expect(rowIndex(retained)).toBe(1 + 5 + 2 + 1);
         expect(q(table, '[data-slot="table"]').getAttribute('aria-rowcount')).toBe(String(1 + 2000 + 2));
+    });
+});
+
+describe('revealing a cell in the frame of a horizontal scroll', () => {
+    it('reads the live scroll offset, so a cell already in view does not move the scroller', async () => {
+        const table = await mountVirtual({ columns: makeColumns(30, { pinLeft: 1 }), data: makeRows(50, { columns: 30 }) }, {}, { width: 600, height: 400 }, 50, 30);
+        const view = viewportOf(table);
+        view.scrollLeft = 3000;
+        table.focusCell(0, 'c22'); // same task: the scroll event, and the cached offset, have not caught up
+        await frames(4);
+        expect(view.scrollLeft).toBe(3000);
     });
 });
 

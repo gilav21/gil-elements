@@ -23,7 +23,7 @@ export interface BodyView<T> {
     window: BodyWindow;
 }
 
-export interface GridView<T> extends ColumnsView<T>, Omit<RowsView<T>, 'source' | 'totalRows'>, Omit<WindowView, 'window' | 'virtualTotalRows'> {
+export interface GridView<T> extends ColumnsView<T>, Omit<RowsView<T>, 'source' | 'totalRows'>, Omit<WindowView, 'window'> {
     locale: DataTableLocale;
     aria: GridAria;
     body: BodyView<T>;

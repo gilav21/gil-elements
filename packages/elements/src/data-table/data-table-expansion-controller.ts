@@ -13,7 +13,7 @@ import {
     treeKeyAction,
     withFlag,
 } from './data-table-expansion.js';
-import { cellAddressOf, type DataTableCoreHost, requireProvider } from './data-table-host.js';
+import { cellAddressOf, type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
 import type { ExpansionService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
 
@@ -137,7 +137,7 @@ export class ExpansionController<T> {
             host.model.subscribe('expandedRows', announce),
             host.model.subscribe('subRowExpandedRows', announce),
             host.model.subscribe('collapsedGroups', announce),
-            host.disposables.listen<MouseEvent>(host.root, 'click', this.onClick),
+            host.disposables.listen<MouseEvent>(host.root, 'click', ownEvents(host.root, this.onClick)),
             host.addKeyHandler(50, this.onKey),
         ];
     }

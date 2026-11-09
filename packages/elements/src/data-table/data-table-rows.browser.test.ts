@@ -2,7 +2,7 @@ import axe from 'axe-core';
 import { html } from 'lit';
 import { afterEach, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
-import { axTree, bodyRows, makeRows, mountTable, q, qa, type SampleRow, settle } from './data-table-fixtures.js';
+import { axTree, bodyRows, makeRows, mountTable, q, qa, SAMPLE_COLUMNS, type SampleRow, settle } from './data-table-fixtures.js';
 import { parkMouse, perf, press, withRtl, withTheme } from './data-table-input-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 import type { ColumnDef } from './data-table.types.js';
@@ -253,6 +253,13 @@ describe('tree rows', () => {
         expect(shape(table)).toEqual(['a', 'a1', 'a2', 'b', 'b1', 'c']);
     });
 
+    it('expandAllSubRows(1) stops at depth 1 even when nodes are expanded by default', async () => {
+        const table = await mountTree({ subRowDefaultExpanded: true });
+        table.expandAllSubRows(1);
+        await settle(table);
+        expect(shape(table)).toEqual(['a', 'a1', 'a2', 'b', 'b1', 'c']);
+    });
+
     it('puts the tree on the column marked treeExpander', async () => {
         const table = await mountTree({ columns: [{ accessorKey: 'name', header: 'Name', width: '120px' }, { accessorKey: 'age', header: 'Age', width: '80px', treeExpander: true }] });
         expect(qa(table, '[data-slot="data-table-tree-cell"]').every((c) => c.closest('[data-column]')!.getAttribute('data-column') === 'age')).toBe(true);
@@ -315,6 +322,28 @@ describe('tree rows', () => {
 describe('detail rows', () => {
     const mountDetail = (props: Record<string, unknown> = {}): Promise<Table> => mountTable<SampleRow>({ enableRowExpansion: true, data: makeRows(4), ...props });
     const expander = (table: Element, id: string): HTMLElement => q(table, `[data-row-id="${id}"] button[data-action="detail"]`);
+
+    it('a table nested in a detail row does not drive the outer one: clicks, checkboxes and keys stay with the inner table', async () => {
+        const inner = document.createElement('ge-data-table') as Table;
+        Object.assign(inner, { columns: SAMPLE_COLUMNS, data: TREE(), enableSubRows: true, enableRowSelection: true, showToolbar: false, showPagination: false });
+        const outer = await mountDetail({ enableRowSelection: true, expandedRows: { r0: true }, renderDetail: () => inner });
+        await settle(inner);
+        const outerEvents = ['expanded-rows-change', 'row-selection-change'].flatMap((name) => record(outer, name));
+        await userEvent.click(q(inner, '[data-row-id="a"] button[data-action="tree"]'));
+        await settle(inner);
+        expect(inner.subRowExpandedRows).toEqual({ a: true });
+        await userEvent.click(q(inner, '[data-row-id="b"] ge-checkbox'));
+        await settle(inner);
+        expect(Object.keys(inner.rowSelection)).toEqual(['b']);
+        inner.focusCell(0, 'name');
+        await settle(inner);
+        await press('{ArrowDown}');
+        expect(inner.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        expect(outer.focusedCell).toBeNull();
+        expect(outer.expandedRows).toEqual({ r0: true });
+        expect(outer.rowSelection).toEqual({});
+        expect(outerEvents).toEqual([]);
+    });
 
     it('opens the detail row after its data row, wires aria-controls, shifts the next aria-rowindex and fires one event', async () => {
         const table = await mountDetail({ renderDetail: (row: SampleRow) => html`<span data-testid="detail">${row.name}!</span>` });

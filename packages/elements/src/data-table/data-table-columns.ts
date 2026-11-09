@@ -127,6 +127,13 @@ export const isSpecialColumn = <T>(column: ColumnDef<T>): boolean => isSpecialCo
 /** Whether a header can be dragged or moved: a data column that did not opt out. */
 export const isReorderable = <T>(column: ColumnDef<T>): boolean => !isSpecialColumn(column) && column.enableReordering !== false;
 
+/** The visible reorderable keys that share `key`'s pin group, in drawn order; null when `key` cannot move. */
+export function pinGroupOf<T>(columns: readonly EnhancedColumnDef<T>[], key: string): string[] | null {
+    const source = columns.find((c) => String(c.accessorKey) === key);
+    if (!source || !isReorderable(source)) return null;
+    return columns.filter((c) => isReorderable(c) && c._pin === source._pin).map((c) => String(c.accessorKey));
+}
+
 /** The width in px of a `<n>px` string, else null (`auto`, `rem`, `%` and `calc()` are not known without layout). */
 export function pxOf(width: string): number | null {
     const px = parsePx(width);
