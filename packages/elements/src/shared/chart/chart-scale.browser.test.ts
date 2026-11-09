@@ -126,6 +126,14 @@ describe('linearScale', () => {
         expect(s.scale(100)).toBe(500);
     });
 
+    it('keeps a missing or non-finite value as a gap (NaN), whatever the domain', () => {
+        for (const s of [linearScale([0, 100], [0, 500]), linearScale([5, 5], [0, 500])]) {
+            for (const value of [null, undefined, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
+                expect(s.scale(value as unknown as number)).toBeNaN();
+            }
+        }
+    });
+
     it('maps an interior value proportionally', () => {
         const s = linearScale([0, 100], [0, 500]);
         expect(s.scale(50)).toBe(250);

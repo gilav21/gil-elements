@@ -40,6 +40,7 @@ export class GeDock extends UiElement {
         position: { reflect: true },
         items: { attribute: false },
         custom: { state: true },
+        scrolls: { state: true },
     };
 
     declare magnification: number;
@@ -47,10 +48,12 @@ export class GeDock extends UiElement {
     declare position: DockPosition;
     declare items: DockItemData[];
     declare custom: boolean;
+    declare scrolls: boolean;
 
     private itemCenters: number[] = [];
     private pointer = Infinity;
     private frame: number | null = null;
+    private resizeObserver?: ResizeObserver;
 
     constructor() {
         super();
@@ -59,12 +62,38 @@ export class GeDock extends UiElement {
         this.position = 'bottom';
         this.items = [];
         this.custom = false;
+        this.scrolls = false;
     }
 
     override disconnectedCallback(): void {
         super.disconnectedCallback();
         if (this.frame !== null) cancelAnimationFrame(this.frame);
         this.frame = null;
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = undefined;
+    }
+
+    override connectedCallback(): void {
+        super.connectedCallback();
+        if (this.hasUpdated) this.observeBar();
+    }
+
+    private get bar(): HTMLElement | null {
+        return this.shadowRoot?.querySelector<HTMLElement>('.bar') ?? null;
+    }
+
+    /** A vertical dock scrolls only once its items are taller than the bar may grow; while it scrolls, scrollHeight > clientHeight holds exactly as long as it still overflows. */
+    private measureScroll(): void {
+        const bar = this.bar;
+        this.scrolls = this.isVertical && !!bar && bar.scrollHeight > bar.clientHeight;
+    }
+
+    private observeBar(): void {
+        const bar = this.bar;
+        if (!bar || this.resizeObserver) return;
+        this.resizeObserver = new ResizeObserver(() => this.measureScroll());
+        this.resizeObserver.observe(bar);
+        this.measureScroll();
     }
 
     private get isVertical(): boolean {
@@ -129,15 +158,29 @@ export class GeDock extends UiElement {
 
     protected override firstUpdated(): void {
         this.recalculateItemCenters();
+        this.observeBar();
     }
 
     protected override updated(changed: PropertyValues<GeDock>): void {
-        if (changed.has('items') || changed.has('position') || changed.has('custom')) this.recalculateItemCenters();
+        if (changed.has('items') || changed.has('position') || changed.has('custom')) {
+            this.recalculateItemCenters();
+            // Items added to a column already at its max height leave the bar's own box the same size, so the observer stays quiet.
+            this.measureScroll();
+        }
+        if (changed.has('position') || changed.has('custom') || changed.has('items')) this.stampLabels();
+    }
+
+    /** Tells every label which edge the dock sits on, so it opens on the side facing away from it. */
+    private stampLabels(): void {
+        const labels = [...this.querySelectorAll('ge-dock-label'), ...(this.shadowRoot?.querySelectorAll('ge-dock-label') ?? [])];
+        for (const label of labels) label.setAttribute('position', this.position);
     }
 
     private readonly onSlotChange = (event: Event) => {
         const slot = event.target as HTMLSlotElement;
         this.custom = slot.assignedElements({ flatten: true }).some((el) => el.localName === 'ge-dock-item');
+        this.stampLabels();
+        this.measureScroll();
     };
 
     private simpleItem(item: DockItemData) {
@@ -159,6 +202,8 @@ export class GeDock extends UiElement {
             part="base"
             data-slot="dock"
             data-position=${this.position}
+            style=${`--dock-magnification:${this.magnification}px`}
+            ?data-scrolls=${this.scrolls}
             tabindex="0"
             @pointerdown=${this.onPointer}
             @pointermove=${this.onPointer}
