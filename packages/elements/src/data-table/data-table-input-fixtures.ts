@@ -24,7 +24,12 @@ export const frames = async (n = 1): Promise<void> => {
 export async function idle(target?: EventTarget): Promise<void> {
     await frames(1);
     if (!target) return;
-    await Promise.race([new Promise((resolve) => target.addEventListener('scrollend', resolve, { once: true })), frames(2)]);
+    const stop = new AbortController();
+    try {
+        await Promise.race([new Promise((resolve) => target.addEventListener('scrollend', resolve, { once: true, signal: stop.signal })), frames(2)]);
+    } finally {
+        stop.abort();
+    }
 }
 
 const scrollerOf = (el: Element): HTMLElement => (el.matches('ge-data-table') ? el.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')! : (el as HTMLElement));
@@ -36,10 +41,19 @@ const scrollerOf = (el: Element): HTMLElement => (el.matches('ge-data-table') ? 
 export async function scrollGrid(el: Element, { top, left }: { top?: number; left?: number }): Promise<void> {
     const scroller = scrollerOf(el);
     const before = [scroller.scrollTop, scroller.scrollLeft];
+    // Instant, whatever the page asks for: a smooth scroll would leave the offset unchanged right after the assignment.
+    const behavior = scroller.style.scrollBehavior;
+    scroller.style.scrollBehavior = 'auto';
     if (top !== undefined) scroller.scrollTop = top;
     if (left !== undefined) scroller.scrollLeft = left;
+    scroller.style.scrollBehavior = behavior;
     if (scroller.scrollTop === before[0] && scroller.scrollLeft === before[1]) return frames(2);
-    await Promise.race([new Promise((resolve) => scroller.addEventListener('scrollend', resolve, { once: true })), new Promise((resolve) => setTimeout(resolve, 500))]);
+    const stop = new AbortController();
+    try {
+        await Promise.race([new Promise((resolve) => scroller.addEventListener('scrollend', resolve, { once: true, signal: stop.signal })), new Promise((resolve) => setTimeout(resolve, 500))]);
+    } finally {
+        stop.abort();
+    }
     await frames(1);
 }
 
@@ -191,9 +205,10 @@ export async function perf(fn: () => Promise<void> | void): Promise<PerfResult> 
     let running = true;
     let last = performance.now();
     const tick = (now: number) => {
+        if (!running) return;
         deltas.push(now - last);
         last = now;
-        if (running) requestAnimationFrame(tick);
+        requestAnimationFrame(tick);
     };
     requestAnimationFrame(tick);
     const before = await metricsOf();

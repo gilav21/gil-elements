@@ -228,8 +228,8 @@ const en: DataTableLocale = {
 export const DATA_TABLE_LOCALES: Record<string, DataTableLocale | undefined> & { en: DataTableLocale } = { en };
 
 /** Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively. */
-export function registerDataTableLocale(code: string, dict: DataTableLocale): void {
-    DATA_TABLE_LOCALES[code.toLowerCase()] = dict;
+export function registerDataTableLocale(code: string, dict: Partial<DataTableLocale>): void {
+    DATA_TABLE_LOCALES[code.toLowerCase()] = { ...DATA_TABLE_LOCALES.en, ...dict, code: dict.code ?? code };
 }
 
 /** An object is used as it is; an id is looked up (region ignored); anything else follows the page's `lang`, then English. */

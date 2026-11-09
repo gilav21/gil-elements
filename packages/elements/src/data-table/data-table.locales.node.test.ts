@@ -62,15 +62,23 @@ describe('data-table locales', () => {
         expect(resolveDataTableLocale(null)).toBe(en);
         expect(resolveDataTableLocale()).toBe(en);
         registerDataTableLocale('de', de);
-        expect(resolveDataTableLocale('de')).toBe(de);
-        expect(resolveDataTableLocale('DE-ch')).toBe(de);
+        expect(resolveDataTableLocale('de')).toEqual(de);
+        expect(resolveDataTableLocale('DE-ch')).toEqual(de);
     });
 
     it('registers case-insensitively and replaces an earlier entry', () => {
         registerDataTableLocale('DE', de);
         const other = { ...de, filterPlaceholder: 'x' };
         registerDataTableLocale('de', other);
-        expect(resolveDataTableLocale('de')).toBe(other);
+        expect(resolveDataTableLocale('de')).toEqual(other);
+    });
+
+    it('takes a dictionary that leaves keys out and fills them from English, also the keys added later', () => {
+        registerDataTableLocale('fr', { filterPlaceholder: 'Filtrer' });
+        const fr = resolveDataTableLocale('fr');
+        expect(fr.filterPlaceholder).toBe('Filtrer');
+        expect(fr.noResultsLabel).toBe(en.noResultsLabel);
+        expect(fr.code).toBe('fr');
     });
 
     it('does not resolve prototype-member names', () => {

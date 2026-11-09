@@ -153,10 +153,20 @@ export interface AxNode {
 
 /** The accessibility tree of the test page; the page runs in an iframe of the runner, so its frame is asked for. */
 export async function axTree(): Promise<AxNode[]> {
+    interface FrameTree {
+        frame: { id: string; url: string };
+        childFrames?: FrameTree[];
+    }
     await send('Accessibility.enable');
-    const { frameTree } = await send<{ frameTree: { childFrames?: { frame: { id: string } }[] } }>('Page.getFrameTree');
-    const { nodes } = await send<{ nodes: AxNode[] }>('Accessibility.getFullAXTree', { frameId: frameTree.childFrames?.[0]?.frame.id });
-    return nodes;
+    try {
+        const { frameTree } = await send<{ frameTree: FrameTree }>('Page.getFrameTree');
+        const find = (tree: FrameTree): string | undefined => (tree.frame.url === location.href ? tree.frame.id : tree.childFrames?.map(find).find(Boolean));
+        const frameId = find(frameTree);
+        if (!frameId) throw new Error('axTree: the test page is not in the frame tree (looked for ' + location.href + ')');
+        return (await send<{ nodes: AxNode[] }>('Accessibility.getFullAXTree', { frameId })).nodes;
+    } finally {
+        await send('Accessibility.disable');
+    }
 }
 
 /** A node's properties by name (`focused`, `expanded`, `selected`, `checked`, `level`, ...). */

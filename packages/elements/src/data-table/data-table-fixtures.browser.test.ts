@@ -15,7 +15,10 @@ function box(css: string, inner = ''): HTMLElement {
     return el;
 }
 
-afterEach(() => parkMouse());
+afterEach(() => {
+    parkMouse();
+    document.documentElement.classList.remove('dark');
+});
 
 describe('the data fixtures', () => {
     it('makes rows, tree rows, groups and wide rows', () => {
