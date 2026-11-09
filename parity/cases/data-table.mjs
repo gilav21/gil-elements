@@ -42,8 +42,10 @@ const headerCell = (c, i, { sort, borders, style }) => {
     return `<ui-table-head class="flex items-center flex-shrink-0 ${HEAD} sticky top-0 bg-background shadow-sm whitespace-nowrap overflow-hidden text-ellipsis pointer-coarse:h-auto z-20 ${borders ? 'border-r' : ''} group/head" data-slot="table-head" role="columnheader" aria-colindex="${i + 1}" aria-sort="${dir?.direction === 'asc' ? 'ascending' : dir?.direction === 'desc' ? 'descending' : 'none'}" data-column-id="${c.accessorKey}" style="${style(c, true)}"><div class="flex items-center w-full h-full"><div class="flex-1 min-w-0"><div class="flex items-center gap-2">${sortButton}</div></div></div></ui-table-head>`;
 };
 
+// Only pinned cells are opaque (sticky columns must hide what scrolls under them); the others are transparent so row hover and selected tints show.
+// Angular paints every cell opaque, which hides those tints: the fix is agreed with its maintainers and pending there.
 const bodyCell = (c, i, row, { rowBorders, colBorders, style, cellHtml }) =>
-    `<ui-table-cell class="flex items-center flex-shrink-0 ${CELL} whitespace-nowrap overflow-hidden text-ellipsis bg-background ${rowBorders ? 'border-b' : ''} ${colBorders ? 'border-r' : ''}" data-slot="table-cell" role="gridcell" aria-colindex="${i + 1}" data-column="${c.accessorKey}" style="${style(c, false)}">${cellHtml?.(c, row) ?? row[c.accessorKey]}</ui-table-cell>`;
+    `<ui-table-cell class="flex items-center flex-shrink-0 ${CELL} whitespace-nowrap overflow-hidden text-ellipsis ${style(c, false).includes('sticky') ? 'bg-background' : ''} ${rowBorders ? 'border-b' : ''} ${colBorders ? 'border-r' : ''}" data-slot="table-cell" role="gridcell" aria-colindex="${i + 1}" data-column="${c.accessorKey}" style="${style(c, false)}">${cellHtml?.(c, row) ?? row[c.accessorKey]}</ui-table-cell>`;
 
 const footerCell = (c, text, style) =>
     `<ui-table-cell class="flex items-center flex-shrink-0 ${CELL} whitespace-nowrap overflow-hidden text-ellipsis text-sm font-medium text-muted-foreground" data-slot="table-cell" role="gridcell" style="${style(c, false)}">${text ?? ''}</ui-table-cell>`;
@@ -60,7 +62,7 @@ export function refTable({ columns = COLUMNS, rows = ROWS, sort, rowBorders = tr
         : rows
               .map((r, ri) => `<ui-table-row class="${ROW_CLASS} border-0" data-slot="table-row" role="row" data-row-index="${ri}" aria-rowindex="${ri + 2}">${columns.map((c, i) => bodyCell(c, i, r, ctx)).join('')}${flexible ? '' : `<ui-table-cell class="flex items-center flex-shrink-0 ${CELL} flex-1 pointer-events-none whitespace-nowrap overflow-hidden text-ellipsis bg-background ${rowBorders ? 'border-b' : ''} ${colBorders ? 'border-r' : ''}" data-slot="table-cell"></ui-table-cell>`}</ui-table-row>`)
               .join('');
-    const spacer = `<ui-table-row class="${ROW_CLASS} h-full" data-slot="table-row" aria-hidden="true">${columns.map((c) => `<ui-table-cell class="flex items-center flex-shrink-0 ${CELL} whitespace-nowrap overflow-hidden text-ellipsis bg-background border-0 p-0" data-slot="table-cell" style="${style(c, false)}"></ui-table-cell>`).join('')}</ui-table-row>`;
+    const spacer = `<ui-table-row class="${ROW_CLASS} h-full" data-slot="table-row" aria-hidden="true">${columns.map((c) => `<ui-table-cell class="flex items-center flex-shrink-0 ${CELL} whitespace-nowrap overflow-hidden text-ellipsis border-0 p-0" data-slot="table-cell" style="${style(c, false)}"></ui-table-cell>`).join('')}</ui-table-row>`;
     const foot = footer
         ? `<div class="sticky bottom-0 z-20 bg-background border-t" data-slot="table-footer"><ui-table-row class="${ROW_CLASS}" data-slot="table-row" role="row">${columns.map((c) => footerCell(c, footer[c.accessorKey], style)).join('')}${flexible ? '' : `<ui-table-cell class="flex items-center flex-shrink-0 ${CELL} flex-1 pointer-events-none" data-slot="table-cell"></ui-table-cell>`}</ui-table-row></div>`
         : '';
