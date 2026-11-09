@@ -17,6 +17,12 @@ describe('computeGridAria', () => {
         expect(aria.dataRowIndex(0)).toBe(3);
         expect(aria.headerRowIndex(1)).toBe(2);
     });
+    it('counts a rendered footer row and indexes it after the last data row', () => {
+        const aria = computeGridAria({ tree: false, headerRows: 1, totalDataRows: 3, columnCount: 2, footerRows: 1 });
+        expect(aria.rowCount).toBe(5);
+        expect(aria.footerRowIndex()).toBe(5);
+        expect(computeGridAria({ tree: false, headerRows: 1, totalDataRows: 3, columnCount: 2 }).rowCount).toBe(4);
+    });
     it('is a treegrid in tree mode', () => {
         expect(computeGridAria({ tree: true, headerRows: 1, totalDataRows: 0, columnCount: 0 }).role).toBe('treegrid');
     });

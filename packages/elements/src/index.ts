@@ -146,3 +146,4 @@ export * from './file-viewer/index.js';
 export * from './page-builder/index.js';
 export * from './page-renderer/index.js';
 export * from './rich-text-editor/index.js';
+export * from './data-table/index.js';

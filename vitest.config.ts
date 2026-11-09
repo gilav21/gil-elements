@@ -6,7 +6,7 @@ import { playwright } from '@vitest/browser-playwright';
 export default defineConfig({
     resolve: { conditions: ['development'] },
     // Pre-bundled up front: discovering a dependency mid-run makes Vite reload the page under a test.
-    optimizeDeps: { include: ['lit/static-html.js', 'lit/directives/if-defined.js', 'lit/directives/ref.js'] },
+    optimizeDeps: { include: ['lit/static-html.js', 'lit/directives/if-defined.js', 'lit/directives/ref.js', 'lit/directive.js', 'lit/async-directive.js', 'lit/directives/repeat.js'] },
     test: {
         // Only used by `pnpm run test:coverage`; lcov is what the Sonar scan reads.
         coverage: {

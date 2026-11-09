@@ -147,3 +147,4 @@ import '../packages/elements/src/field-mapper/define.js';
 import '../packages/elements/src/file-viewer/define.js';
 import '../packages/elements/src/page-builder/define.js';
 import '../packages/elements/src/page-renderer/define.js';
+import '../packages/elements/src/data-table/define.js';

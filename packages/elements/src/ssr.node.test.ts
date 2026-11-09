@@ -8,6 +8,7 @@ import './badge/define.js';
 import './button/define.js';
 import './button-group/define.js';
 import './card/define.js';
+import './data-table/define.js';
 import './empty/define.js';
 import './kbd/define.js';
 import './label/define.js';
@@ -38,5 +39,12 @@ describe('elements on the server', () => {
         expect(out).toContain(`<${tag}`);
         expect(out).toContain('shadowrootmode="open"');
         expect(out).toContain(expected);
+    });
+
+    it('ge-data-table imports and renders without a DOM, and leaves the grid to the client', async () => {
+        const out = await collectResult(render(html`<ge-data-table show-toolbar="false"></ge-data-table>`));
+
+        expect(out).toContain('<ge-data-table');
+        expect(out).not.toContain('data-slot="table"');
     });
 });

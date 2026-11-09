@@ -342,6 +342,8 @@ export default defineConfig({
                 'page-builder/define': 'src/page-builder/define.ts',
                 'page-renderer/index': 'src/page-renderer/index.ts',
                 'page-renderer/define': 'src/page-renderer/define.ts',
+                'data-table/index': 'src/data-table/index.ts',
+                'data-table/define': 'src/data-table/define.ts',
             },
             formats: ['es'],
         },

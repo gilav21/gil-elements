@@ -1,6 +1,6 @@
 import { html, type TemplateResult } from 'lit';
 import './toolbar-define.js';
-import { adoptSheet } from './rich-text-content.js';
+import { adoptSheet } from '../shared/adopt-sheet.js';
 import type { RichTextControllerHost, RichTextRenderingController } from './rich-text-controllers.js';
 import { ZERO_WIDTH, setSelectionRange } from './rich-text-dom.js';
 import { isRichTextFormatCommand, type RichTextFormatCommand, type RichTextTopic } from './rich-text-host.js';

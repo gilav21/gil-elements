@@ -27,6 +27,22 @@ describe('data-table locales', () => {
         expect(Object.keys(EN_FILTER_BUILDER_LABELS.operators)).toHaveLength(12);
     });
 
+    it('has every wave 3 key, with the placeholders the renderers interpolate', () => {
+        const keys = [
+            'selectRow', 'actions', 'expandRow', 'collapseRow', 'expandAllRows', 'collapseAllRows', 'expandSubRows', 'collapseSubRows',
+            'expandAllSubRows', 'collapseAllSubRows', 'expandGroup', 'collapseGroup', 'filterColumn', 'columnMenu', 'resizeColumn', 'loading',
+            'goToFirstPage', 'goToPreviousPage', 'goToNextPage', 'goToLastPage', 'sortStateAscending', 'sortStateDescending', 'sortStateNone',
+            'sortPriority', 'sortedAscendingAnnouncement', 'sortedDescendingAnnouncement', 'sortRemovedAnnouncement',
+            'filterClearedAnnouncement', 'filterResultsAnnouncement', 'filterResultAnnouncement',
+        ] as const satisfies readonly (keyof DataTableLocale)[];
+        for (const key of keys) expect(en[key], key).toBeTruthy();
+        for (const key of ['filterColumn', 'columnMenu', 'resizeColumn', 'sortedAscendingAnnouncement'] as const) expect(en[key]).toContain('{column}');
+        expect(interpolate(en.sortStateAscending, { title: 'Age', priority: interpolate(en.sortPriority, { index: 2 }) })).toBe(
+            'Age, sorted ascending, sort priority 2. Activate to sort descending.',
+        );
+        expect(en.filterResultsAnnouncement).toContain('{count}');
+    });
+
     it('resolves an object as it is, a known id, a region id, and falls back to English', () => {
         expect(resolveDataTableLocale(de)).toBe(de);
         expect(resolveDataTableLocale('xx')).toBe(en);

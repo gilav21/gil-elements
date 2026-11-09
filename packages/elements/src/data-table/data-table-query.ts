@@ -251,7 +251,7 @@ export interface QueryOutput<T> {
 }
 
 /** Remembers the last call's arguments by identity; a call with identical arguments returns the stored result. */
-function memoLast<A extends readonly unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
+export function memoLast<A extends readonly unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
     let last: { args: A; result: R } | null = null;
     return (...args) => {
         if (last?.args.length === args.length && last.args.every((arg, i) => Object.is(arg, args[i]))) return last.result;
