@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Disposables, HandlerChain, SlotRegistry, TopicBus } from './rich-text-registry.js';
+import { Disposables, HandlerChain, SlotRegistry, TopicBus } from './registry.js';
 
 describe('SlotRegistry', () => {
     it('keeps slots in registration order', () => {
