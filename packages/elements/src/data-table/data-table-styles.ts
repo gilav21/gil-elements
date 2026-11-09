@@ -8,5 +8,6 @@ import windowCss from './data-table-window.css?inline';
  * just before its closing brace, so the adopted sheet keeps one rule and packages never edit the same file.
  */
 const layer = base.trimEnd();
-if (!layer.endsWith('}')) throw new Error('data-table.css must end with the closing brace of its @layer: the package region files are spliced in before it');
-export const css: string = `${layer.slice(0, -1)}${rowsCss}\n${windowCss}\n${columnsCss}\n}`;
+// Empty where styles are not loaded (the node test project, server rendering); anything else must be a closed @layer.
+if (layer !== '' && !layer.endsWith('}')) throw new Error('data-table.css must end with the closing brace of its @layer: the package region files are spliced in before it');
+export const css: string = layer === '' ? '' : `${layer.slice(0, -1)}${rowsCss}\n${windowCss}\n${columnsCss}\n}`;

@@ -5,12 +5,16 @@
  */
 import { html } from 'lit';
 import type { GridView } from './data-table-grid.js';
+import { dataRowOf } from './data-table-cells.js';
 import { chromeIcon } from './data-table-icons.js';
 import type { EnhancedColumnDef } from './data-table.types.js';
 
 /** The data rows of the page, in drawn order. */
 function pageRows<T>(v: GridView<T>): T[] {
-    return v.body.items.flatMap((item) => ('kind' in item ? (item.kind === 'data' ? [item.row] : []) : [item.row]));
+    return v.body.items.flatMap((item) => {
+        const row = dataRowOf(item);
+        return row === undefined ? [] : [row];
+    });
 }
 
 export function specialHead<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {

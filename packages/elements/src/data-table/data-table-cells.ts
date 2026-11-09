@@ -1,5 +1,6 @@
 /** Value-aware cell formatting and the footer's values, as pure functions over a column and a row. */
 import { type DataTableLocale, interpolate } from './data-table.locales.js';
+import type { BodyView } from './data-table-grid.js';
 import type { ColumnDef, ColorScale, ResolvedCellFormatting, SortDirection } from './data-table.types.js';
 import { computeAggregateValue, getCellValue, stringifyValue } from './data-table.utils.js';
 
@@ -72,4 +73,9 @@ export function footerValues<T>(columns: readonly ColumnDef<T>[], rows: readonly
         else if (c.aggregateFn) values.set(key, computeAggregateValue(rows.map((row) => getCellValue(row, c.accessorKey, c)), c.aggregateFn));
     }
     return values;
+}
+
+/** The data row an item stands for, or `undefined` for a group header, detail or other non-data row. */
+export function dataRowOf<T>(item: BodyView<T>['items'][number]): T | undefined {
+    return 'kind' in item ? (item.kind === 'data' ? item.row : undefined) : item.row;
 }

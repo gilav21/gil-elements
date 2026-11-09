@@ -5,7 +5,7 @@
  */
 import { html, nothing, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
-import { cellText, styleText } from './data-table-cells.js';
+import { cellText, dataRowOf, styleText } from './data-table-cells.js';
 import { resolveCellKind } from './data-table-cell-kind.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
@@ -35,6 +35,8 @@ export interface RowsView<T> {
 }
 
 export function rowsView<T>(host: DataTableViewHost<T>): RowsView<T> {
+    // Wave 4 (package B): once a virtual window is active, `items` must be the sorted list of `QueryService.rowWindowSource()`
+    // (wrapped as display rows), not the paged slice, so that the window indices and the items are the same list.
     const items = requireProvider(host, 'query').displayRows();
     return {
         source: { mode: 'flat', items },
@@ -111,7 +113,7 @@ function spacerRow<T>(v: GridView<T>): TemplateResult {
 function windowRows<T>(v: GridView<T>): { row: T; index: number }[] {
     const { items, window } = v.body;
     return items.slice(window.start, window.end).flatMap((item, offset) => {
-        const row = 'kind' in item ? (item.kind === 'data' ? item.row : undefined) : item.row;
+        const row = dataRowOf(item);
         return row === undefined ? [] : [{ row, index: window.start + offset }];
     });
 }
