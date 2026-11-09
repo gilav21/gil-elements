@@ -142,13 +142,17 @@ describe('ge-carousel', () => {
         const { page, c, track } = await carousel();
         track.style.scrollSnapType = 'none';
         track.scrollTo({ left: track.clientWidth * 0.7, behavior: 'instant' });
+        // The scroll event is delivered asynchronously: wait for the index itself, then let the render finish.
+        await until(() => c.currentIndex === 1);
         await settle(page);
+        // The end state, after any further scroll events: the failure then names the index it saw.
         expect(c.currentIndex).toBe(1);
 
         const empty = await carousel('', 0);
         const log: unknown[] = [];
         empty.c.addEventListener('slide-change', (e) => log.push((e as CustomEvent).detail));
         empty.track.dispatchEvent(new Event('scroll'));
+        // The handler runs synchronously from the event, so one settle covers it.
         await settle(empty.page);
         expect([empty.c.currentIndex, log]).toEqual([0, []]);
     });
