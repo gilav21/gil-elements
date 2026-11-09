@@ -155,6 +155,16 @@ describe('ge-typing-animation', () => {
         expect(shown(el)).toBe('z');
     });
 
+    it('under reduced motion a replaced list shows its own first phrase', async () => {
+        vi.spyOn(globalThis, 'matchMedia').mockImplementation((query) => ({ matches: query.includes('reduce'), media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false }) as MediaQueryList);
+        const el = await typing('', ['A', 'B']);
+        expect(shown(el)).toBe('A');
+        el.strings = ['C', 'D'];
+        await advance(el, 0);
+        expect(shown(el)).toBe('C');
+        vi.restoreAllMocks();
+    });
+
     it('shows the first phrase at once and runs nothing under reduced motion, and starts nothing without phrases', async () => {
         vi.spyOn(globalThis, 'matchMedia').mockImplementation((query) => ({ matches: query.includes('reduce'), media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false }) as MediaQueryList);
         const el = await typing('', ['First', 'Second']);

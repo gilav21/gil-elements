@@ -172,7 +172,8 @@ export class GeNavigationMenu extends UiElement implements NavigationMenuHost {
         const links = focusableIn(content);
         const at = links.findIndex((link) => path.includes(link));
         // A key pressed in a field or button of the panel that is not one of its links belongs to that control; the panel itself still enters the links.
-        if (at < 0 && event.target !== content) return;
+        // The first entry of the composed path, not `event.target`: a panel in the shadow root is retargeted to the host.
+        if (at < 0 && path[0] !== content) return;
         const next = rtl ? 'ArrowLeft' : 'ArrowRight';
         const previous = rtl ? 'ArrowRight' : 'ArrowLeft';
         let to: number;

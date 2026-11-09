@@ -142,6 +142,24 @@ describe('ge-select (projected)', () => {
         expect(select(page).value).toBeUndefined();
     });
 
+    it('one real Tab from a row leaves the select for the next control, and Shift+Tab goes back to the control before it', async () => {
+        const page = await mount(MARKUP());
+        await openByClick(page);
+        await press(page, '{ArrowDown}');
+        await userEvent.keyboard('{Tab}');
+        await settle(page);
+        expect(select(page).open).toBe(false);
+        expect(active()).toBe(el(page, 'outside'));
+
+        await openByClick(page);
+        await press(page, '{ArrowDown}');
+        await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
+        await settle(page);
+        expect(select(page).open).toBe(false);
+        expect(active()).not.toBe(button(page));
+        expect(active()).not.toBe(el(page, 'outside'));
+    });
+
     it('ignores a disabled row and a disabled select, and closes from outside', async () => {
         const page = await mount(MARKUP());
         await settle(page);

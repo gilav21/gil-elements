@@ -291,6 +291,21 @@ describe('ge-navigation-menu', () => {
         }
     });
 
+    it('still enters the links with Down from the panel itself in a data-driven menu, where the event is retargeted to the host', async () => {
+        const page = await mount('<div style="padding:20px 100px"><ge-navigation-menu id="m"></ge-navigation-menu></div>');
+        const menu = page.querySelector<GeNavigationMenu>('#m')!;
+        menu.items = [{ label: 'Guides', children: [{ title: 'Intro', href: '#intro' }, { title: 'Install', href: '#install' }] }];
+        await settle(page);
+        const trigger = menu.shadowRoot!.querySelector('ge-navigation-menu-trigger')!;
+        const panel = menu.shadowRoot!.querySelector<HTMLElement>('ge-navigation-menu-content')!;
+        panel.tabIndex = -1;
+        trigger.shadowRoot!.querySelector('button')!.focus();
+        await key(page, '{Enter}');
+        panel.focus();
+        await key(page, '{ArrowDown}');
+        expect(at()).toBe(menu.shadowRoot!.querySelector('ge-navigation-menu-content ge-navigation-menu-link')!.shadowRoot!.querySelector('a'));
+    });
+
     it('still enters the links with Down when the panel itself holds focus', async () => {
         const page = await mount(MARKUP());
         const panel = el(page, 'learn-panel');
