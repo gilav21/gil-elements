@@ -1,0 +1,57 @@
+/*
+ * Package B (window and focus): virtual padding, retained row, focus ring and scroll-padding rules. Bare rules, scoped under
+ * `ge-data-table [data-slot=...]`: they are appended inside the closing brace of the `ge-data-table` layer of
+ * data-table.css (see data-table-styles.ts), so do not wrap them in `@layer` and keep the comment style below.
+ */
+    /* The rows left out above and below the window are padding, set as custom properties on the body (no spacer elements). */
+    ge-data-table [data-slot="table-body"] {
+        padding-block: var(--ge-dt-pad-top, 0px) var(--ge-dt-pad-bottom, 0px);
+    }
+    /* Chromium's scroll anchoring would add its own correction to the one the virtual controller makes when a row above resizes. */
+    ge-data-table[data-virtual] [data-slot="data-table-viewport"] {
+        overflow-anchor: none;
+    }
+    ge-data-table[data-virtual] [data-slot="table-body"] {
+        position: relative;
+    }
+    /* A row kept drawn outside the window (the focused one) sits out of flow at its own offset, so the padding stays right and focus is never lost. */
+    ge-data-table [data-slot="table-row"][data-retained] {
+        position: absolute;
+        inset-block-start: var(--ge-dt-retained-top, 0px);
+        inset-inline: 0;
+    }
+    /* The middle columns left out at each edge of a row: one stand-in each, as wide as the columns it replaces. */
+    ge-data-table [data-slot="data-table-spacer"][data-edge="start"] {
+        inline-size: var(--ge-dt-pad-start, 0px);
+    }
+    ge-data-table [data-slot="data-table-spacer"][data-edge="end"] {
+        inline-size: var(--ge-dt-pad-end, 0px);
+    }
+
+    /* Native focus and scrollIntoView stop short of the sticky header, the footer and the pinned columns (measured by the virtual controller). */
+    ge-data-table [data-slot="data-table-viewport"] {
+        scroll-padding-block: var(--ge-dt-head-h, 0px) var(--ge-dt-foot-h, 0px);
+        scroll-padding-inline: var(--ge-dt-pin-start-w, 0px) var(--ge-dt-pin-end-w, 0px);
+    }
+
+    /* The roving cell: DOM focus shows the same ring as the focused-cell mark, drawn once. */
+    ge-data-table [data-slot="table-cell"][tabindex]:focus {
+        outline: none;
+    }
+    ge-data-table [data-slot="table-cell"]:focus-visible {
+        position: relative;
+        z-index: 10;
+        box-shadow: inset 0 0 0 2px var(--primary);
+    }
+    ge-data-table [data-slot="table-cell"]:focus-visible[data-pinned] {
+        position: sticky;
+    }
+    /* Forced colours drop shadows: the ring becomes an outline. */
+    @media (forced-colors: active) {
+        ge-data-table [data-slot="table-cell"][data-focused],
+        ge-data-table [data-slot="table-cell"][tabindex]:focus,
+        ge-data-table [data-slot="table-cell"]:focus-visible {
+            outline: 2px solid Highlight;
+            outline-offset: -2px;
+        }
+    }

@@ -63,6 +63,9 @@ export function isSpecialColumnKey(key: unknown): boolean {
     return SPECIAL_COLUMN_KEYS.has(String(key));
 }
 
+/** The `data-special` value of a column: its key without the underscore (`_selection` -> `selection`). */
+export const specialSlotOf = (column: { accessorKey: PropertyKey }): string => String(column.accessorKey).replace(/^_/, '');
+
 /**
  * The "no filter" test used to skip column filters: `undefined`, `null`, `''`, an empty array (an emptied
  * multiselect), and a date range whose `start` and `end` are both null.
@@ -228,3 +231,9 @@ export function toEditedDateValue(picked: Date | null, previous: unknown): unkno
     if (picked === null) return null;
     return typeof previous === 'string' ? toLocalDateString(picked) : picked;
 }
+
+/** Same keys, same values (by identity). */
+export const sameRecord = <V>(a: Readonly<Record<string, V>>, b: Readonly<Record<string, V>>): boolean => {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && Object.is(a[key], b[key]));
+};

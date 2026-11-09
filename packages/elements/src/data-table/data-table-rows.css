@@ -1,0 +1,53 @@
+/*
+ * Package A (rows): selection, detail, tree and group rules. Bare rules, scoped under `ge-data-table [data-slot=...]`:
+ * they are appended inside the closing brace of the `ge-data-table` layer of data-table.css (see data-table-styles.ts),
+ * so do not wrap them in `@layer` and keep the comment style below.
+ */
+    /* Every toggle chevron turns 90deg when open (data-table.css). The row expander swaps chevron-down / chevron-up instead, and the "all" buttons flip chevrons-down upside down. */
+    ge-data-table [data-slot="table-cell"] [data-slot="data-table-icon-button"][data-toggle][data-action="detail"][aria-expanded="true"] > [data-slot="dt-icon"] {
+        rotate: none;
+    }
+    ge-data-table [data-slot="table-head"] [data-slot="data-table-icon-button"][data-toggle][data-action$="-all"][aria-expanded="true"] > [data-slot="dt-icon"] {
+        rotate: 180deg;
+    }
+
+    /* Angular's row expander has no shrink-0, so in the 40px column (24px of content) it narrows to the content box and the glyph sits 2px nearer the start. */
+    ge-data-table [data-slot="table-cell"] [data-slot="data-table-icon-button"][data-action="detail"] {
+        flex-shrink: 1;
+    }
+
+    /* The group label truncates; the count and aggregates stay beside it. */
+    ge-data-table [data-slot="data-table-group-label"] > [data-slot="data-table-text"] {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    /* The count and the aggregates are plain spans in Angular, so they take the cell's font-medium. */
+    ge-data-table [data-slot="table-row"][data-kind="group"] [data-slot="data-table-group-meta"] {
+        font-weight: inherit;
+    }
+    /* A group header gives the pointer to the whole row; the focus ring sits on the toggle button. */
+    ge-data-table [data-slot="table-row"][data-kind="group"] [data-slot="data-table-icon-button"]:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: -2px;
+    }
+
+    /* A detail row is the content of its data row: it never takes the hover tint of a data row. */
+    ge-data-table [data-slot="table-row"][data-kind="detail"]:hover,
+    ge-data-table [data-slot="table-row"][data-kind="group"]:hover {
+        background-color: color-mix(in oklab, var(--muted) 40%, transparent);
+    }
+    ge-data-table [data-slot="table-row"][data-kind="detail"]:hover {
+        background-color: color-mix(in oklab, var(--muted) 20%, transparent);
+    }
+
+    /* Touch: the row and header checkboxes get a 44px target, like the expander buttons beside them. */
+    @media (pointer: coarse) {
+        ge-data-table [data-special="selection"] ge-checkbox {
+            align-items: center;
+            justify-content: center;
+            min-inline-size: 2.75rem;
+            min-block-size: 2.75rem;
+        }
+    }

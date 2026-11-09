@@ -64,17 +64,19 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
     spec('columns', { provides: ['columns'], reads: ['config', 'locale'], writes: ['columns'] }),
     spec('query', { provides: ['query'], needs: ['columns'], reads: ['config', 'columns', 'expansion'], writes: ['rows'] }),
     spec('loading', { provides: ['loading'], reads: ['config', 'rows'], writes: ['loading'] }),
-    spec('expansion', { needs: ['query'], reads: ['rows', 'config'], writes: ['expansion'] }),
-    spec('selection', { needs: ['query', 'columns'], reads: ['rows', 'config'], writes: ['selection'] }),
+    spec('expansion', { provides: ['expansion'], needs: ['query'], reads: ['rows', 'config'], writes: ['expansion'] }),
+    spec('selection', { provides: ['selection'], needs: ['query', 'columns'], reads: ['rows', 'config'], writes: ['selection'] }),
     spec('virtual', { provides: ['virtual'], needs: ['query', 'columns'], reads: ['rows', 'columns', 'config'], writes: ['viewport'] }),
     spec('cell-interaction', {
         provides: ['interaction'],
         needs: ['query', 'columns', 'virtual'],
+        // Selection and expansion are asked for when a key or a collapse runs, never at attach (their handlers register at priority 50).
+        uses: ['selection', 'expansion'],
         reads: ['rows', 'columns', 'viewport', 'selection'],
         writes: ['cell'],
     }),
     spec('clipboard', { needs: ['query', 'columns', 'interaction'], uses: ['virtual'], reads: ['cell'] }),
-    spec('resize', { needs: ['columns'], reads: ['columns'], writes: ['columns', 'viewport'] }),
+    spec('resize', { provides: ['resize'], needs: ['columns'], reads: ['columns'], writes: ['columns', 'viewport'] }),
     spec('column-drag', { needs: ['columns'], reads: ['columns'], writes: ['columns'] }),
     spec('row-drag', { needs: ['query', 'columns'], uses: ['virtual'], reads: ['rows'], writes: ['rows'] }),
     spec('formatting', { provides: ['formatting'], needs: ['query', 'columns'], reads: ['rows', 'columns'] }),
@@ -82,7 +84,7 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
     spec('filter-ui', { needs: ['columns'], uses: ['query'], reads: ['columns', 'locale'] }),
     spec('ai', { needs: ['query', 'columns'], uses: ['interaction'], reads: ['locale'] }),
     spec('diagnostics', { uses: ['virtual', 'query'], reads: ['config', 'rows'] }),
-    spec('aria', { needs: ['query', 'columns', 'virtual'], uses: ['interaction'], reads: ['rows', 'columns', 'selection', 'cell', 'viewport', 'locale'] }),
+    spec('aria', { needs: ['query', 'columns'], uses: ['interaction', 'virtual'], reads: ['rows', 'columns', 'selection', 'cell', 'viewport', 'locale'] }),
     spec('addon-host', { provides: ['addons'], uses: ['query', 'columns', 'interaction'], reads: ['locale'] }),
 ];
 

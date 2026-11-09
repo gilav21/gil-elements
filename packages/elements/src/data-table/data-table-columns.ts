@@ -6,11 +6,12 @@
  * its own order), so DOM order is visual order and `aria-colindex` is position + 1. `left` and `right` mean inline-start
  * and inline-end. Offsets are `calc()` sums of CSS lengths, not parsed integers, so `10rem` and `20%` stack correctly.
  */
+import { ownElements } from './data-table-host.js';
 import type { ColumnDef, EnhancedColumnDef } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 import { indexColumns } from './data-table-query.js';
 import { applyKeyOrder } from './data-table-view-state.js';
-import { resolveColumnMinWidth } from './data-table-virtual.js';
+import { parsePx, resolveColumnMinWidth } from './data-table-virtual.js';
 
 type Pin = 'left' | 'right' | undefined;
 
@@ -123,3 +124,27 @@ export function duplicateColumnKeys<T>(columns: readonly ColumnDef<T>[]): string
 
 /** Special columns draw their own content (checkbox, expander, actions) and are never data. */
 export const isSpecialColumn = <T>(column: ColumnDef<T>): boolean => isSpecialColumnKey(column.accessorKey);
+
+/** Whether a header can be dragged or moved: a data column that did not opt out. */
+export const isReorderable = <T>(column: ColumnDef<T>): boolean => !isSpecialColumn(column) && column.enableReordering !== false;
+
+/** The visible reorderable keys that share `key`'s pin group, in drawn order; null when `key` cannot move. */
+export function pinGroupOf<T>(columns: readonly EnhancedColumnDef<T>[], key: string): string[] | null {
+    const source = columns.find((c) => String(c.accessorKey) === key);
+    if (!source || !isReorderable(source)) return null;
+    return columns.filter((c) => isReorderable(c) && c._pin === source._pin).map((c) => String(c.accessorKey));
+}
+
+/** The width in px of a `<n>px` string, else null (`auto`, `rem`, `%` and `calc()` are not known without layout). */
+export function pxOf(width: string): number | null {
+    const px = parsePx(width);
+    return px !== null && px >= 0 ? px : null;
+}
+
+export const HEAD_SELECTOR = '[data-slot="table-head"]';
+
+/** The head cell and the rendered body cells of column `key` (footer cells carry no column attribute). */
+export function columnCells(root: Element, key: string): HTMLElement[] {
+    const name = CSS.escape(key);
+    return ownElements(root, root.querySelectorAll<HTMLElement>(`${HEAD_SELECTOR}[data-column-id="${name}"], [data-slot="table-cell"][data-column="${name}"]`));
+}

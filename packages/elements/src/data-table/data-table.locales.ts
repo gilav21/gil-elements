@@ -77,8 +77,20 @@ export interface DataTableLocale extends LocaleMeta {
     filterColumn: string;
     /** Interpolates `{column}`. */
     columnMenu: string;
-    /** Interpolates `{column}`. */
+    /** Accessible name of the resize handle; interpolates `{column}`. */
     resizeColumn: string;
+    /** `aria-description` of the resize handle: the gestures. */
+    resizeColumnDescription: string;
+    /** `aria-keyshortcuts` hint text of a reorderable header's controls. */
+    reorderColumnHint: string;
+    /** Live-region messages of wave 4. Interpolate `{page}` `{pages}`, `{count}`, `{column}` `{position}` `{total}` and `{column}` `{width}`. */
+    pageAnnouncement: string;
+    selectionAnnouncement: string;
+    /** The singular form, for a count of one. */
+    selectionAnnouncementOne: string;
+    selectionClearedAnnouncement: string;
+    columnMovedAnnouncement: string;
+    columnResizedAnnouncement: string;
     /** Text of the default loading overlay. */
     loading: string;
     goToFirstPage: string;
@@ -175,7 +187,15 @@ const en: DataTableLocale = {
     collapseGroup: 'Collapse group',
     filterColumn: 'Filter {column}',
     columnMenu: 'Column menu for {column}',
-    resizeColumn: 'Resize {column} column (double-click or double-tap to auto-fit)',
+    resizeColumn: 'Resize {column} column',
+    resizeColumnDescription: 'Double-click or double-tap to fit to content. Arrow keys resize.',
+    reorderColumnHint: 'Alt+Shift+Left or Right arrow moves this column',
+    pageAnnouncement: 'Page {page} of {pages}',
+    selectionAnnouncement: '{count} rows selected',
+    selectionAnnouncementOne: '1 row selected',
+    selectionClearedAnnouncement: 'Selection cleared',
+    columnMovedAnnouncement: '{column} moved to position {position} of {total}',
+    columnResizedAnnouncement: '{column} width {width} pixels',
     loading: 'Loading...',
     goToFirstPage: 'Go to first page',
     goToPreviousPage: 'Go to previous page',
@@ -208,8 +228,8 @@ const en: DataTableLocale = {
 export const DATA_TABLE_LOCALES: Record<string, DataTableLocale | undefined> & { en: DataTableLocale } = { en };
 
 /** Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively. */
-export function registerDataTableLocale(code: string, dict: DataTableLocale): void {
-    DATA_TABLE_LOCALES[code.toLowerCase()] = dict;
+export function registerDataTableLocale(code: string, dict: Partial<DataTableLocale>): void {
+    DATA_TABLE_LOCALES[code.toLowerCase()] = { ...DATA_TABLE_LOCALES.en, ...dict, code: dict.code ?? code };
 }
 
 /** An object is used as it is; an id is looked up (region ignored); anything else follows the page's `lang`, then English. */

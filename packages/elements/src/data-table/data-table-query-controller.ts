@@ -10,6 +10,8 @@ import {
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
+import { buildGroupedDisplayRows, isGroupingActive, partitionIntoGroups, renumberDataRows, type RowGroup } from './data-table-group.js';
+import { buildTreeIndex, filterTree, flattenTree, sortTree } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
 import type { ColumnDef, DataTableDisplayRow, DataTableQuery, FlattenedTreeRow, PaginationState, SortDirection, SortState } from './data-table.types.js';
 import { getCellValue, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
@@ -48,23 +50,122 @@ export class QueryController<T> {
         return activeSorts(config.enableMultiSort, model.get('sortState'), model.get('multiSortState'));
     }
 
+    private readonly indexOf = memoLast(buildTreeIndex<T>);
+
     private readonly rows = memoLast((sorted: T[], page: PaginationState, local: boolean): readonly DataTableDisplayRow<T>[] =>
         (local ? slicePage(sorted, page) : sorted).map((row, index) => ({ kind: 'data', row, index })),
     );
 
+    // ---- tree mode: filter -> sort -> flatten -> page, each stage remembered on the identity of its inputs ----------
+
+    private readonly filteredTree = memoLast(
+        (data: T[], columns: readonly ColumnDef<T>[], globalFilter: string, fn: DataTableCoreHost<T>['config']['globalFilterFn'], columnFilters: Record<string, unknown>,
+         mode: DataTableCoreHost<T>['config']['subRowFilterMode'], local: boolean, getChildren: DataTableCoreHost<T>['config']['getChildren'], setChildren: DataTableCoreHost<T>['config']['setChildren']): T[] =>
+            local ? filterTree(data, { columns, globalFilter, globalFilterFn: fn, columnFilters, mode, getChildren, setChildren }) : data,
+    );
+
+    /** The sorts are read inside, so `sortKey` (their value as a string) is what tells the memo they changed. */
+    private readonly sortedTree = memoLast(
+        (rows: T[], _sortKey: string, columns: readonly ColumnDef<T>[], enabled: boolean, getChildren: DataTableCoreHost<T>['config']['getChildren'], setChildren: DataTableCoreHost<T>['config']['setChildren']): T[] => {
+            const sorts = this.sorts();
+            return enabled && sorts.length > 0 ? sortTree(rows, sorts, columns, getChildren, setChildren) : rows;
+        },
+    );
+
+    private readonly visibleTree = memoLast(
+        (roots: T[], expanded: Record<string, boolean>, getId: (row: T) => string, getChildren: DataTableCoreHost<T>['config']['getChildren'], defaultExpandedDepth: number): readonly FlattenedTreeRow<T>[] =>
+            flattenTree(roots, { getId, getChildren, expanded, defaultExpandedDepth }),
+    );
+
+    /**
+     * The page of tree rows: the visible list sliced as it is (`subRowsPaginated`), or the rows of the roots on the page,
+     * each with its expanded descendants. Sibling counts stay those of the whole tree either way.
+     */
+    private readonly pagedTree = memoLast(
+        (visible: readonly FlattenedTreeRow<T>[], roots: T[], page: PaginationState, local: boolean, paginated: boolean, getId: (row: T) => string): readonly FlattenedTreeRow<T>[] => {
+            if (!local) return visible;
+            if (paginated) return slicePage(visible, page);
+            const onPage = new Set(slicePage(roots, page).map(getId));
+            return visible.filter((r) => onPage.has(r.path[0] as string));
+        },
+    );
+
+    private readonly treeDisplay = memoLast((rows: readonly FlattenedTreeRow<T>[]): readonly DataTableDisplayRow<T>[] => rows.map((r, index) => ({ kind: 'data', row: r.row, index })));
+
+    private virtualActive(): boolean {
+        return this.host.provider('virtual')?.active() ?? false;
+    }
+
+    private pagesLocally(): boolean {
+        const { config } = this.host;
+        return pagesLocally(config.localPagination, config.showPagination, this.virtualActive());
+    }
+
+    /** Every stage of the tree; empty outside tree mode. `roots` are the filtered, sorted top-level rows. */
+    private tree(): { roots: T[]; visible: readonly FlattenedTreeRow<T>[]; page: readonly FlattenedTreeRow<T>[] } {
+        const { config, model } = this.host;
+        if (!config.enableSubRows) return { roots: [], visible: [], page: [] };
+        const filtered = this.filteredTree(model.get('data'), config.columns, model.get('globalFilter'), config.globalFilterFn, model.get('columnFilters'), config.subRowFilterMode, config.localFiltering, config.getChildren, config.setChildren);
+        const sortKey = this.sorts().map((s) => `${s.column}:${s.direction}`).join('|');
+        const roots = this.sortedTree(filtered, sortKey, config.columns, config.localSorting && config.enableSubRowSorting, config.getChildren, config.setChildren);
+        const visible = this.visibleTree(roots, model.get('subRowExpandedRows'), config.getRowId, config.getChildren, config.subRowDefaultExpanded ? -1 : 0);
+        return { roots, visible, page: this.pagedTree(visible, roots, model.get('paginationState'), this.pagesLocally(), config.subRowsPaginated, config.getRowId) };
+    }
+
+    // ---- grouping: partition -> header rows -> page --------------------------------------------------------------
+
+    private readonly partition = memoLast((sorted: T[], key: string, columns: readonly ColumnDef<T>[]): RowGroup<T>[] => {
+        const column = columns.find((c) => String(c.accessorKey) === key);
+        return partitionIntoGroups(sorted, (row) => getCellValue(row, key, column));
+    });
+
+    private readonly grouped = memoLast((groups: RowGroup<T>[], collapsed: Record<string, boolean>, columns: readonly ColumnDef<T>[], withAggregates: boolean) =>
+        buildGroupedDisplayRows(groups, collapsed, columns, withAggregates),
+    );
+
+    private readonly groupedPage = memoLast((grouped: readonly DataTableDisplayRow<T>[], page: PaginationState, local: boolean): readonly DataTableDisplayRow<T>[] =>
+        local ? renumberDataRows(slicePage(grouped, page)) : grouped,
+    );
+
+    private groupingOn(): boolean {
+        const { config } = this.host;
+        return isGroupingActive(config.groupBy, config.enableSubRows, this.virtualActive());
+    }
+
+    private groups(): RowGroup<T>[] {
+        const { config } = this.host;
+        return this.groupingOn() && config.groupBy ? this.partition(this.output().sorted, config.groupBy, config.columns) : [];
+    }
+
+    private groupedRows(): readonly DataTableDisplayRow<T>[] {
+        const { config, model } = this.host;
+        return this.grouped(this.groups(), model.get('collapsedGroups'), config.columns, config.groupAggregates);
+    }
+
     private displayRows(): readonly DataTableDisplayRow<T>[] {
         const { config, model } = this.host;
-        const virtual = this.host.provider('virtual')?.active() ?? false;
-        return this.rows(this.output().sorted, model.get('paginationState'), pagesLocally(config.localPagination, config.showPagination, virtual));
+        const page = model.get('paginationState');
+        if (config.enableSubRows) return this.treeDisplay(this.tree().page);
+        if (this.groupingOn()) return this.groupedPage(this.groupedRows(), page, this.pagesLocally());
+        return this.rows(this.output().sorted, page, this.pagesLocally());
     }
 
+    private readonly dataRowsOf = memoLast((display: readonly DataTableDisplayRow<T>[]): readonly T[] => display.flatMap((r) => (r.kind === 'data' ? [r.row] : [])));
+
+    /** The drawn data rows; one list per display list, since keys, clicks and selection ask for it often. */
     private renderedRows(): readonly T[] {
-        return this.displayRows().flatMap((r) => (r.kind === 'data' ? [r.row] : []));
+        return this.dataRowsOf(this.displayRows());
     }
 
+    /** The rows the pager counts: grouped display rows (headers included), roots or visible tree rows, or the sorted rows. */
     private totalItems(): number {
-        const sorted = this.output().sorted;
-        return this.host.config.localPagination ? sorted.length : (this.host.config.total ?? sorted.length);
+        const { config } = this.host;
+        const all = (count: number): number => (config.localPagination ? count : (config.total ?? count));
+        if (config.enableSubRows) {
+            const tree = this.tree();
+            return all(config.subRowsPaginated ? tree.visible.length : tree.roots.length);
+        }
+        return all(this.groupingOn() ? this.groupedRows().length : this.output().sorted.length);
     }
 
     private columnLabel(key: string): string {
@@ -115,7 +216,11 @@ export class QueryController<T> {
 
     private readonly service: QueryService<T> = {
         sortedData: () => this.output().sorted,
-        visibleTreeRows: (): readonly FlattenedTreeRow<T>[] => [],
+        visibleTreeRows: () => this.tree().visible,
+        treeRows: () => this.tree().page,
+        treeIndex: () => this.indexOf(this.host.model.get('data'), this.host.config.getRowId, this.host.config.getChildren),
+        groupRows: () => this.groups(),
+        rowWindowSource: () => (this.host.config.enableSubRows ? this.tree().visible : this.output().sorted),
         displayRows: () => this.displayRows(),
         renderedRows: () => this.renderedRows(),
         totalItems: () => this.totalItems(),
@@ -125,7 +230,7 @@ export class QueryController<T> {
             return exportQuery({ globalFilter: model.get('globalFilter'), columnFilters: model.get('columnFilters'), sort: model.get('sortState'), sortStates: model.get('multiSortState') });
         },
         renderedRowAt: (index) => this.renderedRows()[index],
-        renderedTreeRowAt: () => undefined,
+        renderedTreeRowAt: (index) => this.tree().page[index],
         rowContext: (row, index) => {
             const selection = this.host.model.get('rowSelection');
             const id = this.host.config.getRowId(row);

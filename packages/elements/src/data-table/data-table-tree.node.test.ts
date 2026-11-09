@@ -113,6 +113,10 @@ describe('flattenTree', () => {
         expect(rows[2]).toMatchObject({ depth: 2, parentId: '1-1', path: ['1', '1-1', '1-1-1'], isLeaf: true, isExpanded: false });
         expect(rows[1]).toMatchObject({ isLeaf: false, childCount: 1, isExpanded: true });
     });
+    it('numbers each node among its siblings', () => {
+        const rows = flattenTree(TREE, o({}, -1));
+        expect(rows.map((r) => `${r.row.id}:${r.posInSet}/${r.setSize}`)).toEqual(['1:1/2', '1-1:1/2', '1-1-1:1/1', '1-2:2/2', '2:2/2', '2-1:1/1']);
+    });
     it('collapsed by default shows only roots; the depth default expands shallow levels', () => {
         expect(flattenTree(TREE, o({}, 0)).map((r) => r.row.id)).toEqual(['1', '2']);
         expect(flattenTree(TREE, o({}, 1)).map((r) => r.row.id)).toEqual(['1', '1-1', '1-2', '2', '2-1']);

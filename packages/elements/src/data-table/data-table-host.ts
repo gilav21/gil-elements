@@ -59,6 +59,19 @@ export interface RowAddress {
     readonly rowId: string | null;
 }
 
+/** The event came from this table's own DOM and not from a table nested in one of its rows (a detail row's content). */
+export const ownsTarget = (root: Element, target: unknown): boolean => (target as Element | null)?.closest?.('ge-data-table') === root;
+
+/** The elements of `list` that belong to this table, not to a table nested in one of its rows. */
+export const ownElements = <E extends Element>(root: Element, list: Iterable<E>): E[] => [...list].filter((el) => ownsTarget(root, el));
+
+/** A listener for events of this table only: a nested table's events bubble through the outer one's root. */
+export const ownEvents =
+    <E extends Event>(root: Element, listener: (event: E) => void) =>
+    (event: E): void => {
+        if (ownsTarget(root, event.target)) listener(event);
+    };
+
 /** The minimum of an element `addressOf` needs, so it is testable without a DOM. */
 interface AddressableElement {
     closest(selector: string): AddressableElement | null;

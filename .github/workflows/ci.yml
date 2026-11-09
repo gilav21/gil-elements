@@ -17,3 +17,11 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm run check
       - run: node parity/run.mjs
+      - name: Keep the parity images of the differing cases
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: parity-diffs
+          path: parity/out/*.png
+          if-no-files-found: ignore
+          retention-days: 7
