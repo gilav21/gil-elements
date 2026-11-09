@@ -68,6 +68,10 @@
     text-decoration: none;
 }
 
+/* The chevrons mirror with the toolbar, so previous still points away from next. */
+.toolbar[dir="rtl"] .tool[data-flip] svg {
+    transform: scaleX(-1);
+}
 .tool:hover {
     background: var(--muted);
 }

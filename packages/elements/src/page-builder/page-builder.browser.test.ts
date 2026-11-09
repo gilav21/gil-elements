@@ -10,6 +10,7 @@ import { mount, useTheme } from '../test-utils.js';
 import type { GePageBuilder } from './index.js';
 import type { GePageRenderer } from '../page-renderer/index.js';
 import type { ComponentMeta, PageData } from './page-builder.types.js';
+import { PAGE_BUILDER_LOCALES } from './page-builder.locales.js';
 
 const PALETTE: ComponentMeta[] = [
     { id: 'badge', name: 'Badge', category: 'Display', tag: 'ge-badge', icon: 'tag', defaultInputs: { label: 'New' }, defaultCols: 3, defaultRows: 2, inputs: [{ name: 'variant', type: 'select', options: ['default', 'secondary', 'destructive'] }] },
@@ -358,6 +359,44 @@ describe('ge-page-builder', () => {
     });
 });
 
+describe('ge-page-builder locale', () => {
+    it('translates the toolbar, palette and settings, mirrors for Hebrew and hands the inspector its language code', async () => {
+        const builder = await setup('locale="he"');
+        expect(q(builder, '.shell')!.getAttribute('dir')).toBe('rtl');
+        expect(q(builder, '.palette .panel-title')!.textContent!.trim()).toBe('רכיבים');
+        expect(q(builder, '.toolbar .count span')!.textContent).toBe('0 פריטים');
+        expect(q(builder, '.canvas-empty p')!.textContent).toBe('גררו רכיבים לכאן כדי לבנות את הדף');
+        expect(q(builder, '.inspector .panel-title')!.textContent!.trim()).toBe('הגדרות רשת');
+
+        builder.data = PAGE;
+        await settled(builder);
+        await select(builder, 'a');
+        expect(editor(builder).getAttribute('locale') ?? (editor(builder) as unknown as { locale: string }).locale).toBe('he');
+        expect(inEditor(builder, '.section-head h4')!.textContent).toBe('פריסה');
+    });
+
+    it('uses a custom dictionary as given for the builder, and the English inspector for its unknown code', async () => {
+        const builder = await setup();
+        builder.locale = { ...PAGE_BUILDER_LOCALES.en, code: 'xx', components: 'Parts', itemsCount: '{count} things' };
+        await settled(builder);
+        expect(q(builder, '.palette .panel-title')!.textContent!.trim()).toBe('Parts');
+        expect(q(builder, '.toolbar .count span')!.textContent).toBe('0 things');
+    });
+
+    it('gives the inspector English, not the page language, when the builder runs a custom dictionary', async () => {
+        document.documentElement.lang = 'he';
+        try {
+            const builder = await setup('', PAGE);
+            builder.locale = { ...PAGE_BUILDER_LOCALES.en, code: 'xx' };
+            await settled(builder);
+            await select(builder, 'a');
+            expect(inEditor(builder, '.section-head h4')!.textContent).toBe('Layout');
+        } finally {
+            document.documentElement.lang = '';
+        }
+    });
+});
+
 describe('ge-page-renderer', () => {
     async function render(context: Record<string, unknown> = {}, data: PageData | null = BOUND) {
         const page = await mount('<div style="width:900px"><ge-page-renderer></ge-page-renderer></div>');
@@ -425,6 +464,18 @@ describe('ge-property-editor', () => {
         return element;
     }
     const asItem = (item: { id: string; cols?: number; inputs?: Record<string, unknown>; bindings?: Record<string, string> }) => ({ id: item.id, x: 1, y: 1, cols: item.cols ?? 2, rows: 2, content: '', componentId: 'badge', inputs: item.inputs ?? {}, bindings: item.bindings ?? {} });
+
+    it('speaks the locale: Hebrew chrome right-to-left, the select placeholder interpolated, and the empty state', async () => {
+        const empty = await editorFor(null, null, 'locale="he"');
+        expect(empty.shadowRoot!.querySelector('.empty h3')!.textContent).toBe('לא נבחר דבר');
+        expect(empty.shadowRoot!.querySelector('.panel')!.getAttribute('dir')).toBe('rtl');
+
+        const meta: ComponentMeta = { id: 'pick', name: 'Pick', category: 'Input', tag: 'ge-badge', defaultInputs: {}, inputs: [{ name: 'mode', label: 'Mode', type: 'select', options: ['a', 'b'] }] } as ComponentMeta;
+        const element = await editorFor({ id: 'x' }, meta, 'locale="de"');
+        expect(element.shadowRoot!.querySelector('.section-head h4')!.textContent).toBe('Layout');
+        expect(element.shadowRoot!.querySelector('.bind-toggle')!.textContent!.trim()).toBe('Statisch');
+        expect(element.shadowRoot!.querySelector('ge-select')!.getAttribute('placeholder')).toBe('Mode auswählen');
+    });
 
     it('shows the empty state without an item', async () => {
         const element = await editorFor(null, null);
