@@ -169,13 +169,17 @@ function parseDelimited(text: string, delimiter: string): string[][] {
 
 /**
  * Parses clipboard text into a grid of cell strings: tab-separated when that gives more than one column (Excel, Sheets, the
- * table's own copy), else comma-separated. Quoted cells may span lines and hold the delimiter. One trailing line break is dropped.
+ * table's own copy), else comma-separated when several lines agree on the column count, else one cell per line. Quoted cells may span lines and hold the delimiter. One trailing line break is dropped.
  */
 export function parseClipboardGrid(text: string): string[][] {
     if (text === '') return [];
     const body = text.replace(/(\r\n|\n|\r)$/, '');
     const tabbed = parseDelimited(body, '\t');
-    return tabbed.some((row) => row.length > 1) ? tabbed : parseDelimited(body, ',');
+    if (tabbed.some((row) => row.length > 1)) return tabbed;
+    // Commas only make columns when several lines agree on how many: a sentence or a list with commas is one cell per line.
+    const csv = parseDelimited(body, ',');
+    const width = csv[0]?.length ?? 0;
+    return csv.length > 1 && width > 1 && csv.every((row) => row.length === width) ? csv : tabbed;
 }
 
 /** Pasted text takes the type of the value it replaces: numbers stay numbers when the text parses, booleans follow `true`. */

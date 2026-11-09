@@ -99,3 +99,17 @@ describe('validateConfig row ids', () => {
         expect(check({ enableCellFlash: true }).join(' ')).toContain('getRowId');
     });
 });
+
+describe('validateConfig: edit history needs stable ids', () => {
+    const editable = { columns: [{ accessorKey: 'name' as const, header: 'N', editable: true, valueSetter: (r: Row) => ({ ...r }) }], enableEditHistory: true };
+    const check2 = (over: Partial<ConfigCheckInput<Row>>) => validateConfig({ ...ok, ...editable, ...over });
+    it('warns when undo could not find a row again', () => {
+        expect(check2({ data: [{ name: 'a' }] }).join(' ')).toContain('undo/redo cannot find the row');
+    });
+    it('is silent with row ids, a custom getRowId, history off, or no value setter', () => {
+        expect(check2({ data: [{ id: 1 }] })).toEqual([]);
+        expect(check2({ data: [{ name: 'a' }], getRowId: (r) => String(r.name) })).toEqual([]);
+        expect(check2({ data: [{ name: 'a' }], enableEditHistory: false })).toEqual([]);
+        expect(check2({ data: [{ name: 'a' }], columns: [{ accessorKey: 'name', header: 'N', editable: true, valueSetter: undefined }] }).join(' ')).not.toContain('undo');
+    });
+});

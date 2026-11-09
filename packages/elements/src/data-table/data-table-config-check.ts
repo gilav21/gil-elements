@@ -25,6 +25,8 @@ export interface ConfigCheckInput<T> {
     enableFloatingFilters?: boolean;
     enableRowSelection?: boolean;
     enableRowDrag?: boolean;
+    /** Undo/redo of edits; they find a row again by its id. */
+    enableEditHistory?: boolean;
 }
 
 const PREFIX = '[ge-data-table]';
@@ -63,6 +65,10 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     warn(
         c.enableSubRows && !stableIds,
         'enable-sub-rows is active without a custom getRowId and rows without an `id`. The default id is an object identity, which does not survive replacing rows; provide a stable unique id.',
+    );
+    warn(
+        c.enableEditHistory && !stableIds && c.columns.some((col) => col.editable && col.valueSetter),
+        'enable-edit-history is active on editable columns without a custom getRowId and rows without an `id`. A value setter returns a new row object, so the object-identity id no longer resolves and undo/redo cannot find the row; provide a stable unique id.',
     );
     warn(c.enableCellFlash && !stableIds, 'enable-cell-flash is active without a custom getRowId and rows without an `id`. Flash detection needs stable row ids across data updates.');
     warn(

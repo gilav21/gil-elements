@@ -136,6 +136,11 @@ describe('computeAggregateValue', () => {
         expect(computeAggregateValue(big, 'max')).toBe('299999');
         expect(computeAggregateValue(big, 'min')).toBe('0');
     });
+    it('reads a key that is itself a property before treating it as a path', () => {
+        const row = { 'pivot:2.5': 7, a: { b: 1 } };
+        expect(getCellValue(row, 'pivot:2.5')).toBe(7);
+        expect(getCellValue(row, 'a.b')).toBe(1);
+    });
     it('formats a Date as its ISO text, not a quoted JSON string', () => {
         expect(stringifyValue(new Date('2026-01-01T00:00:00.000Z'))).toBe('2026-01-01T00:00:00.000Z');
         expect(stringifyValue(new Date('nope'))).toBe('');
