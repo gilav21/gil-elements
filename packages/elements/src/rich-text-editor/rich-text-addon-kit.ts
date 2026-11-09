@@ -6,6 +6,7 @@ import {
     type RichTextAddonSetting,
     type RichTextAddonState,
 } from './rich-text-host.js';
+import { type AddonLocaleTable, resolveAddonLocale } from '../shared/addon-locale.js';
 import { Disposables } from './rich-text-registry.js';
 
 /** What an addon's `create` is given on every run: its normalised options and a bag of teardowns. */
@@ -52,14 +53,7 @@ export function defineAddon<O extends RichTextAddonOptions = RichTextAddonOption
 }
 
 /** A per-language dictionary table keyed by the editor's locale id; `en` is the fallback. */
-export type RichTextAddonLocaleTable<T extends object> = Readonly<Record<string, T | undefined>> & { readonly en: T };
+export type RichTextAddonLocaleTable<T extends object> = AddonLocaleTable<T>;
 
-/** An object override is used as it is, a string override picks its entry, otherwise the editor's locale id does. */
-export function resolveAddonLocale<T extends object>(
-    table: RichTextAddonLocaleTable<T>,
-    host: { readonly resolvedLocale: { readonly code: string } },
-    override?: string | T,
-): T {
-    if (typeof override === 'object') return override;
-    return table[override ?? host.resolvedLocale.code] ?? table.en;
-}
+// Shared with the data-table addon kit; the editor's addons keep importing it from here.
+export { resolveAddonLocale };
