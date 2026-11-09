@@ -32,10 +32,18 @@ describe('computeGridAria', () => {
         expect(aria.dataRowIndex(0)).toBe(122);
         expect(aria.dataRowIndex(2)).toBe(124);
     });
-    it('leaves aria-colindex off when columns are windowed, but still counts them', () => {
-        const aria = computeGridAria({ tree: false, headerRows: 1, totalDataRows: 5, columnCount: 30, columnsWindowed: true });
-        expect(aria.colIndex(0)).toBeNull();
+    it('numbers columns absolutely, windowed or not', () => {
+        const aria = computeGridAria({ tree: false, headerRows: 1, totalDataRows: 5, columnCount: 30 });
+        expect(aria.colIndex(0)).toBe(1);
+        expect(aria.colIndex(17)).toBe(18);
         expect(aria.colCount).toBe(30);
+    });
+    it('gives a retained row outside the window its absolute index, header and footer counted as the grid does', () => {
+        const aria = computeGridAria({ tree: false, headerRows: 1, totalDataRows: 10000, columnCount: 3, firstRenderedRow: 5000, footerRows: 1 });
+        expect(aria.retainedRowIndex(100)).toBe(102);
+        expect(aria.retainedRowIndex(9999)).toBe(10001);
+        expect(aria.rowCount).toBe(10002);
+        expect(aria.footerRowIndex()).toBe(10002);
     });
     it('treats NaN or negative counts as zero', () => {
         const aria = computeGridAria({ tree: false, headerRows: Number.NaN, totalDataRows: -4, columnCount: Number.NaN });

@@ -38,6 +38,7 @@ export class GeDataTableColumnHeader extends UiElement {
         enableSorting: { attribute: 'enable-sorting', converter: { fromAttribute: (value: string | null) => value !== 'false' } },
         sortIndex: { attribute: false },
         label: {},
+        shortcuts: {},
     };
 
     declare title: string;
@@ -47,6 +48,8 @@ export class GeDataTableColumnHeader extends UiElement {
     /** Zero-based position in a multi-sort chain; the badge shows `index + 1`. Null hides it. */
     declare sortIndex: number | null;
     declare label: string;
+    /** `aria-keyshortcuts` of the button: the keys that move this column. */
+    declare shortcuts: string;
 
     constructor() {
         super();
@@ -56,6 +59,7 @@ export class GeDataTableColumnHeader extends UiElement {
         this.enableSorting = true;
         this.sortIndex = null;
         this.label = '';
+        this.shortcuts = '';
     }
 
     private request(event: MouseEvent): void {
@@ -67,7 +71,7 @@ export class GeDataTableColumnHeader extends UiElement {
         if (!this.enableSorting) return html`<div part="base" data-slot="data-table-column-header"><div>${this.title}</div></div>`;
         const label = this.label || sortAriaLabel(this.title, this.direction, this.sortIndex, DATA_TABLE_LOCALES.en);
         return html`<div part="base" data-slot="data-table-column-header">
-            <ge-button variant="ghost" size="sm" aria-label=${label} @click=${this.request}>
+            <ge-button variant="ghost" size="sm" aria-label=${label} aria-keyshortcuts=${this.shortcuts || nothing} @click=${this.request}>
                 <span class="title">${this.title}</span>
                 ${chromeIcon(ICON[this.direction ?? ''] ?? 'chevrons-up-down', 'sm', 'sort-icon')}
                 ${this.sortIndex === null ? nothing : html`<span class="badge" aria-hidden="true">${this.sortIndex + 1}</span>`}

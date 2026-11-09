@@ -9,6 +9,10 @@ import { columnsView } from './data-table-grid-head.js';
 import { rowsView } from './data-table-grid-rows.js';
 import { windowView } from './data-table-grid-window.js';
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
+import type { DataTableDisplayRow, FlattenedTreeRow } from './data-table.types.js';
+
+/** The data row of a body item (a display row or a flattened tree row), or undefined for a group header. */
+export const dataRowOf = <T>(item: DataTableDisplayRow<T> | FlattenedTreeRow<T>): T | undefined => ('kind' in item ? (item.kind === 'data' ? item.row : undefined) : item.row);
 
 /** What the view functions read of the element beyond the core host. */
 export interface DataTableViewHost<T> extends DataTableCoreHost<T> {
@@ -30,7 +34,6 @@ export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
     const win = windowView(host);
     const { source, totalRows, ...rows } = rowsView(host);
     const showFooter = footer?.visible() ?? false;
-    const { colStart, colEnd } = win.window;
     return {
         ...columns,
         ...rows,
@@ -44,7 +47,6 @@ export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
             headerRows: 1,
             totalDataRows: (win.virtualTotalRows ?? totalRows) || 1,
             columnCount: columns.columns.length,
-            columnsWindowed: colEnd - colStart < columns.columns.length,
             footerRows: showFooter ? 1 : 0,
         }),
         footer: { visible: showFooter, values: footer?.values() ?? new Map(), rows: requireProvider(host, 'query').sortedData() },

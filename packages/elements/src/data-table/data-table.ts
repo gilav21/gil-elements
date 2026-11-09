@@ -623,6 +623,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
                                       <span>${c.header}</span>
                                   </div>`;
                               })}
+                              <button type="button" data-slot="data-table-columns-item" data-kind="show-all" @click=${() => requireProvider(this, 'columns').showAll()}>${locale.showAllColumns}</button>
                           </ge-popover-content>
                       </ge-popover>`
                     : nothing}

@@ -183,3 +183,146 @@ function lengthToPx(length: string, rootPx: number): number | null {
 export function columnMinWidthPx(col: { accessorKey?: PropertyKey; minWidth?: string }, rootPx = 16): number {
     return lengthToPx(resolveColumnMinWidth(col), rootPx) ?? Number.parseFloat(DEFAULT_COLUMN_MIN_WIDTH);
 }
+
+// ---- the window of a whole body (rows, columns, retained rows) ---------------------------------------------------------
+
+export interface BodyWindowInput {
+    /** Rows of the list the window slices. */
+    total: number;
+    scrollTop: number;
+    viewportHeight: number;
+    /** Fixed row height, or the estimate of unmeasured rows when `prefix` is given. */
+    rowHeight: number;
+    /** Top edge of every row (`sums[total]` is the full height), for variable heights. */
+    prefix?: Float64Array;
+    rowBuffer: number;
+    /** Columns of the table, pinned or not. */
+    columnCount: number;
+    /** Absolute index of the first non-pinned column. */
+    middleFirst: number;
+    /** Widths of the non-pinned columns, in drawn order. */
+    middleWidths: readonly number[];
+    /** Distance scrolled from the inline-start edge (the absolute `scrollLeft`, so right-to-left reads like left-to-right). */
+    scrollInline: number;
+    viewportWidth: number;
+    columnBuffer: number;
+    /** Rows kept drawn outside the window, by owner. */
+    retained: Iterable<Iterable<number>>;
+}
+
+export interface BodyWindowShape {
+    start: number;
+    end: number;
+    padStart: number;
+    padEnd: number;
+    colPadStart: number;
+    colPadEnd: number;
+    colStart: number;
+    colEnd: number;
+    retained: readonly number[];
+}
+
+/** Rows that stay drawn for their owners: absolute, ascending, existing, and not already inside `start..end`. */
+export function retainedRows(owners: Iterable<Iterable<number>>, start: number, end: number, total: number): number[] {
+    const out = new Set<number>();
+    for (const rows of owners) for (const row of rows) if (Number.isInteger(row) && row >= 0 && row < total && (row < start || row >= end)) out.add(row);
+    return [...out].sort((a, b) => a - b);
+}
+
+/** What the body draws for a scroll position: a row window with its padding, a window of the middle columns, the retained rows. */
+export function computeBodyWindow(i: BodyWindowInput): BodyWindowShape {
+    const total = Math.max(0, Math.floor(i.total));
+    let start: number;
+    let end: number;
+    let padStart: number;
+    let padEnd: number;
+    if (i.prefix) {
+        const r = computeVariableRowRange(i.scrollTop, i.viewportHeight, () => i.rowHeight, total, i.rowBuffer, i.prefix);
+        ({ start, end } = r);
+        padStart = r.paddingTop;
+        padEnd = r.paddingBottom;
+    } else {
+        ({ start, end } = computeRowRange(i.scrollTop, i.viewportHeight, i.rowHeight, total, i.rowBuffer));
+        padStart = start * i.rowHeight;
+        padEnd = (total - end) * i.rowHeight;
+    }
+    const range = computeColumnRange(i.scrollInline, i.viewportWidth, i.middleWidths, i.columnBuffer);
+    const whole = range.start === 0 && range.end === i.middleWidths.length;
+    return {
+        start,
+        end,
+        padStart,
+        padEnd,
+        colPadStart: range.paddingLeft,
+        colPadEnd: range.paddingRight,
+        colStart: whole ? 0 : i.middleFirst + range.start,
+        colEnd: whole ? i.columnCount : i.middleFirst + range.end,
+        retained: retainedRows(i.retained, start, end, total),
+    };
+}
+
+export function sameWindow(a: BodyWindowShape, b: BodyWindowShape): boolean {
+    return (
+        a.start === b.start &&
+        a.end === b.end &&
+        a.colStart === b.colStart &&
+        a.colEnd === b.colEnd &&
+        a.padStart === b.padStart &&
+        a.padEnd === b.padEnd &&
+        a.colPadStart === b.colPadStart &&
+        a.colPadEnd === b.colPadEnd &&
+        a.retained.length === b.retained.length &&
+        a.retained.every((row, n) => row === b.retained[n])
+    );
+}
+
+// ---- scrolling to a target ---------------------------------------------------------------------------------------------
+
+/**
+ * The scroll offset that brings `[start, end)` (content coordinates) inside the band the viewport really shows, which is
+ * the viewport minus `lead` (the sticky header, the pinned columns before) and `trail` (the footer, the pinned columns
+ * after), moving as little as possible: unchanged when it already fits, aligned to the near edge otherwise. An item
+ * larger than the band is aligned at its start.
+ */
+export function revealOffset(start: number, end: number, scroll: number, viewport: number, lead: number, trail: number): number {
+    if (start < scroll + lead) return Math.max(0, start - lead);
+    const bottom = scroll + viewport - trail;
+    if (end > bottom) return Math.max(0, Math.min(start - lead, end - viewport + trail));
+    return scroll;
+}
+
+/** `value` kept within `[0, max]`; a non-finite value reads as 0. */
+export const clampScroll = (value: number, max: number): number => Math.min(Math.max(0, Number.isFinite(value) ? value : 0), Math.max(0, max));
+
+/** The first row whose far edge is past `scroll`: the first one the viewport shows (`total` when none). */
+export function firstRowAt(scroll: number, rowHeight: number, total: number, prefix?: Float64Array): number {
+    if (prefix) return rowsEndingBefore(prefix, scroll, total);
+    return rowHeight > 0 ? Math.min(total, Math.floor(Math.max(0, scroll) / rowHeight)) : 0;
+}
+
+/** The `px` of a computed custom property or length, or null when it is not a plain pixel number. */
+export function parsePx(value: string): number | null {
+    const match = /^\s*(-?\d*\.?\d+)px\s*$/.exec(value);
+    return match ? Number(match[1]) : null;
+}
+
+/** Whether a height changed enough to be a measurement and not layout noise (page zoom rounds to fractions of a pixel). */
+export const heightChanged = (from: number, to: number): boolean => Math.abs(to - from) >= 0.5;
+
+/** Where retained rows sit (px from the top of the body), by window object; read by the row renderer. */
+const retainedTops = new WeakMap<object, ReadonlyMap<number, number>>();
+
+export function setRetainedTops(window: object, tops: ReadonlyMap<number, number>): void {
+    retainedTops.set(window, tops);
+}
+
+/** The offset of retained row `index` for the window the renderer was given (0 when unknown). */
+export const retainedTopOf = (window: object, index: number): number => retainedTops.get(window)?.get(index) ?? 0;
+
+/**
+ * Whether the drawn rows `current` still cover the rows the viewport shows (`tight`, a window with no buffer) with at
+ * least `margin` spare rows on each side (or the list's edge), so a small scroll does not redraw.
+ */
+export function windowCovers(current: { start: number; end: number }, tight: { start: number; end: number }, margin: number, total: number): boolean {
+    return (current.start === 0 || current.start <= tight.start - margin) && (current.end === total || current.end >= tight.end + margin);
+}

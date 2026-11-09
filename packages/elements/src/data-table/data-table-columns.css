@@ -3,3 +3,67 @@
  * `ge-data-table [data-slot=...]`: they are appended inside the closing brace of the `ge-data-table` layer of
  * data-table.css (see data-table-styles.ts), so do not wrap them in `@layer`.
  */
+
+/* Resize handle: wave 3 centred it on the edge, but the head clips overflow, so only its inner half could be hit. Keep it inside. */
+ge-data-table [data-slot="data-table-resize-handle"] {
+    width: 0.75rem;
+    translate: none;
+    outline-offset: -2px;
+}
+ge-data-table [data-slot="data-table-resize-handle"]:dir(rtl) {
+    translate: none;
+}
+ge-data-table [data-slot="data-table-resize-line"] {
+    left: auto;
+    inset-inline-end: 0;
+    translate: none;
+}
+ge-data-table [data-slot="data-table-resize-handle"]:focus-visible {
+    outline: 2px solid var(--ring, var(--primary));
+}
+ge-data-table [data-slot="data-table-resize-handle"]:focus-visible > [data-slot="data-table-resize-line"] {
+    background-color: color-mix(in oklab, var(--primary) 70%, transparent);
+}
+@media (pointer: coarse) {
+    ge-data-table [data-slot="data-table-resize-handle"] {
+        width: 1.5rem;
+    }
+}
+/* While a column is resized or dragged the pointer keeps its look over whatever it crosses, and nothing gets selected. */
+ge-data-table [data-slot="data-table-viewport"][data-table-resizing] {
+    cursor: col-resize;
+    user-select: none;
+}
+ge-data-table [data-slot="data-table-viewport"][data-table-dragging] {
+    cursor: grabbing;
+    user-select: none;
+}
+
+/* Reorder: the picked-up column dims, a bar marks the edge the drop lands on. */
+ge-data-table [data-slot="table-head"][data-draggable] {
+    user-select: none;
+}
+ge-data-table [data-slot="table-cell"][data-dragging] {
+    opacity: 0.5;
+}
+ge-data-table [data-slot="data-table-drop-indicator"][data-edge] {
+    inset: 0 auto;
+    width: 3px;
+    border: 0;
+    border-radius: 1px;
+    background-color: var(--primary);
+}
+ge-data-table [data-slot="data-table-drop-indicator"][data-edge="start"] {
+    inset-inline-start: 0;
+}
+ge-data-table [data-slot="data-table-drop-indicator"][data-edge="end"] {
+    inset-inline-end: 0;
+}
+
+/* Auto-fit measures in place: for one synchronous read the column's cells size to their content (no paint happens). */
+ge-data-table [data-measuring] [data-slot][data-measure] {
+    flex: 0 0 max-content;
+    width: max-content;
+    min-width: 0;
+    max-width: none;
+}

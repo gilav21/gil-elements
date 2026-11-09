@@ -8,6 +8,7 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { type GridAria } from './data-table-aria.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
+import { columnParts, columnSpacer } from './data-table-grid-window.js';
 import { renderHeadCells, type ColumnsView } from './data-table-grid-head.js';
 import { renderRows, type RowsView } from './data-table-grid-rows.js';
 import type { WindowView } from './data-table-grid-window.js';
@@ -38,10 +39,15 @@ function footerContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
     return text;
 }
 
+function footerCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number): TemplateResult {
+    return html`<div data-slot="table-cell" role="gridcell" aria-colindex=${v.aria.colIndex(n)} data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(c.accessorKey) ? specialSlotOf(c) : nothing} style=${cellVarsStyle(c, n)}>${footerContent(v, c)}</div>`;
+}
+
+// package B: window (footer cells follow the windowed columns)
 function footer<T>(v: GridView<T>): unknown {
     if (!v.footer.visible) return nothing;
     return html`<div data-slot="table-footer" role="rowgroup"><div data-slot="table-row" role="row" aria-rowindex=${v.aria.footerRowIndex()}>
-        ${v.columns.map((c, n) => html`<div data-slot="table-cell" role="gridcell" aria-colindex=${v.aria.colIndex(n) ?? nothing} data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(c.accessorKey) ? specialSlotOf(c) : nothing} style=${cellVarsStyle(c, n)}>${footerContent(v, c)}</div>`)}${v.hasFlexible ? nothing : html`<div data-slot="table-cell" role="presentation" aria-hidden="true"></div>`}
+        ${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : footerCell(v, p.column, p.n)))}${v.hasFlexible ? nothing : html`<div data-slot="table-cell" role="presentation" aria-hidden="true"></div>`}
     </div></div>`;
 }
 

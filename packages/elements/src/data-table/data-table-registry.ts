@@ -84,7 +84,7 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
     spec('filter-ui', { needs: ['columns'], uses: ['query'], reads: ['columns', 'locale'] }),
     spec('ai', { needs: ['query', 'columns'], uses: ['interaction'], reads: ['locale'] }),
     spec('diagnostics', { uses: ['virtual', 'query'], reads: ['config', 'rows'] }),
-    spec('aria', { needs: ['query', 'columns', 'virtual'], uses: ['interaction'], reads: ['rows', 'columns', 'selection', 'cell', 'viewport', 'locale'] }),
+    spec('aria', { needs: ['query', 'columns'], uses: ['interaction', 'virtual'], reads: ['rows', 'columns', 'selection', 'cell', 'viewport', 'locale'] }),
     spec('addon-host', { provides: ['addons'], uses: ['query', 'columns', 'interaction'], reads: ['locale'] }),
 ];
 

@@ -123,3 +123,20 @@ export function duplicateColumnKeys<T>(columns: readonly ColumnDef<T>[]): string
 
 /** Special columns draw their own content (checkbox, expander, actions) and are never data. */
 export const isSpecialColumn = <T>(column: ColumnDef<T>): boolean => isSpecialColumnKey(column.accessorKey);
+
+/** Whether a header can be dragged or moved: a data column that did not opt out. */
+export const isReorderable = <T>(column: ColumnDef<T>): boolean => !isSpecialColumn(column) && column.enableReordering !== false;
+
+/** The width in px of a `<n>px` string, else null (`auto`, `rem`, `%` and `calc()` are not known without layout). */
+export function pxOf(width: string): number | null {
+    const match = /^\s*(\d*\.?\d+)px\s*$/.exec(width);
+    return match ? Number(match[1]) : null;
+}
+
+export const HEAD_SELECTOR = '[data-slot="table-head"]';
+
+/** The head cell and the rendered body cells of column `key` (footer cells carry no column attribute). */
+export function columnCells(root: ParentNode, key: string): HTMLElement[] {
+    const name = CSS.escape(key);
+    return [...root.querySelectorAll<HTMLElement>(`${HEAD_SELECTOR}[data-column-id="${name}"], [data-slot="table-cell"][data-column="${name}"]`)];
+}

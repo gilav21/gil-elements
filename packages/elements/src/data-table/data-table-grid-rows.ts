@@ -1,22 +1,29 @@
 /**
- * The rows of the body and the view of the row list they read. Package A (rows) owns this file; the tree, group and
- * detail rows join it. A row is drawn from `body.items.slice(window.start, window.end)` and always carries its ABSOLUTE
- * index, so `data-row-index` and `aria-rowindex` stay right when the list is windowed.
+ * The rows of the body and the view of the row list they read. Package A (rows) owns this file. A row is drawn from
+ * `body.items.slice(window.start, window.end)`. Two counters run side by side and are never the same thing:
+ * `data-row-index` is the DRAWN index of a data row (group headers and detail rows are not counted; it addresses
+ * `renderedRowAt(i)` in every mode), `aria-rowindex` is the ordinal of every real row (group headers, detail rows and
+ * data rows alike), starting at the window's first item.
  */
 import { html, nothing, type TemplateResult } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
+import { treeRowAria } from './data-table-aria.js';
 import { cellText, styleText } from './data-table-cells.js';
 import { resolveCellKind } from './data-table-cell-kind.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
+import { allNodesExpanded, isFlagged, treeHostKey } from './data-table-expansion.js';
+import { isGroupingActive } from './data-table-group.js';
 import type { BodyView, GridView } from './data-table-grid.js';
-import { specialCell } from './data-table-grid-special.js';
+import { detailId, specialCell, treeHostCell } from './data-table-grid-special.js';
 import { requireProvider } from './data-table-host.js';
 import { chromeIcon, ensureIconElement } from './data-table-icons.js';
 import type { FormattingService } from './data-table-providers.js';
-import type { DataTableViewHost } from './data-table-view.js';
-import type { ColumnDef, EnhancedColumnDef } from './data-table.types.js';
-import { getCellValue, isSpecialColumnKey, specialSlotOf } from './data-table.utils.js';
+import { columnParts, columnSpacer } from './data-table-grid-window.js';
+import { retainedTopOf } from './data-table-virtual.js';
+import { type DataTableViewHost, dataRowOf } from './data-table-view.js';
+import type { ColumnDef, DataTableDisplayRow, EnhancedColumnDef, FlattenedTreeRow, GroupRow } from './data-table.types.js';
+import { getCellValue, isSpecialColumnKey, specialSlotOf, stringifyValue } from './data-table.utils.js';
 
 export interface RowsView<T> {
     /** The body list before windowing: the rows of the page as drawn (the whole sorted or visible list under virtual scroll). */
@@ -32,20 +39,68 @@ export interface RowsView<T> {
     formatting: FormattingService<T> | undefined;
     /** The empty state: a `renderEmpty` result, or the consumer's `empty` slot node. */
     empty: unknown;
+    /** Per-table id part of a detail row's `id`. */
+    uid: string;
+    /** A cell-interaction controller exists: the grid keeps one tab stop, so in-cell controls leave the tab order. */
+    roving: boolean;
+    /** `enable-row-expansion`: an open row is followed by its detail row. */
+    detail: boolean;
+    renderDetail: ((row: T) => unknown) | undefined;
+    /** Answers what a row that spans every column draws, or `undefined` / `null` / `false` for an ordinary row. */
+    renderFullWidth: ((row: T) => unknown) | undefined;
+    /** The key of the tree-host column (expander and indentation), or null outside tree mode. */
+    treeHost: string | null;
+    selectionHeader: { checked: boolean; indeterminate: boolean };
+    /** Every filtered row's detail row is open (header expander). */
+    allExpanded: boolean;
+    /** Every node with children is open (tree-host header). */
+    allSubRowsExpanded: boolean;
+    isIndeterminate(id: string): boolean;
 }
 
+type BodyItem<T> = DataTableDisplayRow<T> | FlattenedTreeRow<T>;
+
+/** The data row of a body item, or `undefined` for a group header. */
+const rowOf = <T>(item: BodyItem<T>): T | undefined => dataRowOf(item);
+
+const uids = new WeakMap<object, string>();
+let nextUid = 0;
+const uidOf = (owner: object): string => {
+    let uid = uids.get(owner);
+    if (uid === undefined) uids.set(owner, (uid = String(++nextUid)));
+    return uid;
+};
+
 export function rowsView<T>(host: DataTableViewHost<T>): RowsView<T> {
-    const items = requireProvider(host, 'query').displayRows();
+    const query = requireProvider(host, 'query');
+    const { config, model } = host;
+    const tree = config.enableSubRows;
+    const grouped = isGroupingActive(config.groupBy, tree, host.provider('virtual')?.active() ?? false);
+    const items: BodyView<T>['items'] = tree ? query.treeRows() : query.displayRows();
+    const expanded = model.get('expandedRows');
+    const selection = host.provider('selection');
+    const detail = config.enableRowExpansion;
+    const open = detail ? (items as readonly BodyItem<T>[]).filter((item) => { const row = rowOf(item); return row !== undefined && isFlagged(expanded, config.getRowId(row)); }).length : 0;
     return {
-        source: { mode: 'flat', items },
-        totalRows: items.length,
-        selectable: host.config.enableRowSelection,
-        selection: host.model.get('rowSelection'),
-        expanded: host.model.get('expandedRows'),
-        getRowId: (row) => host.config.getRowId(row),
+        source: { mode: tree ? 'tree' : grouped ? 'group' : 'flat', items },
+        totalRows: items.length + open,
+        selectable: config.enableRowSelection,
+        selection: model.get('rowSelection'),
+        expanded,
+        getRowId: (row) => config.getRowId(row),
         isDisabled: (row) => host.isDisabled(row),
         formatting: host.provider('formatting'),
         empty: items.length === 0 ? (host.renderEmpty?.() ?? host.slottedNodes('empty')) : undefined,
+        uid: uidOf(host.root),
+        roving: host.provider('interaction') !== undefined,
+        detail,
+        renderDetail: host.renderDetail,
+        renderFullWidth: host.renderFullWidth,
+        treeHost: tree ? treeHostKey(requireProvider(host, 'columns').enhancedColumns()) : null,
+        selectionHeader: config.enableRowSelection ? (selection?.header() ?? { checked: false, indeterminate: false }) : { checked: false, indeterminate: false },
+        allExpanded: detail && (host.provider('expansion')?.isAllExpanded() ?? false),
+        allSubRowsExpanded: tree && allNodesExpanded(model.get('data'), config.getRowId, config.getChildren, model.get('subRowExpandedRows'), config.subRowDefaultExpanded ? -1 : 0),
+        isIndeterminate: (id) => selection?.isIndeterminate(id) ?? false,
     };
 }
 
@@ -63,9 +118,7 @@ function formattedText<T>(v: GridView<T>, c: ColumnDef<T>, row: T): unknown {
           : nothing}<span data-slot="cell-text">${text}</span></span>`;
 }
 
-function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number): unknown {
-    const special = specialCell(v, c, row);
-    if (special !== undefined) return special;
+function plainContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number): unknown {
     switch (resolveCellKind(c)) {
         case 'tag':
             return componentCell(c.component as string, c.componentInputs?.(row), c.componentOutputs?.(row));
@@ -76,23 +129,73 @@ function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInde
     }
 }
 
-function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T, rowIndex: number): TemplateResult {
+function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined): unknown {
+    const special = specialCell(v, c, row);
+    if (special !== undefined) return special;
+    const content = plainContent(v, c, row, rowIndex);
+    return node && String(c.accessorKey) === v.treeHost ? treeHostCell(v, node, content) : content;
+}
+
+function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined): TemplateResult {
     const key = String(c.accessorKey);
     const focused = v.focusedCell?.rowIndex === rowIndex && v.focusedCell.columnKey === key;
     return html`<div data-slot="table-cell" role="gridcell" aria-colindex=${v.aria.colIndex(n) ?? nothing} data-column=${key} data-row-index=${rowIndex}
         data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(key) ? specialSlotOf(c) : nothing}
-        data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, row, rowIndex)}</div>`;
+        data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, row, rowIndex, node)}</div>`;
 }
 
 const filler = html`<div data-slot="table-cell" role="presentation" aria-hidden="true" data-border></div>`;
 
-function dataRow<T>(v: GridView<T>, row: T, i: number): TemplateResult {
+/** A cell that spans the whole row (full-width rows, detail rows, group headers): not an addressable data cell, and it takes only the bottom border (data-table.css). */
+const wideCell = <T>(v: GridView<T>, content: unknown): TemplateResult =>
+    html`<div data-slot="table-cell" role="gridcell" aria-colspan=${v.aria.colCount} data-width="full">${content}</div>`;
+
+const claims = (value: unknown): boolean => value !== undefined && value !== null && value !== false;
+
+/** The inline style of a data row: its tree depth, and for a row kept drawn outside the window its offset (package B: window). */
+function rowStyle<T>(node: FlattenedTreeRow<T> | undefined, retainedTop: number | undefined): string | typeof nothing {
+    const style = `${node ? `--ge-dt-depth:${node.depth};` : ''}${retainedTop === undefined ? '' : `--ge-dt-retained-top:${retainedTop}px`}`;
+    return style || nothing;
+}
+
+function dataRow<T>(v: GridView<T>, row: T, i: number, ordinal: number, node: FlattenedTreeRow<T> | undefined, retainedTop?: number): TemplateResult {
     const id = v.getRowId(row);
     const selected = v.selection[id] === true;
     const disabled = v.isDisabled(row);
-    return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(i)} aria-selected=${v.selectable ? String(selected) : nothing}
-        data-kind="data" data-row-index=${i} data-row-id=${id} data-state=${selected ? 'selected' : nothing} ?data-disabled=${disabled} aria-disabled=${disabled ? 'true' : nothing}>
-        ${v.columns.map((c, n) => bodyCell(v, c, n, row, i))}${v.hasFlexible ? nothing : filler}
+    const level = node ? treeRowAria(node) : null;
+    const wide = v.renderFullWidth?.(row);
+    return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(ordinal)} aria-selected=${v.selectable ? String(selected) : nothing}
+        aria-level=${level?.level ?? nothing} aria-expanded=${level?.expanded == null ? nothing : String(level.expanded)} aria-setsize=${node?.setSize ?? nothing} aria-posinset=${node?.posInSet ?? nothing}
+        data-kind="data" data-row-index=${i} data-row-id=${id} data-depth=${node?.depth ?? nothing} style=${rowStyle(node, retainedTop)} ?data-retained=${retainedTop !== undefined}
+        data-state=${selected ? 'selected' : nothing} ?data-disabled=${disabled} aria-disabled=${disabled ? 'true' : nothing}>
+        ${claims(wide) ? wideCell(v, wide) : html`${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : bodyCell(v, p.column, p.n, row, i, node)))}${v.hasFlexible ? nothing : filler}`}
+    </div>`;
+}
+
+function safeJson(value: unknown): string {
+    try {
+        return JSON.stringify(value, null, 2) ?? String(value);
+    } catch {
+        return String(value);
+    }
+}
+
+/** The row after an open data row: one full-width cell with `renderDetail`'s content, else the row as JSON. */
+function detailRow<T>(v: GridView<T>, row: T, id: string, i: number, ordinal: number): TemplateResult {
+    const content = v.renderDetail?.(row) ?? html`<pre data-slot="data-table-detail-json">${safeJson(row)}</pre>`;
+    return html`<div data-slot="table-row" role="row" id=${detailId(v.uid, id)} aria-rowindex=${v.aria.dataRowIndex(ordinal)} data-kind="detail" data-detail-for=${i} data-row-id=${id}>${wideCell(v, content)}</div>`;
+}
+
+/** A group header: only its toggle button is focusable (a click anywhere on the row toggles too, through the delegated listener). */
+function groupRow<T>(v: GridView<T>, group: GroupRow, ordinal: number): TemplateResult {
+    const open = !group.collapsed;
+    const label = group.groupValue === null || group.groupValue === undefined ? '' : stringifyValue(group.groupValue);
+    const header = (key: string): string => v.columns.find((c) => String(c.accessorKey) === key)?.header ?? key;
+    return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(ordinal)} data-kind="group" data-group-key=${group.groupKey} aria-expanded=${open ? 'true' : 'false'}>
+        ${wideCell(
+            v,
+            html`<div data-slot="data-table-group-label"><button type="button" data-slot="data-table-icon-button" data-toggle aria-label=${open ? v.locale.collapseGroup : v.locale.expandGroup} aria-expanded=${open ? 'true' : 'false'}>${chromeIcon('chevron-right', 'xs')}</button><span data-slot="data-table-text">${label}</span><span data-slot="data-table-group-meta">(${group.count})</span>${[...group.aggregates].map(([key, value]) => html`<span data-slot="data-table-group-meta">${header(key)}: ${value}</span>`)}</div>`,
+        )}
     </div>`;
 }
 
@@ -104,19 +207,36 @@ function emptyRow<T>(v: GridView<T>): TemplateResult {
 
 /** The decorative last row of the body (Angular's stretching row): `aria-hidden`, never counted. */
 function spacerRow<T>(v: GridView<T>): TemplateResult {
-    return html`<div data-slot="table-row" data-kind="spacer" aria-hidden="true">${v.columns.map((c, n) => html`<div data-slot="table-cell" data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} style=${cellVarsStyle(c, n)}></div>`)}</div>`;
+    return html`<div data-slot="table-row" data-kind="spacer" aria-hidden="true">${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : html`<div data-slot="table-cell" data-width=${p.column._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${p.column._pin ?? nothing} style=${cellVarsStyle(p.column, p.n)}></div>`))}</div>`;
 }
 
-/** The data rows of the window, each with its absolute index. */
-function windowRows<T>(v: GridView<T>): { row: T; index: number }[] {
+/** The rows of the window as keyed templates: a group header, a data row, and the detail row of an open one. */
+function entries<T>(v: GridView<T>): { key: string; template: TemplateResult }[] {
     const { items, window } = v.body;
-    return items.slice(window.start, window.end).flatMap((item, offset) => {
-        const row = 'kind' in item ? (item.kind === 'data' ? item.row : undefined) : item.row;
-        return row === undefined ? [] : [{ row, index: window.start + offset }];
-    });
+    const out: { key: string; template: TemplateResult }[] = [];
+    let ordinal = window.start;
+    for (const [offset, item] of (items.slice(window.start, window.end) as readonly BodyItem<T>[]).entries()) {
+        if ('kind' in item && item.kind === 'group') {
+            out.push({ key: `g:${item.groupKey}`, template: groupRow(v, item, ordinal++) });
+            continue;
+        }
+        const row = item.row;
+        const index = 'kind' in item ? item.index : window.start + offset;
+        const id = v.getRowId(row);
+        out.push({ key: `r:${id}`, template: dataRow(v, row, index, ordinal++, 'kind' in item ? undefined : item) });
+        if (v.detail && isFlagged(v.expanded, id)) out.push({ key: `d:${id}`, template: detailRow(v, row, id, index, ordinal++) });
+    }
+    // package B: window (rows kept drawn outside the window, e.g. the focused one, out of flow at their own offset)
+    for (const i of window.retained) {
+        const item = items[i] as BodyItem<T> | undefined;
+        const row = item && dataRowOf(item);
+        if (row === undefined || item === undefined) continue;
+        out.push({ key: `r:${v.getRowId(row)}`, template: dataRow(v, row, i, i, 'kind' in item ? undefined : item, retainedTopOf(window, i)) });
+    }
+    return out;
 }
 
 /** Everything inside `[data-slot=table-body]`: the rows of the window (or the empty state), then the stretching row. */
 export function renderRows<T>(v: GridView<T>): TemplateResult {
-    return html`${v.body.items.length === 0 ? emptyRow(v) : repeat(windowRows(v), (r) => v.getRowId(r.row), (r) => dataRow(v, r.row, r.index))}${spacerRow(v)}`;
+    return html`${v.body.items.length === 0 ? emptyRow(v) : repeat(entries(v), (e) => e.key, (e) => e.template)}${spacerRow(v)}`;
 }
