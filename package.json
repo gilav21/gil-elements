@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "pnpm -r --filter './packages/*' run build",
+    "build": "pnpm -r --filter \"./packages/*\" run build",
     "typecheck": "tsc -p packages/base --noEmit && tsc -p packages/elements --noEmit && tsc -p apps/demo --noEmit",
     "test": "vitest --run",
     "test:coverage": "vitest --run --coverage --coverage.reportOnFailure",
