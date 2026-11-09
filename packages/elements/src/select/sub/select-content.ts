@@ -136,9 +136,9 @@ export class GeSelectContent extends UiElement {
             event.preventDefault();
             rows[current]?.click();
         } else if (event.key === 'Tab') {
-            // The list is not part of the page's tab order: Tab closes it and focus goes back to the trigger.
-            event.preventDefault();
-            this.select?.hide();
+            // The list is not part of the page's tab order. Focus goes back to the trigger now, without committing the
+            // highlighted row (only Enter and Space commit), and the same Tab press carries on from there: one Tab leaves the select.
+            this.select?.hide({ restoreFocus: 'now' });
         }
     };
 

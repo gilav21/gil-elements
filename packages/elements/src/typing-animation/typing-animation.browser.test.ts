@@ -134,9 +134,35 @@ describe('ge-typing-animation', () => {
         await advance(el, 10);
         expect(shown(el)).toBe('abcd');
 
+        // Emptied: the text is cleared and nothing runs; filled again, it starts over from the first phrase.
         el.strings = [];
         await advance(el, 5000);
-        expect(shown(el)).toBe('abcd');
+        expect(shown(el)).toBe('');
+        el.strings = ['xy'];
+        await advance(el, 0);
+        expect(shown(el)).toBe('x');
+        await advance(el, 10);
+        expect(shown(el)).toBe('xy');
+    });
+
+    it('starts again when the list is replaced by one shorter than the phrase being typed', async () => {
+        const el = await typing('type-speed="10" delete-speed="10" pause-duration="10"', ['a', 'b', 'c']);
+        for (let i = 0; i < 400 && shown(el) !== 'c'; i++) await advance(el, 10);
+        expect(shown(el)).toBe('c');
+        el.strings = ['z'];
+        await advance(el, 0);
+        // Typed at once, from the start of the new list (the run carries on after the short pause).
+        expect(shown(el)).toBe('z');
+    });
+
+    it('under reduced motion a replaced list shows its own first phrase', async () => {
+        vi.spyOn(globalThis, 'matchMedia').mockImplementation((query) => ({ matches: query.includes('reduce'), media: query, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, onchange: null, dispatchEvent: () => false }) as MediaQueryList);
+        const el = await typing('', ['A', 'B']);
+        expect(shown(el)).toBe('A');
+        el.strings = ['C', 'D'];
+        await advance(el, 0);
+        expect(shown(el)).toBe('C');
+        vi.restoreAllMocks();
     });
 
     it('shows the first phrase at once and runs nothing under reduced motion, and starts nothing without phrases', async () => {

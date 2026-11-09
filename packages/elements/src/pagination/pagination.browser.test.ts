@@ -138,6 +138,19 @@ describe('ge-pagination', () => {
         expect((await axe.run(page)).violations).toEqual([]);
     });
 
+    it('scales previous/next with the button density, composed or built', async () => {
+        const custom = await mount('<div style="--density-button: 1.5"><ge-pagination-previous></ge-pagination-previous><ge-pagination-next></ge-pagination-next></div>');
+        const built = await mount('<div style="--density-button: 1.5"><ge-pagination total-pages="5" current-page="2"></ge-pagination></div>');
+        await Promise.all([...custom.children[0]!.children].map((el) => (el as HTMLElement & { updateComplete: Promise<boolean> }).updateComplete));
+        await settle(built);
+        const measure = (el: Element) => {
+            const style = getComputedStyle(press(el));
+            return [style.height, style.paddingLeft, style.paddingTop];
+        };
+        for (const el of custom.querySelectorAll('ge-pagination-previous, ge-pagination-next')) expect(measure(el)).toEqual(['54px', '24px', '12px']);
+        for (const el of pagination(built).shadowRoot!.querySelectorAll('ge-pagination-previous, ge-pagination-next')) expect(measure(el)).toEqual(['54px', '24px', '12px']);
+    });
+
     it('scales the link size with the button density token and mirrors the arrows in right-to-left text', async () => {
         const page = await mount(`<div style="--density-button: 1.5"><ge-pagination-link>1</ge-pagination-link></div><div dir="rtl"><ge-pagination-previous></ge-pagination-previous></div>`);
         const link = page.querySelector('ge-pagination-link')!;

@@ -277,6 +277,46 @@ describe('ge-navigation-menu', () => {
         expect(at()).toBe(button(page, 'learn-trigger'));
     });
 
+    it('leaves the arrow keys to a control in the panel that is not one of its links', async () => {
+        const page = await mount(MARKUP());
+        const field = document.createElement('input');
+        field.setAttribute('aria-label', 'Search the docs');
+        el(page, 'learn-panel').append(field);
+        button(page, 'learn-trigger').focus();
+        await key(page, '{ArrowDown}');
+        field.focus();
+        for (const keys of ['{ArrowDown}', '{ArrowUp}', '{Home}', '{End}']) {
+            await key(page, keys);
+            expect(at()).toBe(field);
+        }
+    });
+
+    it('still enters the links with Down from the panel itself in a data-driven menu, where the event is retargeted to the host', async () => {
+        const page = await mount('<div style="padding:20px 100px"><ge-navigation-menu id="m"></ge-navigation-menu></div>');
+        const menu = page.querySelector<GeNavigationMenu>('#m')!;
+        menu.items = [{ label: 'Guides', children: [{ title: 'Intro', href: '#intro' }, { title: 'Install', href: '#install' }] }];
+        await settle(page);
+        const trigger = menu.shadowRoot!.querySelector('ge-navigation-menu-trigger')!;
+        const panel = menu.shadowRoot!.querySelector<HTMLElement>('ge-navigation-menu-content')!;
+        panel.tabIndex = -1;
+        trigger.shadowRoot!.querySelector('button')!.focus();
+        await key(page, '{Enter}');
+        panel.focus();
+        await key(page, '{ArrowDown}');
+        expect(at()).toBe(menu.shadowRoot!.querySelector('ge-navigation-menu-content ge-navigation-menu-link')!.shadowRoot!.querySelector('a'));
+    });
+
+    it('still enters the links with Down when the panel itself holds focus', async () => {
+        const page = await mount(MARKUP());
+        const panel = el(page, 'learn-panel');
+        panel.tabIndex = -1;
+        button(page, 'learn-trigger').focus();
+        await key(page, '{Enter}');
+        panel.focus();
+        await key(page, '{ArrowDown}');
+        expect(at()).toBe(el(page, 'intro').shadowRoot!.querySelector('a'));
+    });
+
     it('closes the panel when Tab leaves its item, and keeps it open under a pointer that drifts away while the keyboard is in it', async () => {
         const page = await mount(MARKUP());
         button(page, 'learn-trigger').focus();

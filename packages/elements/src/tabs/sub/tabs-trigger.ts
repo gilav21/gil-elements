@@ -68,6 +68,8 @@ export class GeTabsTrigger extends UiElement {
 
     private readonly onKeydown = (event: KeyboardEvent) => {
         if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        // Alt+Arrow is history navigation, Ctrl/Cmd+Arrow word or page movement: none of them moves the tab.
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
         event.preventDefault();
         this.tabs?.move(this.value, event.key);
     };

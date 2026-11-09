@@ -131,6 +131,18 @@ describe('ge-tabs', () => {
         expect([document.activeElement, tabs(page).value, picks]).toEqual([account, 'account', ['team', 'billing', 'account', 'billing', 'account']]);
     });
 
+    it('leaves a modified arrow or Home alone: only a plain key moves the tab', async () => {
+        const page = await mount(`<ge-tabs value="account"><ge-tabs-list><ge-tabs-trigger value="account">Account</ge-tabs-trigger><ge-tabs-trigger value="team">Team</ge-tabs-trigger></ge-tabs-list></ge-tabs>`);
+        await settle(page);
+        triggers(page)[0]!.focus();
+        for (const keys of ['{Alt>}{ArrowRight}{/Alt}', '{Control>}{ArrowRight}{/Control}', '{Meta>}{End}{/Meta}', '{Shift>}{ArrowRight}{/Shift}']) {
+            await userEvent.keyboard(keys);
+            expect(tabs(page).value).toBe('account');
+        }
+        await userEvent.keyboard('{ArrowRight}');
+        expect(tabs(page).value).toBe('team');
+    });
+
     it('swaps Left and Right in right-to-left text', async () => {
         const page = await mount(`<div dir="rtl">${CUSTOM('value="account"')}</div>`);
         await settle(page);

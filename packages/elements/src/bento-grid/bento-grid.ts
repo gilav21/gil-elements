@@ -65,6 +65,7 @@ const newId = (): string => globalThis.crypto?.randomUUID?.() ?? `bento-${Date.n
  * @attr {string} item-padding - Inner padding of each widget (default `1rem`).
  * @attr {boolean} editable - Drag, resize, selection, menus and drops (default true; `editable="false"` turns them all off and clears the selection).
  * @attr {'corners' | 'edges' | 'both'} resize-handle-type - Which grips an editable widget shows (default `both`).
+ * @attr {string} drag-handle-label - Accessible name of the drag grip shown when any pointer is coarse (default `Drag to reorder`). A touch drag starts only from the grip, so a touch on the widget body scrolls the page.
  * @prop {DashboardItem[]} items - The widgets.
  * @prop {(item) => unknown} renderItem - Content of one widget.
  * @slot - Static `ge-bento-grid-item` cards.
@@ -83,6 +84,7 @@ export class GeBentoGrid extends UiElement {
         itemPadding: { attribute: 'item-padding' },
         editable: { converter: defaultTrue, reflect: true },
         resizeHandleType: { attribute: 'resize-handle-type' },
+        dragHandleLabel: { attribute: 'drag-handle-label' },
         draggedId: { state: true },
         selectedIds: { state: true },
         dropPreview: { state: true },
@@ -101,6 +103,7 @@ export class GeBentoGrid extends UiElement {
     declare itemPadding: string | number;
     declare editable: boolean;
     declare resizeHandleType: ResizeHandleType;
+    declare dragHandleLabel: string;
     declare protected draggedId: string | null;
     declare protected selectedIds: string[];
     declare protected dropPreview: Rect | null;
@@ -128,6 +131,7 @@ export class GeBentoGrid extends UiElement {
         this.itemPadding = '1rem';
         this.editable = true;
         this.resizeHandleType = 'both';
+        this.dragHandleLabel = 'Drag to reorder';
         this.draggedId = null;
         this.selectedIds = [];
         this.dropPreview = null;
@@ -527,6 +531,7 @@ export class GeBentoGrid extends UiElement {
         const edges = type === 'edges' || type === 'both';
         const corners = type === 'corners' || type === 'both';
         return html`
+            <div class="drag-handle" role="button" aria-label=${this.dragHandleLabel} @touchstart=${(e: TouchEvent) => this.onTouchStart(e, item)}>${ICON(svg`<circle cx="9" cy="6" r="1" /><circle cx="15" cy="6" r="1" /><circle cx="9" cy="12" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="9" cy="18" r="1" /><circle cx="15" cy="18" r="1" />`)}</div>
             <div class="options"><button type="button" aria-label="Item options" @click=${(e: MouseEvent) => this.onOptionsClick(e, item)}>${ICON(svg`<circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />`)}</button></div>
             ${edges ? html`${grip('n')}${grip('s')}${grip('w')}${grip('e')}` : nothing}
             ${corners
@@ -560,7 +565,6 @@ export class GeBentoGrid extends UiElement {
             @dragend=${this.onDragEnd}
             @dragover=${this.onItemDragOver}
             @drop=${(e: DragEvent) => this.onItemDrop(e, item)}
-            @touchstart=${(e: TouchEvent) => this.onTouchStart(e, item)}
         >
             <slot name=${`item-${item.id}`}></slot>
             ${this.editable ? this.grips(item) : nothing}

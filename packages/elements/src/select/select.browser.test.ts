@@ -124,7 +124,7 @@ describe('ge-select (projected)', () => {
         expect(visible(panel(page))).toBe(false);
     });
 
-    it('closes on Tab from a row and puts focus back on the trigger instead of leaving for the page', async () => {
+    it('Tab from a row puts focus on the trigger at once, does not commit the highlighted row and does not prevent the key', async () => {
         const page = await mount(MARKUP());
         await openByClick(page);
         await press(page, '{ArrowDown}');
@@ -135,10 +135,28 @@ describe('ge-select (projected)', () => {
         active().dispatchEvent(tab);
         await settle(page);
 
-        expect(tab.defaultPrevented).toBe(true);
+        // Not prevented, so the browser carries on from the trigger: one Tab leaves the select.
+        expect(tab.defaultPrevented).toBe(false);
         expect(select(page).open).toBe(false);
-        await new Promise((r) => setTimeout(r, 20));
         expect(active()).toBe(button(page));
+        expect(select(page).value).toBeUndefined();
+    });
+
+    it('one real Tab from a row leaves the select for the next control, and Shift+Tab goes back to the control before it', async () => {
+        const page = await mount(MARKUP());
+        await openByClick(page);
+        await press(page, '{ArrowDown}');
+        await userEvent.keyboard('{Tab}');
+        await settle(page);
+        expect(select(page).open).toBe(false);
+        expect(active()).toBe(el(page, 'outside'));
+
+        await openByClick(page);
+        await press(page, '{ArrowDown}');
+        await userEvent.keyboard('{Shift>}{Tab}{/Shift}');
+        await settle(page);
+        expect(select(page).open).toBe(false);
+        expect(active()).not.toBe(button(page));
         expect(active()).not.toBe(el(page, 'outside'));
     });
 
