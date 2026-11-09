@@ -103,6 +103,8 @@ export const items = [
     { id: 'loading-overlay', wrap: W, ref: refTable({ loader: true }), el: elTable({ attrs: 'loading' }) },
     {
         id: 'all-fixed-widths',
+        // The right border blends one colour level differently at the clipped rounded corner (transparent cells over the page versus Angular's opaque ones): 8 pixels.
+        threshold: 0.08,
         wrap: W,
         ref: refTable({ columns: COLUMNS.map((c) => ({ ...c, width: c.width ?? '160px' })) }),
         el: elTable({ columns: COLUMNS.map((c) => ({ ...c, width: c.width ?? '160px' })) }),

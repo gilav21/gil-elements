@@ -22,6 +22,8 @@ for (const file of readdirSync(`${here}cases`).sort()) {
     const mod = (await import(pathToFileURL(`${here}cases/${file}`).href)).default;
     if (wanted.length === 0 || wanted.includes(mod.name)) cases.push(mod);
 }
+// An item may loosen the per-pixel colour threshold (default 0.02) with a reason, for antialiasing a different engine rounds differently.
+const thresholdOf = new Map(cases.flatMap((c) => c.items.filter((i) => i.threshold !== undefined).map((i) => [`${c.name}/${i.id}`, i.threshold])));
 
 // Tailwind only emits classes it finds in source, so write every reference snippet to one file first.
 // PARITY_TW_ALL / PARITY_TW_SKIP: build the reference CSS from every case (minus the named ones) while comparing only the wanted cases,
@@ -607,7 +609,7 @@ function compareKeys(theme, keys) {
         const safe = key.replace('/', '-');
         if (same) {
             const d = new PNG({ width: a.width, height: a.height });
-            diff = pixelmatch(a.data, b.data, d.data, a.width, a.height, { threshold: 0.02 });
+            diff = pixelmatch(a.data, b.data, d.data, a.width, a.height, { threshold: thresholdOf.get(key) ?? 0.02 });
             if (diff > 0) writeFileSync(`${out}/diff-${theme}-${safe}.png`, PNG.sync.write(d));
             if (diff > 0) where = boundsOfDiff(d);
             if (diff > 0 && process.env.PARITY_DEBUG) console.log(`${theme} ${key} ${deltaStats(a, b)}`);
