@@ -219,6 +219,24 @@ describe('focus follows the data', () => {
         expect(roving(table)).toEqual([cellOf(table, 2, 'c0')]);
     });
 
+    it('gives focus back after the focused row moves, when the viewport element was replaced by a skeleton in between', async () => {
+        const { table } = await mount({}, 4, 12);
+        const old = viewportOf(table);
+        table.skeleton = true;
+        await settle(table);
+        table.skeleton = false;
+        await settle(table);
+        await frames(2);
+        expect(viewportOf(table)).not.toBe(old);
+        table.focusCell(2, 'c0');
+        await settle(table);
+        // moving the focused row in the DOM (what a re-sort does) blurs it: the observer on the new viewport gives it back
+        const row = cellOf(table, 2, 'c0').closest('[data-slot="table-row"]')!;
+        row.parentElement!.insertBefore(row, row.parentElement!.firstElementChild);
+        await frames(3);
+        expect(document.activeElement).toBe(cellOf(table, 2, 'c0'));
+    });
+
     it('survives an empty list while a page loads, and is clamped when the list shrinks', async () => {
         const { table } = await mount({}, 3, 10);
         table.focusCell(7, 'c1');

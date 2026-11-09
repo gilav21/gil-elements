@@ -27,6 +27,7 @@ export class CellInteractionController<T> {
     /** A pointer is down: the focus it causes on the viewport is not a Tab arrival. */
     private pointer = false;
     private observer: MutationObserver | null = null;
+    private watched: Element | null = null;
     private teardown: (() => void)[] = [];
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
@@ -64,7 +65,7 @@ export class CellInteractionController<T> {
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
         this.observer?.disconnect();
-        this.observer = null;
+        this.observer = this.watched = null;
         this.within = this.pointer = false;
     }
 
@@ -141,7 +142,10 @@ export class CellInteractionController<T> {
     /** A render can remove or move the focused element (a sort, a row leaving the window): DOM focus then falls to the page. */
     private watchDom(): void {
         const viewport = this.host.root.querySelector(VIEWPORT);
-        if (!viewport || this.observer) return;
+        // A new viewport element (the skeleton gives way to the grid) is a new subtree to watch.
+        if (!viewport || viewport === this.watched) return;
+        this.observer?.disconnect();
+        this.watched = viewport;
         this.observer = new MutationObserver(() => {
             const active = this.rootNode().activeElement;
             if (this.within && this.focused && (!active || !this.host.root.contains(active) || active === this.host.root.ownerDocument.body)) this.focusDom();

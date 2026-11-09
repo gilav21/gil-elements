@@ -5,25 +5,16 @@
  * once on the element and find them by it.
  */
 import { html, nothing, type TemplateResult } from 'lit';
-import { sortAriaLabel } from './data-table-cells.js';
 import type { GridView } from './data-table-grid.js';
+import { sortControl } from './data-table-grid-head.js';
 import { chromeIcon } from './data-table-icons.js';
-import type { SortDirection, EnhancedColumnDef, FlattenedTreeRow } from './data-table.types.js';
+import type { EnhancedColumnDef, FlattenedTreeRow } from './data-table.types.js';
 
 /** The id of a row's detail row; a row id may hold spaces, which an id attribute and `aria-controls` cannot. */
 export const detailId = (uid: string, rowId: string): string => `ge-dt-${uid}-detail-${encodeURIComponent(rowId)}`;
 
 /** Body in-cell controls leave the tab order when a roving cell exists: the grid has one tab stop, the keyboard reaches them through the cell. */
 const tabStop = (roving: boolean): string | typeof nothing => (roving ? '-1' : nothing);
-
-function sortControl<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
-    const key = String(c.accessorKey);
-    if (c.headerRenderer) return c.headerRenderer({ column: c });
-    if (c.enableSorting === false) return html`<span>${c.header}</span>`;
-    const direction = v.sortDirection(key);
-    const index = v.sortIndex(key);
-    return html`<ge-data-table-column-header .title=${c.header} .column=${key} .direction=${direction} .sortIndex=${index} .label=${sortAriaLabel(c.header, direction, index, v.locale)} @sort-request=${(e: CustomEvent<{ direction: SortDirection; multi: boolean }>) => v.onSortRequest(key, e)}></ge-data-table-column-header>`;
-}
 
 export function specialHead<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
     const key = String(c.accessorKey);

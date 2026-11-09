@@ -1,7 +1,6 @@
 import type { DataTableCoreHost } from './data-table-host.js';
 import { requireProvider } from './data-table-host.js';
 import { isFlagged } from './data-table-expansion.js';
-import { dataRowOf } from './data-table-view.js';
 import type { VirtualService } from './data-table-providers.js';
 import {
     type BodyWindowShape,
@@ -19,7 +18,7 @@ import {
     setRetainedTops,
 } from './data-table-virtual.js';
 import { pxOf } from './data-table-columns.js';
-import type { BodyWindow, EnhancedColumnDef, VirtualRenderRange } from './data-table.types.js';
+import type { BodyWindow, EnhancedColumnDef, FlattenedTreeRow, VirtualRenderRange } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
@@ -67,6 +66,8 @@ export class VirtualController<T> {
     private source: readonly unknown[] | null = null;
     private total = 0;
     private readonly heights = new Map<number, { row: number; detail: number }>();
+    /** The same heights by row id, so they survive a new list: pruned when it outgrows the list by far. */
+    private byId = new Map<string, { row: number; detail: number }>();
     private prefix: Float64Array | null = null;
     private prefixDirty = true;
     /** Changes whenever the vertical geometry (row count, heights) does, so a kept window is never kept across it. */
@@ -171,6 +172,7 @@ export class VirtualController<T> {
         this.variable = variable;
         this.prefixDirty = true;
         this.heights.clear();
+        this.byId.clear();
         if (variable) this.watchRows();
         else this.unwatchRows();
     }
@@ -204,15 +206,20 @@ export class VirtualController<T> {
     /** A collapsed row's detail row leaves the DOM before the observer could report it at 0: its measured height goes with it. */
     private dropClosedDetails(): void {
         if (!this.variable) return;
-        const { config, model } = this.host;
-        const expanded = model.get('expandedRows');
+        const expanded = this.host.model.get('expandedRows');
         const gone: Measurement[] = [];
         for (const [index, { detail }] of this.heights) {
-            const item = this.source?.[index] as Parameters<typeof dataRowOf<T>>[0] | undefined;
-            const row = item && dataRowOf(item);
-            if (detail > 0 && !(row !== undefined && isFlagged(expanded, config.getRowId(row)))) gone.push({ index, detail: true, height: 0 });
+            const id = this.idOf(this.source?.[index]);
+            if (detail > 0 && !(id !== undefined && isFlagged(expanded, id))) gone.push({ index, detail: true, height: 0 });
         }
         if (gone.length > 0) this.applyHeights(gone);
+    }
+
+    /** The id of a row of the window source: the tree's visible rows in tree mode, the sorted rows themselves otherwise. */
+    private idOf(item: unknown): string | undefined {
+        if (item === undefined) return undefined;
+        const { config } = this.host;
+        return config.getRowId(config.enableSubRows ? (item as FlattenedTreeRow<T>).row : (item as T));
     }
 
     /** Recomputes the window from the current scroll state; true when what is drawn changed. */
@@ -220,9 +227,16 @@ export class VirtualController<T> {
         const { host } = this;
         const source = requireProvider(host, 'query').rowWindowSource();
         if (source !== this.source) {
-            // Heights are by row position: a new list (sort, filter, expand) invalidates them until the drawn rows are read again.
+            // Heights are by row position but belong to the row: a new list (sort, filter, expand, an edited cell) moves them
+            // with their rows, so the scroll height holds; the drawn rows are read again for what really changed.
             if (this.variable && this.source !== null) {
                 this.heights.clear();
+                source.forEach((item, i) => {
+                    const id = this.idOf(item);
+                    const known = id === undefined ? undefined : this.byId.get(id);
+                    if (known) this.heights.set(i, known);
+                });
+                if (this.byId.size > 2 * this.heights.size + 100) this.byId = new Map([...this.heights].map(([i, h]) => [this.idOf(source[i]) as string, h]));
                 this.prefixDirty = true;
                 this.remeasure = true;
                 this.schedule();
@@ -452,6 +466,8 @@ export class VirtualController<T> {
             const next = m.detail ? { row: known.row, detail: m.height } : { row: m.height, detail: known.detail };
             if (!heightChanged(before, next.row + next.detail)) continue;
             this.heights.set(m.index, next);
+            const id = this.idOf(this.source?.[m.index]);
+            if (id !== undefined) this.byId.set(id, next);
             this.prefixDirty = changed = true;
             if (m.index < first) shift += next.row + next.detail - before;
         }
@@ -473,6 +489,7 @@ export class VirtualController<T> {
         this.readRowHeight();
         if (this.variable) {
             this.heights.clear();
+            this.byId.clear();
             this.prefixDirty = true;
             this.applyHeights(this.readRows());
         }

@@ -130,6 +130,21 @@ describe('column resize by mouse', () => {
         expect(second() - before).toBe(40);
     });
 
+    it('puts the offset of a following pinned column back when Escape cancels the drag', async () => {
+        const columns = makeColumns(3, { width: '150px', pinLeft: 2 });
+        const table = await mountResizable({ columns, data: makeRows(3, { columns: 3 }) });
+        const second = () => headCell(table, 'c1').getBoundingClientRect().left;
+        const before = second();
+        const drag = mouseDrag(onHandle(table, 'c0'), { dx: 40, dy: 0 }, { holdMs: 400 });
+        await sleep(250);
+        expect(second() - before).toBe(40);
+        await press('{Escape}');
+        await drag;
+        await settle(table);
+        expect(second()).toBe(before);
+        expect(q(table, '[data-slot="table"]').style.getPropertyValue('--ge-dt-pin-1')).toBe('calc(150px)');
+    });
+
     it('resizes a column that has no width (auto) and fixes it', async () => {
         const table = await mountResizable({ columns: [{ accessorKey: 'name', header: 'Name' }, { accessorKey: 'age', header: 'Age', width: '120px' }] });
         const before = widthOf(headCell(table, 'name'));

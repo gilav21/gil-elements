@@ -164,6 +164,7 @@ export class ResizeController<T> {
             this.lastTap = null;
             this.commit([{ key: drag.key, oldWidth: drag.oldWidth, newWidth: px(width) }]);
         } else {
+            this.columns().liveWidth(drag.key, null);
             this.restore(drag);
             if (event.pointerType === 'touch' && drag.travel <= TAP_SLOP) this.tap(drag.key, event.timeStamp);
         }
@@ -174,8 +175,9 @@ export class ResizeController<T> {
         const drag = this.drag;
         if (!drag) return;
         this.finish(drag);
-        this.restore(drag);
+        // The live width goes first: the pin offsets put back below are read from the layout it feeds.
         this.columns().liveWidth(drag.key, null);
+        this.restore(drag);
     };
 
     /** Moves the dragged column on screen: its custom property, and the offsets of pinned columns that follow it. */

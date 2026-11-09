@@ -249,6 +249,21 @@ describe('variable row height', () => {
         expect(getComputedStyle(view).overflowAnchor).toBe('none');
     });
 
+    it('keeps the measured heights and the scroll position when one cell value changes', async () => {
+        const table = await mountVariable();
+        await scrollTo(table, { top: 30000 });
+        await frames(3);
+        const view = viewportOf(table);
+        const { scrollTop, scrollHeight } = view;
+        const drawn = bodyRows(table)[3]!.dataset['rowId']!;
+        table.data = table.data.map((row) => (row.id === drawn ? { ...row, name: 'edited' } : row));
+        await settle(table);
+        await frames(4);
+        expect(qa(table, '[data-row-id]').some((r) => r.textContent!.includes('edited'))).toBe(true);
+        expect(Math.abs(view.scrollTop - scrollTop)).toBeLessThan(1.5);
+        expect(Math.abs(view.scrollHeight - scrollHeight)).toBeLessThan(1.5);
+    });
+
     it('measures an open detail row into the total height', async () => {
         const detail = (): HTMLElement => {
             const box = document.createElement('div');
@@ -290,6 +305,26 @@ describe('variable row height', () => {
         // the detail row (its 120px content and its own padding) leaves the total
         expect(open - view.scrollHeight).toBeGreaterThan(120);
         expect(open - view.scrollHeight).toBeLessThan(150);
+    });
+});
+
+describe('several open detail rows in a flat variable-height list', () => {
+    it('opening a second one keeps the height of the first', async () => {
+        const detail = (): HTMLElement => Object.assign(document.createElement('div'), { style: 'height:120px' });
+        const table = await mountVirtual({ virtualRowHeight: 0, virtualVariableRowHeight: true, enableRowExpansion: true, renderDetail: detail }, {}, { width: 600, height: 600 }, 2000, 2);
+        await frames(3);
+        const view = viewportOf(table);
+        const closed = view.scrollHeight;
+        const ids = [table.data[1]!.id, table.data[2]!.id];
+        table.expandedRows = { [ids[0]!]: true };
+        await settle(table);
+        await frames(4);
+        const one = view.scrollHeight - closed;
+        table.expandedRows = { [ids[0]!]: true, [ids[1]!]: true };
+        await settle(table);
+        await frames(4);
+        expect(one).toBeGreaterThan(120);
+        expect(Math.abs(view.scrollHeight - closed - 2 * one)).toBeLessThan(2);
     });
 });
 

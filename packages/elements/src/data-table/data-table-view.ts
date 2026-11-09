@@ -43,7 +43,7 @@ export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
         body: { ...source, window: win.window },
         // A rendered empty state is one real row (with a spanning cell), so it counts and the footer follows it.
         aria: computeGridAria({
-            tree: host.config.enableSubRows || !!host.config.groupBy,
+            tree: source.mode !== 'flat', // a treegrid only while group headers or tree nodes are drawn (grouping is off under virtual scroll)
             headerRows: 1,
             totalDataRows: (win.virtualTotalRows ?? totalRows) || 1,
             columnCount: columns.columns.length,

@@ -101,7 +101,13 @@ describe('grouped rows: the rendered index', () => {
         expect(bodyRows(table).every((r) => r.hasAttribute('aria-level'))).toBe(true);
     });
 
-    it('is a treegrid whenever groupBy is set, and group rows are not selectable rows', async () => {
+    it('is a plain grid when virtual scroll switches grouping off', async () => {
+        const table = await mountGrouped({ enableVirtualScroll: true, virtualRowHeight: 40 });
+        expect(qa(table, '[data-kind="group"]')).toHaveLength(0);
+        expect(q(table, '[data-slot="table"]').getAttribute('role')).toBe('grid');
+    });
+
+    it('is a treegrid while groupBy draws group rows, and group rows are not selectable rows', async () => {
         const table = await mountGrouped({ enableRowSelection: true });
         expect(q(table, '[data-slot="table"]').getAttribute('role')).toBe('treegrid');
         const group = q(table, '[data-kind="group"]');
@@ -186,6 +192,14 @@ describe('tree rows', () => {
         expect(row('a1y').dataset['depth']).toBe('2');
         expect(row('a1y').style.getPropertyValue('--ge-dt-depth')).toBe('2');
         expect(q(table, '[data-slot="table"]').getAttribute('role')).toBe('treegrid');
+    });
+
+    it('the tree-host header carries the same reorder shortcuts and controls wrapper as any header', async () => {
+        const table = await mountTree({ enableColumnReorder: true });
+        const head = q(table, '[data-slot="table-head"][data-column-id="name"]');
+        expect(head.querySelector('[data-slot="data-table-head-controls"] [data-action="tree-all"]')).not.toBeNull();
+        const button = head.querySelector('ge-data-table-column-header')!.shadowRoot!.querySelector('ge-button')!;
+        expect(button.getAttribute('aria-keyshortcuts')).toContain('Alt+Shift+ArrowLeft');
     });
 
     it('counts siblings of the filtered tree, not of the data', async () => {
