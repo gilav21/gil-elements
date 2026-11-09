@@ -1,0 +1,47 @@
+/* shadcn-angular data-table-column-header: a ghost sm button with the title, an arrow and, in a multi-sort chain, a priority badge. */
+:host {
+    display: block;
+    min-width: 0;
+}
+[data-slot='data-table-column-header'] {
+    display: flex;
+    align-items: center;
+    column-gap: 0.5rem; /* gap-x-2 */
+}
+/* The button pulls its label flush with the cell padding (-ms-2) and may shrink, so a narrow column truncates the title. */
+ge-button::part(base) {
+    min-width: 0;
+    height: 2rem;
+    flex-shrink: 1;
+    margin-inline-start: -0.5rem;
+}
+.title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.sort-icon {
+    margin-inline-start: 0.5rem;
+    flex-shrink: 0;
+}
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 1rem;
+    height: 1rem;
+    margin-inline-start: 0.25rem;
+    padding-inline: 0.25rem;
+    border-radius: 9999px;
+    background-color: var(--muted);
+    font-size: 10px;
+    line-height: 1;
+}
+@media (pointer: coarse) {
+    ge-button::part(base) {
+        height: 2.75rem;
+        min-width: 2.75rem;
+    }
+}

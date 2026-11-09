@@ -59,6 +59,47 @@ export interface DataTableLocale extends LocaleMeta {
     selectAllRows: string;
     /** Multiselect-filter "Clear" button label (not `clearSort`). */
     clearAll: string;
+    /** `aria-label` of a row's selection checkbox. */
+    selectRow: string;
+    /** Screen-reader label of the actions column header. */
+    actions: string;
+    expandRow: string;
+    collapseRow: string;
+    expandAllRows: string;
+    collapseAllRows: string;
+    expandSubRows: string;
+    collapseSubRows: string;
+    expandAllSubRows: string;
+    collapseAllSubRows: string;
+    expandGroup: string;
+    collapseGroup: string;
+    /** Interpolates `{column}`. */
+    filterColumn: string;
+    /** Interpolates `{column}`. */
+    columnMenu: string;
+    /** Interpolates `{column}`. */
+    resizeColumn: string;
+    /** Text of the default loading overlay. */
+    loading: string;
+    goToFirstPage: string;
+    goToPreviousPage: string;
+    goToNextPage: string;
+    goToLastPage: string;
+    /** Sort button labels; each interpolates `{title}` and, for the sorted ones, `{priority}` (see `sortPriority`). */
+    sortStateAscending: string;
+    sortStateDescending: string;
+    sortStateNone: string;
+    /** The `{priority}` part of a multi-sort label; interpolates `{index}`. */
+    sortPriority: string;
+    /** Live-region messages; each interpolates `{column}`. */
+    sortedAscendingAnnouncement: string;
+    sortedDescendingAnnouncement: string;
+    sortRemovedAnnouncement: string;
+    filterClearedAnnouncement: string;
+    /** Interpolates `{count}` and `{value}`. */
+    filterResultsAnnouncement: string;
+    /** The singular form, for a count of one. */
+    filterResultAnnouncement: string;
     rangeCount?: string;
     rangeSum?: string;
     rangeAvg?: string;
@@ -120,6 +161,36 @@ const en: DataTableLocale = {
     searchPlaceholder: 'Search...',
     selectAllRows: 'Select all',
     clearAll: 'Clear',
+    selectRow: 'Select row',
+    actions: 'Actions',
+    expandRow: 'Expand row',
+    collapseRow: 'Collapse row',
+    expandAllRows: 'Expand all rows',
+    collapseAllRows: 'Collapse all rows',
+    expandSubRows: 'Expand sub-rows',
+    collapseSubRows: 'Collapse sub-rows',
+    expandAllSubRows: 'Expand all sub-rows',
+    collapseAllSubRows: 'Collapse all sub-rows',
+    expandGroup: 'Expand group',
+    collapseGroup: 'Collapse group',
+    filterColumn: 'Filter {column}',
+    columnMenu: 'Column menu for {column}',
+    resizeColumn: 'Resize {column} column (double-click or double-tap to auto-fit)',
+    loading: 'Loading...',
+    goToFirstPage: 'Go to first page',
+    goToPreviousPage: 'Go to previous page',
+    goToNextPage: 'Go to next page',
+    goToLastPage: 'Go to last page',
+    sortStateAscending: '{title}, sorted ascending{priority}. Activate to sort descending.',
+    sortStateDescending: '{title}, sorted descending{priority}. Activate to remove sort.',
+    sortStateNone: '{title}, not sorted. Activate to sort ascending.',
+    sortPriority: ', sort priority {index}',
+    sortedAscendingAnnouncement: 'Table sorted by {column}, ascending',
+    sortedDescendingAnnouncement: 'Table sorted by {column}, descending',
+    sortRemovedAnnouncement: 'Sorting removed from {column}',
+    filterClearedAnnouncement: 'Filter cleared, showing all rows',
+    filterResultsAnnouncement: '{count} results found for "{value}"',
+    filterResultAnnouncement: '{count} result found for "{value}"',
     rangeCount: 'Count',
     rangeSum: 'Sum',
     rangeAvg: 'Avg',

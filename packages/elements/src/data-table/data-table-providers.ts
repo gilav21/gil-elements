@@ -13,11 +13,14 @@ import type {
     DataTableDisplayRow,
     DataTableExportOptions,
     DataTableExportQuery,
+    DataTableLoadingTrigger,
     DataTableLoadingVisibility,
     DataTableQuery,
     EditingCell,
     EnhancedColumnDef,
     FlattenedTreeRow,
+    PaginationState,
+    ResolvedCellFormatting,
     RowActionContext,
     SortDirection,
     SubRowFilterMode,
@@ -106,6 +109,30 @@ export interface QueryService<T> {
     sortDirection(columnKey: string | keyof T): SortDirection;
     /** A header activation: updates the sort models and fires `sort-change` / `multi-sort-change`. */
     changeSort(columnKey: string | keyof T, direction: SortDirection, multi?: boolean): void;
+    /** A pager activation: clamps the page to the data, updates the model and fires `page-change`. */
+    changePage(state: PaginationState): void;
+    /** The global filter input: waits out `filterDebounce`, resets to page 0, fires `filter-change`, announces the count. */
+    changeGlobalFilter(value: string): void;
+}
+
+/** Which user action the busy overlay stands for; `loadingVisibility` can silence it per trigger. */
+export interface LoadingService {
+    trigger(): DataTableLoadingTrigger;
+    setTrigger(trigger: DataTableLoadingTrigger): void;
+    /** `loading` is on and the current trigger is not silenced. */
+    visible(): boolean;
+}
+
+/** Value-aware conditional formatting of one cell; `null` when its column declares none. */
+export interface FormattingService<T> {
+    cell(column: ColumnDef<T>, row: T): ResolvedCellFormatting | null;
+}
+
+export interface FooterService {
+    /** Whether the footer row draws. */
+    visible(): boolean;
+    /** Footer text by column key (`footer` or the aggregate). */
+    values(): ReadonlyMap<string, string>;
 }
 
 export interface ColumnsService<T> {
@@ -168,4 +195,7 @@ export interface DataTableProviders<T = unknown> {
     interaction: CellInteractionService;
     virtual: VirtualService;
     addons: AddonsService<T>;
+    loading: LoadingService;
+    formatting: FormattingService<T>;
+    footer: FooterService;
 }

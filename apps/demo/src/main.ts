@@ -149,6 +149,7 @@ import '@gilav21/elements/field-mapper/define';
 import '@gilav21/elements/file-viewer/define';
 import '@gilav21/elements/page-builder/define';
 import '@gilav21/elements/page-renderer/define';
+import '@gilav21/elements/data-table/define';
 import '@gilav21/elements/page-header/define';
 import '@gilav21/elements/separator/define';
 import '@gilav21/elements/skeleton/define';

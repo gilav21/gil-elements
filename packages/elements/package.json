@@ -1693,6 +1693,16 @@
       "types": "./dist/rich-text-editor/addons/typography/define.d.ts",
       "development": "./src/rich-text-editor/addons/typography/define.ts",
       "default": "./dist/rich-text-editor/addons/typography/define.js"
+    },
+    "./data-table": {
+      "types": "./dist/data-table/index.d.ts",
+      "development": "./src/data-table/index.ts",
+      "default": "./dist/data-table/index.js"
+    },
+    "./data-table/define": {
+      "types": "./dist/data-table/define.d.ts",
+      "development": "./src/data-table/define.ts",
+      "default": "./dist/data-table/define.js"
     }
   },
   "scripts": {

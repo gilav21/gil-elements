@@ -1,0 +1,92 @@
+/* shadcn-angular data-table-pagination: rows per page, "Page X of Y" and four chevron buttons. */
+:host {
+    display: block;
+}
+[data-slot='data-table-pagination'] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    row-gap: 0.5rem;
+    padding-inline: 0.5rem;
+}
+.spacer {
+    flex: 1 1 0%;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    color: var(--muted-foreground);
+}
+.controls {
+    display: flex;
+    align-items: center;
+    column-gap: 0.5rem; /* space-x-2 */
+}
+.size {
+    display: flex;
+    align-items: center;
+    column-gap: 0.5rem;
+}
+.size-label {
+    display: none;
+    white-space: nowrap;
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    font-weight: 500;
+}
+.size-trigger {
+    width: 70px;
+}
+ge-select ge-select-trigger::part(base) {
+    height: 2rem;
+}
+.indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 80px;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    font-weight: 500;
+}
+ge-pagination-link::part(base) {
+    border: 1px solid var(--input);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--background);
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+}
+/* First and last are hidden below lg (hidden lg:flex). */
+.edge {
+    display: none;
+}
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border-width: 0;
+}
+@media (min-width: 40rem) {
+    .controls {
+        column-gap: 1.5rem; /* sm:space-x-6 */
+    }
+    .size-label {
+        display: inline;
+    }
+    .indicator {
+        min-width: 100px;
+    }
+}
+@media (min-width: 64rem) {
+    .controls {
+        column-gap: 2rem; /* lg:space-x-8 */
+    }
+    .edge {
+        display: inline;
+    }
+}

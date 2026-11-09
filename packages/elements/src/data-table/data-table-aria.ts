@@ -9,7 +9,8 @@
  * - When the middle columns are windowed, `aria-colindex` is left off (a gap is better than a wrong index), while
  *   `aria-colcount` is still published.
  * - The role is `treegrid` in tree mode, `grid` otherwise. Only tree rows carry `aria-level` / `aria-expanded`,
- *   and group rows `aria-expanded`. Nothing else is stamped: no `aria-selected`, no `aria-multiselectable`.
+ *   and group rows `aria-expanded`. Selection state (`aria-selected`, `aria-multiselectable`) is the renderer's.
+ * - A rendered footer row is a real row: it counts in `aria-rowcount` (`footerRows`) and follows the last data row.
  */
 export interface GridAriaInput {
     /** Tree mode (`enable-sub-rows`). */
@@ -24,6 +25,8 @@ export interface GridAriaInput {
     firstRenderedRow?: number;
     /** True when the middle columns are windowed (fewer rendered than exist). */
     columnsWindowed?: boolean;
+    /** 1 when a footer row is rendered, else 0. */
+    footerRows?: number;
 }
 
 export interface GridAria {
@@ -34,6 +37,8 @@ export interface GridAria {
     headerRowIndex(position: number): number;
     /** `aria-rowindex` of the data row at zero-based ordinal `ordinal` among the rendered data rows. */
     dataRowIndex(ordinal: number): number;
+    /** `aria-rowindex` of the footer row: after the last row of the dataset. */
+    footerRowIndex(): number;
     /** `aria-colindex` of the cell at zero-based position among the real cells of a row, or `null` to leave it off. */
     colIndex(position: number): number | null;
 }
@@ -45,10 +50,11 @@ export function computeGridAria(input: GridAriaInput): GridAria {
     const offset = count(input.firstRenderedRow ?? 0);
     return {
         role: input.tree ? 'treegrid' : 'grid',
-        rowCount: headerRows + count(input.totalDataRows),
+        rowCount: headerRows + count(input.totalDataRows) + count(input.footerRows ?? 0),
         colCount: count(input.columnCount),
         headerRowIndex: (position) => position + 1,
         dataRowIndex: (ordinal) => headerRows + offset + ordinal + 1,
+        footerRowIndex: () => headerRows + count(input.totalDataRows) + 1,
         colIndex: (position) => (input.columnsWindowed ? null : position + 1),
     };
 }

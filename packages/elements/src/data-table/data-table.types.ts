@@ -185,11 +185,13 @@ export interface ResolvedCellFormatting {
     icon: CellIcon | null;
 }
 
-/** A column after layout: the resolved width and floor, and the pin offsets. */
+/**
+ * A column after layout: the resolved width and floor, the pin side (`left` is inline-start, `right` inline-end) and
+ * the pin offset as a CSS length (a `calc()` sum of the pinned columns before it, so `10rem` and `20%` stack too).
+ */
 export interface EnhancedColumnDef<T> extends ColumnDef<T> {
-    _stickyLeft?: number;
-    _stickyRight?: number;
-    _pin?: string;
+    _pin?: 'left' | 'right';
+    _pinOffset?: string;
     _width: string;
     _minWidth: string;
 }

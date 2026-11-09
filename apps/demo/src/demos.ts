@@ -4309,6 +4309,132 @@ ${SB_TILE('sidebar', ' collapsible="false"', 'collapsible = false')}
         ],
     },
     {
+        id: 'data-table',
+        group: 'Display',
+        name: 'Data table',
+        tag: 'ge-data-table',
+        description: 'A grid with a sticky header, sorting, paging, a footer, pinned columns and the full grid ARIA. It renders into its own light DOM, so cells hold your markup and elements. `columns` and `data` are properties; the data is never mutated.',
+        examples: [
+            {
+                title: 'Sortable and paged',
+                note: 'Click a header to sort (Shift-click with `enable-multi-sort` adds a column). The pager and the filter box work on the local rows; `page-change` and `sort-change` announce what the user did.',
+                block: true,
+                html: `<ge-data-table id="dt-basic" enable-multi-sort style="height:26rem"></ge-data-table>
+<script>(() => {
+  const table = document.getElementById('dt-basic');
+  const names = ['Alice', 'Bob', 'Carol', 'Dave', 'Erin', 'Frank', 'Grace', 'Heidi', 'Ivan', 'Judy'];
+  const roles = ['Engineer', 'Designer', 'Manager', 'Analyst'];
+  table.columns = [
+    { accessorKey: 'id', header: 'ID', width: '80px' },
+    { accessorKey: 'name', header: 'Name' },
+    { accessorKey: 'role', header: 'Role' },
+    { accessorKey: 'age', header: 'Age', width: '100px' },
+  ];
+  table.data = Array.from({ length: 36 }, (_, i) => ({ id: 'U-' + (i + 1), name: names[i % 10] + ' ' + (i + 1), role: roles[i % 4], age: 22 + ((i * 7) % 30) }));
+})();</script>`,
+            },
+            {
+                title: 'Pinned columns',
+                note: '`pin: \'left\'` and `pin: \'right\'` mean the start and the end edge, so they follow `dir="rtl"`. Scroll sideways.',
+                block: true,
+                html: `<div style="max-width:32rem"><ge-data-table id="dt-pinned" show-toolbar="false" show-pagination="false"></ge-data-table></div>
+<script>(() => {
+  document.getElementById('dt-pinned').columns = [
+    { accessorKey: 'id', header: 'ID', width: '90px', pin: 'left' },
+    { accessorKey: 'name', header: 'Name', width: '220px', pin: 'left' },
+    { accessorKey: 'email', header: 'Email', width: '320px' },
+    { accessorKey: 'city', header: 'City', width: '220px' },
+    { accessorKey: 'total', header: 'Total', width: '120px', pin: 'right' },
+  ];
+  document.getElementById('dt-pinned').data = [
+    { id: 'U-1', name: 'Alice Martin', email: 'alice.martin@example.com', city: 'Lisbon', total: 1250 },
+    { id: 'U-2', name: 'Bob Stone', email: 'bob.stone@example.com', city: 'Oslo', total: 980 },
+    { id: 'U-3', name: 'Carol Diaz', email: 'carol.diaz@example.com', city: 'Madrid', total: 2310 },
+  ];
+})();</script>`,
+            },
+            {
+                title: 'Footer and aggregates',
+                note: 'A column\'s `footer` is text or a function of the rows; `aggregateFn` is `sum`, `avg`, `count`, `min`, `max` or your own. The footer reads every filtered row, not only the page. `colorScale` and `dataBar` format a cell by its value.',
+                block: true,
+                html: `<ge-data-table id="dt-footer" show-toolbar="false" show-pagination="false"></ge-data-table>
+<script>(() => {
+  const table = document.getElementById('dt-footer');
+  table.columns = [
+    { accessorKey: 'item', header: 'Item', footer: 'Total' },
+    { accessorKey: 'qty', header: 'Qty', width: '120px', aggregateFn: 'sum' },
+    { accessorKey: 'price', header: 'Price', width: '160px', aggregateFn: 'avg', colorScale: { min: 0, max: 100, from: 'transparent', to: '#3b82f6' } },
+    { accessorKey: 'stock', header: 'Stock', width: '200px', dataBar: { min: 0, max: 100, color: '#22c55e', track: '#e5e7eb' } },
+  ];
+  table.data = [
+    { item: 'Pen', qty: 12, price: 4, stock: 80 },
+    { item: 'Notebook', qty: 5, price: 35, stock: 45 },
+    { item: 'Backpack', qty: 2, price: 90, stock: 10 },
+  ];
+})();</script>`,
+            },
+            {
+                title: 'A custom element in a cell',
+                note: '`component` is a tag name: the element is created per cell, `componentInputs` are assigned as properties and `componentOutputs` listen for events. Anything a framework can expose as a custom element works the same way; `cellRenderer` returns a string, a Node or a lit template.',
+                block: true,
+                html: `<ge-data-table id="dt-component" show-toolbar="false" show-pagination="false"></ge-data-table>
+<script>(() => {
+  if (!customElements.get('demo-status')) {
+    customElements.define('demo-status', class extends HTMLElement {
+      set status(value) {
+        this.textContent = value;
+        this.style.cssText = 'display:inline-block;padding:0 .5rem;border-radius:9999px;font-size:.75rem;background:' + (value === 'Active' ? 'color-mix(in oklab, #22c55e 20%, transparent)' : 'var(--muted)');
+      }
+    });
+  }
+  const table = document.getElementById('dt-component');
+  table.columns = [
+    { accessorKey: 'name', header: 'Name' },
+    { accessorKey: 'status', header: 'Status', width: '160px', component: 'demo-status', componentInputs: (row) => ({ status: row.status }), componentOutputs: () => ({}) },
+    { accessorKey: 'email', header: 'Email', cellRenderer: ({ row }) => { const a = document.createElement('a'); a.href = 'mailto:' + row.email; a.textContent = row.email; return a; } },
+  ];
+  table.data = [
+    { name: 'Alice Martin', status: 'Active', email: 'alice@example.com' },
+    { name: 'Bob Stone', status: 'Invited', email: 'bob@example.com' },
+  ];
+})();</script>`,
+            },
+            {
+                title: 'Loading, skeleton and empty',
+                note: '`loading` dims the rows under an overlay, `skeleton` replaces the whole table until the first data arrives, and no rows draw the empty state (or a child with `slot="empty"`).',
+                block: true,
+                html: `<div style="display:flex;flex-direction:column;gap:1.5rem">
+  <ge-data-table id="dt-loading" loading show-toolbar="false" show-pagination="false"></ge-data-table>
+  <ge-data-table skeleton skeleton-rows="3"></ge-data-table>
+  <ge-data-table id="dt-empty" show-toolbar="false" show-pagination="false"><div slot="empty" style="padding:2rem;color:var(--muted-foreground)">Nothing here yet. Add a row to begin.</div></ge-data-table>
+</div>
+<script>(() => {
+  const columns = [{ accessorKey: 'name', header: 'Name' }, { accessorKey: 'role', header: 'Role', width: '160px' }];
+  const loading = document.getElementById('dt-loading');
+  loading.columns = columns;
+  loading.data = [{ name: 'Alice Martin', role: 'Engineer' }, { name: 'Bob Stone', role: 'Designer' }];
+  document.getElementById('dt-empty').columns = columns;
+})();</script>`,
+            },
+        ],
+        api: [
+            { name: 'columns', type: 'ColumnDef<T>[]', default: '[]', description: 'Property only. `accessorKey`, `header`, `width`, `minWidth`, `pin`, `footer`, `aggregateFn`, `component`, `cellRenderer`, `cellClassRules`, `colorScale`, `dataBar`, `iconSet`.' },
+            { name: 'data', type: 'T[]', default: '[]', description: 'The rows. Never mutated: replace it to update. Writing it fires no event; a change the table makes fires `data-change`.' },
+            { name: 'getRowId', type: '(row) => string', default: 'row.id', description: 'Row identity for keys and `data-row-id`. Without an `id` a per-object identity is used.' },
+            { name: 'show-toolbar / show-pagination', type: 'boolean', default: 'true', description: '`="false"` hides the filter box and columns menu, or the pager.' },
+            { name: 'show-row-borders / show-column-borders', type: 'boolean', default: 'true', description: 'Cell borders.' },
+            { name: 'show-footer', type: '\'auto\' | boolean', default: '\'auto\'', description: 'Auto shows the footer when a column has a `footer` or an `aggregateFn`.' },
+            { name: 'local-sorting / local-pagination / local-filtering', type: 'boolean', default: 'true', description: 'Set one to `false` for server data: the table still emits, and `total` sizes the pager.' },
+            { name: 'enable-multi-sort / max-multi-sort-columns', type: 'boolean / number', default: 'false / 3', description: 'Shift-click a header to add to the sort chain; a badge shows the priority.' },
+            { name: 'loading / skeleton / skeleton-rows', type: 'boolean / number', default: 'false / 5', description: 'The overlay, and the first-paint placeholder.' },
+            { name: 'locale / theme', type: 'string', default: '-', description: 'Language id (`en` is built in) and a colour preset name.' },
+            { name: 'sortState, multiSortState, paginationState, columnVisibility, ...', type: 'two-way states', default: '-', description: 'Properties you may write; the table fires `*-change` only for changes it makes itself.' },
+            { name: 'sort-change, multi-sort-change, page-change, filter-change, query', type: 'events', default: '-', description: '`query` carries the whole server request, once per change.' },
+            { name: 'slot toolbar-start / toolbar-end / empty / loading / footer', type: 'slots', default: '-', description: 'Light-DOM children with that `slot` are moved into place once and kept.' },
+            { name: 'ge-data-table [data-slot=...]', type: 'css hooks', default: '-', description: 'Style hooks (`table-cell`, `table-head`, `cell-formatted`, ...); also `--ge-dt-cell-bg`, `--ge-dt-header-bg`, `--ge-dt-pin-shadow`. Classes from `cellClassRules` land on `[data-slot=cell-formatted]`.' },
+        ],
+    },
+    {
         id: 'file-upload',
         group: 'Form inputs',
         name: 'File upload',

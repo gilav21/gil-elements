@@ -450,6 +450,12 @@ async function renderJob(browser, theme, group, side) {
                 target.scrollLeft = getComputedStyle(target).direction === 'rtl' ? -target.scrollWidth : target.scrollWidth;
                 target.scrollTop = target.scrollHeight;
             }
+            // `data-scroll-left` is a distance in pixels along the inline axis: the scroller itself, or for a `ge-data-table` the viewport it renders.
+            for (const target of document.querySelectorAll('[data-scroll-left]')) {
+                const scroller = target.localName === 'ge-data-table' ? target.querySelector('[data-slot="data-table-viewport"]') : target;
+                scroller.style.scrollBehavior = 'auto';
+                scroller.scrollLeft = Number(target.dataset.scrollLeft) * (getComputedStyle(scroller).direction === 'rtl' ? -1 : 1);
+            }
             const images = [];
             const walk = (root) => {
                 for (const el of root.querySelectorAll('*')) {
