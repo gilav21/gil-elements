@@ -759,6 +759,8 @@
     }
     ge-data-table [data-slot="data-table-detail-json"] {
         margin: 0;
+        /* Tailwind's preflight stack for `pre`, which Angular's detail inherits: the browser's own `monospace` is another face on Linux. */
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         color: var(--muted-foreground);
         font-size: 0.75rem;
         line-height: calc(1 / 0.75);

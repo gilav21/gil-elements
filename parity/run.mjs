@@ -23,6 +23,8 @@ for (const file of readdirSync(`${here}cases`).sort()) {
     if (wanted.length === 0 || wanted.includes(mod.name)) cases.push(mod);
 }
 // An item may loosen the per-pixel colour threshold (default 0.02) with a reason, for antialiasing a different engine rounds differently.
+// It may also allow a few differing pixels (`maxDiffPx`, with a reason), for one glyph a different engine places at another sub-pixel offset.
+const maxDiffPxOf = new Map(cases.flatMap((c) => c.items.filter((i) => i.maxDiffPx !== undefined).map((i) => [`${c.name}/${i.id}`, i.maxDiffPx])));
 const thresholdOf = new Map(cases.flatMap((c) => c.items.filter((i) => i.threshold !== undefined).map((i) => [`${c.name}/${i.id}`, i.threshold])));
 
 // Tailwind only emits classes it finds in source, so write every reference snippet to one file first.
@@ -610,6 +612,7 @@ function compareKeys(theme, keys) {
         if (same) {
             const d = new PNG({ width: a.width, height: a.height });
             diff = pixelmatch(a.data, b.data, d.data, a.width, a.height, { threshold: thresholdOf.get(key) ?? 0.02 });
+            if (diff > 0 && diff <= (maxDiffPxOf.get(key) ?? 0)) diff = 0;
             if (diff > 0) writeFileSync(`${out}/diff-${theme}-${safe}.png`, PNG.sync.write(d));
             if (diff > 0) where = boundsOfDiff(d);
             if (diff > 0 && process.env.PARITY_DEBUG) console.log(`${theme} ${key} ${deltaStats(a, b)}`);

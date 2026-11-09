@@ -129,8 +129,9 @@ function treeRef(open) {
 const treeEl = (open) => elTable({ columns: COLS, rows: TREE, attrs: 'show-footer="false" enable-sub-rows', props: { subRowExpandedRows: Object.fromEntries(open.map((id) => [id, true])) } });
 
 export const items = [
-    { id: 'group-headers', wrap: 'width:100%;', ref: grouped(null), el: groupEl(null) },
-    { id: 'group-collapsed', wrap: 'width:100%;', ref: grouped('Engineer'), el: groupEl('Engineer') },
+    // On Linux one glyph (the A of the second group's aggregate) is antialiased at another sub-pixel offset: 16-18 pixels, nothing else differs.
+    { id: 'group-headers', maxDiffPx: 40, wrap: 'width:100%;', ref: grouped(null), el: groupEl(null) },
+    { id: 'group-collapsed', maxDiffPx: 40, wrap: 'width:100%;', ref: grouped('Engineer'), el: groupEl('Engineer') },
     { id: 'detail-closed', wrap: 'width:100%;', ref: detailRef([]), el: detailEl([]) },
     { id: 'detail-open', wrap: 'width:100%;', ref: detailRef([1]), el: detailEl([1]) },
     { id: 'tree-collapsed', wrap: 'width:100%;', ref: treeRef([]), el: treeEl([]) },
