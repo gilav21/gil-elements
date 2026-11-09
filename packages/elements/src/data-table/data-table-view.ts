@@ -49,6 +49,7 @@ export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
             columnCount: columns.columns.length,
             footerRows: showFooter ? 1 : 0,
         }),
-        footer: { visible: showFooter, values: footer?.values() ?? new Map(), rows: requireProvider(host, 'query').sortedData() },
+        // The footer rows are the sorted rows; without a footer nobody reads them, so the flat pipeline is not asked.
+        footer: { visible: showFooter, values: footer?.values() ?? new Map(), rows: showFooter ? requireProvider(host, 'query').sortedData() : [] },
     };
 }

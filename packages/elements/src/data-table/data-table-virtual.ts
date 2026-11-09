@@ -179,6 +179,12 @@ function lengthToPx(length: string, rootPx: number): number | null {
     return match[2] === 'rem' || match[2] === 'em' ? value * rootPx : value;
 }
 
+/** The root element's font size in px, what a `rem` width or minimum is relative to (16 when it cannot be read). */
+export function rootFontPx(el: Element): number {
+    const { ownerDocument } = el;
+    return Number.parseFloat(ownerDocument.defaultView?.getComputedStyle(ownerDocument.documentElement).fontSize ?? '') || 16;
+}
+
 /** The pixel floor resize and auto-fit clamp to: `minWidth` in px or rem, else the default floor. */
 export function columnMinWidthPx(col: { accessorKey?: PropertyKey; minWidth?: string }, rootPx = 16): number {
     return lengthToPx(resolveColumnMinWidth(col), rootPx) ?? Number.parseFloat(DEFAULT_COLUMN_MIN_WIDTH);

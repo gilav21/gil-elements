@@ -46,6 +46,7 @@ export function toggleId(selection: Selection, id: string): Record<string, boole
 /**
  * The tree checkbox. `descendants` mirrors the new state of `id` onto its whole subtree, `filteredDescendants` onto the
  * part of it in `visible`; then every ancestor is selected exactly when all its children are. `self` is a plain toggle.
+ * Disabled descendants are mirrored too, on purpose: that is Angular's toggleRowWithCascade (only a click on a disabled row itself is ignored).
  */
 export function cascadeSelection(selection: Selection, id: string, mode: SubRowSelectionMode, index: TreeIndex, visible: ReadonlySet<string>): Record<string, boolean> {
     if (mode === 'self') return toggleId(selection, id);

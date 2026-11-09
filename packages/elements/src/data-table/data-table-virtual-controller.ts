@@ -1,5 +1,5 @@
 import type { DataTableCoreHost } from './data-table-host.js';
-import { requireProvider } from './data-table-host.js';
+import { ownElements, requireProvider } from './data-table-host.js';
 import { isFlagged } from './data-table-expansion.js';
 import type { VirtualService } from './data-table-providers.js';
 import {
@@ -368,7 +368,7 @@ export class VirtualController<T> {
     private watchChrome(): void {
         const vp = this.viewport;
         if (!vp || !this.viewportObserver) return;
-        for (const el of [vp, ...vp.querySelectorAll<HTMLElement>('[data-slot="table-header"], [data-slot="table-footer"]')]) this.viewportObserver.observe(el);
+        for (const el of [vp, ...ownElements(this.host.root, vp.querySelectorAll<HTMLElement>('[data-slot="table-header"], [data-slot="table-footer"]'))]) this.viewportObserver.observe(el);
     }
 
     /** Reads the sizes the window depends on: scroller, sticky header and footer, pinned stacks, widths of non-pixel columns. */
@@ -383,7 +383,7 @@ export class VirtualController<T> {
         // Only the drawn heads can be read: a windowed-out column keeps the width it had, unless it no longer exists.
         const keys = new Set(requireProvider(this.host, 'columns').enhancedColumns().map((c) => String(c.accessorKey)));
         this.measuredWidths = new Map([...this.measuredWidths].filter(([key]) => keys.has(key)));
-        for (const head of vp.querySelectorAll<HTMLElement>('[data-slot="table-head"][data-column-id]')) {
+        for (const head of ownElements(this.host.root, vp.querySelectorAll<HTMLElement>('[data-slot="table-head"][data-column-id]'))) {
             const width = head.getBoundingClientRect().width;
             const pin = head.dataset['pinned'];
             if (pin === 'left') pinStart += width;
@@ -421,7 +421,7 @@ export class VirtualController<T> {
     }
 
     private rowElements(): HTMLElement[] {
-        return [...(this.viewport?.querySelectorAll<HTMLElement>(`${BODY} > ${ROW}[data-kind="data"], ${BODY} > ${ROW}[data-kind="detail"]`) ?? [])];
+        return ownElements(this.host.root, this.viewport?.querySelectorAll<HTMLElement>(`${BODY} > ${ROW}[data-kind="data"], ${BODY} > ${ROW}[data-kind="detail"]`) ?? []);
     }
 
     private observeRows(): void {

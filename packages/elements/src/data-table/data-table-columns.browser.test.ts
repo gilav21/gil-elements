@@ -157,21 +157,60 @@ describe('column resize by mouse', () => {
         expect(headCell(table, 'name').dataset['width']).toBe('auto');
     });
 
-    describe('a column pinned to the end', () => {
-        const mountEnd = () => mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 400, height: 300 });
-        const grow = async (rtl: boolean): Promise<void> => {
-            const table = await mountEnd();
+    // Pins are logical (`left` is the inline start): which physical way widens a column, and which of its edges stays put.
+    describe.each([
+        { pin: 'none', key: 'c1', rtl: false, grows: 1 },
+        { pin: 'none', key: 'c1', rtl: true, grows: -1 },
+        { pin: 'start', key: 'c0', rtl: false, grows: 1 },
+        { pin: 'start', key: 'c0', rtl: true, grows: -1 },
+        { pin: 'end', key: 'c3', rtl: false, grows: -1 },
+        { pin: 'end', key: 'c3', rtl: true, grows: 1 },
+    ])('a $pin-pinned column, rtl: $rtl', ({ pin, key, rtl, grows }) => {
+        const mountPinned = async () => {
+            const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinLeft: pin === 'start' ? 1 : 0, pinRight: pin === 'end' ? 1 : 0 }), data: makeRows(3, { columns: 4 }) }, { width: 400, height: 300 });
             if (rtl) await withRtl(table);
-            const head = () => headCell(table, 'c3').getBoundingClientRect();
-            const [width, edge] = [head().width, rtl ? head().left : head().right];
-            // the end edge is anchored at the viewport: the column grows toward the start, under the pointer
-            await mouseDrag(onHandle(table, 'c3', rtl), { dx: rtl ? 40 : -40, dy: 0 });
-            await settle(table);
-            expect(head().width).toBe(width + 40);
-            expect(rtl ? head().left : head().right).toBeCloseTo(edge, 0);
+            return table;
         };
-        it('grows toward the start when dragged that way, left to right', () => grow(false));
-        it('grows toward the start when dragged that way, right to left', () => grow(true));
+        const head = (table: Element) => headCell(table, key).getBoundingClientRect();
+        const anchored = (table: Element) => (grows > 0 ? head(table).left : head(table).right);
+
+        it('widens when the handle is dragged toward the side it grows to, its other edge staying put', async () => {
+            const table = await mountPinned();
+            const [width, edge] = [head(table).width, anchored(table)];
+            await mouseDrag(onHandle(table, key, rtl), { dx: 40 * grows, dy: 0 });
+            await settle(table);
+            expect(head(table).width).toBe(width + 40);
+            expect(anchored(table)).toBeCloseTo(edge, 0);
+        });
+
+        it('widens with the arrow key that points that way, and aria-valuenow follows', async () => {
+            const table = await mountPinned();
+            const width = Math.round(head(table).width);
+            const handle = q(headCell(table, key), '[data-slot="data-table-resize-handle"]');
+            handle.focus();
+            await press(grows > 0 ? '{ArrowRight}' : '{ArrowLeft}');
+            await settle(table);
+            expect(Math.round(head(table).width)).toBe(width + 10);
+            expect(handle.getAttribute('aria-valuenow')).toBe(String(width + 10));
+            await press(grows > 0 ? '{ArrowLeft}' : '{ArrowRight}');
+            await settle(table);
+            expect(Math.round(head(table).width)).toBe(width);
+        });
+    });
+
+    it('reads a rem minimum width against the real root font size, in aria-valuemin as in the resize floor', async () => {
+        const root = document.documentElement;
+        const before = root.style.fontSize;
+        root.style.fontSize = '20px';
+        try {
+            const table = await mountResizable({ columns: [{ accessorKey: 'name', header: 'Name', width: '300px', minWidth: '10rem' }, { accessorKey: 'age', header: 'Age', width: '120px' }] });
+            expect(q(headCell(table, 'name'), '[data-slot="data-table-resize-handle"]').getAttribute('aria-valuemin')).toBe('200');
+            await mouseDrag(onHandle(table, 'name'), { dx: -250, dy: 0 });
+            await settle(table);
+            expect(widthOf(headCell(table, 'name'))).toBe(200);
+        } finally {
+            root.style.fontSize = before;
+        }
     });
 
     it('resizes a column that has no width (auto) and fixes it', async () => {

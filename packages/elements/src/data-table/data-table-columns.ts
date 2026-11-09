@@ -6,6 +6,7 @@
  * its own order), so DOM order is visual order and `aria-colindex` is position + 1. `left` and `right` mean inline-start
  * and inline-end. Offsets are `calc()` sums of CSS lengths, not parsed integers, so `10rem` and `20%` stack correctly.
  */
+import { ownElements } from './data-table-host.js';
 import type { ColumnDef, EnhancedColumnDef } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 import { indexColumns } from './data-table-query.js';
@@ -143,7 +144,7 @@ export function pxOf(width: string): number | null {
 export const HEAD_SELECTOR = '[data-slot="table-head"]';
 
 /** The head cell and the rendered body cells of column `key` (footer cells carry no column attribute). */
-export function columnCells(root: ParentNode, key: string): HTMLElement[] {
+export function columnCells(root: Element, key: string): HTMLElement[] {
     const name = CSS.escape(key);
-    return [...root.querySelectorAll<HTMLElement>(`${HEAD_SELECTOR}[data-column-id="${name}"], [data-slot="table-cell"][data-column="${name}"]`)];
+    return ownElements(root, root.querySelectorAll<HTMLElement>(`${HEAD_SELECTOR}[data-column-id="${name}"], [data-slot="table-cell"][data-column="${name}"]`));
 }

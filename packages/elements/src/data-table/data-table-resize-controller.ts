@@ -2,7 +2,7 @@ import { isSecondaryTouch } from '../shared/touch.js';
 import { columnCells, HEAD_SELECTOR as HEAD } from './data-table-columns.js';
 import { type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
 import type { ResizeService } from './data-table-providers.js';
-import { columnMinWidthPx } from './data-table-virtual.js';
+import { columnMinWidthPx, rootFontPx } from './data-table-virtual.js';
 import { interpolate } from './data-table.locales.js';
 import type { EnhancedColumnDef } from './data-table.types.js';
 
@@ -26,7 +26,7 @@ interface Drag {
     readonly startY: number;
     readonly startWidth: number;
     readonly floor: number;
-    /** `1`, or `-1` in rtl or for a column pinned to the end: the edge moves the other way. */
+    /** `resizeSign`: the direction of the pointer that widens the column. */
     readonly sign: number;
     readonly oldWidth: string;
     /** The inline value of the column's custom property before the drag, put back on cancel. */
@@ -39,6 +39,14 @@ interface Drag {
 }
 
 const px = (n: number): string => `${n}px`;
+
+/**
+ * Which way the handle moves the column's width: `1` when dragging it toward the physical right widens the column. The handle
+ * sits on the inline-end edge, so an unpinned column widens that way (left in rtl). A column pinned to the end (`pin: 'right'`,
+ * a logical pin like the start one) is anchored at that edge and grows toward the start, which flips it; one pinned to the
+ * start grows toward the end like an unpinned one.
+ */
+export const resizeSign = (column: { _pin?: 'left' | 'right' | undefined }, rtl: boolean): number => (rtl ? -1 : 1) * (column._pin === 'right' ? -1 : 1);
 
 /**
  * Column resize: a pointer drag on the head's handle (mouse, pen and touch share one path, with pointer capture), a
@@ -71,8 +79,7 @@ export class ResizeController<T> {
     }
 
     private rootFontPx(): number {
-        const { ownerDocument } = this.host.root;
-        return Number.parseFloat(ownerDocument.defaultView?.getComputedStyle(ownerDocument.documentElement).fontSize ?? '') || 16;
+        return rootFontPx(this.host.root);
     }
 
     private column(key: string): { column: EnhancedColumnDef<T>; n: number } | null {
@@ -131,8 +138,7 @@ export class ResizeController<T> {
             startY: event.clientY,
             startWidth,
             floor: columnMinWidthPx(column, this.rootFontPx()),
-            // The end edge moves with the pointer, unless the column is pinned to the end: it is anchored there and grows toward the start.
-            sign: (direction === 'rtl' ? -1 : 1) * (column._pin === 'right' ? -1 : 1),
+            sign: resizeSign(column, direction === 'rtl'),
             oldWidth: this.declaredWidth(key, column),
             original: table.style.getPropertyValue(name),
             wasAuto: column._width === 'auto',
@@ -163,16 +169,16 @@ export class ResizeController<T> {
         const drag = this.drag;
         if (!drag || event.pointerId !== drag.pointerId) return;
         this.finish(drag);
+        // Before the branches: a restore reads the pin offsets from the layout the live width feeds, a commit replaces it anyway.
+        this.columns().liveWidth(drag.key, null);
         const width = Math.round(drag.width);
         if (width !== Math.round(drag.startWidth)) {
             this.lastTap = null;
             this.commit([{ key: drag.key, oldWidth: drag.oldWidth, newWidth: px(width) }]);
         } else {
-            this.columns().liveWidth(drag.key, null);
             this.restore(drag);
             if (event.pointerType === 'touch' && drag.travel <= TAP_SLOP) this.tap(drag.key, event.timeStamp);
         }
-        this.columns().liveWidth(drag.key, null);
     };
 
     private readonly cancel = (): void => {
@@ -240,7 +246,7 @@ export class ResizeController<T> {
         for (const [, group] of cells) for (const cell of group) cell.toggleAttribute('data-measure', true);
         table.toggleAttribute('data-measuring', true);
         try {
-            for (const [key, group] of cells) widths.set(key, Math.max(0, ...group.map((cell) => cell.getBoundingClientRect().width)));
+            for (const [key, group] of cells) widths.set(key, group.reduce((widest, cell) => Math.max(widest, cell.getBoundingClientRect().width), 0)); // not Math.max(...): hundreds of thousands of cells overflow the argument list
         } finally {
             table.toggleAttribute('data-measuring', false);
             for (const [, group] of cells) for (const cell of group) cell.toggleAttribute('data-measure', false);
@@ -287,7 +293,7 @@ export class ResizeController<T> {
         const floor = columnMinWidthPx(found.column, this.rootFontPx());
         const current = Math.round(handle.closest(HEAD)?.getBoundingClientRect().width ?? floor);
         let next: number;
-        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = current + ((event.key === 'ArrowRight') !== rtl ? step : -step);
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = current + (event.key === 'ArrowRight' ? 1 : -1) * resizeSign(found.column, rtl) * step;
         else if (event.key === 'Home') next = floor;
         else if (event.key === 'Enter') {
             event.preventDefault();

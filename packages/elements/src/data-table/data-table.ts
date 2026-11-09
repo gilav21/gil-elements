@@ -10,7 +10,7 @@ import { type AssembledControllers, assembleControllers } from './data-table-con
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
-import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownsTarget, requireProvider } from './data-table-host.js';
+import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
 import type { DataTableConfig, DataTableProviders } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
@@ -237,11 +237,17 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     }
 
     cellAt(rowIndex: number, columnKey: string): HTMLElement | null {
-        return this.querySelector(`[data-slot="table-cell"][data-row-index="${rowIndex}"][data-column="${CSS.escape(columnKey)}"]`);
+        return this.own(`[data-slot="table-cell"][data-row-index="${rowIndex}"][data-column="${CSS.escape(columnKey)}"]`);
     }
 
     rowAt(rowIndex: number): HTMLElement | null {
-        return this.querySelector(`[data-slot="table-row"][data-row-index="${rowIndex}"]`);
+        return this.own(`[data-slot="table-row"][data-row-index="${rowIndex}"]`);
+    }
+
+    /** The first match that is this table's own: one in a table nested in a detail row can come first in document order. */
+    private own(selector: string): HTMLElement | null {
+        const first = this.querySelector<HTMLElement>(selector);
+        return first === null || ownsTarget(this, first) ? first : (ownElements(this, this.querySelectorAll<HTMLElement>(selector))[0] ?? null);
     }
 
     emit<K extends keyof DataTableEventMap<T>>(name: K, detail: DataTableEventMap<T>[K]): void {

@@ -323,6 +323,19 @@ describe('detail rows', () => {
     const mountDetail = (props: Record<string, unknown> = {}): Promise<Table> => mountTable<SampleRow>({ enableRowExpansion: true, data: makeRows(4), ...props });
     const expander = (table: Element, id: string): HTMLElement => q(table, `[data-row-id="${id}"] button[data-action="detail"]`);
 
+    it('a consumer button with its own data-action="detail" in a cell does not toggle the row', async () => {
+        const table = await mountDetail({
+            columns: [{ accessorKey: 'name', header: 'Name', cellRenderer: () => Object.assign(document.createElement('button'), { textContent: 'mine', className: 'mine' }) }],
+        });
+        for (const button of qa(table, 'button.mine')) button.dataset['action'] = 'detail';
+        await userEvent.click(q(table, '[data-row-id="r1"] button.mine'));
+        await settle(table);
+        expect(table.expandedRows).toEqual({});
+        await userEvent.click(expander(table, 'r1'));
+        await settle(table);
+        expect(table.expandedRows).toEqual({ r1: true });
+    });
+
     it('a table nested in a detail row does not drive the outer one: clicks, checkboxes and keys stay with the inner table', async () => {
         const inner = document.createElement('ge-data-table') as Table;
         Object.assign(inner, { columns: SAMPLE_COLUMNS, data: TREE(), enableSubRows: true, enableRowSelection: true, showToolbar: false, showPagination: false });

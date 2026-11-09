@@ -191,6 +191,21 @@ describe('ge-data-table cell content', () => {
         expect(cells.map((c) => c.textContent)).toEqual(['Total', '25']);
         expect(bodyRows(table)).toHaveLength(10);
     });
+
+    it('asks for the sorted rows to hand to the footer only when a footer is drawn', async () => {
+        const countFor = async (columns: ColumnDef<Row>[]): Promise<number> => {
+            const table = await mountTable({ columns });
+            const query = table.provider('query')!;
+            const sorted = query.sortedData.bind(query);
+            let calls = 0;
+            query.sortedData = () => (calls++, sorted());
+            table.requestUpdate();
+            await settle(table);
+            return calls;
+        };
+        expect(await countFor(COLUMNS)).toBe(0);
+        expect(await countFor([{ ...COLUMNS[0]!, footer: 'Total' }, COLUMNS[1]!])).toBeGreaterThan(0);
+    });
 });
 
 describe('ge-data-table sorting', () => {

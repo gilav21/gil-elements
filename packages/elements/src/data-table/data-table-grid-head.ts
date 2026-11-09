@@ -9,7 +9,7 @@ import { specialHead } from './data-table-grid-special.js';
 import { requireProvider } from './data-table-host.js';
 import { activeSorts, ariaSortOf } from './data-table-query.js';
 import type { DataTableViewHost } from './data-table-view.js';
-import { columnMinWidthPx } from './data-table-virtual.js';
+import { columnMinWidthPx, rootFontPx } from './data-table-virtual.js';
 import { interpolate } from './data-table.locales.js';
 import type { EnhancedColumnDef, SortDirection } from './data-table.types.js';
 import { isSpecialColumnKey, specialSlotOf } from './data-table.utils.js';
@@ -18,6 +18,8 @@ export interface ColumnsView<T> {
     columns: readonly EnhancedColumnDef<T>[];
     hasFlexible: boolean;
     resizable: boolean;
+    /** The root font size in px: the unit of a `rem` minimum width, as the resize logic reads it. */
+    rootFontPx: number;
     /** `enable-column-reorder`: data headers can be dragged, and moved with Alt+Shift+Arrow. */
     reorderable: boolean;
     /** The inline custom properties of `[data-slot=table]`: `--ge-dt-col-N`, `--ge-dt-colmin-N`, `--ge-dt-pin-N`. */
@@ -36,6 +38,7 @@ export function columnsView<T>(host: DataTableViewHost<T>): ColumnsView<T> {
         columns,
         hasFlexible: columns.some((c) => c._width === 'auto'),
         resizable: config.enableColumnResize,
+        rootFontPx: config.enableColumnResize ? rootFontPx(host.root) : 16,
         reorderable: config.enableColumnReorder,
         vars: columnCssVars(columns),
         sortDirection: (key) => query.sortDirection(key),
@@ -77,7 +80,7 @@ const MAX_WIDTH = 10000;
 function resizeHandle<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
     const width = pxOf(c._width);
     return html`<div data-slot="data-table-resize-handle" role="separator" aria-orientation="vertical" tabindex="0" aria-label=${interpolate(v.locale.resizeColumn, { column: c.header })}
-        aria-description=${v.locale.resizeColumnDescription} aria-valuemin=${Math.round(columnMinWidthPx(c))} aria-valuemax=${MAX_WIDTH} aria-valuenow=${width === null ? nothing : Math.round(width)}><div data-slot="data-table-resize-line" aria-hidden="true"></div></div>`;
+        aria-description=${v.locale.resizeColumnDescription} aria-valuemin=${Math.round(columnMinWidthPx(c, v.rootFontPx))} aria-valuemax=${MAX_WIDTH} aria-valuenow=${width === null ? nothing : Math.round(width)}><div data-slot="data-table-resize-line" aria-hidden="true"></div></div>`;
 }
 
 function headCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number): TemplateResult {

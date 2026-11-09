@@ -1,4 +1,4 @@
-import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, requireProvider } from './data-table-host.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import type { CellEditError, CellRange, EditingCell } from './data-table.types.js';
@@ -217,7 +217,7 @@ export class CellInteractionController<T> {
         const viewport = this.host.root.querySelector<HTMLElement>(VIEWPORT);
         if (!viewport) return FALLBACK_PAGE;
         const height = (selector: string): number => viewport.querySelector<HTMLElement>(selector)?.getBoundingClientRect().height ?? 0;
-        const rows = [...viewport.querySelectorAll<HTMLElement>(`${BODY} > [data-kind="data"]`)];
+        const rows = ownElements(this.host.root, viewport.querySelectorAll<HTMLElement>(`${BODY} > [data-kind="data"]`));
         if (rows.length === 0) return FALLBACK_PAGE;
         const mean = rows.reduce((sum, row) => sum + row.getBoundingClientRect().height, 0) / rows.length;
         return pageRows(viewport.clientHeight - height('[data-slot="table-header"]') - height('[data-slot="table-footer"]'), mean);

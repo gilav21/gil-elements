@@ -1,5 +1,6 @@
 /** Tree (sub-row) helpers: build, filter, sort, flatten and index. Pure; rows are never mutated. */
 import type { ColumnDef, FlattenedTreeRow, SortState, SubRowFilterMode } from './data-table.types.js';
+import { nodeExpanded } from './data-table-expansion.js';
 import { buildFilterMatchers, buildSortComparator, type GlobalFilterFn } from './data-table-query.js';
 
 export type GetChildren<T> = (row: T) => T[] | null | undefined;
@@ -109,11 +110,6 @@ export interface FlattenOptions<T> {
     defaultExpandedDepth: number;
 }
 
-function isNodeExpanded(id: string, depth: number, o: FlattenOptions<unknown>): boolean {
-    if (Object.hasOwn(o.expanded, id)) return o.expanded[id] === true;
-    return o.defaultExpandedDepth === -1 || depth < o.defaultExpandedDepth;
-}
-
 /** The visible rows of a tree in drawn order, children of collapsed rows skipped. */
 export function flattenTree<T>(rows: readonly T[], o: FlattenOptions<T>): FlattenedTreeRow<T>[] {
     const result: FlattenedTreeRow<T>[] = [];
@@ -122,7 +118,7 @@ export function flattenTree<T>(rows: readonly T[], o: FlattenOptions<T>): Flatte
             const id = o.getId(row);
             const children = o.getChildren(row) ?? [];
             const isLeaf = children.length === 0;
-            const isExpanded = !isLeaf && isNodeExpanded(id, depth, o as FlattenOptions<unknown>);
+            const isExpanded = !isLeaf && nodeExpanded(o.expanded, id, depth, o.defaultExpandedDepth);
             const rowPath = [...path, id];
             result.push({ row, depth, parentId, parentRow, path: rowPath, isLeaf, childCount: children.length, isExpanded, setSize: items.length, posInSet: position + 1 });
             if (isExpanded) walk(children, depth + 1, id, row, rowPath);

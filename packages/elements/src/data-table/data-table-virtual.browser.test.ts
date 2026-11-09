@@ -345,6 +345,38 @@ describe('several open detail rows in a flat variable-height list', () => {
     });
 });
 
+describe('a table nested in a detail row of a virtual table', () => {
+    it('does not feed the outer measurements, cells, rows or auto-fit', async () => {
+        const tall = (): HTMLElement => Object.assign(document.createElement('div'), { style: 'height:90px;width:30px' });
+        const inner = document.createElement('ge-data-table') as GeDataTable<SampleRow>;
+        Object.assign(inner, { columns: [{ accessorKey: 'c0', header: 'C0', width: '200px', cellRenderer: tall }], data: makeRows(3, { columns: 2 }), showToolbar: false, showPagination: false, enableRowSelection: false });
+        const table = await mountVirtual({ virtualRowHeight: 0, virtualVariableRowHeight: true, enableRowExpansion: true, renderDetail: () => inner }, {}, { width: 600, height: 600 }, 500, 3);
+        await frames(3);
+        const view = viewportOf(table);
+        const closed = view.scrollHeight;
+        table.expandedRows = { [table.data[0]!.id]: true };
+        await settle(table);
+        await settle(inner);
+        await frames(4);
+        const detail = q(table, '[data-kind="detail"]');
+        // the inner rows (90px) are not taken for outer rows 0..2, so the total grows by the detail row alone
+        expect(Math.abs(view.scrollHeight - closed - detail.getBoundingClientRect().height)).toBeLessThan(2);
+        // the outer cell and row at an index are the outer table's own, though the inner table has the same ones earlier in the document
+        for (const i of [0, 1, 2]) {
+            expect(table.cellAt(i, 'c0')!.closest('ge-data-table')).toBe(table);
+            expect(table.rowAt(i)!.closest('ge-data-table')).toBe(table);
+        }
+        // fitting an outer column leaves the cells of the inner table alone
+        const touched: string[] = [];
+        const observer = new MutationObserver((records) => records.forEach((r) => touched.push(r.attributeName!)));
+        observer.observe(inner, { attributes: true, subtree: true, attributeFilter: ['data-measure', 'data-width'] });
+        table.autoSizeColumn('c0');
+        await frames(3);
+        observer.disconnect();
+        expect(touched).toEqual([]);
+    });
+});
+
 describe('aria-rowindex with open detail rows above the window', () => {
     it('counts them in the drawn rows and in a retained one, as aria-rowcount does', async () => {
         const detail = (): HTMLElement => Object.assign(document.createElement('div'), { style: 'height:60px' });

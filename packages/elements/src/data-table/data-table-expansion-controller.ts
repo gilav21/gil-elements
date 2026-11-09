@@ -92,7 +92,7 @@ export class ExpansionController<T> {
             this.service.toggleGroup(group.getAttribute('data-group-key') ?? '');
             return;
         }
-        const action = target.closest('[data-action]');
+        const action = target.closest('[data-slot="data-table-icon-button"][data-action]'); // the table's own buttons, not a consumer's cell content with a data-action of its own
         if (!action) return;
         const kind = action.getAttribute('data-action');
         if (kind === 'detail-all') return this.service.toggleAll();
