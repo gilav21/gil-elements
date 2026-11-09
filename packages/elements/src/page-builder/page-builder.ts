@@ -6,6 +6,7 @@ import css from './page-builder.css?inline';
 import type { ComponentMeta, PageBuilderViewMode, PageDashboardItem, PageData } from './page-builder.types.js';
 import { interpolate } from '../shared/interpolate.js';
 import { resolvePageBuilderLocale, type PageBuilderLocale } from './page-builder.locales.js';
+import { PROPERTY_EDITOR_LOCALES } from './sub/property-editor.locales.js';
 import { isPageData, nextFreeRow, normaliseLength, toDashboardItem, withInputs } from './page-builder.utils.js';
 import type { PropertyChange } from './sub/property-editor.js';
 
@@ -506,7 +507,7 @@ export class GePageBuilder extends UiElement {
                           .item=${this.selectedItem}
                           .componentMeta=${this.selectedMeta}
                           .loading=${!this.widgets.element(selected)}
-                          .locale=${this.t.code}
+                          .locale=${Object.hasOwn(PROPERTY_EDITOR_LOCALES, this.t.code) ? this.t.code : 'en'}
                           @item-change=${(e: CustomEvent<PropertyChange>) => this.onItemChange(e.detail)}
                           @delete=${() => this.onDeleteItem()}
                       ></ge-property-editor>`

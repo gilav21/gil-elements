@@ -1,3 +1,5 @@
+import { pickLocale } from '../../shared/locale-lookup.js';
+
 /** The language tag and direction of a locale dictionary. */
 export interface LocaleMeta {
     code: string;
@@ -207,7 +209,5 @@ export const PROPERTY_EDITOR_LOCALES: Record<string, PropertyEditorLocale | unde
 
 /** An object is used as it is; an id is looked up; anything else follows the page's `lang`, then English. */
 export function resolvePropertyEditorLocale(input: string | PropertyEditorLocale | null | undefined): PropertyEditorLocale {
-    if (input && typeof input === 'object') return input;
-    const page = typeof document === 'undefined' ? '' : (document.documentElement.lang.split('-')[0] ?? '').toLowerCase();
-    return (input ? PROPERTY_EDITOR_LOCALES[input] : undefined) ?? PROPERTY_EDITOR_LOCALES[page] ?? PROPERTY_EDITOR_LOCALES.en;
+    return pickLocale(PROPERTY_EDITOR_LOCALES, input);
 }

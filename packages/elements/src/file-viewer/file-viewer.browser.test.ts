@@ -37,6 +37,15 @@ describe('ge-file-viewer', () => {
         expect(text(viewer, '.notice p')).toBe('אין תצוגה מקדימה לסוג קובץ זה.');
         expect(q(viewer, '.notice .link')!.textContent!.trim()).toBe('הורדת הקובץ');
 
+        // The toolbar is mirrored, so the chevrons are too, and the page counter keeps its own order.
+        const pdf = await viewerOf('locale="he"');
+        await open(pdf, samplePdf(), 'a.pdf');
+        expect(getComputedStyle(q(pdf, '.tool[data-flip] svg')!).transform).toBe('matrix(-1, 0, 0, 1, 0, 0)');
+        expect(q(pdf, '.counter.pages')!.getAttribute('dir')).toBe('ltr');
+        const ltrPdf = await viewerOf();
+        await open(ltrPdf, samplePdf(), 'a.pdf');
+        expect(getComputedStyle(q(ltrPdf, '.tool[data-flip] svg')!).transform).toBe('none');
+
         const text2 = await viewerOf('locale="de"');
         await open(text2, sampleText(), 'a.txt');
         expect(q(text2, '.toolbar')!.hasAttribute('dir')).toBe(false);

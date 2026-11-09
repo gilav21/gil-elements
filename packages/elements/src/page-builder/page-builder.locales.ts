@@ -1,3 +1,5 @@
+import { pickLocale } from '../shared/locale-lookup.js';
+
 /** The language tag and direction of a locale dictionary. */
 export interface LocaleMeta {
     code: string;
@@ -508,7 +510,5 @@ export const PAGE_BUILDER_LOCALES: Record<string, PageBuilderLocale | undefined>
 
 /** An object is used as it is; an id is looked up; anything else follows the page's `lang`, then English. */
 export function resolvePageBuilderLocale(input: string | PageBuilderLocale | null | undefined): PageBuilderLocale {
-    if (input && typeof input === 'object') return input;
-    const page = typeof document === 'undefined' ? '' : (document.documentElement.lang.split('-')[0] ?? '').toLowerCase();
-    return (input ? PAGE_BUILDER_LOCALES[input] : undefined) ?? PAGE_BUILDER_LOCALES[page] ?? PAGE_BUILDER_LOCALES.en;
+    return pickLocale(PAGE_BUILDER_LOCALES, input);
 }

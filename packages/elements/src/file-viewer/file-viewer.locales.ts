@@ -1,3 +1,5 @@
+import { pickLocale } from '../shared/locale-lookup.js';
+
 /** The language tag and direction of a locale dictionary. */
 export interface LocaleMeta {
     code: string;
@@ -247,7 +249,5 @@ export const FILE_VIEWER_LOCALES: Record<string, FileViewerLocale | undefined> &
 
 /** An object is used as it is; an id is looked up; anything else follows the page's `lang`, then English. */
 export function resolveFileViewerLocale(input: string | FileViewerLocale | null | undefined): FileViewerLocale {
-    if (input && typeof input === 'object') return input;
-    const page = typeof document === 'undefined' ? '' : (document.documentElement.lang.split('-')[0] ?? '').toLowerCase();
-    return (input ? FILE_VIEWER_LOCALES[input] : undefined) ?? FILE_VIEWER_LOCALES[page] ?? FILE_VIEWER_LOCALES.en;
+    return pickLocale(FILE_VIEWER_LOCALES, input);
 }

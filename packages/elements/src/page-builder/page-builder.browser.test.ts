@@ -382,6 +382,19 @@ describe('ge-page-builder locale', () => {
         expect(q(builder, '.palette .panel-title')!.textContent!.trim()).toBe('Parts');
         expect(q(builder, '.toolbar .count span')!.textContent).toBe('0 things');
     });
+
+    it('gives the inspector English, not the page language, when the builder runs a custom dictionary', async () => {
+        document.documentElement.lang = 'he';
+        try {
+            const builder = await setup('', PAGE);
+            builder.locale = { ...PAGE_BUILDER_LOCALES.en, code: 'xx' };
+            await settled(builder);
+            await select(builder, 'a');
+            expect(inEditor(builder, '.section-head h4')!.textContent).toBe('Layout');
+        } finally {
+            document.documentElement.lang = '';
+        }
+    });
 });
 
 describe('ge-page-renderer', () => {

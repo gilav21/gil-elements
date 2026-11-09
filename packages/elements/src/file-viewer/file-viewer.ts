@@ -411,8 +411,8 @@ export class GeFileViewer extends UiElement {
 
     // ---- rendering ----------------------------------------------------------------------------------------
 
-    private button(label: string, body: TemplateResult, disabled: boolean, click: () => void) {
-        return html`<button type="button" class="tool" aria-label=${label} ?disabled=${disabled} @click=${click}>${body}</button>`;
+    private button(label: string, body: TemplateResult, disabled: boolean, click: () => void, flip = false) {
+        return html`<button type="button" class="tool" ?data-flip=${flip} aria-label=${label} ?disabled=${disabled} @click=${click}>${body}</button>`;
     }
 
     private renderToolbar(dir: unknown) {
@@ -420,15 +420,15 @@ export class GeFileViewer extends UiElement {
         const download = this.downloadUrl;
         return html`<div class="toolbar" data-slot="file-viewer-toolbar" dir=${dir}>
             <div class="title">
-                <span class="name">${this.displayFilename}</span>
+                <span class="name" dir="auto">${this.displayFilename}</span>
                 ${type && type !== 'unknown' ? html`<span class="kind">${type}</span>` : nothing}
             </div>
             <div class="tools">
                 ${PAGINATED.has(type)
-                    ? html`${this.button(this.text.previousPage, ICON_PREV, this.currentPage <= 1, () => this.prevPage())}<span class="counter pages">${this.currentPage} / ${this.totalPages}</span>${this.button(this.text.nextPage, ICON_NEXT, this.currentPage >= this.totalPages, () => this.nextPage())}`
+                    ? html`${this.button(this.text.previousPage, ICON_PREV, this.currentPage <= 1, () => this.prevPage(), true)}<span class="counter pages" dir="ltr">${this.currentPage} / ${this.totalPages}</span>${this.button(this.text.nextPage, ICON_NEXT, this.currentPage >= this.totalPages, () => this.nextPage(), true)}`
                     : nothing}
                 ${ZOOMABLE.has(type)
-                    ? html`${this.button(this.text.zoomOut, ICON_ZOOM_OUT, this.currentZoom <= ZOOM_MIN, () => this.zoomOut())}<span class="counter zoom">${`${Math.round(this.currentZoom * 100)}%`}</span>${this.button(this.text.zoomIn, ICON_ZOOM_IN, this.currentZoom >= ZOOM_MAX, () => this.zoomIn())}`
+                    ? html`${this.button(this.text.zoomOut, ICON_ZOOM_OUT, this.currentZoom <= ZOOM_MIN, () => this.zoomOut())}<span class="counter zoom" dir="ltr">${`${Math.round(this.currentZoom * 100)}%`}</span>${this.button(this.text.zoomIn, ICON_ZOOM_IN, this.currentZoom >= ZOOM_MAX, () => this.zoomIn())}`
                     : nothing}
                 ${download ? html`<a class="tool" href=${download} download=${this.displayFilename} title=${this.text.download}>${ICON_DOWNLOAD}</a>` : nothing}
             </div>

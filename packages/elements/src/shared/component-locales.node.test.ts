@@ -43,4 +43,14 @@ describe('the resolvers', () => {
         expect(resolvePageBuilderLocale(undefined)).toBe(PAGE_BUILDER_LOCALES.en);
         expect(resolvePropertyEditorLocale('he')).toBe(PROPERTY_EDITOR_LOCALES.he);
     });
+
+    it('ignore case and region in an id, and never answer with an inherited member', () => {
+        expect(resolveFileViewerLocale('de-DE')).toBe(FILE_VIEWER_LOCALES.de);
+        expect(resolveFileViewerLocale('HE')).toBe(FILE_VIEWER_LOCALES.he);
+        expect(resolvePageBuilderLocale('pt-BR')).toBe(PAGE_BUILDER_LOCALES.pt);
+        for (const name of ['constructor', 'toString', '__proto__', 'hasOwnProperty']) {
+            expect(resolveFileViewerLocale(name)).toBe(FILE_VIEWER_LOCALES.en);
+            expect(resolvePropertyEditorLocale(name)).toBe(PROPERTY_EDITOR_LOCALES.en);
+        }
+    });
 });
