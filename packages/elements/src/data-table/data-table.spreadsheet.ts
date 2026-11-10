@@ -15,6 +15,7 @@ export function toClipboardText(grid: readonly (readonly string[])[]): string {
 /**
  * `value` as a quoted CSS string for an attribute selector (`[data-row-id="..."]`). Only quotes, backslashes and line
  * breaks need escaping inside a quoted string; unlike `CSS.escape` this works where the `CSS` global is missing.
+ * Not used yet on purpose: it will replace the `CSS.escape` uses once the spreadsheet addon is wired (waves 5-7).
  */
 export function cssString(value: string): string {
     const escaped = value

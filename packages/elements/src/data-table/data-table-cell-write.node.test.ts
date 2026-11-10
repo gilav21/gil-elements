@@ -44,6 +44,7 @@ function setup(options: { history?: boolean; validator?: ColumnDef<Row>['editVal
         },
         columnByKey: (key) => columns.find((c) => String(c.accessorKey) === key),
         rowAt: (i) => (options.rowAt ? options.rowAt(i, data) : data[i]),
+        renderedRows: () => (options.rowAt ? data.map((_, i) => options.rowAt!(i, data) as Row) : data),
         cellValue: (row, column) => row[column.accessorKey as keyof Row],
         historyEnabled: () => options.history ?? true,
         emit: (name, detail) => events.push([name, detail]),
@@ -198,6 +199,21 @@ describe('writeCells', () => {
         ]);
         expect(results.map((r) => r.status)).toEqual(['written', 'written', 'written']);
         expect(data().map((r) => [r.id, r.name])).toEqual([['a', 'Ccc'], ['b', 'Bbb'], ['c', 'Aaa']]);
+    });
+
+    it('replays a history entry with the drawn row index, as the edit did, not the index in the data', () => {
+        const rows: Row[] = [
+            { id: 'a', name: 'Ann', qty: 1 },
+            { id: 'b', name: 'Bob', qty: 2 },
+            { id: 'c', name: 'Cy', qty: 3 },
+        ];
+        // drawn: Cy, Bob, Ann (descending by name); the cell of Ann is drawn row 2 and is data index 0
+        const { writer, events } = setup({ rows, rowAt: (i, d) => [...d].sort((x, y) => y.name.localeCompare(x.name))[i] });
+        writer.runAsCommand(() => writer.writeCell({ rowIndex: 2, columnKey: 'qty' }, 9, { emitEdit: true }));
+        writer.undo();
+        writer.redo();
+        const edits = events.filter(([name]) => name === 'cell-edit').map(([, detail]) => (detail as { rowIndex: number }).rowIndex);
+        expect(edits).toEqual([2, 2, 2]);
     });
 
     it('validates each cell, reports each rejection, and still writes the rest in one data write', () => {

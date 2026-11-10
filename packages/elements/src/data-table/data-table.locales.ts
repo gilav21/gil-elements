@@ -227,12 +227,23 @@ const en: DataTableLocale = {
  */
 export const DATA_TABLE_LOCALES: Record<string, DataTableLocale | undefined> & { en: DataTableLocale } = { en };
 
-/** Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively. */
+let registryVersion = 0;
+
+/** Changes whenever a dictionary is registered: a table that resolved its locale earlier resolves it again. */
+export const dataTableLocaleVersion = (): number => registryVersion;
+
+/**
+ * Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively, whole (`pt-br`) before its
+ * language (`pt`). `__proto__` is not an id: assigning it would replace the table's prototype.
+ */
 export function registerDataTableLocale(code: string, dict: Partial<DataTableLocale>): void {
-    DATA_TABLE_LOCALES[code.toLowerCase()] = { ...DATA_TABLE_LOCALES.en, ...dict, code: dict.code ?? code };
+    const id = code.toLowerCase();
+    if (id === '__proto__') return;
+    DATA_TABLE_LOCALES[id] = { ...DATA_TABLE_LOCALES.en, ...dict, code: dict.code ?? code };
+    registryVersion++;
 }
 
-/** An object is used as it is; an id is looked up (region ignored); anything else follows the page's `lang`, then English. */
+/** An object is used as it is (English fills the gaps); an id is looked up, region first; anything else follows the page's `lang`, then English. */
 export function resolveDataTableLocale(input?: string | DataTableLocale | null): DataTableLocale {
     return pickLocale(DATA_TABLE_LOCALES, input);
 }

@@ -21,6 +21,9 @@ describe('resolveAddonLocale', () => {
         const table = { en: { hello: 'Hello' }, de: { hello: 'Hallo' } };
         expect(resolveAddonLocale(table, { resolvedLocale: { code: 'de' } }).hello).toBe('Hallo');
         expect(resolveAddonLocale(table, { resolvedLocale: { code: 'fr' } }).hello).toBe('Hello');
+        // case and region are ignored as in the table that hosts the addon
+        expect(resolveAddonLocale(table, { resolvedLocale: { code: 'de-DE' } }).hello).toBe('Hallo');
+        expect(resolveAddonLocale(table, { resolvedLocale: { code: 'en' } }, 'DE').hello).toBe('Hallo');
     });
 });
 

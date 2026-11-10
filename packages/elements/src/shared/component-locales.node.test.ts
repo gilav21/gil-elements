@@ -44,6 +44,17 @@ describe('the resolvers', () => {
         expect(resolvePropertyEditorLocale('he')).toBe(PROPERTY_EDITOR_LOCALES.he);
     });
 
+    it('fill a partial dictionary from English, and hand a complete one back as it is', () => {
+        const partial = { code: 'xx', download: 'Fetch' } as never;
+        const filled = resolveFileViewerLocale(partial);
+        expect(filled.download).toBe('Fetch');
+        expect(filled.code).toBe('xx');
+        for (const dictionary of [filled, resolvePageBuilderLocale(partial), resolvePropertyEditorLocale(partial)]) {
+            expect(Object.values(dictionary).every((value) => value !== undefined)).toBe(true);
+        }
+        expect(resolvePageBuilderLocale(partial).components).toBe(PAGE_BUILDER_LOCALES.en.components);
+    });
+
     it('ignore case and region in an id, and never answer with an inherited member', () => {
         expect(resolveFileViewerLocale('de-DE')).toBe(FILE_VIEWER_LOCALES.de);
         expect(resolveFileViewerLocale('HE')).toBe(FILE_VIEWER_LOCALES.he);

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
     DATA_TABLE_LOCALES,
+    dataTableLocaleVersion,
     EN_FILTER_BUILDER_LABELS,
     filterBuilderLabels,
     interpolate,
@@ -16,6 +17,7 @@ const de: DataTableLocale = { ...en, code: 'de', filterPlaceholder: 'Filtern...'
 afterEach(() => {
     delete DATA_TABLE_LOCALES['de'];
     delete DATA_TABLE_LOCALES['he'];
+    for (const id of ['pt', 'pt-br', 'zh-tw', 'zh-cn']) delete DATA_TABLE_LOCALES[id];
 });
 
 describe('data-table locales', () => {
@@ -94,6 +96,30 @@ describe('data-table locales', () => {
         expect(full.advancedFilter?.operators.equals).toBe('equals');
         expect(filterBuilderLabels({ ...en, advancedFilter: undefined })).toBe(EN_FILTER_BUILDER_LABELS);
         expect(full.rangeCount).toBe('Count');
+    });
+
+    it('finds a regional dictionary by its whole id before its language: pt-BR, and zh-TW against zh-CN', () => {
+        registerDataTableLocale('pt', { filterPlaceholder: 'Filtrar' });
+        registerDataTableLocale('pt-BR', { filterPlaceholder: 'Filtrar (BR)' });
+        registerDataTableLocale('zh-TW', { filterPlaceholder: 'TW' });
+        registerDataTableLocale('zh-CN', { filterPlaceholder: 'CN' });
+        expect(resolveDataTableLocale('pt-BR').filterPlaceholder).toBe('Filtrar (BR)');
+        expect(resolveDataTableLocale('PT-br').filterPlaceholder).toBe('Filtrar (BR)');
+        expect(resolveDataTableLocale('pt-PT').filterPlaceholder).toBe('Filtrar');
+        expect(resolveDataTableLocale('zh-TW').filterPlaceholder).toBe('TW');
+        expect(resolveDataTableLocale('zh-CN').filterPlaceholder).toBe('CN');
+        expect(resolveDataTableLocale('zh-HK')).toBe(en);
+    });
+
+    it('ignores an id that would replace the prototype of the table, and bumps the version only for a real one', () => {
+        const before = dataTableLocaleVersion();
+        registerDataTableLocale('__proto__', { filterPlaceholder: 'x' });
+        registerDataTableLocale('__PROTO__', { filterPlaceholder: 'x' });
+        expect(Object.getPrototypeOf(DATA_TABLE_LOCALES)).toBe(Object.prototype);
+        expect(Object.keys(DATA_TABLE_LOCALES)).not.toContain('__proto__');
+        expect(dataTableLocaleVersion()).toBe(before);
+        registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+        expect(dataTableLocaleVersion()).toBe(before + 1);
     });
 
     it('interpolates {column} and leaves unknown names', () => {

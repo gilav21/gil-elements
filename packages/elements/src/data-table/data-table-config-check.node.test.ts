@@ -27,6 +27,7 @@ describe('validateConfig', () => {
     });
     it('warns about server pagination without a total, but not for an empty table', () => {
         expect(check({ localPagination: false, data: [{ name: 'a' }] })[0]).toContain('total');
+        expect(check({ localPagination: false, data: [{ name: 'a' }], total: undefined })[0]).toContain('total');
         expect(check({ localPagination: false, data: [] })).toEqual([]);
         expect(check({ localPagination: false, data: [{ name: 'a' }], total: 1 })).toEqual([]);
     });

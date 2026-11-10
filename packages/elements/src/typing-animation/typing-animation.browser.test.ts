@@ -145,6 +145,20 @@ describe('ge-typing-animation', () => {
         expect(shown(el)).toBe('xy');
     });
 
+    it('shows the new phrase at once when the list is replaced while the old one is held, instead of the old text for the whole pause', async () => {
+        const el = await typing('type-speed="10" pause-duration="1500"', ['abc', 'xyz!']);
+        for (let i = 0; i < 20 && shown(el) !== 'abc'; i++) await advance(el, 10);
+        await advance(el, 20);
+        expect(shown(el)).toBe('abc');
+        el.strings = ['uvw', 'xyz!'];
+        await advance(el, 0);
+        expect(shown(el)).toBe('uvw');
+        // the place survives a shorter phrase too
+        el.strings = ['q', 'r'];
+        await advance(el, 0);
+        expect(shown(el)).toBe('q');
+    });
+
     it('starts again when the list is replaced by one shorter than the phrase being typed', async () => {
         const el = await typing('type-speed="10" delete-speed="10" pause-duration="10"', ['a', 'b', 'c']);
         for (let i = 0; i < 400 && shown(el) !== 'c'; i++) await advance(el, 10);

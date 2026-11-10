@@ -16,7 +16,7 @@ import type { DataTableConfig, DataTableProviders } from './data-table-providers
 import { memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
 import { buildView, type DataTableViewHost } from './data-table-view.js';
-import { type DataTableLocale, interpolate, resolveDataTableLocale, withEnglishFallback } from './data-table.locales.js';
+import { type DataTableLocale, dataTableLocaleVersion, interpolate, resolveDataTableLocale, withEnglishFallback } from './data-table.locales.js';
 import type { ColumnDef, DataTableColumnState, DataTableLoadingTrigger, DataTableQuery, DataTableViewState, PaginationState } from './data-table.types.js';
 import { defaultGetRowId } from './data-table.utils.js';
 import './sub/data-table-column-header.js';
@@ -188,6 +188,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         getRowId: (row) => this.getRowId(row),
         columnByKey: (key) => this.columns.find((c) => String(c.accessorKey) === key),
         rowAt: (index) => this.provider('query')?.renderedRowAt(index),
+        renderedRows: () => this.provider('query')?.renderedRows() ?? [],
         cellValue: (row, column) => this.provider('query')?.cellValue(row, column.accessorKey, column),
         historyEnabled: () => this.enableEditHistory,
         emit: (...event) => this.emit(event[0], event[1] as never),
@@ -201,7 +202,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     private announcement = '';
     private flip = false;
     private dirManaged = false;
-    private readonly localeOf = memoLast((input: string | DataTableLocale | undefined) => withEnglishFallback(resolveDataTableLocale(input)));
+    // The registry's version and the page language are part of the key: a dictionary registered later, or a `lang` that changes, resolves again.
+    private readonly localeOf = memoLast((input: string | DataTableLocale | undefined, _version: number, _pageLang: string) => withEnglishFallback(resolveDataTableLocale(input)));
 
     constructor() {
         super();
@@ -233,7 +235,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     }
 
     get resolvedLocale(): DataTableLocale {
-        return this.localeOf(this.locale);
+        return this.localeOf(this.locale, dataTableLocaleVersion(), this.ownerDocument.documentElement.lang);
     }
 
     cellAt(rowIndex: number, columnKey: string): HTMLElement | null {

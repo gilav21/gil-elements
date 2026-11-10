@@ -79,7 +79,7 @@ export class GeTypingAnimation extends UiElement {
         else if (this.stringIndex >= this.strings.length) {
             this.reset();
             this.begin();
-        }
+        } else this.refresh(this.strings[this.stringIndex] ?? '');
     }
 
     override disconnectedCallback(): void {
@@ -110,6 +110,13 @@ export class GeTypingAnimation extends UiElement {
         this.charIndex = 0;
         this.phase = 'typing';
         this.shown = '';
+    }
+
+    /** The list changed under the phrase being typed: keep the pace and place, but show the new phrase's text now, not after the next tick or pause. */
+    private refresh(current: string): void {
+        // A phrase held whole is held whole in its new form; otherwise the place stays within the new phrase.
+        this.charIndex = this.phase === 'pausing' ? current.length : Math.min(this.charIndex, current.length);
+        this.shown = current.slice(0, this.charIndex);
     }
 
     private stop(): void {

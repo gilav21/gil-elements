@@ -75,6 +75,8 @@ export interface CellWritePorts<T> {
     /** The column behind a key. */
     columnByKey(key: string): ColumnDef<T> | undefined;
     rowAt(rowIndex: number): T | undefined;
+    /** The rows as drawn, in order: what `rowIndex` of every `cell-edit` counts in (data rows only). */
+    renderedRows(): readonly T[];
     cellValue(row: T, column: ColumnDef<T>): unknown;
     historyEnabled(): boolean;
     emit(
@@ -211,9 +213,11 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
             }
         }
         const updated = commit(items);
+        // `rowIndex` counts drawn rows, as in the edit that made the entry; a row that is not drawn now (filtered out, on another page) has none: -1.
+        const drawn = new Map(ports.renderedRows().map((row, i) => [ports.getRowId(row), i] as const));
         items.forEach((item, i) => {
             const row = updated[i];
-            if (row) ports.emit('cell-edit', { row, column: item.column, oldValue: item.oldValue, newValue: item.value, rowIndex: item.index });
+            if (row) ports.emit('cell-edit', { row, column: item.column, oldValue: item.oldValue, newValue: item.value, rowIndex: drawn.get(ports.getRowId(row)) ?? -1 });
         });
         return stale;
     }
