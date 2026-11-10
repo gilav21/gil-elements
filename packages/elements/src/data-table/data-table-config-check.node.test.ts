@@ -31,6 +31,11 @@ describe('validateConfig', () => {
         expect(check({ localPagination: false, data: [] })).toEqual([]);
         expect(check({ localPagination: false, data: [{ name: 'a' }], total: 1 })).toEqual([]);
     });
+    it('does not ask for a total when no pager is drawn: hidden pager, or virtual scroll', () => {
+        const server = { localPagination: false, data: [{ name: 'a' }], total: undefined };
+        expect(check({ ...server, showPagination: false })).toEqual([]);
+        expect(check({ ...server, enableVirtualScroll: true, virtualActive: true })).toEqual([]);
+    });
     it('warns about virtual options without virtual scroll', () => {
         expect(check({ virtualVariableRowHeight: true })).toHaveLength(1);
         expect(check({ virtualRecycleComponents: true })).toHaveLength(1);

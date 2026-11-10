@@ -117,6 +117,8 @@ export class GeTypingAnimation extends UiElement {
         // A phrase held whole is held whole in its new form; otherwise the place stays within the new phrase.
         this.charIndex = this.phase === 'pausing' ? current.length : Math.min(this.charIndex, current.length);
         this.shown = current.slice(0, this.charIndex);
+        // A finished run (no loop, nothing pending) has no timer: a longer phrase needs the typing picked up again.
+        if (this.timer === null && this.isConnected && this.phase === 'typing' && this.charIndex < current.length) this.tick();
     }
 
     private stop(): void {

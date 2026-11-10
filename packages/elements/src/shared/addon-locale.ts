@@ -1,12 +1,4 @@
-/**
- * The entry of `table` an id means: the whole id first (lowercased, `pt-br`), then its language (`pt`). Only the table's own
- * entries count, so a name like `constructor` finds nothing.
- */
-export function lookupLocale<T>(table: Readonly<Record<string, T | undefined>>, id: string): T | undefined {
-    const own = (key: string): T | undefined => (Object.hasOwn(table, key) ? table[key] : undefined);
-    const exact = id.toLowerCase();
-    return own(exact) ?? own(exact.split('-')[0] ?? '');
-}
+import { lookupLocale } from './locale-id.js';
 
 /** A per-language dictionary table keyed by the host's locale code; `en` is the fallback. */
 export type AddonLocaleTable<T extends object> = Readonly<Record<string, T | undefined>> & { readonly en: T };

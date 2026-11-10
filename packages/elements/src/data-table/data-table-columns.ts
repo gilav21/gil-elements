@@ -43,7 +43,7 @@ const own = <V>(record: Readonly<Record<string, V>>, key: string): V | undefined
 function withSpecialColumns<T>(visible: ColumnDef<T>[], i: ColumnLayoutInput<T>): ColumnDef<T>[] {
     const result = [...visible];
     // A column the consumer defined itself (`columnHelper().select()`) is the special column: a second one would draw it twice.
-    const supplied = (key: string): boolean => visible.some((c) => c.accessorKey === key);
+    const supplied = (key: string): boolean => i.columns.some((c) => c.accessorKey === key); // hidden ones too: hiding it hides the control
     if (i.enableRowSelection && !supplied('_selection')) result.unshift({ accessorKey: '_selection', header: '', pin: 'left', width: '40px', enableSorting: false });
     if (i.enableRowExpansion && !supplied('_expander')) result.unshift({ accessorKey: '_expander', header: '', pin: 'left', width: 'var(--ge-dt-expander-w, 40px)', enableSorting: false });
     if (i.hasActions && !supplied('_actions')) result.push({ accessorKey: '_actions', header: '', width: '50px', enableSorting: false, enableHiding: false, enableReordering: false });

@@ -55,6 +55,11 @@ describe('computeColumnLayout', () => {
         expect(columns.find((c) => c.accessorKey === '_actions')?._width).toBe('70px');
     });
 
+    it('adds no second control column when the consumer\'s own is hidden by columnVisibility', () => {
+        const { columns } = layout([col('_selection', { pin: 'left' }), col('a')], { enableRowSelection: true, visibility: { _selection: false } });
+        expect(columns.map((c) => c.accessorKey)).toEqual(['a']);
+    });
+
     it('does not treat a key like a prototype member as a runtime override', () => {
         expect(keys([col('constructor')], { widths: {}, visibility: {} })).toEqual(['constructor']);
     });

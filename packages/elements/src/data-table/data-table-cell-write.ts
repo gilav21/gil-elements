@@ -47,6 +47,8 @@ export type CellWriteResult<T> =
 interface EditChange {
     readonly rowId: string;
     readonly columnKey: string;
+    /** The drawn row index of the edit, as its `cell-edit` carried it: replays report it again. */
+    readonly rowIndex: number;
     readonly before: unknown;
     readonly after: unknown;
 }
@@ -75,8 +77,6 @@ export interface CellWritePorts<T> {
     /** The column behind a key. */
     columnByKey(key: string): ColumnDef<T> | undefined;
     rowAt(rowIndex: number): T | undefined;
-    /** The rows as drawn, in order: what `rowIndex` of every `cell-edit` counts in (data rows only). */
-    renderedRows(): readonly T[];
     cellValue(row: T, column: ColumnDef<T>): unknown;
     historyEnabled(): boolean;
     emit(
@@ -141,7 +141,7 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
             const row = setter(next[at] as T, item.value);
             next[at] = row;
             touched = true;
-            recording?.push({ rowId: ports.getRowId(item.row), columnKey: item.columnKey, before: item.oldValue, after: item.value });
+            recording?.push({ rowId: ports.getRowId(item.row), columnKey: item.columnKey, rowIndex: item.index, before: item.oldValue, after: item.value });
             return row;
         });
         if (touched) {
@@ -202,6 +202,7 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
         const data = ports.getData();
         const byId = idIndex(data);
         const items: Pending<T>[] = [];
+        const drawnAt: number[] = [];
         for (const change of command) {
             const column = ports.columnByKey(change.columnKey);
             const index = byId.get(change.rowId);
@@ -210,14 +211,14 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
             else {
                 const row = data[index] as T;
                 items.push({ index, row, column, columnKey: change.columnKey, value: pick(change), oldValue: ports.cellValue(row, column) });
+                drawnAt.push(change.rowIndex);
             }
         }
         const updated = commit(items);
-        // `rowIndex` counts drawn rows, as in the edit that made the entry; a row that is not drawn now (filtered out, on another page) has none: -1.
-        const drawn = new Map(ports.renderedRows().map((row, i) => [ports.getRowId(row), i] as const));
+        // The index the edit itself carried (where the user edited), not where the row sits after this replay re-sorts it.
         items.forEach((item, i) => {
             const row = updated[i];
-            if (row) ports.emit('cell-edit', { row, column: item.column, oldValue: item.oldValue, newValue: item.value, rowIndex: drawn.get(ports.getRowId(row)) ?? -1 });
+            if (row) ports.emit('cell-edit', { row, column: item.column, oldValue: item.oldValue, newValue: item.value, rowIndex: drawnAt[i] as number });
         });
         return stale;
     }

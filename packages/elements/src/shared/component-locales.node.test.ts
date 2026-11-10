@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { lookupLocale } from './locale-lookup.js';
 import { FILE_VIEWER_LOCALES, resolveFileViewerLocale } from '../file-viewer/file-viewer.locales.js';
 import { PAGE_BUILDER_LOCALES, resolvePageBuilderLocale } from '../page-builder/page-builder.locales.js';
 import { PROPERTY_EDITOR_LOCALES, resolvePropertyEditorLocale } from '../page-builder/sub/property-editor.locales.js';
@@ -53,6 +54,23 @@ describe('the resolvers', () => {
             expect(Object.values(dictionary).every((value) => value !== undefined)).toBe(true);
         }
         expect(resolvePageBuilderLocale(partial).components).toBe(PAGE_BUILDER_LOCALES.en.components);
+    });
+
+    it('keep the code of a custom dictionary (unnamed is empty, never English) and give the same object for the same input', () => {
+        const named = { code: 'xx', download: 'Fetch' } as never;
+        expect(resolveFileViewerLocale(named).code).toBe('xx');
+        expect(resolveFileViewerLocale(named)).toBe(resolveFileViewerLocale(named));
+        const unnamed = { download: 'Fetch' } as never;
+        expect(resolveFileViewerLocale(unnamed).code).toBe('');
+        expect(resolveFileViewerLocale(unnamed)).toBe(resolveFileViewerLocale(unnamed));
+        expect(resolveFileViewerLocale(unnamed).print).toBe(FILE_VIEWER_LOCALES.en.print);
+    });
+
+    it('take an underscore like a hyphen in an id', () => {
+        expect(resolveFileViewerLocale('de_DE')).toBe(FILE_VIEWER_LOCALES.de);
+        expect(lookupLocale({ 'pt-br': 'BR', pt: 'PT' }, 'pt_BR')).toBe('BR');
+        expect(lookupLocale({ 'pt-br': 'BR', pt: 'PT' }, 'PT_pt')).toBe('PT');
+        expect(lookupLocale({ 'zh-cn': 'CN', zh: 'ZH' }, 'zh_TW')).toBe('ZH');
     });
 
     it('ignore case and region in an id, and never answer with an inherited member', () => {

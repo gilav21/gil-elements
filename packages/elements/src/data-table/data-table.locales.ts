@@ -1,5 +1,5 @@
 import type { LocaleMeta } from '../shared/calendar-locales.js';
-import { pickLocale } from '../shared/locale-lookup.js';
+import { pickLocale, withFallback } from '../shared/locale-lookup.js';
 
 export { interpolate } from '../shared/interpolate.js';
 
@@ -228,6 +228,13 @@ const en: DataTableLocale = {
 export const DATA_TABLE_LOCALES: Record<string, DataTableLocale | undefined> & { en: DataTableLocale } = { en };
 
 let registryVersion = 0;
+const registryListeners = new Set<() => void>();
+
+/** `listener` runs whenever a dictionary is registered; returns the way to stop. A table on screen uses it to draw its new language. */
+export function onDataTableLocaleChange(listener: () => void): () => void {
+    registryListeners.add(listener);
+    return () => void registryListeners.delete(listener);
+}
 
 /** Changes whenever a dictionary is registered: a table that resolved its locale earlier resolves it again. */
 export const dataTableLocaleVersion = (): number => registryVersion;
@@ -237,10 +244,11 @@ export const dataTableLocaleVersion = (): number => registryVersion;
  * language (`pt`). `__proto__` is not an id: assigning it would replace the table's prototype.
  */
 export function registerDataTableLocale(code: string, dict: Partial<DataTableLocale>): void {
-    const id = code.toLowerCase();
-    if (id === '__proto__') return;
-    DATA_TABLE_LOCALES[id] = { ...DATA_TABLE_LOCALES.en, ...dict, code: dict.code ?? code };
+    if (code.toLowerCase() === '__proto__') return;
+    const id = code.toLowerCase().replaceAll('_', '-');
+    DATA_TABLE_LOCALES[id] = withFallback(DATA_TABLE_LOCALES.en, { ...dict, code: dict.code ?? code } as DataTableLocale);
     registryVersion++;
+    for (const listener of [...registryListeners]) listener();
 }
 
 /** An object is used as it is (English fills the gaps); an id is looked up, region first; anything else follows the page's `lang`, then English. */
@@ -261,5 +269,5 @@ export function filterBuilderLabels(locale: DataTableLocale): FilterBuilderLabel
  * `undefined` in the range readout.
  */
 export function withEnglishFallback(locale: DataTableLocale): DataTableLocale {
-    return { ...en, ...locale, advancedFilter: filterBuilderLabels(locale) };
+    return withFallback(en, locale);
 }

@@ -49,7 +49,7 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         'Both pagination and enable-virtual-scroll are enabled. They are mutually exclusive: virtual scroll is used and the pagination controls have no effect.',
     );
     warn(
-        !c.localPagination && !c.total && dataLength > 0,
+        !c.localPagination && c.showPagination && !c.virtualActive && !c.total && dataLength > 0,
         'Using server-side pagination (local-pagination=false) without providing a total. Pagination may not work correctly.',
     );
     warn(c.virtualVariableRowHeight && !c.virtualActive, 'virtual-variable-row-height is enabled but virtual scroll is not active. This option has no effect.');

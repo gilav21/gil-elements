@@ -593,22 +593,21 @@ describe('ge-data-table styles and lifecycle', () => {
         expect(q(table, '[data-slot="data-table-filter"] ge-input').getAttribute('placeholder')).toBe('Filtern...');
     });
 
-    it('takes a dictionary registered after the first render, and a changed page language', async () => {
+    it('redraws in a dictionary registered after the first render, and in a changed page language, with no other trigger', async () => {
         const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
         const placeholder = (table: Element) => q(table, '[data-slot="data-table-filter"] ge-input').getAttribute('placeholder');
         const lang = document.documentElement.lang;
         try {
             const table = await mountTable({ locale: 'de', data: [] });
             expect(placeholder(table)).toBe(DATA_TABLE_LOCALES.en.filterPlaceholder);
-            registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
-            table.requestUpdate();
+            registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' }); // no other render trigger
             await settle(table);
             expect(placeholder(table)).toBe('Filtern...');
             // no locale set: the page language decides, and a change of it is followed
             const follower = await mountTable({ data: [] });
             expect(placeholder(follower)).toBe(DATA_TABLE_LOCALES.en.filterPlaceholder);
             document.documentElement.lang = 'de';
-            follower.requestUpdate();
+            await new Promise((resolve) => setTimeout(resolve, 0)); // the attribute observer is a microtask, the render another
             await settle(follower);
             expect(placeholder(follower)).toBe('Filtern...');
         } finally {
