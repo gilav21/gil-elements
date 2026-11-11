@@ -30,6 +30,11 @@ export class CellInteractionController<T> {
     /** The row that held the focus when a node or group was opened or closed: the render that follows follows it. */
     private rowAtExpansion: { at: CellAddress; id: string; hadFocus: boolean } | null = null;
     private watched: Element | null = null;
+    /**
+     * Bumped by every attach and every detach, so it is odd while attached. The host keeps its queued tasks across a disconnect (other controllers
+     * wait on theirs), so a deferred task of this controller checks that it is still running in the attach that queued it.
+     */
+    private attachment = 0;
     private teardown: (() => void)[] = [];
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
@@ -44,6 +49,7 @@ export class CellInteractionController<T> {
     };
 
     attach(): void {
+        this.attachment++;
         const { host } = this;
         const { root, disposables } = host;
         this.teardown = [
@@ -70,6 +76,7 @@ export class CellInteractionController<T> {
         this.observer?.disconnect();
         this.observer = this.watched = null;
         this.within = this.pointer = false;
+        this.attachment++;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
     }
 
@@ -123,7 +130,7 @@ export class CellInteractionController<T> {
         // No row drawn at the focused index (the list is empty): a note kept waiting for rows stays, it is not replaced by nothing.
         if (id === undefined) return;
         const cell = this.host.cellAt(at.rowIndex, at.columnKey);
-        this.rowAtExpansion = { at, id, hadFocus: !!cell?.contains(this.rootNode().activeElement) };
+        this.rowAtExpansion = { at, id, hadFocus: !!cell?.contains(this.deepActive()) };
     }
 
     /**
@@ -178,10 +185,10 @@ export class CellInteractionController<T> {
     private dropFocus(hadFocus: boolean, group: string, at?: CellAddress): void {
         this.clear();
         if (!hadFocus) return;
-        this.host.afterRender(() => {
+        this.afterRender(() => {
             // Still nowhere: focus fell to the page with the cell, or is on the viewport; something else has it by now otherwise. Unlike the
             // observer below, focus on another part of the page is not nowhere: it is the user's, and is left alone.
-            if (!this.onPage() && this.rootNode().activeElement !== this.host.root.querySelector(VIEWPORT)) return;
+            if (!this.onPage() && this.deepActive() !== this.host.root.querySelector(VIEWPORT)) return;
             const toggle = this.groupToggle(group);
             if (toggle) return toggle.focus({ preventScroll: true });
             const next = at && this.landOn(at.rowIndex, at.columnKey);
@@ -227,7 +234,7 @@ export class CellInteractionController<T> {
         if (reveal) requireProvider(this.host, 'virtual').reveal(rowIndex, columnKey);
         this.focusDom();
         // The cell may not exist yet (its row is entering the window): the render that draws it runs first.
-        if (!this.hasFocus()) this.host.afterRender(() => this.focusDom());
+        if (!this.hasFocus()) this.afterRender(() => this.focusDom());
     }
 
     // ---- DOM focus --------------------------------------------------------------------------------------------------
@@ -238,7 +245,13 @@ export class CellInteractionController<T> {
 
     private hasFocus(): boolean {
         const cell = this.focused ? this.host.cellAt(this.focused.rowIndex, this.focused.columnKey) : null;
-        return cell !== null && this.rootNode().activeElement === cell;
+        return cell !== null && this.deepActive() === cell;
+    }
+
+    /** Queues `task` for after the render, unless the table is detached (or attached anew) by the time the host runs it. */
+    private afterRender(task: () => void): void {
+        const attachment = this.attachment;
+        this.host.afterRender(() => attachment === this.attachment && task());
     }
 
     /** The focused cell's element takes DOM focus (no scrolling: `reveal` already placed it). */

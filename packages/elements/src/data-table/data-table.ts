@@ -481,8 +481,6 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             this.providers.clear();
             cancelAnimationFrame(this.frame);
             this.frame = 0;
-            // Tasks queued for the frame that was just cancelled belong to this attach: run after a re-attach they would touch new providers.
-            this.afterTasks = [];
             this.disposables.dispose();
             this.releaseStyles?.();
             this.releaseStyles = null;
