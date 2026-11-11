@@ -258,13 +258,29 @@ export class CellInteractionController<T> {
         cell.focus({ preventScroll: true });
     }
 
-    /** A render can remove or move the focused element (a sort, a row leaving the window): DOM focus then falls to the page. */
-    /** Nothing has DOM focus, or only the page (`<body>`) does: what is left when the focused element is removed. */
-    private onPage(): boolean {
-        const active = this.rootNode().activeElement;
-        return !active || active === this.host.root.ownerDocument.body;
+    /**
+     * The element that has DOM focus, wherever it is: `document.activeElement` answers the outermost shadow host, so this goes down through
+     * the shadow roots. (The table's own `rootNode().activeElement` is null while focus is outside the shadow tree the table sits in.)
+     */
+    private deepActive(): Element | null {
+        let active = this.host.root.ownerDocument.activeElement;
+        while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+        return active;
     }
 
+    /** Nothing has DOM focus, or only the page (`<body>`, `<html>`) does: what is left when the focused element is removed. */
+    private onPage(): boolean {
+        const active = this.deepActive();
+        return !active || active === active.ownerDocument.body || active === active.ownerDocument.documentElement;
+    }
+
+    /** `node` is inside this table, across shadow roots (a parent is the shadow host when the node is the root of a shadow tree). */
+    private insideTable(node: Node | null): boolean {
+        for (let at = node; at; at = at.parentNode ?? (at as ShadowRoot).host ?? null) if (at === this.host.root) return true;
+        return false;
+    }
+
+    /** A render can remove or move the focused element (a sort, a row leaving the window): DOM focus then falls to the page. */
     private watchDom(): void {
         const viewport = this.host.root.querySelector(VIEWPORT);
         // A new viewport element (the skeleton gives way to the grid) is a new subtree to watch.
@@ -273,8 +289,7 @@ export class CellInteractionController<T> {
         this.watched = viewport;
         this.observer = new MutationObserver(() => {
             // Lost: nothing has the focus, the page has, or something outside the table has (a removed row's focus can fall anywhere).
-            const active = this.rootNode().activeElement;
-            if (this.within && this.focused && (this.onPage() || !this.host.root.contains(active))) this.focusDom();
+            if (this.within && this.focused && (this.onPage() || !this.insideTable(this.deepActive()))) this.focusDom();
         });
         this.observer.observe(viewport, { childList: true, subtree: true });
     }

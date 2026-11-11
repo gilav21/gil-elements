@@ -2,7 +2,7 @@
 // own markup: the checkbox of its `_selection` cell and header (data-table.component.html 105-115, 542-548, the `ui-checkbox` of
 // checkbox.component.html), a selected row's `data-state="selected"`, and the indeterminate states of the header and of a tree parent.
 // Laid over the same table shell as data-table.mjs and data-table-rows.mjs, whose helpers are reused.
-import { cellStyle, elTable, ROWS } from './data-table.mjs';
+import { cellStyle, elTable, ROWS, rewrite } from './data-table.mjs';
 import { agg, BTN, COLS, dataRows, GROUP_ROWS, groupRow, icon, shade, shell, sub, TREE, treeCell, visible } from './data-table-rows.mjs';
 
 // shadcn-angular checkbox.component.html / .ts classes(), as in cases/checkbox.mjs.
@@ -27,16 +27,16 @@ const pinned = (c, header) => {
  * `data-state="selected"` on the selected rows. `states` is one of 'on' | 'mixed' | 'off' per body row, in order.
  */
 function withSelection(html, header, states) {
-    let out = html.replace(/(data-column-id="_selection"[^>]*>)[\s\S]*?(<\/ui-table-head>)/, (_, a, b) => `${a}<div class="flex items-center w-full h-full"><div class="flex-1 min-w-0">${checkbox(header, 'Select all')}</div></div>${b}`);
+    let out = rewrite(html, /(data-column-id="_selection"[^>]*>)[\s\S]*?(<\/ui-table-head>)/, (_, a, b) => `${a}<div class="flex items-center w-full h-full"><div class="flex-1 min-w-0">${checkbox(header, 'Select all')}</div></div>${b}`, 'selection head');
     // The pinned selection cell is opaque (it hides what scrolls under it) and takes the row's selected colour: Angular paints it
     // `bg-background` over the tint, a gap in the row; the agreed fix, as in data-table.mjs, is the one the element draws.
     let cell = 0;
-    out = out.replace(/<ui-table-cell class="([^"]*)"([^>]*data-column="_selection"[^>]*>)[^<]*<\/ui-table-cell>/g, (match, cls, rest) => {
+    out = rewrite(out, /<ui-table-cell class="([^"]*)"([^>]*data-column="_selection"[^>]*>)[^<]*<\/ui-table-cell>/g, (match, cls, rest) => {
         const state = states[cell++];
         return `<ui-table-cell class="${state === 'on' ? cls.replace('bg-background', 'bg-muted') : cls}"${rest}${checkbox(state, 'Select row')}</ui-table-cell>`;
-    });
+    }, 'selection cells', states.length);
     let row = 0;
-    return out.replace(/(<ui-table-row class="[^"]*" data-slot="table-row" role="row" data-row-index="\d+")/g, (match) => (states[row++] === 'on' ? `${match} data-state="selected"` : match));
+    return rewrite(out, /(<ui-table-row class="[^"]*" data-slot="table-row" role="row" data-row-index="\d+")/g, (match) => (states[row++] === 'on' ? `${match} data-state="selected"` : match), 'selected rows', states.length);
 }
 
 // ---- a flat table: the header is mixed while some rows are selected ----------------------------------------------------
@@ -64,15 +64,14 @@ function treeRef(open, selected) {
     };
     const body = rows.map(({ row, depth }, i) => {
         const [html] = dataRows([SEL, ...COLS], [{ ...row, children: undefined }], i, i + 2, pinned);
-        return html
-            .replace(/(data-column="name"[^>]*>)[^<]*(<\/ui-table-cell>)/, (_, a, b) => `${a}${treeCell(row, depth, open.includes(row.id))}${b}`)
-            // the sticky selection cell keeps its own opaque colour: only the other cells take the depth shade
-            .replace(/(data-column="(?!_selection)[^"]*" style=")width:/g, `$1${shade(depth)} width:`);
+        const named = rewrite(html, /(data-column="name"[^>]*>)[^<]*(<\/ui-table-cell>)/, (_, a, b) => `${a}${treeCell(row, depth, open.includes(row.id))}${b}`, 'tree name cell');
+        // the sticky selection cell keeps its own opaque colour: only the other cells take the depth shade
+        return rewrite(named, /(data-column="(?!_selection)[^"]*" style=")width:/g, `$1${shade(depth)} width:`, 'tree depth shade', 'some');
     });
     const states = rows.map(({ row }) => stateOf(row));
     const allButton = `<button type="button" class="${BTN}" aria-label="Collapse all sub-rows">${icon('chevrons-up', '')}</button>`;
     const header = states.every((s) => s === 'on') ? 'on' : states.some((s) => s !== 'off') ? 'mixed' : 'off';
-    const table = shell([SEL, ...COLS], body.join(''), pinned).replace(/(data-column-id="name"[\s\S]*?<div class="flex items-center gap-2">)/, (_, a) => `${a}${allButton}`);
+    const table = rewrite(shell([SEL, ...COLS], body.join(''), pinned), /(data-column-id="name"[\s\S]*?<div class="flex items-center gap-2">)/, (_, a) => `${a}${allButton}`, 'tree expand-all button');
     return withSelection(table, header, states);
 }
 const treeEl = (open, selected) =>

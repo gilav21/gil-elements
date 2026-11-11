@@ -25,6 +25,18 @@ export const ROWS = [
     { id: 'U-4', name: 'Dave Lee', role: 'Analyst', age: 25 },
 ];
 
+/**
+ * `html.replace(pattern, to)` that fails loudly: a rewrite of the reference markup that no longer matches (the markup changed) would
+ * leave the reference unmodified, and a few differing pixels could then pass as parity. `expected` is the number of matches (default
+ * one), or 'some' for at least one.
+ */
+export function rewrite(html, pattern, to, label, expected = 1) {
+    const all = new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`);
+    const found = [...html.matchAll(all)].length;
+    if (expected === 'some' ? found === 0 : found !== expected) throw new Error(`parity rewrite '${label}': expected ${expected} match(es), found ${found}`);
+    return html.replace(all, to);
+}
+
 /** The inline style `_buildCellStyle` produces for a fixed or auto column. */
 export const cellStyle = (width, { min = '80px', pin = '' } = {}) => {
     const auto = !width || width === 'auto';

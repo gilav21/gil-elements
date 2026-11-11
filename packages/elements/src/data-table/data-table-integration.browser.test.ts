@@ -464,6 +464,61 @@ describe('focus follows its row: the edges', () => {
     });
 });
 
+describe('focus follows its row: round 8', () => {
+    it('a table in a consumer\'s shadow root leaves focus the user put on an outside input alone when the dropped focus is finished', async () => {
+        const host = document.createElement('div');
+        document.body.append(host);
+        const shadow = host.attachShadow({ mode: 'open' });
+        const frame = document.createElement('div');
+        frame.style.cssText = 'width:600px;height:400px;';
+        shadow.append(frame);
+        const table = document.createElement('ge-data-table') as Table;
+        Object.assign(table, { columns: makeColumns(3), data: makeRows(6, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false });
+        frame.append(table);
+        const outside = Object.assign(document.createElement('input'), { ariaLabel: 'outside' });
+        document.body.append(outside);
+        try {
+            await settle(table);
+            table.focusCell(1, 'c0');
+            await settle(table);
+            expect(shadow.activeElement).toBe(table.cellAt(1, 'c0'));
+            table.provider('expansion')!.toggleGroup('g0'); // the focused row's group: the drop would take the focus to its toggle
+            outside.focus(); // the user is on a light-DOM input outside the shadow tree before it renders
+            expect(document.activeElement).toBe(outside);
+            await settle(table);
+            await frames(3);
+            expect(table.focusedCell).toBeNull();
+            expect(document.activeElement).toBe(outside);
+        } finally {
+            outside.remove();
+            host.remove();
+        }
+    });
+
+    it('and the same table still gives the focus to the toggle when nothing else has it', async () => {
+        const host = document.createElement('div');
+        document.body.append(host);
+        const shadow = host.attachShadow({ mode: 'open' });
+        const frame = document.createElement('div');
+        frame.style.cssText = 'width:600px;height:400px;';
+        shadow.append(frame);
+        const table = document.createElement('ge-data-table') as Table;
+        Object.assign(table, { columns: makeColumns(3), data: makeRows(6, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false });
+        frame.append(table);
+        try {
+            await settle(table);
+            table.focusCell(1, 'c0');
+            await settle(table);
+            table.provider('expansion')!.toggleGroup('g0');
+            await settle(table);
+            await frames(3);
+            expect(shadow.activeElement).toBe(table.querySelector('[data-group-key="g0"] [data-toggle]'));
+        } finally {
+            host.remove();
+        }
+    });
+});
+
 describe('focus follows its row: round 7', () => {
     // A JS consumer's `getRowId` may answer with numbers; the DOM carries them as strings.
     interface Numbered { id: number; name: string; group?: string; children?: Numbered[] }
