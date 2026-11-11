@@ -276,7 +276,9 @@ async function renderJob(browser, theme, group, side) {
                         await target.updateComplete;
                     }
                     const row = target.provider('query').renderedRowAt(Number(rowIndex));
-                    if (row === undefined || !target.startEditing(row, columnKey)) continue;
+                    const where = `data-edit="${target.dataset.edit}" (case ${target.closest('[data-case]')?.dataset.case ?? 'unknown'})`;
+                    if (row === undefined) throw new Error(`${where}: there is no row ${rowIndex}`);
+                    if (!target.startEditing(row, columnKey)) throw new Error(`${where}: the editor did not open (is the column editable?)`);
                     await target.updateComplete;
                     if (message !== undefined) {
                         target.provider('interaction').setEditValue(String.fromCharCode(0x200b)); // a zero-width space: a value no validator of the case accepts, invisible if it were ever drawn

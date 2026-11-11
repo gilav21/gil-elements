@@ -3,10 +3,6 @@ import { lazyPart } from './data-table-lazy.js';
 import type { RowDragService } from './data-table-providers.js';
 import type { RowDragPart } from './lazy/row-drag.js';
 
-/**
- * Row drag reorder and its keyboard alternative (wave 6, package C owns this file). Joint step 0: it provides an inert `rowDrag`
- * service; the drag part loads when `enable-row-drag` is on and does nothing yet.
- */
 /** The ONE neutral row-drag service: nothing is draggable, nothing moves, `reorderData` answers a copy. The controller's shell is built on it and the element uses it before the controllers exist. */
 export function neutralRowDrag<T>(): RowDragService<T> {
     return {
@@ -18,6 +14,10 @@ export function neutralRowDrag<T>(): RowDragService<T> {
     };
 }
 
+/**
+ * Row drag reorder and its keyboard alternative (wave 6, package C owns this file). Joint step 0: it provides an inert `rowDrag`
+ * service; the drag part loads when `enable-row-drag` is on and does nothing yet.
+ */
 export class RowDragController<T> {
     private unprovide: (() => void) | undefined;
     /** `changed`: `rowDrag.active()` comes from the part, so the render that makes rows draggable has to be asked for. */

@@ -1234,6 +1234,94 @@ describe('a primary-button rule', () => {
     });
 });
 
+describe('the document\'s look at a release the root heard', () => {
+    it('is cancelled by the root\'s own end of the press (at most one timer per pointer, and none left to run)', async () => {
+        const table = await mountTable();
+        const cancels: ReturnType<typeof vi.fn>[] = [];
+        const real = table.disposables.timeout.bind(table.disposables);
+        const timeout = vi.spyOn(table.disposables, 'timeout').mockImplementation(((fn: () => void, ms: number) => {
+            const cancel = vi.fn(real(fn, ms));
+            cancels.push(cancel);
+            return cancel;
+        }) as never);
+        try {
+            const cell = cellAt(table, 1, 'name')!;
+            const down = pointer('pointerdown', 481, { over: cell });
+            const up = pointer('pointerup', 481, { over: cell });
+            cell.dispatchEvent(down);
+            cell.dispatchEvent(up);
+            expect(timeout).toHaveBeenCalledTimes(1);
+            expect(cancels[0]).toHaveBeenCalledTimes(1); // the root heard it in the same dispatch: the look was cancelled
+        } finally {
+            timeout.mockRestore();
+        }
+    });
+});
+
+describe('a press whose release was lost', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is closed by a later press of the same pointer OUTSIDE the table: the claimant is cancelled once and Tab into the grid focuses a cell', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 471, { over: cell })); // its pointerup never arrives
+        document.body.dispatchEvent(pointer('pointerdown', 471)); // the same pointer presses OUTSIDE the table
+        expect(log).toEqual(['cancel:null']);
+        table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!.focus(); // Tab in: not "a pointer is down" any more
+        await frames(2);
+        expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
+        expect(log).toEqual(['cancel:null']);
+    });
+});
+
+describe('contenteditable="false" inside a cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is not a control: a press on it is a cell press, while a real contenteditable is the control\'s own', async () => {
+        const table = await mountTable();
+        const downs: string[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const cell = cellAt(table, 1, 'name')!;
+        const fixed = document.createElement('div');
+        fixed.setAttribute('contenteditable', 'false');
+        fixed.textContent = 'fixed';
+        const live = document.createElement('div');
+        live.setAttribute('contenteditable', 'true');
+        live.textContent = 'live';
+        cell.append(fixed, live);
+        fixed.dispatchEvent(pointer('pointerdown', 491, { over: fixed }));
+        expect(downs).toEqual(['down']);
+        live.dispatchEvent(pointer('pointerdown', 492, { over: live }));
+        expect(downs).toEqual(['down']); // the editable one is a control: not offered
+    });
+});
+
+describe('a touch tap while a renderer replaces the DOM, in the open editor\'s cell', () => {
+    it('does not move the focus off the editor (the same guard, by address)', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        openEditorAt(table, 1, 'age');
+        const cell = cellAt(table, 1, 'age')!;
+        const box = cell.getBoundingClientRect();
+        const x = box.left + 10;
+        const y = box.top + 5;
+        cell.dispatchEvent(pointer('pointerdown', 495, { pointerType: 'touch', clientX: x, clientY: y }));
+        const clone = cell.cloneNode(true) as HTMLElement;
+        cell.replaceWith(clone);
+        clone.dispatchEvent(pointer('pointerup', 495, { pointerType: 'touch', clientX: x + 2, clientY: y }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+    });
+});
+
 describe('a release an ancestor stops in the capture phase', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

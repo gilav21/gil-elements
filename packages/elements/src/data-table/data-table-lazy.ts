@@ -40,8 +40,10 @@ export interface LazyElement {
     load(): Promise<boolean>;
     /** The tag is defined now (no load needed). */
     ready(): boolean;
-    /** Forgets a latched failure: the next `load()` imports again (call it on attach). */
+    /** Forgets a latched failure: the next `load()` imports again. It also makes a load in flight stale (its failure is neither latched nor reported). */
     reset(): void;
+    /** `reset()` only when a failure is latched: safe to call at every attach (a load in flight, e.g. another table's, is left alone). */
+    resetIfFailed(): void;
 }
 
 /** A custom element that a lazy module defines as a side effect. */
@@ -71,12 +73,17 @@ export function lazyElement(
     return {
         load: () => (failed ? Promise.resolve(false) : (loading ??= run(generation))),
         ready: () => customElements.get(tag) !== undefined,
-        reset: () => {
-            generation++;
-            failed = false;
-            loading = undefined;
+        reset,
+        // A caller that may run at every attach cannot use `reset`: it would make a load another caller has in flight stale and swallow its failure.
+        resetIfFailed: () => {
+            if (failed) reset();
         },
     };
+    function reset(): void {
+        generation++;
+        failed = false;
+        loading = undefined;
+    }
 }
 
 /** What a lazily built piece must offer: the lifecycle of a controller. */
@@ -159,6 +166,8 @@ export function lazyPart<P extends LazyPartInstance>(
                     try {
                         part.attach();
                     } catch (error) {
+                        // A `sync(false)` / `dispose()` from inside the attach already detached this part and moved on: its failure is stale (no second detach, no latch).
+                        if (mine !== generation) return;
                         // A part that threw while attaching is not left half attached: it is detached (best effort) and the failure latches like a failed load.
                         try {
                             part.detach();
@@ -169,6 +178,7 @@ export function lazyPart<P extends LazyPartInstance>(
                         fail(error);
                         return;
                     }
+                    if (mine !== generation) return; // the part was disposed from inside its own attach: nothing to draw
                     try {
                         changed?.();
                     } catch (error) {

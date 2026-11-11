@@ -99,6 +99,25 @@ describe('lazyElement', () => {
         expect(onError).toHaveBeenCalledTimes(2);
     });
 
+    it('resetIfFailed (what an attach calls) leaves a load in flight alone: two attaches during one failing import report it once, and then it is reset', async () => {
+        fakeRegistry();
+        const onError = vi.fn();
+        let fail: (error: Error) => void = () => undefined;
+        const importer = vi.fn(() => new Promise<never>((_resolve, reject) => (fail = reject)));
+        const element = lazyElement('ge-x', importer, onError);
+        const pending = element.load();
+        element.resetIfFailed(); // a second table attaches: nothing failed yet, so nothing is reset
+        element.resetIfFailed();
+        fail(new Error('404'));
+        await pending;
+        expect(onError).toHaveBeenCalledTimes(1);
+        element.resetIfFailed(); // now a failure IS latched: the next attach retries
+        importer.mockImplementationOnce(() => Promise.reject(new Error('again')));
+        await element.load();
+        expect(importer).toHaveBeenCalledTimes(2);
+        expect(onError).toHaveBeenCalledTimes(2);
+    });
+
     it('reports a failure once for CONCURRENT loads too: they share one promise', async () => {
         fakeRegistry();
         const onError = vi.fn();
@@ -245,6 +264,28 @@ describe('lazyPart', () => {
         lazy.sync(true);
         await flush();
         expect(lazy.part).toBe(instance);
+    });
+
+    it('lets a dispose from inside the part\'s own attach win: no second detach, no stale latch, and the next sync(true) loads again', async () => {
+        const onError = vi.fn();
+        let lazy!: ReturnType<typeof lazyPart<LazyPartInstance>>;
+        const first = part();
+        first.attach.mockImplementation(() => {
+            lazy.dispose(); // leaves from inside the attach ...
+            throw new Error('attach failed'); // ... and the attach throws afterwards
+        });
+        const second = part();
+        const parts = [first, second];
+        const create = vi.fn(() => Promise.resolve(parts.shift()!));
+        lazy = lazyPart(create, { onError });
+        lazy.sync(true);
+        await flush();
+        expect(first.detach).toHaveBeenCalledTimes(1); // by the dispose only
+        expect(onError).not.toHaveBeenCalled(); // the failure is stale
+        lazy.sync(true);
+        await flush();
+        expect(create).toHaveBeenCalledTimes(2);
+        expect(lazy.part).toBe(second);
     });
 
     it('reports a `changed` callback that throws (no unhandled rejection) and leaves the part attached, not latched as failed', async () => {
