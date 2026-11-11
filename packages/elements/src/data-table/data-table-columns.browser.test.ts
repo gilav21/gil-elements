@@ -10,6 +10,7 @@ import { emulateTouch, frames, mouseDblClick, mouseDrag, parkMouse, press, touch
 afterEach(() => parkMouse());
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const viewportOf = (table: Element): HTMLElement => q(table, '[data-slot="data-table-viewport"]');
 const widthOf = (el: Element | null): number => el!.getBoundingClientRect().width;
 const handleOf = (table: Element, key: string): HTMLElement => q(headCell(table, key), '[data-slot="data-table-resize-handle"]');
 /** A point on the resize handle of `key` (the handle sits inside the head, at its inline-end edge). */
@@ -196,6 +197,135 @@ describe('column resize by mouse', () => {
             await settle(table);
             expect(Math.round(head(table).width)).toBe(width);
         });
+    });
+
+    // The same, in a table narrower than its box: nothing holds a pinned column at the edge, so every column grows toward the end.
+    describe.each([
+        { pin: 'start', key: 'c0', rtl: false, grows: 1 },
+        { pin: 'start', key: 'c0', rtl: true, grows: -1 },
+        { pin: 'end', key: 'c3', rtl: false, grows: 1 },
+        { pin: 'end', key: 'c3', rtl: true, grows: -1 },
+    ])('a $pin-pinned column of a table that does not overflow, rtl: $rtl', ({ pin, key, rtl, grows }) => {
+        const mountRoomy = async () => {
+            const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinLeft: pin === 'start' ? 1 : 0, pinRight: pin === 'end' ? 1 : 0 }), data: makeRows(3, { columns: 4 }) }, { width: 800, height: 300 });
+            if (rtl) await withRtl(table);
+            return table;
+        };
+        const head = (table: Element) => headCell(table, key).getBoundingClientRect();
+        const anchored = (table: Element) => (grows > 0 ? head(table).left : head(table).right);
+
+        it('grows toward the end, the edge it started from staying put, by drag', async () => {
+            const table = await mountRoomy();
+            expect(viewportOf(table).scrollWidth).toBeLessThanOrEqual(viewportOf(table).clientWidth);
+            const [width, edge] = [head(table).width, anchored(table)];
+            await mouseDrag(onHandle(table, key, rtl), { dx: 40 * grows, dy: 0 });
+            await settle(table);
+            expect(head(table).width).toBe(width + 40);
+            expect(anchored(table)).toBeCloseTo(edge, 0);
+        });
+
+        it('and by the arrow key that points that way', async () => {
+            const table = await mountRoomy();
+            const [width, edge] = [Math.round(head(table).width), anchored(table)];
+            q(headCell(table, key), '[data-slot="data-table-resize-handle"]').focus();
+            await press(grows > 0 ? '{ArrowRight}' : '{ArrowLeft}');
+            await settle(table);
+            expect(Math.round(head(table).width)).toBe(width + 10);
+            expect(anchored(table)).toBeCloseTo(edge, 0);
+        });
+    });
+
+    it('an end-pinned column of a table that starts to overflow during the drag follows the pointer on, without a jump', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 700, height: 300 });
+        expect(viewportOf(table).scrollWidth).toBeLessThanOrEqual(viewportOf(table).clientWidth);
+        const samples: number[] = [];
+        const timer = setInterval(() => samples.push(widthOf(headCell(table, 'c3'))), 4);
+        // right: it widens until the table (600px, in a 700px box) overflows, then it is held at the edge and the handle follows the other way
+        await mouseDrag(onHandle(table, 'c3'), { dx: 160, dy: 0 }, { steps: 40 });
+        clearInterval(timer);
+        await settle(table);
+        const peak = Math.max(...samples);
+        expect(peak).toBeGreaterThan(200);
+        expect(peak).toBeLessThan(260);
+        // a continuing pointer in the same direction now narrows it: of the 160px of travel, (peak - 150) widened, the rest narrows
+        expect(Math.abs(widthOf(headCell(table, 'c3')) - (peak - (160 - (peak - 150))))).toBeLessThan(6);
+        // no step of the drag (4px per move) moved the width by a jump
+        const jumps = samples.slice(1).map((w, i) => Math.abs(w - samples[i]!));
+        expect(Math.max(...jumps)).toBeLessThan(30);
+    });
+
+    it('a held arrow key on an end-pinned column keeps one direction past the point where the table starts to overflow', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 700, height: 300 });
+        q(headCell(table, 'c3'), '[data-slot="data-table-resize-handle"]').focus();
+        const widths = [Math.round(widthOf(headCell(table, 'c3')))];
+        for (let i = 0; i < 16; i++) {
+            await press('{ArrowRight}');
+            await settle(table);
+            widths.push(Math.round(widthOf(headCell(table, 'c3'))));
+        }
+        expect(viewportOf(table).scrollWidth).toBeGreaterThan(viewportOf(table).clientWidth);
+        expect(widths.slice(1).every((w, i) => w === widths[i]! + 10)).toBe(true);
+    });
+
+    it('with two columns pinned to the end in an overflowing table, the inner one is held too: both grow toward the start', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 2 }), data: makeRows(3, { columns: 4 }) }, { width: 500, height: 300 });
+        expect(viewportOf(table).scrollWidth).toBeGreaterThan(viewportOf(table).clientWidth);
+        for (const key of ['c2', 'c3']) {
+            const head = () => headCell(table, key).getBoundingClientRect();
+            const [width, right] = [head().width, head().right];
+            await mouseDrag(onHandle(table, key), { dx: -30, dy: 0 });
+            await settle(table);
+            expect(head().width).toBe(width + 30);
+            expect(head().right).toBeCloseTo(right, 0);
+        }
+    });
+
+    it('reads the direction of the arrow keys again when the overflow changed while the handle kept focus', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 400, height: 300 });
+        expect(viewportOf(table).scrollWidth).toBeGreaterThan(viewportOf(table).clientWidth);
+        q(headCell(table, 'c3'), '[data-slot="data-table-resize-handle"]').focus();
+        await press('{ArrowLeft}'); // held at the edge: this widens it, and is what the run is latched on
+        await settle(table);
+        expect(Math.round(widthOf(headCell(table, 'c3')))).toBe(160);
+        // the other columns shrink so that nothing overflows any more; the focus stays on the handle
+        table.columnWidths = { c0: '40px', c1: '40px', c2: '40px' };
+        await settle(table);
+        expect(viewportOf(table).scrollWidth).toBeLessThanOrEqual(viewportOf(table).clientWidth);
+        const before = Math.round(widthOf(headCell(table, 'c3')));
+        await press('{ArrowRight}'); // no longer held: the end edge follows the key, so the column widens (a stale latch would narrow it)
+        await settle(table);
+        expect(Math.round(widthOf(headCell(table, 'c3')))).toBe(before + 10);
+    });
+
+    it('reads the direction again when the consumer changes the columns in the same frame as a key press of the run', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 400, height: 300 });
+        q(headCell(table, 'c3'), '[data-slot="data-table-resize-handle"]').focus();
+        await press('{ArrowLeft}'); // latches "held at the edge" and writes c3's width
+        table.columnWidths = { c0: '40px', c1: '40px', c2: '40px', c3: table.columnWidths['c3']! }; // no frame in between
+        await settle(table);
+        expect(viewportOf(table).scrollWidth).toBeLessThanOrEqual(viewportOf(table).clientWidth);
+        const before = Math.round(widthOf(headCell(table, 'c3')));
+        await press('{ArrowRight}');
+        await settle(table);
+        expect(Math.round(widthOf(headCell(table, 'c3')))).toBe(before + 10);
+    });
+
+    it('forgets the direction of a key run when the table is disconnected and connected again', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 400, height: 300 });
+        const frame = table.parentElement!;
+        q(headCell(table, 'c3'), '[data-slot="data-table-resize-handle"]').focus();
+        await press('{ArrowLeft}'); // overflowing: held at the edge, and latched so
+        await settle(table);
+        table.remove();
+        table.columnWidths = { c0: '40px', c1: '40px', c2: '40px', c3: table.columnWidths['c3']! }; // while nothing listens
+        frame.append(table);
+        await settle(table);
+        expect(viewportOf(table).scrollWidth).toBeLessThanOrEqual(viewportOf(table).clientWidth);
+        q(headCell(table, 'c3'), '[data-slot="data-table-resize-handle"]').focus();
+        const before = Math.round(widthOf(headCell(table, 'c3')));
+        await press('{ArrowRight}');
+        await settle(table);
+        expect(Math.round(widthOf(headCell(table, 'c3')))).toBe(before + 10);
     });
 
     it('reads a rem minimum width against the real root font size, in aria-valuemin as in the resize floor', async () => {

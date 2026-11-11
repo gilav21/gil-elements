@@ -47,6 +47,19 @@ describe('computeColumnLayout', () => {
         expect(columns[1]?._pinOffset).toBe('calc(var(--ge-dt-expander-w, 40px))');
     });
 
+    it('adds no control column the consumer already defined (columnHelper().select() and the like)', () => {
+        const own = [col('_selection', { pin: 'left', width: '60px' }), col('a'), col('_actions', { width: '70px' })];
+        const { columns } = layout(own, { enableRowSelection: true, hasActions: true, enableRowExpansion: true });
+        expect(columns.map((c) => c.accessorKey)).toEqual(['_expander', '_selection', 'a', '_actions']);
+        expect(columns.find((c) => c.accessorKey === '_selection')?._width).toBe('60px');
+        expect(columns.find((c) => c.accessorKey === '_actions')?._width).toBe('70px');
+    });
+
+    it('adds no second control column when the consumer\'s own is hidden by columnVisibility', () => {
+        const { columns } = layout([col('_selection', { pin: 'left' }), col('a')], { enableRowSelection: true, visibility: { _selection: false } });
+        expect(columns.map((c) => c.accessorKey)).toEqual(['a']);
+    });
+
     it('does not treat a key like a prototype member as a runtime override', () => {
         expect(keys([col('constructor')], { widths: {}, visibility: {} })).toEqual(['constructor']);
     });

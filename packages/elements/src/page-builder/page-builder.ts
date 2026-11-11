@@ -38,7 +38,7 @@ const EXPORT_NAME = 'page-builder-export.json';
  * @prop {PageData | null} data - Layout to load. A new value replaces the board, like Import.
  * @attr {boolean} enable-save - Shows the Save button (default true; `enable-save="false"` hides it).
  * @attr {boolean} enable-export - Shows the Export button, which downloads the layout as JSON (default false).
- * @attr {string} locale - Locale id or a dictionary object for the builder's own words; defaults to the page's `lang`, then `en`. Component names, categories and input labels come from `components` and are not translated. The inspector follows the same language by its code, so a custom dictionary object localises the builder only.
+ * @attr {string} locale - Locale id or a dictionary object for the builder's own words; defaults to the page's `lang`, then `en`. Component names, categories and input labels come from `components` and are not translated. The inspector follows the same language by its code, so a custom dictionary object localises the builder only. A dictionary object is remembered per object: replace it to change it, do not mutate it.
  */
 export class GePageBuilder extends UiElement {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];

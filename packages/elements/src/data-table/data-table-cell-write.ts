@@ -47,6 +47,8 @@ export type CellWriteResult<T> =
 interface EditChange {
     readonly rowId: string;
     readonly columnKey: string;
+    /** The drawn row index of the edit, as its `cell-edit` carried it: replays report it again. */
+    readonly rowIndex: number;
     readonly before: unknown;
     readonly after: unknown;
 }
@@ -100,7 +102,8 @@ export interface CellWriter<T> {
 }
 
 interface Pending<T> {
-    readonly index: number;
+    /** The DRAWN row index (`data-row-index`) of the edit: what every `cell-edit` and history entry carries. Never an index in `data`. */
+    readonly rowIndex: number;
     readonly row: T;
     readonly column: ColumnDef<T>;
     readonly columnKey: string;
@@ -139,7 +142,7 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
             const row = setter(next[at] as T, item.value);
             next[at] = row;
             touched = true;
-            recording?.push({ rowId: ports.getRowId(item.row), columnKey: item.columnKey, before: item.oldValue, after: item.value });
+            recording?.push({ rowId: ports.getRowId(item.row), columnKey: item.columnKey, rowIndex: item.rowIndex, before: item.oldValue, after: item.value });
             return row;
         });
         if (touched) {
@@ -169,7 +172,7 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
                 return;
             }
             if (options.emitEdit) ports.emit('cell-edit', { row, column, oldValue, newValue: value, rowIndex: target.rowIndex });
-            pending.push({ at, item: { index: target.rowIndex, row, column, columnKey: target.columnKey, value, oldValue } });
+            pending.push({ at, item: { rowIndex: target.rowIndex, row, column, columnKey: target.columnKey, value, oldValue } });
         });
         const updated = commit(pending.map((p) => p.item));
         pending.forEach(({ at, item }, i) => {
@@ -207,13 +210,14 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
             else if (index === undefined) stale.push({ rowId: change.rowId, columnKey: change.columnKey, reason: 'row' });
             else {
                 const row = data[index] as T;
-                items.push({ index, row, column, columnKey: change.columnKey, value: pick(change), oldValue: ports.cellValue(row, column) });
+                items.push({ rowIndex: change.rowIndex, row, column, columnKey: change.columnKey, value: pick(change), oldValue: ports.cellValue(row, column) });
             }
         }
         const updated = commit(items);
+        // The index the edit itself carried (where the user edited), not where the row sits after this replay re-sorts it.
         items.forEach((item, i) => {
             const row = updated[i];
-            if (row) ports.emit('cell-edit', { row, column: item.column, oldValue: item.oldValue, newValue: item.value, rowIndex: item.index });
+            if (row) ports.emit('cell-edit', { row, column: item.column, oldValue: item.oldValue, newValue: item.value, rowIndex: item.rowIndex });
         });
         return stale;
     }

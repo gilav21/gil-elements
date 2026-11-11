@@ -16,6 +16,8 @@ const KEY_STEP_LARGE = 50;
 const FIT_SLACK = 2;
 const KEY_ANNOUNCE_MS = 300;
 const MIN_FIT_WIDTH = 50;
+/** Key presses further apart than this are not one run: the direction is read again. */
+const KEY_RUN_MS = 1000;
 
 interface Drag {
     readonly key: string;
@@ -26,8 +28,14 @@ interface Drag {
     readonly startY: number;
     readonly startWidth: number;
     readonly floor: number;
-    /** `resizeSign`: the direction of the pointer that widens the column. */
-    readonly sign: number;
+    readonly column: EnhancedColumnDef<unknown>;
+    readonly rtl: boolean;
+    stuck: boolean;
+    /** `resizeSign`: the direction of the pointer that widens the column; it can change mid-drag (the table starts to overflow). */
+    sign: number;
+    /** Where the width is measured from: the press, and again at the pointer whenever the sign changes, so the width never jumps. */
+    anchorX: number;
+    anchorWidth: number;
     readonly oldWidth: string;
     /** The inline value of the column's custom property before the drag, put back on cancel. */
     readonly original: string;
@@ -42,11 +50,23 @@ const px = (n: number): string => `${n}px`;
 
 /**
  * Which way the handle moves the column's width: `1` when dragging it toward the physical right widens the column. The handle
- * sits on the inline-end edge, so an unpinned column widens that way (left in rtl). A column pinned to the end (`pin: 'right'`,
- * a logical pin like the start one) is anchored at that edge and grows toward the start, which flips it; one pinned to the
- * start grows toward the end like an unpinned one.
+ * sits on the inline-end edge, so a column widens that way (left in rtl). The exception is a column pinned to the end that is
+ * stuck: its end edge sits at the scroller's end edge, where `position: sticky` holds it, so the edge cannot move and the column
+ * grows toward the start instead. A pinned column in a table that does not overflow is at its natural position, nothing holds
+ * it, and it grows toward the end like any other (`stuck` is read from the geometry, see `isStuck`).
  */
-export const resizeSign = (column: { _pin?: 'left' | 'right' | undefined }, rtl: boolean): number => (rtl ? -1 : 1) * (column._pin === 'right' ? -1 : 1);
+export const resizeSign = (column: { _pin?: 'left' | 'right' | undefined }, rtl: boolean, stuck: boolean): number =>
+    (rtl ? -1 : 1) * (stuck && column._pin === 'right' ? -1 : 1);
+
+/**
+ * Whether a column is held at the scroller's end edge by `position: sticky`. Only a column pinned to the end can be, and it is
+ * whenever the table overflows: each end-pinned column sticks at an offset of the columns pinned after it, so its natural place
+ * (the content's end less those columns) lies past that offset exactly when the content ends past the scroller's edge. That
+ * holds for the inner one of two as much as for the last. Without overflow nothing holds a column.
+ */
+export function isStuck(column: { _pin?: 'left' | 'right' | undefined }, viewport: Element | null): boolean {
+    return column._pin === 'right' && !!viewport && viewport.scrollWidth > viewport.clientWidth + 1;
+}
 
 /**
  * Column resize: a pointer drag on the head's handle (mouse, pen and touch share one path, with pointer capture), a
@@ -59,6 +79,11 @@ export class ResizeController<T> {
     private drag: Drag | null = null;
     private lastTap: { key: string; at: number } | null = null;
     private lastFit = 0;
+    /**
+     * What the key presses of the focused handle read of its column (stuck or not): a key that repeats must not change direction at
+     * the overflow threshold. Read again after a pause, a drag, a resize of the window, a change of the columns, or when focus leaves.
+     */
+    private keyed: { handle: HTMLElement; key: string; layout: string; stuck: boolean; at: number } | null = null;
     private cancelAnnounce: (() => void) | undefined;
     private unprovide: (() => void) | undefined;
     private removeKeys: (() => void) | undefined;
@@ -95,6 +120,14 @@ export class ResizeController<T> {
         return Object.hasOwn(widths, key) ? (widths[key] ?? column._width) : column._width;
     }
 
+    /** The columns as the direction depends on them: which, in which order, pinned how, and how wide, except `key`'s own width (the run itself changes that). */
+    private layoutOf(key: string): string {
+        return this.columns()
+            .enhancedColumns()
+            .map((c) => `${String(c.accessorKey)}:${c._pin ?? ''}:${String(c.accessorKey) === key ? '' : c._width}`)
+            .join('|');
+    }
+
     /** One model write and one `column-resize` event for a width the user chose. */
     private commit(changes: readonly { key: string; oldWidth: string; newWidth: string }[]): void {
         if (changes.length === 0) return;
@@ -129,6 +162,7 @@ export class ResizeController<T> {
             this.host.disposables.listen(handle.ownerDocument.defaultView ?? window, 'blur', this.cancel),
         ];
         const startWidth = head.getBoundingClientRect().width;
+        const stuck = isStuck(column, this.viewport());
         this.drag = {
             key,
             n,
@@ -138,7 +172,12 @@ export class ResizeController<T> {
             startY: event.clientY,
             startWidth,
             floor: columnMinWidthPx(column, this.rootFontPx()),
-            sign: resizeSign(column, direction === 'rtl'),
+            column: column as EnhancedColumnDef<unknown>,
+            rtl: direction === 'rtl',
+            stuck,
+            sign: resizeSign(column, direction === 'rtl', stuck),
+            anchorX: event.clientX,
+            anchorWidth: startWidth,
             oldWidth: this.declaredWidth(key, column),
             original: table.style.getPropertyValue(name),
             wasAuto: column._width === 'auto',
@@ -159,7 +198,13 @@ export class ResizeController<T> {
         if (!drag || event.pointerId !== drag.pointerId) return;
         const dx = event.clientX - drag.startX;
         drag.travel = Math.max(drag.travel, Math.hypot(dx, event.clientY - drag.startY));
-        const width = Math.max(drag.floor, Math.round(drag.startWidth + dx * drag.sign));
+        // A column pinned to the end gets stuck once the table overflows, which can happen as it grows: the handle then follows the other way.
+        // Once stuck it stays so for the drag: narrowing it back under the overflow must not flip the direction again at the threshold.
+        // The trade-off: if the table stops overflowing later in the same drag, the handle drifts from the pointer; the alternative flipped back and forth at the threshold.
+        drag.stuck ||= isStuck(drag.column, this.viewport());
+        const sign = resizeSign(drag.column, drag.rtl, drag.stuck);
+        if (sign !== drag.sign) Object.assign(drag, { sign, anchorX: event.clientX, anchorWidth: drag.width });
+        const width = Math.max(drag.floor, Math.round(drag.anchorWidth + (event.clientX - drag.anchorX) * drag.sign));
         if (width === drag.width) return;
         drag.width = width;
         this.show(drag);
@@ -202,6 +247,7 @@ export class ResizeController<T> {
 
     private finish(drag: Drag): void {
         this.drag = null;
+        this.keyed = null;
         drag.stop();
         if (drag.handle.hasPointerCapture(drag.pointerId)) drag.handle.releasePointerCapture(drag.pointerId);
         drag.handle.toggleAttribute('data-resizing', false);
@@ -293,8 +339,13 @@ export class ResizeController<T> {
         const floor = columnMinWidthPx(found.column, this.rootFontPx());
         const current = Math.round(handle.closest(HEAD)?.getBoundingClientRect().width ?? floor);
         let next: number;
-        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = current + (event.key === 'ArrowRight' ? 1 : -1) * resizeSign(found.column, rtl) * step;
-        else if (event.key === 'Home') next = floor;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+            // Read again when the run is over (a pause) or the geometry may have changed (see `keyed`'s resets).
+            const now = event.timeStamp;
+            if (this.keyed?.handle !== handle || now - this.keyed.at > KEY_RUN_MS) this.keyed = { handle, key, layout: this.layoutOf(key), stuck: isStuck(found.column, this.viewport()), at: now };
+            this.keyed.at = now;
+            next = current + (event.key === 'ArrowRight' ? 1 : -1) * resizeSign(found.column, rtl, this.keyed.stuck) * step;
+        } else if (event.key === 'Home') next = floor;
         else if (event.key === 'Enter') {
             event.preventDefault();
             this.autoSizeColumn(key);
@@ -336,6 +387,12 @@ export class ResizeController<T> {
                 // A double tap already fitted the column; the browser's own `dblclick` for it must not fit it twice.
                 if (performance.now() - this.lastFit > 600) this.autoSizeColumn(key);
             })),
+            disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => {
+                if (event.target === this.keyed?.handle) this.keyed = null;
+            })),
+            disposables.listen(root.ownerDocument.defaultView ?? window, 'resize', () => (this.keyed = null)),
+            // The run's own width writes make a `columns` too: only a change of the rest (columns shown, hidden, moved, pinned, resized by someone else) is a new geometry.
+            this.host.topics.on('columns', () => this.keyed && this.layoutOf(this.keyed.key) !== this.keyed.layout && (this.keyed = null)),
             // The separator's value is the measured width when it takes focus: a `rem`, `%` or `auto` width has no px string to render.
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => {
                 const handle = (event.target as Element).closest?.<HTMLElement>(HANDLE);
@@ -347,6 +404,7 @@ export class ResizeController<T> {
 
     detach(): void {
         this.cancel();
+        this.keyed = null; // the handle it names and what it read belong to the attach that is ending
         this.cancelAnnounce?.();
         this.removeKeys?.();
         this.unprovide?.();

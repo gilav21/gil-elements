@@ -16,7 +16,7 @@ import type { DataTableConfig, DataTableProviders } from './data-table-providers
 import { memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
 import { buildView, type DataTableViewHost } from './data-table-view.js';
-import { type DataTableLocale, interpolate, resolveDataTableLocale, withEnglishFallback } from './data-table.locales.js';
+import { type DataTableLocale, dataTableLocaleVersion, interpolate, onDataTableLocaleChange, resolveDataTableLocale } from './data-table.locales.js';
 import type { ColumnDef, DataTableColumnState, DataTableLoadingTrigger, DataTableQuery, DataTableViewState, PaginationState } from './data-table.types.js';
 import { defaultGetRowId } from './data-table.utils.js';
 import './sub/data-table-column-header.js';
@@ -169,7 +169,7 @@ export interface GeDataTable<T = unknown> extends Mutable<DataTableConfig<T>>, D
  * @fires filter-change - The global filter text.
  * @fires query - The whole server request, once per change; not for the initial state.
  * @fires data-change - and one `*-change` per two-way state (`row-selection-change`, `sort-state-change`, ...), when the table itself moves it.
- * @attr {string} locale - Language id of the table's text. `en` is built in; others register with `registerDataTableLocale`.
+ * @attr {string} locale - Language id of the table's text. `en` is built in; others register with `registerDataTableLocale`. A dictionary object is remembered per object: replace it to change it, do not mutate it.
  * @attr {string} theme - Colour preset name.
  */
 export class GeDataTable<T = unknown> extends LitElement implements DataTableViewHost<T> {
@@ -201,7 +201,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     private announcement = '';
     private flip = false;
     private dirManaged = false;
-    private readonly localeOf = memoLast((input: string | DataTableLocale | undefined) => withEnglishFallback(resolveDataTableLocale(input)));
+    // The registry's version and the page language are part of the key: a dictionary registered later, or a `lang` that changes, resolves again.
+    private lastLocale: DataTableLocale | null = null;
+    private readonly localeOf = memoLast((input: string | DataTableLocale | undefined, _version: number, pageLang: string) => resolveDataTableLocale(input, pageLang));
 
     constructor() {
         super();
@@ -233,7 +235,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     }
 
     get resolvedLocale(): DataTableLocale {
-        return this.localeOf(this.locale);
+        return this.localeOf(this.locale, dataTableLocaleVersion(), this.ownerDocument.documentElement.lang);
     }
 
     cellAt(rowIndex: number, columnKey: string): HTMLElement | null {
@@ -451,12 +453,20 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger) survives.
         this.built ??= assembleControllers(this, createFactories<T>());
         this.built.attachAll();
+        this.lastLocale = this.resolvedLocale;
         this.assembled = this.built;
         this.observer = new MutationObserver(() => {
             this.harvest();
             this.requestUpdate();
         });
         this.observer.observe(this, { childList: true });
+        // The language the table draws can change under it: a dictionary registered later, or (with no `locale` set) the page's `lang`.
+        // A registration or a `lang` that leaves this table's dictionary as it is (an id it does not use) draws nothing.
+        const redrawIfChanged = (): void => (this.resolvedLocale !== this.lastLocale ? this.requestUpdate() : undefined);
+        const langObserver = new MutationObserver(redrawIfChanged); // also with a `locale` set: one that names no dictionary follows the page
+        langObserver.observe(this.ownerDocument.documentElement, { attributes: true, attributeFilter: ['lang'] });
+        this.disposables.add(onDataTableLocaleChange(redrawIfChanged));
+        this.disposables.add(() => langObserver.disconnect());
         this.requestUpdate();
     }
 
@@ -572,7 +582,12 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     protected override willUpdate(changed: PropertyValues<this>): void {
         if (isServer) return;
-        if (changed.has('locale')) this.topics.emit('locale');
+        // The locale topic follows the resolved dictionary: a new `locale`, a dictionary registered later, a changed page language.
+        const resolved = this.resolvedLocale;
+        // `lastLocale` is what the controllers read when they attached (or last heard): on a plain first render nothing differs and nothing
+        // is announced, so an addon is not built twice; a `locale` set after the attach but before the first render does differ.
+        if ((this.hasUpdated && changed.has('locale')) || resolved !== this.lastLocale) this.topics.emit('locale');
+        this.lastLocale = resolved;
         if ([...changed.keys()].some((key) => Object.hasOwn(INPUTS, key as string))) this.topics.emit('config');
         for (const controller of this.assembled?.controllers ?? []) controller.hostUpdate?.();
         this.syncHost();

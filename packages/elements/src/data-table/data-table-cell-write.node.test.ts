@@ -200,6 +200,36 @@ describe('writeCells', () => {
         expect(data().map((r) => [r.id, r.name])).toEqual([['a', 'Ccc'], ['b', 'Bbb'], ['c', 'Aaa']]);
     });
 
+    it('replays a history entry with the row index the edit carried, even when the edit moved the row (sorted by the edited column)', () => {
+        const rows: Row[] = [
+            { id: 'a', name: 'Ann', qty: 1 },
+            { id: 'b', name: 'Bob', qty: 2 },
+            { id: 'c', name: 'Cy', qty: 3 },
+        ];
+        // drawn: Cy, Bob, Ann (descending by name); the cell of Ann is drawn row 2; renamed to Zed it would be drawn row 0
+        const { writer, events } = setup({ rows, rowAt: (i, d) => [...d].sort((x, y) => y.name.localeCompare(x.name))[i] });
+        writer.runAsCommand(() => writer.writeCell({ rowIndex: 2, columnKey: 'name' }, 'Zed', { emitEdit: true }));
+        writer.undo();
+        writer.redo();
+        const edits = events.filter(([name]) => name === 'cell-edit').map(([, detail]) => (detail as { rowIndex: number }).rowIndex);
+        expect(edits).toEqual([2, 2, 2]);
+    });
+
+    it('keeps the drawn index in the history entry a replay inside a command makes, so the next undo reports it too', () => {
+        const rows: Row[] = [
+            { id: 'a', name: 'Ann', qty: 1 },
+            { id: 'b', name: 'Bob', qty: 2 },
+            { id: 'c', name: 'Cy', qty: 3 },
+        ];
+        // drawn: Cy, Bob, Ann; Ann (drawn row 2, data index 0) is renamed Zed and would then be drawn first
+        const { writer, events } = setup({ rows, rowAt: (i, d) => [...d].sort((x, y) => y.name.localeCompare(x.name))[i] });
+        writer.runAsCommand(() => writer.writeCell({ rowIndex: 2, columnKey: 'name' }, 'Zed', { emitEdit: true }));
+        writer.runAsCommand(() => writer.undo()); // a replay while a command records: its own entry is made
+        writer.undo(); // undoes that undo
+        const indexes = events.filter(([name]) => name === 'cell-edit').map(([, detail]) => (detail as { rowIndex: number }).rowIndex);
+        expect(indexes).toEqual([2, 2, 2]);
+    });
+
     it('validates each cell, reports each rejection, and still writes the rest in one data write', () => {
         const { writer, events, counts, data } = setup({ validator: (v) => (v === 'bad' ? 'no' : true) });
         const results = writer.writeCells([

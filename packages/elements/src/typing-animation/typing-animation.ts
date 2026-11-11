@@ -47,6 +47,10 @@ export class GeTypingAnimation extends UiElement {
     declare phase: TypingState;
 
     private started = false;
+    /** The phrases as they were when the list was last taken. */
+    private seen: string[] = [];
+    /** The run reached the end of its last phrase (no loop) and has nothing left to do; a begin or a reset starts the next. */
+    private finished = false;
     private stringIndex = 0;
     private charIndex = 0;
     private timer: ReturnType<typeof setTimeout> | null = null;
@@ -70,6 +74,11 @@ export class GeTypingAnimation extends UiElement {
 
     protected override updated(changed: PropertyValues<this>): void {
         if (!changed.has('strings')) return;
+        // A fresh array with the same phrases (a template that re-renders) is no change: nothing restarts, nothing completes again.
+        // Compared with a copy taken when the list was last seen: the consumer may have changed the old array in place.
+        const same = this.seen.length === this.strings.length && this.seen.every((phrase, i) => phrase === this.strings[i]);
+        this.seen = [...this.strings];
+        if (same) return;
         // Emptied: stop and clear, so a list that fills again starts over from the first phrase.
         if (this.strings.length === 0) this.reset();
         else if (!this.started) this.begin();
@@ -79,7 +88,11 @@ export class GeTypingAnimation extends UiElement {
         else if (this.stringIndex >= this.strings.length) {
             this.reset();
             this.begin();
-        }
+        } else if (this.finished) {
+            // A finished run (nothing pending) has nothing to carry on: a changed list is a new run, typed from its first phrase, and its own `complete`.
+            this.reset();
+            this.begin();
+        } else this.refresh(this.strings[this.stringIndex] ?? '');
     }
 
     override disconnectedCallback(): void {
@@ -89,13 +102,16 @@ export class GeTypingAnimation extends UiElement {
 
     override connectedCallback(): void {
         super.connectedCallback();
-        // Re-attached after the run was stopped by a disconnect: pick it up where it was.
-        if (this.hasUpdated && this.started && !prefersReducedMotion()) this.tick();
+        // Re-attached after the run was stopped by a disconnect: pick it up where it was (a finished run stays finished).
+        if (this.hasUpdated && this.started && !this.finished && !prefersReducedMotion()) this.tick();
+        else if (this.hasUpdated && !this.started) this.begin(); // a list that arrived while detached starts its run now
     }
 
+    /** Starts a run; detached it does nothing (timers would run on an element nothing stops): `connectedCallback` starts it on attach. */
     private begin(): void {
-        if (this.strings.length === 0) return;
+        if (this.strings.length === 0 || !this.isConnected) return;
         this.started = true;
+        this.finished = false;
         if (prefersReducedMotion()) {
             this.shown = this.strings[0] ?? '';
             return;
@@ -106,10 +122,18 @@ export class GeTypingAnimation extends UiElement {
     private reset(): void {
         this.stop();
         this.started = false;
+        this.finished = false;
         this.stringIndex = 0;
         this.charIndex = 0;
         this.phase = 'typing';
         this.shown = '';
+    }
+
+    /** The list changed under the phrase being typed: keep the pace and place, but show the new phrase's text now, not after the next tick or pause. */
+    private refresh(current: string): void {
+        // A phrase held whole is held whole in its new form; otherwise the place stays within the new phrase.
+        this.charIndex = this.phase === 'pausing' ? current.length : Math.min(this.charIndex, current.length);
+        this.shown = current.slice(0, this.charIndex);
     }
 
     private stop(): void {
@@ -154,6 +178,7 @@ export class GeTypingAnimation extends UiElement {
             return;
         }
         if (!this.loop && this.stringIndex === count - 1) {
+            this.finished = true;
             this.dispatchEvent(new CustomEvent('complete', { bubbles: true, composed: true }));
             return;
         }

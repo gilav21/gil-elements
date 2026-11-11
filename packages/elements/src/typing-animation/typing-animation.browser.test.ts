@@ -103,6 +103,20 @@ describe('ge-typing-animation', () => {
         expect(loops).toBe(0);
     });
 
+    it('a finished run that is moved in the DOM stays finished: it does not say so again', async () => {
+        const el = await typing('loop="false" type-speed="10" delete-speed="10" pause-duration="10"', ['ab']);
+        let completes = 0;
+        el.addEventListener('complete', () => completes++);
+        await advance(el, 2000);
+        expect(completes).toBe(1);
+        const parent = el.parentElement!;
+        el.remove();
+        parent.append(el);
+        await advance(el, 2000);
+        expect(shown(el)).toBe('ab');
+        expect(completes).toBe(1);
+    });
+
     it('hides the typing from assistive technology and gives it every phrase at once', async () => {
         const el = await typing('', ['One', 'Two']);
         expect(el.shadowRoot!.querySelector('.sr-only')!.textContent).toBe('One, Two');
@@ -143,6 +157,128 @@ describe('ge-typing-animation', () => {
         expect(shown(el)).toBe('x');
         await advance(el, 10);
         expect(shown(el)).toBe('xy');
+    });
+
+    it('shows the new phrase at once when the list is replaced while the old one is held, instead of the old text for the whole pause', async () => {
+        const el = await typing('type-speed="10" pause-duration="1500"', ['abc', 'xyz!']);
+        for (let i = 0; i < 20 && shown(el) !== 'abc'; i++) await advance(el, 10);
+        await advance(el, 20);
+        expect(shown(el)).toBe('abc');
+        el.strings = ['uvw', 'xyz!'];
+        await advance(el, 0);
+        expect(shown(el)).toBe('uvw');
+        // the place survives a shorter phrase too
+        el.strings = ['q', 'r'];
+        await advance(el, 0);
+        expect(shown(el)).toBe('q');
+    });
+
+    // After a finish, every list change is a new run: it is typed from its first phrase and fires `complete` when it ends, so each
+    // finished run says so exactly once, and a handler that is not one-shot is called once per run.
+    describe('a list change after a finished run', () => {
+        const finished = async (strings: string[]) => {
+            const el = await typing('loop="false" type-speed="10" delete-speed="10" pause-duration="10"', strings);
+            const seen = { completes: 0 };
+            el.addEventListener('complete', () => seen.completes++);
+            await advance(el, 2000);
+            expect(shown(el)).toBe(strings.at(-1));
+            expect(seen.completes).toBe(1);
+            return { el, seen };
+        };
+
+        it.each([
+            ['extends the last phrase', ['ab'], ['abcde']],
+            ['appends a phrase', ['A', 'B'], ['A', 'B', 'C']],
+            ['replaces every phrase, same length', ['a', 'b'], ['x', 'y']],
+            ['replaces only the last, same length', ['a', 'b'], ['a', 'z']],
+            ['is wholesale new', ['x'], ['hello', 'world']],
+        ])('which %s types the new list to its end and completes again (twice overall)', async (_name, before, after) => {
+            const { el, seen } = await finished(before);
+            el.strings = after;
+            await advance(el, 4000);
+            expect(shown(el)).toBe(after.at(-1));
+            expect(seen.completes).toBe(2);
+        });
+
+        it('is not restarted by a fresh array with the same phrases (a template re-rendering)', async () => {
+            const { el, seen } = await finished(['a', 'b']);
+            el.strings = ['a', 'b'];
+            await advance(el, 5000);
+            expect(shown(el)).toBe('b');
+            expect(seen.completes).toBe(1);
+            el.strings = ['a', 'c']; // a changed list is a run again
+            await advance(el, 5000);
+            expect(shown(el)).toBe('c');
+            expect(seen.completes).toBe(2);
+        });
+
+        it('sees a list the consumer changed in place before assigning it again: emptied clears, an added phrase after a finish is a new run', async () => {
+            const phrases = ['a', 'b'];
+            const { el, seen } = await finished(phrases);
+            phrases.push('z');
+            el.strings = [...phrases];
+            await advance(el, 5000);
+            expect(shown(el)).toBe('z');
+            expect(seen.completes).toBe(2);
+            phrases.length = 0;
+            el.strings = [];
+            await advance(el, 100);
+            expect(shown(el)).toBe('');
+        });
+
+        it('waits detached with a new list, and runs it when it is attached again', async () => {
+            const { el, seen } = await finished(['a']);
+            const parent = el.parentElement!;
+            el.remove();
+            el.strings = ['x', 'y'];
+            await el.updateComplete;
+            await advance(el, 3000);
+            expect(shown(el)).toBe('');
+            expect(seen.completes).toBe(1);
+            parent.append(el);
+            await advance(el, 4000);
+            expect(shown(el)).toBe('y');
+            expect(seen.completes).toBe(2);
+        });
+
+        it('arms nothing while detached whichever way the list changes (emptied then refilled, or shorter), and runs it on attach', async () => {
+            const { el, seen } = await finished(['a', 'b']);
+            const parent = el.parentElement!;
+            el.remove();
+            el.strings = []; // emptied
+            await el.updateComplete;
+            el.strings = ['x', 'y']; // refilled: not started, so a begin would arm timers
+            await el.updateComplete;
+            await advance(el, 3000);
+            expect(shown(el)).toBe('');
+            expect(seen.completes).toBe(1);
+            parent.append(el);
+            await advance(el, 4000);
+            expect(shown(el)).toBe('y');
+            expect(seen.completes).toBe(2);
+        });
+
+        it('a finished run given a shorter list while detached waits for the attach', async () => {
+            const { el, seen } = await finished(['a', 'b']);
+            const parent = el.parentElement!;
+            el.remove();
+            el.strings = ['z']; // shorter than the phrase index of the finished run: reset, and a begin would arm timers
+            await el.updateComplete;
+            await advance(el, 3000);
+            expect(shown(el)).toBe('');
+            expect(seen.completes).toBe(1);
+            parent.append(el);
+            await advance(el, 2000);
+            expect(shown(el)).toBe('z');
+            expect(seen.completes).toBe(2);
+        });
+
+        it('starts exactly one run for one change, however it is typed', async () => {
+            const { el, seen } = await finished(['a', 'b']);
+            el.strings = ['x', 'y'];
+            await advance(el, 10000);
+            expect(seen.completes).toBe(2);
+        });
     });
 
     it('starts again when the list is replaced by one shorter than the phrase being typed', async () => {

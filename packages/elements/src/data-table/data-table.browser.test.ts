@@ -593,6 +593,175 @@ describe('ge-data-table styles and lifecycle', () => {
         expect(q(table, '[data-slot="data-table-filter"] ge-input').getAttribute('placeholder')).toBe('Filtern...');
     });
 
+    it('redraws in a dictionary registered after the first render, and in a changed page language, with no other trigger', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const placeholder = (table: Element) => q(table, '[data-slot="data-table-filter"] ge-input').getAttribute('placeholder');
+        const lang = document.documentElement.lang;
+        try {
+            const table = await mountTable({ locale: 'de', data: [] });
+            expect(placeholder(table)).toBe(DATA_TABLE_LOCALES.en.filterPlaceholder);
+            registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' }); // no other render trigger
+            await settle(table);
+            expect(placeholder(table)).toBe('Filtern...');
+            // no locale set: the page language decides, and a change of it is followed
+            const follower = await mountTable({ data: [] });
+            expect(placeholder(follower)).toBe(DATA_TABLE_LOCALES.en.filterPlaceholder);
+            document.documentElement.lang = 'de';
+            await new Promise((resolve) => setTimeout(resolve, 0)); // the attribute observer is a microtask, the render another
+            await settle(follower);
+            expect(placeholder(follower)).toBe('Filtern...');
+        } finally {
+            document.documentElement.lang = lang;
+            delete DATA_TABLE_LOCALES['de'];
+        }
+    });
+
+    it('tells the locale subscribers when the language changes under it, and a locale that names nothing follows the page', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const placeholder = (table: Element) => q(table, '[data-slot="data-table-filter"] ge-input').getAttribute('placeholder');
+        const lang = document.documentElement.lang;
+        const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+        try {
+            const table = await mountTable({ locale: 'de', data: [] });
+            const seen: string[] = [];
+            table.topics.on('locale', () => seen.push(table.resolvedLocale.code));
+            registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+            await settle(table);
+            expect(seen).toEqual(['de']);
+            // `xx` is no dictionary: it follows the page language, a change of which reaches the subscribers too
+            const follower = await mountTable({ locale: 'xx', data: [] });
+            const heard: string[] = [];
+            follower.topics.on('locale', () => heard.push(follower.resolvedLocale.code));
+            expect(placeholder(follower)).toBe(DATA_TABLE_LOCALES.en.filterPlaceholder);
+            document.documentElement.lang = 'de';
+            await tick();
+            await settle(follower);
+            expect(placeholder(follower)).toBe('Filtern...');
+            expect(heard).toEqual(['de']);
+        } finally {
+            document.documentElement.lang = lang;
+            delete DATA_TABLE_LOCALES['de'];
+        }
+    });
+
+    it('does not announce the locale on the first render (what attached before it already read it), only when it changes', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const original = DATA_TABLE_LOCALES.en;
+        try {
+            const table = document.createElement('ge-data-table') as GeDataTable<Row>;
+            Object.assign(table, { columns: COLUMNS, data: ROWS });
+            let announced = 0;
+            table.topics.on('locale', () => announced++);
+            document.body.append(trackTable(table));
+            await settle(table);
+            expect(announced).toBe(0);
+            registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' }); // nobody uses it: this table is English
+            await settle(table);
+            expect(announced).toBe(0);
+            registerDataTableLocale('en', { noResultsLabel: 'Nothing here' });
+            await settle(table);
+            expect(announced).toBe(1);
+        } finally {
+            delete DATA_TABLE_LOCALES['de'];
+            registerDataTableLocale('en', original);
+        }
+    });
+
+    it('redraws for a registration only when its own dictionary changed, not for an id it does not use', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const original = DATA_TABLE_LOCALES.en;
+        const lang = document.documentElement.lang;
+        try {
+            const table = await mountTable({ data: ROWS });
+            let redraws = 0;
+            const request = table.requestUpdate.bind(table);
+            table.requestUpdate = ((...args: Parameters<typeof request>) => (redraws++, request(...args))) as typeof table.requestUpdate;
+            registerDataTableLocale('xx', { filterPlaceholder: 'xx' }); // not the table's: it shows English
+            document.documentElement.lang = 'zz'; // nothing registered: still English
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(redraws).toBe(0);
+            registerDataTableLocale('en', { noResultsLabel: 'Nothing here' }); // its own dictionary
+            await settle(table);
+            expect(redraws).toBeGreaterThan(0);
+        } finally {
+            document.documentElement.lang = lang;
+            delete DATA_TABLE_LOCALES['xx'];
+            registerDataTableLocale('en', original);
+        }
+    });
+
+    it('announces a locale set after the attach but before the first render (a framework wrapper), once', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        try {
+            registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+            const table = document.createElement('ge-data-table') as GeDataTable<Row>;
+            Object.assign(table, { columns: COLUMNS, data: ROWS });
+            let announced = 0;
+            table.topics.on('locale', () => announced++);
+            document.body.append(trackTable(table));
+            table.locale = 'de'; // same task: the attach has read English, the first render has not happened
+            await settle(table);
+            expect(announced).toBe(1);
+            expect(q(table, '[data-slot="data-table-filter"] ge-input').getAttribute('placeholder')).toBe('Filtern...');
+        } finally {
+            delete DATA_TABLE_LOCALES['de'];
+        }
+    });
+
+    it('a pager label that was set stays its own even when its text equals the English one; an unset one follows English', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const original = DATA_TABLE_LOCALES.en;
+        try {
+            const pager = trackTable(document.createElement('ge-data-table-pager')) as HTMLElement & { pageLabel: string; ofLabel: string; updateComplete: Promise<boolean> };
+            pager.pageLabel = DATA_TABLE_LOCALES.en.pageLabel; // a dictionary whose word happens to be English's
+            document.body.append(pager);
+            await pager.updateComplete;
+            registerDataTableLocale('en', { pageLabel: 'Pg', ofLabel: 'von' });
+            pager.requestUpdate();
+            await pager.updateComplete;
+            expect(pager.pageLabel).toBe(original.pageLabel);
+            expect(pager.ofLabel).toBe('von');
+            expect(pager.shadowRoot!.querySelector('.indicator')!.textContent).toContain(`${original.pageLabel} 1 von`);
+            pager.setAttribute('of-label', 'sur'); // an attribute sets it too
+            expect(pager.ofLabel).toBe('sur');
+            pager.removeAttribute('of-label');
+            expect(pager.ofLabel).toBe('von');
+        } finally {
+            registerDataTableLocale('en', original);
+        }
+    });
+
+    it('the column header and the pager follow a registered English with no other trigger, on a table and on their own', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const original = DATA_TABLE_LOCALES.en;
+        const headerLabel = (el: Element) => el.shadowRoot!.querySelector('ge-button')!.getAttribute('aria-label');
+        try {
+            const table = await mountTable({ data: ROWS });
+            const ownHeader = trackTable(document.createElement('ge-data-table-column-header')) as HTMLElement & { title: string; updateComplete: Promise<boolean> };
+            ownHeader.title = 'Name';
+            document.body.append(ownHeader);
+            const ownPager = trackTable(document.createElement('ge-data-table-pager')) as HTMLElement & { updateComplete: Promise<boolean> };
+            document.body.append(ownPager);
+            await Promise.all([ownHeader.updateComplete, ownPager.updateComplete]);
+            // the label properties still read as strings: the English at construction
+            expect((ownPager as unknown as { pageLabel: string }).pageLabel).toBe(DATA_TABLE_LOCALES.en.pageLabel);
+            const pagerText = (el: Element) => el.shadowRoot!.querySelector('.size-label')?.textContent;
+            expect(pagerText(table.querySelector('ge-data-table-pager')!)).toBe(DATA_TABLE_LOCALES.en.rowsPerPageLabel);
+            registerDataTableLocale('en', { rowsPerPageLabel: 'Per page', sortStateNone: 'Sort {title}' });
+            await settle(table);
+            expect(pagerText(table.querySelector('ge-data-table-pager')!)).toBe('Per page');
+            expect(headerLabel(q(table, '[data-column-id="name"] ge-data-table-column-header'))).toBe('Sort Name');
+            // on their own they resolve it when they draw
+            ownHeader.requestUpdate();
+            ownPager.requestUpdate();
+            await Promise.all([ownHeader.updateComplete, ownPager.updateComplete]);
+            expect(headerLabel(ownHeader)).toBe('Sort Name');
+            expect(pagerText(ownPager)).toBe('Per page');
+        } finally {
+            registerDataTableLocale('en', original);
+        }
+    });
+
     it.each(['light', 'dark'])('passes axe in %s mode', async (mode) => {
         useTheme(mode);
         const table = await mountTable({ columns: [{ ...COLUMNS[0]!, footer: 'Total' }, COLUMNS[1]!], enableRowSelection: true });

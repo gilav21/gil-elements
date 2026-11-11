@@ -196,6 +196,10 @@ export interface EnhancedColumnDef<T> extends ColumnDef<T> {
     _minWidth: string;
 }
 
+/**
+ * An inline edit, or its undo/redo replay. `row` is the source of truth; `rowIndex` is the drawn index of the ORIGINAL edit, also on
+ * a replay, and says nothing of where the row sits after a later sort or filter.
+ */
 export interface CellEditEvent<T> {
     row: T;
     column: ColumnDef<T>;

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { paintedToken } from '../test-utils.js';
 import { axProps, axTree, bodyRows, makeRows, mountTable, q, qa, type SampleRow, settle } from './data-table-fixtures.js';
+import { columnHelper } from './data-table-column-builder.js';
 import { emulateTouch, frames, parkMouse, press, withTheme } from './data-table-input-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 
@@ -35,6 +36,13 @@ const mountSelectable = (props: Record<string, unknown> = {}, attrs: Record<stri
     mountTable<SampleRow>({ enableRowSelection: true, data: makeRows(25), ...props }, attrs);
 
 describe('row selection by click', () => {
+    it('draws one selection column when the consumer defined it with columnHelper().select()', async () => {
+        const helper = columnHelper<SampleRow>();
+        const table = await mountSelectable({ columns: [helper.select(), { accessorKey: 'name', header: 'Name' }] });
+        expect(qa(table, '[data-slot="table-head"][data-special="selection"]')).toHaveLength(1);
+        expect(qa(table, '[data-row-id="r1"] ge-checkbox')).toHaveLength(1);
+    });
+
     it('selects a row from its checkbox only, with aria-selected, data-state and one event carrying the new record', async () => {
         const table = await mountSelectable();
         const events = record(table, 'row-selection-change');

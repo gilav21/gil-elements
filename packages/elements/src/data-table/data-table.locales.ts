@@ -1,5 +1,5 @@
 import type { LocaleMeta } from '../shared/calendar-locales.js';
-import { pickLocale } from '../shared/locale-lookup.js';
+import { fillLocale, pickLocale, withFallback } from '../shared/locale-lookup.js';
 
 export { interpolate } from '../shared/interpolate.js';
 
@@ -227,22 +227,59 @@ const en: DataTableLocale = {
  */
 export const DATA_TABLE_LOCALES: Record<string, DataTableLocale | undefined> & { en: DataTableLocale } = { en };
 
-/** Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively. */
+/** The dictionaries as they were registered, to fill again when English changes. */
+const given = new Map<string, DataTableLocale>();
+let registryVersion = 0;
+const registryListeners = new Set<() => void>();
+
+/** `listener` runs whenever a dictionary is registered; returns the way to stop. A table on screen uses it to draw its new language. */
+export function onDataTableLocaleChange(listener: () => void): () => void {
+    registryListeners.add(listener);
+    return () => void registryListeners.delete(listener);
+}
+
+/** Changes whenever a dictionary is registered: a table that resolved its locale earlier resolves it again. */
+export const dataTableLocaleVersion = (): number => registryVersion;
+
+/**
+ * Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively, whole (`pt-br`) before its
+ * shorter prefixes (`pt`). What it omits is filled from the English there is, and filled again when English is registered later,
+ * so every entry of `DATA_TABLE_LOCALES` is whole.
+ * Registering an id again replaces it: pass the complete set of overrides.
+ * The id is stored lowercased with `_` as `-`: `pt_BR` is read back as `pt-br`.
+ * Register through this function: a dictionary written straight into `DATA_TABLE_LOCALES` is filled from English when it is resolved,
+ * but notifies no table (nothing redraws), is not filled in the registry itself when English changes, and can be replaced by the dictionary registered earlier when English is registered again.
+ * `__proto__` is not an id (assigning it would replace the table's prototype): it is ignored, with a warning.
+ */
 export function registerDataTableLocale(code: string, dict: Partial<DataTableLocale>): void {
-    DATA_TABLE_LOCALES[code.toLowerCase()] = { ...DATA_TABLE_LOCALES.en, ...dict, code: dict.code ?? code };
+    if (code.toLowerCase() === '__proto__') {
+        console.warn(`[ge-data-table] registerDataTableLocale: '${code}' is not a usable language id and was ignored.`);
+        return;
+    }
+    const id = code.toLowerCase().replaceAll('_', '-');
+    const own = { ...dict, code: dict.code ?? code } as DataTableLocale;
+    given.set(id, own);
+    // English is what the others are filled from, so it is always whole: its own gaps come from the built-in one.
+    DATA_TABLE_LOCALES[id] = withFallback(id === 'en' ? en : DATA_TABLE_LOCALES.en, own);
+    // A new English moves the gaps of every dictionary registered before it; readers of the registry always see whole ones.
+    if (id === 'en') for (const [other, dictionary] of given) if (other !== 'en' && Object.hasOwn(DATA_TABLE_LOCALES, other)) DATA_TABLE_LOCALES[other] = withFallback(DATA_TABLE_LOCALES.en, dictionary);
+    registryVersion++;
+    // One table's failure to redraw must not stop the others, nor escape this call.
+    for (const listener of [...registryListeners]) {
+        try {
+            listener();
+        } catch (error) {
+            console.error('[ge-data-table] a table failed to take the registered locale:', error);
+        }
+    }
 }
 
-/** An object is used as it is; an id is looked up (region ignored); anything else follows the page's `lang`, then English. */
-export function resolveDataTableLocale(input?: string | DataTableLocale | null): DataTableLocale {
-    return pickLocale(DATA_TABLE_LOCALES, input);
-}
-
-/** The advanced-filter labels of a locale, English for any it omits (a partial dictionary stays usable). */
-export function filterBuilderLabels(locale: DataTableLocale): FilterBuilderLabels {
-    const own = locale.advancedFilter;
-    return own
-        ? { ...EN_FILTER_BUILDER_LABELS, ...own, operators: { ...EN_FILTER_BUILDER_LABELS.operators, ...own.operators } }
-        : EN_FILTER_BUILDER_LABELS;
+/**
+ * An object is used (English fills what it omits), an id is looked up (the whole id before its prefixes), anything else follows the page's `lang`
+ * (`pageLang`: the table's own document's), then English. The registry's current English fills what the dictionary omits.
+ */
+export function resolveDataTableLocale(input?: string | DataTableLocale | null, pageLang?: string): DataTableLocale {
+    return pickLocale(DATA_TABLE_LOCALES, input, pageLang);
 }
 
 /**
@@ -250,5 +287,5 @@ export function filterBuilderLabels(locale: DataTableLocale): FilterBuilderLabel
  * `undefined` in the range readout.
  */
 export function withEnglishFallback(locale: DataTableLocale): DataTableLocale {
-    return { ...en, ...locale, advancedFilter: filterBuilderLabels(locale) };
+    return fillLocale(DATA_TABLE_LOCALES.en, locale);
 }

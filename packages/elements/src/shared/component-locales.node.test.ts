@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { lookupLocale } from './locale-id.js';
 import { FILE_VIEWER_LOCALES, resolveFileViewerLocale } from '../file-viewer/file-viewer.locales.js';
 import { PAGE_BUILDER_LOCALES, resolvePageBuilderLocale } from '../page-builder/page-builder.locales.js';
 import { PROPERTY_EDITOR_LOCALES, resolvePropertyEditorLocale } from '../page-builder/sub/property-editor.locales.js';
@@ -42,6 +43,46 @@ describe('the resolvers', () => {
         expect(resolveFileViewerLocale('nope')).toBe(FILE_VIEWER_LOCALES.en);
         expect(resolvePageBuilderLocale(undefined)).toBe(PAGE_BUILDER_LOCALES.en);
         expect(resolvePropertyEditorLocale('he')).toBe(PROPERTY_EDITOR_LOCALES.he);
+    });
+
+    it('fill a partial dictionary from English, and hand a complete one back as it is', () => {
+        const partial = { code: 'xx', download: 'Fetch' } as never;
+        const filled = resolveFileViewerLocale(partial);
+        expect(filled.download).toBe('Fetch');
+        expect(filled.code).toBe('xx');
+        for (const dictionary of [filled, resolvePageBuilderLocale(partial), resolvePropertyEditorLocale(partial)]) {
+            expect(Object.values(dictionary).every((value) => value !== undefined)).toBe(true);
+        }
+        expect(resolvePageBuilderLocale(partial).components).toBe(PAGE_BUILDER_LOCALES.en.components);
+    });
+
+    it('keep the code of a custom dictionary (unnamed is empty, never English) and give the same object for the same input', () => {
+        const named = { code: 'xx', download: 'Fetch' } as never;
+        expect(resolveFileViewerLocale(named).code).toBe('xx');
+        expect(resolveFileViewerLocale(named)).toBe(resolveFileViewerLocale(named));
+        const unnamed = { download: 'Fetch' } as never;
+        expect(resolveFileViewerLocale(unnamed).code).toBe('');
+        expect(resolveFileViewerLocale(unnamed)).toBe(resolveFileViewerLocale(unnamed));
+        expect(resolveFileViewerLocale(unnamed).print).toBe(FILE_VIEWER_LOCALES.en.print);
+    });
+
+    it('take an underscore like a hyphen in an id', () => {
+        expect(resolveFileViewerLocale('de_DE')).toBe(FILE_VIEWER_LOCALES.de);
+        expect(lookupLocale({ 'pt-br': 'BR', pt: 'PT' }, 'pt_BR')).toBe('BR');
+        expect(lookupLocale({ 'pt-br': 'BR', pt: 'PT' }, 'PT_pt')).toBe('PT');
+        expect(lookupLocale({ 'zh-cn': 'CN', zh: 'ZH' }, 'zh_TW')).toBe('ZH');
+        // prefixes are tried longest first: zh-Hant-TW finds zh-hant before zh
+        expect(lookupLocale({ 'zh-hant': 'HANT', zh: 'ZH' }, 'zh-Hant-TW')).toBe('HANT');
+        expect(lookupLocale({ zh: 'ZH' }, 'zh-Hant-TW')).toBe('ZH');
+        expect(lookupLocale({ zh: 'ZH' }, 'xx-Hant-TW')).toBeUndefined();
+        // keys are lowercase ids: a mixed-case key is found only by that exact id; the id as written is tried first
+        const regional = { 'pt-BR': 'MIXED', 'pt-br': 'LOWER', pt: 'PT' };
+        expect(lookupLocale(regional, 'pt-BR')).toBe('MIXED');
+        expect(lookupLocale(regional, 'pt-br')).toBe('LOWER');
+        expect(lookupLocale(regional, 'PT_BR')).toBe('LOWER');
+        expect(lookupLocale({ 'pt-BR': 'MIXED', pt: 'PT' }, 'pt-br')).toBe('PT');
+        expect(lookupLocale(regional, 'pt-PT')).toBe('PT');
+        for (const name of ['__proto__', 'constructor', 'toString']) expect(lookupLocale(regional, name)).toBeUndefined();
     });
 
     it('ignore case and region in an id, and never answer with an inherited member', () => {

@@ -70,7 +70,7 @@ const ICON_FILE = icon(svg`<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 
  * @attr {number} zoom - Initial zoom factor (1 = 100%). A seed: the toolbar clamps to 0.25-3 in 0.25 steps and reports through `zoom-change`.
  * @attr {number} page - Initial 1-based page or slide for PDF and PPT/PPTX. A seed, like `zoom`.
  * @attr {string} filename - Overrides the title-bar name. Falls back to `File.name`, the URL's last segment, or `File`.
- * @attr {string} locale - Locale id or a dictionary object for the viewer's own words (button labels, notices, error messages); defaults to the page's `lang`, then `en`. File names and document content are never translated.
+ * @attr {string} locale - Locale id or a dictionary object for the viewer's own words (button labels, notices, error messages); defaults to the page's `lang`, then `en`. File names and document content are never translated. A dictionary object is remembered per object: replace it to change it, do not mutate it.
  * @csspart frame - The bordered frame.
  */
 export class GeFileViewer extends UiElement {

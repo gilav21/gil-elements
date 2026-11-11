@@ -1,11 +1,57 @@
+import { lookupLocale } from './locale-id.js';
+
+const isPlain = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
+
 /**
- * The dictionary a `locale` setting means: an object as it is; an id (case and region ignored, `de-DE` is `de`) looked up
- * among the table's own entries, so a name like `constructor` finds nothing; anything else follows the page's `lang`, then English.
+ * `partial` with every entry it leaves out taken from `base` (nested dictionaries too), so a partial custom dictionary never
+ * renders `undefined`. A dictionary that leaves nothing out is returned as it is.
  */
-export function pickLocale<T>(table: Record<string, T | undefined> & { en: T }, input: string | T | null | undefined): T {
-    if (input && typeof input === 'object') return input;
-    const own = (id: string): T | undefined => (Object.hasOwn(table, id) ? table[id] : undefined);
-    const page = typeof document === 'undefined' ? '' : document.documentElement.lang;
-    const base = (id: string) => (id.split('-')[0] ?? '').toLowerCase();
-    return own(base(typeof input === 'string' ? input : '')) ?? own(base(page)) ?? table.en;
+export function withFallback<T extends object>(base: T, partial: T): T {
+    const own = partial as Record<string, unknown>;
+    const merged: Record<string, unknown> = { ...own };
+    let filled = false;
+    for (const [key, fallback] of Object.entries(base)) {
+        const value = own[key];
+        if (value === undefined) {
+            merged[key] = fallback;
+            filled = true;
+        } else if (isPlain(value) && isPlain(fallback)) {
+            const inner = withFallback(fallback, value);
+            if (inner !== value) {
+                merged[key] = inner;
+                filled = true;
+            }
+        }
+    }
+    return filled ? (merged as T) : partial;
+}
+
+/**
+ * `dictionary` with what it omits taken from `base`. It keeps its own `code`: one without is unnamed, `''`, never taken for the
+ * base's (English's). One place for the rule, used by `pickLocale` and by the table's public `withEnglishFallback`.
+ */
+export function fillLocale<T extends { code: string }>(base: T, dictionary: T): T {
+    return withFallback(base, dictionary.code === undefined ? { ...dictionary, code: '' } : dictionary);
+}
+
+/** What a dictionary was filled into, per dictionary: the same object in gives the same object out while the base is the same. */
+const completed = new WeakMap<object, { base: object; result: object }>();
+
+/**
+ * The dictionary a `locale` setting means: an object, an id looked up among the table's own entries (see {@link lookupLocale}),
+ * or else the page's `lang` (`pageLang`, the global document's by default), then English. English, the table's current `en`,
+ * fills what the pick leaves out, and the pick keeps its own `code`: a dictionary without one is unnamed, `''`, never taken for
+ * English. Replace a custom object to change it: the filled result is remembered per object.
+ */
+export function pickLocale<T extends { code: string }>(
+    table: Record<string, T | undefined> & { en: T },
+    input: string | T | null | undefined,
+    pageLang = typeof document === 'undefined' ? '' : document.documentElement.lang,
+): T {
+    const picked = input && typeof input === 'object' ? input : (lookupLocale(table, typeof input === 'string' ? input : '') ?? lookupLocale(table, pageLang) ?? table.en);
+    const known = completed.get(picked);
+    if (known?.base === table.en) return known.result as T;
+    const result = fillLocale(table.en, picked);
+    completed.set(picked, { base: table.en, result });
+    return result;
 }

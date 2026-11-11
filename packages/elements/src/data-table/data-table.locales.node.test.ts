@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     DATA_TABLE_LOCALES,
+    dataTableLocaleVersion,
+    onDataTableLocaleChange,
     EN_FILTER_BUILDER_LABELS,
-    filterBuilderLabels,
     interpolate,
     registerDataTableLocale,
     resolveDataTableLocale,
@@ -14,8 +15,11 @@ const en = DATA_TABLE_LOCALES.en;
 const de: DataTableLocale = { ...en, code: 'de', filterPlaceholder: 'Filtern...' };
 
 afterEach(() => {
+    DATA_TABLE_LOCALES.en = en;
+    vi.restoreAllMocks();
     delete DATA_TABLE_LOCALES['de'];
     delete DATA_TABLE_LOCALES['he'];
+    for (const id of ['pt', 'pt-br', 'zh-tw', 'zh-cn']) delete DATA_TABLE_LOCALES[id];
 });
 
 describe('data-table locales', () => {
@@ -92,8 +96,83 @@ describe('data-table locales', () => {
         expect(full.advancedFilter?.and).toBe('UND');
         expect(full.advancedFilter?.operators.contains).toBe('enthält');
         expect(full.advancedFilter?.operators.equals).toBe('equals');
-        expect(filterBuilderLabels({ ...en, advancedFilter: undefined })).toBe(EN_FILTER_BUILDER_LABELS);
+        expect(withEnglishFallback({ ...en, advancedFilter: undefined }).advancedFilter).toEqual(EN_FILTER_BUILDER_LABELS);
         expect(full.rangeCount).toBe('Count');
+    });
+
+    it('finds a regional dictionary by its whole id before its language: pt-BR, and zh-TW against zh-CN', () => {
+        registerDataTableLocale('pt', { filterPlaceholder: 'Filtrar' });
+        registerDataTableLocale('pt-BR', { filterPlaceholder: 'Filtrar (BR)' });
+        registerDataTableLocale('zh-TW', { filterPlaceholder: 'TW' });
+        registerDataTableLocale('zh-CN', { filterPlaceholder: 'CN' });
+        expect(resolveDataTableLocale('pt-BR').filterPlaceholder).toBe('Filtrar (BR)');
+        expect(resolveDataTableLocale('PT-br').filterPlaceholder).toBe('Filtrar (BR)');
+        expect(resolveDataTableLocale('pt-PT').filterPlaceholder).toBe('Filtrar');
+        expect(resolveDataTableLocale('zh-TW').filterPlaceholder).toBe('TW');
+        expect(resolveDataTableLocale('zh-CN').filterPlaceholder).toBe('CN');
+        expect(resolveDataTableLocale('zh-HK')).toBe(en);
+    });
+
+    it('ignores an id that would replace the prototype of the table, and bumps the version only for a real one', () => {
+        const before = dataTableLocaleVersion();
+        registerDataTableLocale('__proto__', { filterPlaceholder: 'x' });
+        registerDataTableLocale('__PROTO__', { filterPlaceholder: 'x' });
+        expect(Object.getPrototypeOf(DATA_TABLE_LOCALES)).toBe(Object.prototype);
+        expect(Object.keys(DATA_TABLE_LOCALES)).not.toContain('__proto__');
+        expect(dataTableLocaleVersion()).toBe(before);
+        registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+        expect(dataTableLocaleVersion()).toBe(before + 1);
+    });
+
+    it('fills a registered dictionary from the English there is when it is resolved, not when it was registered', () => {
+        registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+        expect(resolveDataTableLocale('de').noResultsLabel).toBe(en.noResultsLabel);
+        registerDataTableLocale('en', { noResultsLabel: 'Nothing here' });
+        expect(resolveDataTableLocale('de').noResultsLabel).toBe('Nothing here');
+        expect(resolveDataTableLocale('de').filterPlaceholder).toBe('Filtern...');
+        expect(withEnglishFallback({ code: 'xx' } as DataTableLocale).noResultsLabel).toBe('Nothing here');
+        // the overridden English is itself whole
+        expect(resolveDataTableLocale('en').filterPlaceholder).toBe(en.filterPlaceholder);
+    });
+
+    it('keeps every entry of the exported registry whole, a later English included', () => {
+        registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+        expect(DATA_TABLE_LOCALES['de']!.noResultsLabel).toBe(en.noResultsLabel);
+        registerDataTableLocale('en', { noResultsLabel: 'Nothing here' });
+        expect(DATA_TABLE_LOCALES['de']!.noResultsLabel).toBe('Nothing here');
+        expect(DATA_TABLE_LOCALES['de']!.filterPlaceholder).toBe('Filtern...');
+    });
+
+    it('a listener that throws neither stops the others nor escapes the call', () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        let reached = 0;
+        const stops = [onDataTableLocaleChange(() => { throw new Error('boom'); }), onDataTableLocaleChange(() => reached++)];
+        expect(() => registerDataTableLocale('de', { filterPlaceholder: 'x' })).not.toThrow();
+        expect(reached).toBe(1);
+        expect(error).toHaveBeenCalledOnce();
+        stops.forEach((stop) => stop());
+    });
+
+    it('names a dictionary without a code the same way through both entry points: unnamed, not English', () => {
+        const partial = { filterPlaceholder: 'x' } as DataTableLocale;
+        expect(withEnglishFallback(partial).code).toBe('');
+        expect(resolveDataTableLocale(partial).code).toBe('');
+        expect(withEnglishFallback({ ...partial, code: 'xx' }).code).toBe('xx');
+    });
+
+    it('takes the page language it is given, the global document only by default', () => {
+        registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+        expect(resolveDataTableLocale('xx', 'de').filterPlaceholder).toBe('Filtern...');
+        expect(resolveDataTableLocale(undefined, 'de-AT').filterPlaceholder).toBe('Filtern...');
+        expect(resolveDataTableLocale('xx', 'ja')).toBe(en);
+        expect(resolveDataTableLocale('de', 'ja').filterPlaceholder).toBe('Filtern...');
+    });
+
+    it('warns once per ignored id', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        registerDataTableLocale('__proto__', {});
+        expect(warn).toHaveBeenCalledOnce();
+        expect(String(warn.mock.calls[0]![0])).toContain('__proto__');
     });
 
     it('interpolates {column} and leaves unknown names', () => {
