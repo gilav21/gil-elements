@@ -1,10 +1,10 @@
 import { html, type TemplateResult } from 'lit';
 import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
-import { EditSession, NEUTRAL_EDIT } from './data-table-edit-session.js';
+import { EditSession } from './data-table-edit-session.js';
 import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
-import { NEUTRAL_RANGE, NEUTRAL_RANGE_CELL, RangeSession } from './data-table-range-session.js';
+import { RangeSession } from './data-table-range-session.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
@@ -32,7 +32,9 @@ const pressOf = ({ anchor, pressed, startCell }: Press): PointerPress => ({ anch
 const TAP_SLOP = 10;
 
 /** A press on one of these belongs to the control: it keeps its own focus and click. */
-const CONTROLS = 'input, textarea, select, button, a, [role="checkbox"], ge-checkbox, ge-input, [contenteditable]';
+const CONTROLS = 'input, textarea, select, button, a, [role="checkbox"], ge-checkbox, ge-input, [contenteditable], [data-table-keeps-focus]';
+/** The explicit opt-out for a widget in a cell that manages its own focus (a combobox, a menu button, a custom editor): treated like a control. */
+const KEEPS_FOCUS = '[data-table-keeps-focus]';
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
 /** Rows moved by one page key when nothing is drawn to measure. */
@@ -83,8 +85,6 @@ export class CellInteractionController<T> {
     private readonly baseService: CellInteractionService;
     /** Sessions that FAILED (their `attach()` or a `hostUpdate()` threw): detached at once and skipped by everything after, until the next attach. */
     private readonly broken = new Set<CellSession>();
-    /** The typed neutral services of each session (one entry per session, added where it is created): installed when it fails. */
-    private readonly neutrals = new Map<CellSession, { service?: Partial<CellInteractionService>; rangeService?: RangeService }>();
     /** The sessions whose `renderOverlay` failure was already reported: it runs at every render and reports its first failure only (cleared at detach). */
     private readonly reported = new Set<CellSession>();
     /**
@@ -119,8 +119,6 @@ export class CellInteractionController<T> {
         this.edit = new EditSession(context);
         this.range = new RangeSession(context);
         this.sessions = [this.range, this.edit];
-        this.neutrals.set(this.range, { service: NEUTRAL_RANGE_CELL, rangeService: NEUTRAL_RANGE });
-        this.neutrals.set(this.edit, { service: NEUTRAL_EDIT });
         this.services = { range: this.range.rangeService };
         this.service = {
             focusedCell: () => this.focused,
@@ -186,21 +184,21 @@ export class CellInteractionController<T> {
     }
 
     /**
-     * A session failed (its `attach()` or a `hostUpdate()` threw): a bug, so nothing of it is carried over. It is reported once, the presses it claimed
-     * are cancelled (no event), it is detached NOW (that removes what it registered, a key handler or a listener) and left out of everything after
-     * (pointer, hostUpdate, overlay, detach) until the next attach, and its NEUTRAL service objects replace its methods in the merged `interaction`
-     * service and its `rangeService` (provided and in `services`), so nothing keeps calling a half-attached session. What was set on the neutral
-     * services while it was out (a `cellRange`) is lost; `isCellSelected` answers false there. The next attach restores the real services.
+     * A session failed (its `attach()` or a `hostUpdate()` threw): a bug. It is reported once, marked broken FIRST (nothing calls it again, not even
+     * for the presses it claimed, which end without telling it), detached NOW (that removes what it registered, a key handler or a listener; a range
+     * session keeps its range for the next attach) and left out of everything after (pointer, hostUpdate, overlay, detach) until the next attach, and its
+     * NEUTRAL service objects (`CellSession.neutral`) replace its methods in the merged `interaction` service and its `rangeService` (provided and in
+     * `services`), so nothing keeps calling a half-attached session. `cellRange` reads null and `isCellSelected` answers false while it is out; the next
+     * attach restores the real services, and the range the session held is served again.
      */
     private fail(session: CellSession, error: unknown): void {
         this.report(error);
-        // The presses it claimed end now, for it (a cancel, no event: like at detach); they are never routed to it again.
-        for (const [id, press] of [...this.presses]) if (press.claimedBy === session) this.endPress(id, press, null);
-        this.guarded(() => session.detach());
         this.broken.add(session);
-        const neutral = this.neutrals.get(session);
-        Object.assign(this.service, neutral?.service);
-        if (neutral?.rangeService) {
+        for (const [id, press] of [...this.presses]) if (press.claimedBy === session) this.endPress(id, press, null); // `notifyCancel` skips a broken claimant
+        this.guarded(() => session.detach());
+        const { neutral } = session;
+        Object.assign(this.service, neutral.service);
+        if (neutral.rangeService) {
             this.services.range = neutral.rangeService;
             this.teardown.push(this.host.provide('range', neutral.rangeService));
         }
@@ -217,9 +215,9 @@ export class CellInteractionController<T> {
         this.teardown = [];
         this.observer?.disconnect();
         this.observer = this.watched = null;
-        this.within = this.pointer = false;
+        this.within = false; // (`pointer` was reset by `endPress`)
         this.clearedAt = null;
-        this.captured.clear();
+        this.captured.clear(); // captures of pointers that had no press
         this.closing.clear();
         this.reported.clear();
         this.attachment++;
@@ -525,8 +523,10 @@ export class CellInteractionController<T> {
         const path = event.composedPath(); // once per event: a path is built at every call
         const target = this.targetOf(path);
         // A press that begins on an overlay is the overlay's (`pressed` = the overlay, no start cell): only the RELEASE of a gesture is looked through it.
-        const info: PointerPress = { anchor, pressed: target, startCell: cellAddressOf(target) };
-        const claimedBy = this.offer(event, target, (session) => session.onPointerDown, info);
+        // A widget that keeps its own focus (`data-table-keeps-focus` on it or an ancestor, like a control) is not a cell press either: no start cell, no offer, no focus.
+        const keeps = target?.closest(KEEPS_FOCUS) != null;
+        const info: PointerPress = { anchor, pressed: target, startCell: keeps ? null : cellAddressOf(target) };
+        const claimedBy = keeps ? undefined : this.offer(event, target, (session) => session.onPointerDown, info);
         this.presses.set(event.pointerId, { ...info, claimedBy: claimedBy ?? null });
         if (claimedBy) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
@@ -546,6 +546,13 @@ export class CellInteractionController<T> {
         // The document's listener sees a target RETARGETED to the outermost host when this table sits in another component's shadow root: the target
         // is read from the composed path (the first node inside this table), for ownership, the cell address and the tapped cell alike. (Located BEFORE
         // the press ends: the capture of the pointer is part of the answer.)
+        // A press with no claimant and no start cell (it began on a header, a handle, an overlay, a widget that keeps its focus) needs no cell at its
+        // release: no hit test; only a touch tap may still focus what it pressed.
+        if (event.type === 'pointerup' && !press.claimedBy && !press.startCell) {
+            this.endPress(event.pointerId, press, event, false);
+            if (event.pointerType === 'touch') this.tapFocus(event, press.pressed);
+            return;
+        }
         const where = event.type === 'pointerup' ? this.locateRelease(event, event.composedPath()) : { own: false, cell: null };
         this.endPress(event.pointerId, press, event, !where.own); // a release elsewhere is a cancel for the claimant; on this table it is routed below
         if (!where.own) return;
@@ -710,8 +717,6 @@ export class CellInteractionController<T> {
     /** The table detaches (or the window loses focus) mid-press: every claimant is told (`event` null) before the sessions detach; one that throws does not abort the detach. */
     private cancelPresses(): void {
         for (const [id, press] of [...this.presses]) this.endPress(id, press, null);
-        this.captured.clear();
-        this.pointer = false;
     }
 
     private eachBackwards(visit: (session: CellSession) => void): void {

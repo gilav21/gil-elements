@@ -39,6 +39,8 @@ export const NEUTRAL_RANGE_CELL: Pick<CellInteractionService, 'cellRange' | 'isC
 export class RangeSession<T> implements CellSession {
     /** The range while no part is attached; see the header. */
     private held: CellRange | null = null;
+    /** A COPY of the four values of `held` as last seen: `held` is the consumer's own object, which may be edited in place and assigned again (identity says nothing). */
+    private seen: CellRange | null = null;
     /** A range flag was on at the last update. */
     private wasOn = false;
     /** `held` was assigned while a range flag was on, or adopted by an update that saw it on: the turn-off clears it. */
@@ -63,6 +65,8 @@ export class RangeSession<T> implements CellSession {
 
     constructor(protected readonly context: InteractionContext<T>) {}
 
+    readonly neutral = { service: NEUTRAL_RANGE_CELL, rangeService: NEUTRAL_RANGE };
+
     // wave 6: the methods below that answer "nothing" delegate to `this.lazy.part` once the part implements them.
     readonly rangeService: RangeService = {
         ...NEUTRAL_RANGE,
@@ -78,8 +82,9 @@ export class RangeSession<T> implements CellSession {
             // trim `r` against the old data): `hostUpdate` trims them once the rows of that update are known.
             const next = sanitizeCellRange(range, 0, []);
             if (next === undefined) return warnBadRange(range);
-            const changed = !sameRange(this.live(), next);
+            const changed = !sameRange(this.seen, next); // by VALUE against the copy: an in-place edit followed by the same object again is a change
             this.held = next;
+            this.seen = next && { ...next };
             this.heldInMode = this.rangeOn(); // assigned while range mode was off, it is not part of the mode that a later turn-off ends
             this.lazy.part?.setRange(next);
             // `data-in-range`, `aria-selected` and the readout read the range at render, and only in range mode: an equal value, or a value held while the mode is off, draws nothing new
@@ -176,6 +181,7 @@ export class RangeSession<T> implements CellSession {
         }
         // (off and never on: a value assigned before the mode was switched on waits in `held`)
         this.wasOn = on;
+        this.seen = this.held && { ...this.held };
         this.lazy.sync(on);
     }
 

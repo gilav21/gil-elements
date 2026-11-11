@@ -488,7 +488,7 @@ describe('a failed session is withdrawn: its presses end, its neutral services t
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
     });
 
-    it('ends the presses it claimed once, and never calls it again (release, blur, detach)', async () => {
+    it('ends the presses it claimed WITHOUT calling it (it just threw), and never calls it again (release, blur, detach)', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         let fail = false;
         const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
@@ -504,18 +504,18 @@ describe('a failed session is withdrawn: its presses end, its neutral services t
             fail = true;
             table.requestUpdate();
             await settle(table);
-            expect(log).toEqual(['cancel:null']); // ended for the failed claimant, no event
+            expect(log).toEqual([]); // the press ended for the failed claimant, which is not told
             cellAt(table, 1, 'name')!.dispatchEvent(pointer('pointerup', 241));
             window.dispatchEvent(new Event('blur'));
             table.remove();
-            expect(log).toEqual(['cancel:null']);
+            expect(log).toEqual([]);
         } finally {
             update.mockRestore();
             error.mockRestore();
         }
     });
 
-    it('installs the neutral services while it is out (the held range is lost), renders, and a reconnect restores the real session', async () => {
+    it('installs the neutral services while it is out (cellRange reads null), renders, and a reconnect restores the real session with the range it held', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         let fail = false;
         const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
@@ -531,16 +531,13 @@ describe('a failed session is withdrawn: its presses end, its neutral services t
             await settle(table);
             expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull(); // the table still renders
             expect(table.provider('range')).not.toBe(realService); // the neutral one
-            expect(table.cellRange).toBeNull(); // the range held by the failed session is lost
-            table.cellRange = range; // the neutral service stores nothing: the element holds it
-            expect(table.cellRange).toEqual(range);
+            expect(table.cellRange).toBeNull(); // while it is out, cellRange reads null
             update.mockRestore();
             table.remove();
             document.body.append(table);
             await settle(table);
             expect(table.provider('range')).toBe(realService); // the real session is back
-            table.cellRange = range;
-            expect(table.cellRange).toEqual(range);
+            expect(table.cellRange).toEqual(range); // and serves the range it held when it failed
             expect(error).toHaveBeenCalledTimes(1);
         } finally {
             update.mockRestore();
@@ -1071,6 +1068,56 @@ describe('a mouse release over an overlay of the table', () => {
         cover.dispatchEvent(pointer('pointerup', 211, { over: cover })); // a mouse, no capture: it is released on the overlay it is over
         expect(log).toEqual(['up:{"rowIndex":2,"columnKey":"age"}']);
         cover.remove();
+    });
+});
+
+describe('a widget in a cell that carries data-table-keeps-focus', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('keeps its own focus on pointerdown (like a control): the grid does not move the focus and offers nothing to the sessions', async () => {
+        const table = await mountTable();
+        const offers: string[] = [];
+        hooks.onPointerDown = () => void offers.push('down');
+        hooks.onPointerUp = () => void offers.push('up');
+        const cell = cellAt(table, 1, 'name')!;
+        const widget = document.createElement('div'); // a combobox-like widget that is not a native control
+        widget.tabIndex = 0;
+        widget.setAttribute('data-table-keeps-focus', '');
+        widget.textContent = 'combo';
+        const inner = document.createElement('span');
+        inner.textContent = 'option';
+        widget.append(inner);
+        cell.append(widget);
+        const plain = document.createElement('div');
+        plain.tabIndex = 0;
+        plain.textContent = 'plain';
+        cell.append(plain);
+        await userEvent.click(inner);
+        expect(document.activeElement).toBe(widget); // the grid did not pull the focus to the cell
+        expect(offers).toEqual([]);
+        await userEvent.click(plain); // without the attribute the grid takes the press: it is offered to the sessions
+        expect(offers).toEqual(['down', 'up']);
+    });
+});
+
+describe('a release that needs no cell', () => {
+    it('makes no hit test: a touch press that began on a header and is released is located by nothing, one that began on a cell is', async () => {
+        const table = await mountTable();
+        const spy = vi.spyOn(Document.prototype, 'elementsFromPoint');
+        try {
+            const head = table.querySelector<HTMLElement>('[data-slot="table-head"]')!;
+            head.dispatchEvent(pointer('pointerdown', 291, { pointerType: 'touch', over: head }));
+            head.dispatchEvent(pointer('pointerup', 291, { pointerType: 'touch', over: head }));
+            expect(spy).not.toHaveBeenCalled();
+            const cell = cellAt(table, 1, 'name')!;
+            cell.dispatchEvent(pointer('pointerdown', 292, { pointerType: 'touch', over: cell }));
+            cell.dispatchEvent(pointer('pointerup', 292, { pointerType: 'touch', over: cell }));
+            expect(spy).toHaveBeenCalled(); // an unclaimed press that began on a cell is offered at its release: it needs the cell
+        } finally {
+            spy.mockRestore();
+        }
     });
 });
 

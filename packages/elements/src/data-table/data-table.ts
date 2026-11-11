@@ -9,7 +9,7 @@ import { createCellWriter, type HistoryResult } from './data-table-cell-write.js
 import { type AssembledControllers, assembleControllers } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
-import { rangeModeOn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
+import { rangeModeOn, rangeSelectionDrawn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import { NEUTRAL_RANGE } from './data-table-range-session.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
@@ -734,7 +734,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             ['data-row-borders', this.showRowBorders],
             ['data-column-borders', this.showColumnBorders],
             // user-select: none on the viewport only while range selection is actually handled (the range service is active), like aria-selected
-            ['data-range-selection', this.enableCellRangeSelection && (this.provider('range')?.active() ?? false)],
+            ['data-range-selection', rangeSelectionDrawn(this, this.provider('range'))],
             ['aria-busy', this.skeleton || (this.provider('loading')?.visible() ?? false)],
         ];
         for (const [name, on] of flags) {

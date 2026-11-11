@@ -75,6 +75,9 @@ export function rangeColumnKeys(columns: readonly { accessorKey: unknown }[]): s
     return columns.map((c) => String(c.accessorKey)).filter((key) => !isSpecialColumnKey(key));
 }
 
+/** Range SELECTION is drawn and claimed (`data-range-selection`, `aria-selected`, `aria-multiselectable`): the flag is on and the range part handles ranges (the one predicate the element and the state view both use). */
+export const rangeSelectionDrawn = (config: { readonly enableCellRangeSelection: boolean }, range: { active(): boolean } | undefined): boolean => config.enableCellRangeSelection && (range?.active() ?? false);
+
 /** Range mode is on: range selection or the fill handle (the one predicate the element and the range session both use). */
 export const rangeModeOn = (config: { readonly enableCellRangeSelection: boolean; readonly enableFillHandle: boolean }): boolean => config.enableCellRangeSelection || config.enableFillHandle;
 

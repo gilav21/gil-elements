@@ -10,7 +10,7 @@
  *
  * The lead owns this file: a wave implements its service, not this composition.
  */
-import { rangeModeOn } from './data-table-range.js';
+import { rangeModeOn, rangeSelectionDrawn } from './data-table-range.js';
 import type { DataTableViewHost } from './data-table-view.js';
 import type { CellFlashDirection } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
@@ -87,7 +87,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     // What is DRAWN of a range follows range mode (selection OR fill handle: the fill source is visible); what is CLAIMED to assistive technology
     // (`aria-selected`, `aria-multiselectable`) follows the SELECTION flag alone, like `data-range-selection`: a fill-handle-only grid is not multiselectable.
     const rangeMode = rangeModeOn(config) && rangeActive;
-    const selectionMode = config.enableCellRangeSelection && rangeActive;
+    const selectionMode = rangeSelectionDrawn(config, range);
     // Flash costs per-cell work only while some cell is actually flashing (`enable-cell-flash` alone, with nothing flashing, does not).
     const flashable = config.enableCellFlash && formatting !== undefined && formatting.anyFlashing();
     const flashOff = flashable ? flashOffKeys(config.columns) : NO_KEYS; // only built while something flashes

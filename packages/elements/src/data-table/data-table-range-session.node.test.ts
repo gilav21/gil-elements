@@ -68,6 +68,21 @@ describe('RangeSession column validation by value', () => {
     });
 });
 
+describe('RangeSession.setRange of an object edited in place', () => {
+    it('renders again when the consumer edits its own range object and assigns the same object again', () => {
+        const { range, requestRender } = session([{ accessorKey: 'a' }]);
+        const mine = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'a' };
+        range.rangeService.setRange(mine);
+        expect(requestRender).toHaveBeenCalledTimes(1);
+        range.rangeService.setRange(mine); // unchanged: nothing new to draw
+        expect(requestRender).toHaveBeenCalledTimes(1);
+        mine.endRow = 5; // edited in place, assigned again
+        range.rangeService.setRange(mine);
+        expect(requestRender).toHaveBeenCalledTimes(2);
+        expect(range.rangeService.range()).toEqual({ startRow: 0, startCol: 'a', endRow: 5, endCol: 'a' });
+    });
+});
+
 describe('RangeSession.setRange and renders', () => {
     it('requests a render for a changed range only while range mode is on', () => {
         const requestRender = vi.fn();

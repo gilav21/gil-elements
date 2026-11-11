@@ -37,10 +37,16 @@
  *   of it (further away it was a drag). A pointerup or cancel with no press of this table behind it does nothing.
  * - `hostUpdate()` runs before every render, after the controller's own reconcile, in the order edit, range.
  * - `service` holds the methods the session adds to the one `CellInteractionService` object; `rangeService` is provided under `range`.
- * - A session that throws in `attach()` or `hostUpdate()` has a bug, so nothing of it is kept: the error is reported once, its claimed presses
- *   are cancelled (`event` null), it is detached and left out of everything until the next attach, and neutral services (`NEUTRAL_RANGE`,
- *   `NEUTRAL_RANGE_CELL`, `NEUTRAL_EDIT`: one definition per session, in its file) replace its `service` / `rangeService`; the range held
- *   by a failed range session is lost with it. An error in any other callback is reported and the callback answers nothing.
+ * - A session that throws in `attach()` or `hostUpdate()` has a bug: the error is reported once, it is marked broken FIRST (it is never called
+ *   again, not even for the presses it claimed, which just end), detached, and left out of everything until the next attach. Its `neutral`
+ *   services (`NEUTRAL_RANGE`, `NEUTRAL_RANGE_CELL`, `NEUTRAL_EDIT`: one definition per session, in its file, exposed as `session.neutral`)
+ *   replace its `service` / `rangeService`. While it is out `cellRange` reads null; a `cellRange` assigned meanwhile is held by the element
+ *   and handed over at the next connect with a real range service; the range the failed range session held is kept by its detach and served
+ *   again after the next attach. An error in any other callback is reported and the callback answers nothing.
+ * - A widget in a cell that manages its own focus (a combobox, a menu button, a custom editor that is not a native control) marks itself, or an
+ *   ancestor inside the cell, with `data-table-keeps-focus`: the grid then treats it like a control (it does not move the focus, does not offer the
+ *   press to the sessions, and the press has no start cell). The press is still RECORDED in the capture phase, so a `stopPropagation` of a renderer
+ *   can never hide a plain press from the grid; the attribute is the explicit opt-out.
  * - Cross-wave reads go through providers only: the range session reads `interaction.editingCell()`, the edit session reads
  *   `provider('range').gestureActive()` (`range` is always provided; ask `active()` whether the part handles ranges).
  *
@@ -101,4 +107,6 @@ export interface CellSession {
     readonly service?: Partial<CellInteractionService>;
     /** Provided under `range` (range session only). */
     readonly rangeService?: RangeService;
+    /** What the controller installs in place of `service` / `rangeService` when this session fails: inert objects with the same keys and typed answers (false, '', null). */
+    readonly neutral: { readonly service?: Partial<CellInteractionService>; readonly rangeService?: RangeService };
 }

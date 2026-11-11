@@ -27,6 +27,8 @@ export class EditSession<T> implements CellSession {
 
     readonly service: EditService = { ...NEUTRAL_EDIT };
 
+    readonly neutral = { service: NEUTRAL_EDIT };
+
     attach(): void {}
 
     detach(): void {}

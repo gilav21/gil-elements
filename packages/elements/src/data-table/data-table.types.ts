@@ -88,6 +88,9 @@ export type ComponentOutputs = Record<string, (event: Event) => void>;
  * 2. `cellRenderer`: a function returning a {@link CellRenderResult}.
  * 3. `cell`: a function returning plain text.
  *
+ * A widget in a cell that manages its own focus (a combobox, a menu button) puts `data-table-keeps-focus` on itself or an ancestor inside the cell:
+ * the grid then does not move the focus to the cell nor treat the press as a cell press (as for a native control).
+ *
  * With none, the raw value is stringified. `resolveCellKind` answers which applies. The same
  * hosts apply to `filterComponent`, `editComponent`, `footerComponent` and `floatingFilterComponent`.
  */
