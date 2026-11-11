@@ -60,7 +60,7 @@ export class CellInteractionController<T> {
      * replaces it), ended by the matching pointerup or cancel ANYWHERE on the page (a press released outside the table must not leave an anchor
      * for a later press with the same pointer id).
      */
-    private press: { readonly pointerId: number; readonly anchor: CellAddress | null } | null = null;
+    private press: { readonly pointerId: number; readonly anchor: CellAddress | null; readonly claimedBy: CellSession | null } | null = null;
 
     constructor(private readonly host: DataTableCoreHost<T>) {
         const context: InteractionContext<T> = {
@@ -396,8 +396,9 @@ export class CellInteractionController<T> {
      */
     private onPointerDown(event: PointerEvent): void {
         this.pointer = true;
-        this.press = { pointerId: event.pointerId, anchor: this.focused };
-        if (this.offer(event, (session) => session.onPointerDown, this.focused)) return;
+        const claimedBy = this.offer(event, (session) => session.onPointerDown, this.focused);
+        this.press = { pointerId: event.pointerId, anchor: this.focused, claimedBy: claimedBy ?? null };
+        if (claimedBy) return;
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.button === 0 && event.pointerType !== 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(event.target as Element);
     }
@@ -424,16 +425,24 @@ export class CellInteractionController<T> {
         return drawn.some(Boolean) ? html`${drawn}` : null; // Lit draws nothing for an undefined or null entry
     }
 
-    /** The press goes to the sessions in order (range, edit); the first that returns true claims it (and this returns true). */
-    private offer(event: PointerEvent, handlerOf: (session: CellSession) => CellSession['onPointerDown'], anchor: CellAddress | null): boolean {
+    /** The press goes to the sessions in order (range, edit); the first that returns true claims it and is returned. */
+    private offer(event: PointerEvent, handlerOf: (session: CellSession) => CellSession['onPointerDown'], anchor: CellAddress | null): CellSession | undefined {
         const at = cellAddressOf(event.target);
         const press: PointerPress = { anchor };
-        return this.sessions.some((session) => handlerOf(session)?.call(session, event, at, press) === true);
+        return this.sessions.find((session) => handlerOf(session)?.call(session, event, at, press) === true);
     }
 
-    /** The pointer of the press in progress was released (or cancelled) somewhere on the page: the press is over. */
+    /**
+     * A pointer was released or cancelled somewhere on the page (after the table's own pointerup, which has already ended a press released on
+     * the table): the press is over. A press that reaches here ended WITHOUT a pointerup on the table (a cancel, or a release outside), so the
+     * session that claimed it is told through `onPointerCancel`, and the pointer is no longer "down" (the next Tab into the grid is not a click).
+     */
     private endPress(event: PointerEvent): void {
-        if (this.press?.pointerId === event.pointerId) this.press = null;
+        this.pointer = false;
+        const press = this.press;
+        if (press?.pointerId !== event.pointerId) return;
+        this.press = null;
+        press.claimedBy?.onPointerCancel?.(event, { anchor: press.anchor });
     }
 
     private eachBackwards(visit: (session: CellSession) => void): void {

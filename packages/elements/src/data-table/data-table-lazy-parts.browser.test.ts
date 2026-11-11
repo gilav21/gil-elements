@@ -65,6 +65,21 @@ describe('lazy parts and the render', () => {
         expect(interaction.isCellSelected(0, 'name')).toBe(false);
     });
 
+    it('blocks text selection on the viewport only while range selection is active: the flag alone with the inert part leaves it selectable', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true });
+        await settle(table);
+        await frames(3);
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        expect(table.hasAttribute('data-range-selection')).toBe(false);
+        expect(getComputedStyle(viewport).userSelect).not.toBe('none');
+        const real = table.provider('range')!;
+        table.provide('range', { ...real, active: () => true });
+        table.requestUpdate();
+        await settle(table);
+        expect(table.hasAttribute('data-range-selection')).toBe(true);
+        expect(getComputedStyle(viewport).userSelect).toBe('none');
+    });
+
     it('leaves aria-multiselectable off while range mode is not active', async () => {
         const table = await mountTable({ enableCellRangeSelection: true });
         await settle(table);

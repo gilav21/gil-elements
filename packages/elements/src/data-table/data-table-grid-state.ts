@@ -78,7 +78,8 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     const rowDrag = host.provider('rowDrag');
     // Range mode is drawn (`aria-selected`, `aria-multiselectable`) only once the range part is loaded and handles ranges: not while it loads,
     // and not after a load that failed (the same rule as `rowDrag.active()` for draggable rows).
-    const rangeMode = config.enableCellRangeSelection && (range?.active() ?? false);
+    const rangeActive = range?.active() ?? false;
+    const rangeMode = config.enableCellRangeSelection && rangeActive;
     const { editable, flashOff } = columnSets(config.columns);
     const flashable = config.enableCellFlash && formatting !== undefined;
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).
@@ -91,7 +92,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
             if (isSpecialColumnKey(key)) return NO_CELL_FLAGS;
             const canEdit = editable.has(key) && !row.disabled;
             const inRange = rangeMode && (range?.isInRange(rowIndex, key) ?? false);
-            const fill = config.enableFillHandle && (range?.isFillPreview(rowIndex, key) ?? false);
+            const fill = config.enableFillHandle && rangeActive && (range?.isFillPreview(rowIndex, key) ?? false);
             const flash = flashable && !flashOff.has(key) ? formatting.flash(row.id, key) : undefined;
             const editing = interaction?.isEditing(rowIndex, key) ?? false;
             if (!inRange && !fill && flash === undefined && !editing) {

@@ -79,6 +79,42 @@ describe('the cellRange property', () => {
         }
     });
 
+    const assembled = (table: GeDataTable): boolean => (table as unknown as { built: unknown }).built !== null;
+
+    it('assembles no controller before the first connect: assigning and reading cellRange on a never-connected element builds nothing', () => {
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        table.enableCellRangeSelection = true;
+        table.cellRange = range;
+        expect(table.cellRange).toEqual(range);
+        expect(assembled(table)).toBe(false);
+    });
+
+    it('does not assemble controllers when a range assigned before the upgrade is reclaimed by the constructor, and hands it to the session at the connect', async () => {
+        const inert = document.implementation.createHTMLDocument('');
+        const early = inert.createElement('ge-data-table') as GeDataTable;
+        early.setAttribute('enable-cell-range-selection', '');
+        (early as unknown as { cellRange: unknown }).cellRange = range;
+        const table = document.adoptNode(early);
+        customElements.upgrade(table); // the constructor runs, the element is not connected
+        expect(assembled(table)).toBe(false);
+        expect(Object.hasOwn(table, 'cellRange')).toBe(false);
+        document.body.append(table);
+        await settle(table);
+        expect(assembled(table)).toBe(true);
+        expect(table.provider('range')?.range()).toEqual(range);
+        expect(table.cellRange).toEqual(range);
+        table.remove();
+    });
+
+    it('reads a detached table (connected once before) from the session, not by building anything new', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true });
+        table.cellRange = range;
+        table.remove();
+        const built = (table as unknown as { built: unknown }).built;
+        expect(table.cellRange).toEqual(range);
+        expect((table as unknown as { built: unknown }).built).toBe(built);
+    });
+
     it('keeps a range assigned before the first connect (range mode on) through the connect', async () => {
         const table = document.createElement('ge-data-table') as GeDataTable;
         table.enableCellRangeSelection = true;

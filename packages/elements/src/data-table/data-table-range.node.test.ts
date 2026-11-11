@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     clampToRows,
     coercePasteValue,
@@ -9,6 +9,8 @@ import {
     planPaste,
     rangeChartPayload,
     rangeStats,
+    rangeWarner,
+    rangeColumnKeys,
     rangeEdges,
     readRangeColumns,
     sanitizeCellRange,
@@ -182,6 +184,22 @@ describe('rangeEdges', () => {
 
     it('gives a one-cell range all four', () => {
         expect(rangeEdges({ minRow: 2, maxRow: 2, minCol: 0, maxCol: 0 }, 2, 0)).toBe('top bottom start end');
+    });
+});
+
+describe('rangeColumnKeys and rangeWarner', () => {
+    it('lists the data columns, hidden or not, and never a special one', () => {
+        expect(rangeColumnKeys([{ accessorKey: 'a' }, { accessorKey: '_selection' }, { accessorKey: 'b' }, { accessorKey: '_actions' }])).toEqual(['a', 'b']);
+    });
+
+    it('warns once per warner', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const warner = rangeWarner();
+        warner(1);
+        warner(2);
+        rangeWarner()(3);
+        expect(warn).toHaveBeenCalledTimes(2);
+        warn.mockRestore();
     });
 });
 

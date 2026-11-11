@@ -32,18 +32,6 @@ export interface ConfigCheckInput<T> {
     // `enableClipboardPaste`, `localReorder`, `sortState`, `multiSortState`): nothing reads them yet.
 }
 
-// ---- wave 5 (filters and editing) checks: package A and B add their warnings in this function, nowhere else ----------
-function filtersAndEditingWarnings<T>(_c: ConfigCheckInput<T>, _warn: (cond: unknown, message: string) => void): void {
-    // joint step 0: none yet.
-}
-
-// ---- wave 6 (spreadsheet and drag) checks: packages A, B and C add theirs here -----------------------------------------
-// Planned: fill handle or paste with no column that has a `valueSetter`; enable-row-drag with an active sort or group-by while
-// `localReorder` is on (the drop reorders `data` but the table keeps drawing its own order). The flash + default getRowId warning is above.
-function spreadsheetAndDragWarnings<T>(_c: ConfigCheckInput<T>, _warn: (cond: unknown, message: string) => void): void {
-    // joint step 0: none yet.
-}
-
 const PREFIX = '[ge-data-table]';
 const keys = <T>(cols: readonly ColumnDef<T>[]): string => cols.map((c) => String(c.accessorKey)).join(', ');
 
@@ -91,8 +79,10 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         'enable-floating-filters is true but no column has enableFiltering set. The floating filter row will be empty.',
     );
 
-    filtersAndEditingWarnings(c, warn);
-    spreadsheetAndDragWarnings(c, warn);
+    // ---- wave 5 (filters and editing): package A and B add their `warn(...)` calls here, each in its own marked block -------------------
+    // ---- wave 6 (spreadsheet and drag): packages A, B and C add theirs here, each in its own marked block -----------------------------
+    // Planned for wave 6: fill handle or paste with no column that has a `valueSetter`; enable-row-drag with an active sort or group-by while
+    // `localReorder` is on (the drop reorders `data` but the table keeps drawing its own order). The flash + default getRowId warning is above.
 
     const noSetter = c.columns.filter((col) => col.editable && !col.valueSetter);
     warn(

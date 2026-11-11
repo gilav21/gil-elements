@@ -16,8 +16,8 @@ afterEach(async () => {
 
 /** The edit session of step 0 never opens an editor: say that one is open in this cell, the way wave 5's session will answer. */
 function openEditorAt(table: GeDataTable, rowIndex: number, columnKey: string): void {
-    const controller = (table as unknown as { built: { byId: Map<string, { service: { editingCell(): unknown } }> } }).built.byId.get('cell-interaction')!;
-    controller.service.editingCell = () => ({ rowIndex, columnKey });
+    // The `interaction` provider IS the object the controller asks (`this.service`), so overriding its answer is what wave 5's session will do.
+    (table.provider('interaction') as { editingCell(): unknown }).editingCell = () => ({ rowIndex, columnKey });
 }
 
 async function shiftClick(el: Element, table: GeDataTable): Promise<void> {
@@ -84,6 +84,55 @@ describe('a press is offered to the sessions before the controller moves the foc
         } finally {
             delete (proto as { onPointerUp?: Handler }).onPointerUp;
         }
+    });
+
+    it('tells the session that claimed a press when it ends without a pointerup on the table: a release outside, and a pointercancel', async () => {
+        const events: [string, unknown][] = [];
+        const hooks = proto as { onPointerUp?: Handler; onPointerCancel?: (event: PointerEvent, press: PointerPress) => void };
+        proto.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, _at, press) => void events.push(['up', press.anchor]);
+        hooks.onPointerCancel = (event, press) => void events.push(['cancel', press.anchor, event.type] as never);
+        try {
+            const table = await mountTable();
+            table.focusCell(0, 'name');
+            await settle(table);
+            const outside = { x: window.innerWidth - 4, y: window.innerHeight - 4 };
+            // released outside the table: cancel (the page-level pointerup), with the anchor of that press
+            await mouseDrag(cellAt(table, 3, 'age')!, outside, { steps: 3 });
+            expect(events).toEqual([['cancel', { rowIndex: 0, columnKey: 'name' }, 'pointerup']]);
+            // released on the table: onPointerUp, and no cancel
+            events.length = 0;
+            await userEvent.click(cellAt(table, 2, 'name')!);
+            expect(events.map((e) => e[0])).toEqual(['up']);
+            // a pointercancel from the browser
+            events.length = 0;
+            const cell = cellAt(table, 1, 'name')!;
+            cell.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 9, bubbles: true, composed: true, button: 0 }));
+            cell.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 9, bubbles: true, composed: true }));
+            expect(events.map((e) => e[0])).toEqual(['cancel']);
+            // an unclaimed press tells nobody
+            events.length = 0;
+            delete proto.onPointerDown;
+            await mouseDrag(cellAt(table, 3, 'age')!, outside, { steps: 3 });
+            expect(events).toEqual([]);
+        } finally {
+            delete hooks.onPointerUp;
+            delete hooks.onPointerCancel;
+        }
+    });
+
+    it('is not "pointer down" any more once the press is released outside the table: the next focus on the viewport reaches the roving cell', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const outside = { x: window.innerWidth - 4, y: window.innerHeight - 4 };
+        await mouseDrag(cellAt(table, 2, 'age')!, outside, { steps: 3 });
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        viewport.focus(); // what a Tab into the grid does when no cell is the tab stop
+        await frames(2);
+        const active = document.activeElement as HTMLElement;
+        expect(active.matches('[data-slot="table-cell"]')).toBe(true);
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'age' });
     });
 
     it('does not move the focus when a session claims the press: the session moves it', async () => {

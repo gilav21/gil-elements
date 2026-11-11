@@ -94,6 +94,16 @@ describe('stateView with the step-0 services', () => {
         });
     });
 
+    it('shows a fill preview only while the range service is active (the fill handle flag alone is not enough)', () => {
+        const preview = { isFillPreview: () => true, isInRange: () => false, edgeOf: () => '' };
+        const inactive = stateView(fakeHost({ config: { enableFillHandle: true }, providers: { range: { ...preview, active: () => false } } }));
+        expect(inactive.cellState(0, 'a', row)).toBe(NO_CELL_FLAGS);
+        const active = stateView(fakeHost({ config: { enableFillHandle: true }, providers: { range: { ...preview, active: () => true } } }));
+        expect(active.cellState(0, 'a', row)).toMatchObject({ fillPreview: true });
+        // fill handle off: never, whatever the service says
+        expect(stateView(fakeHost({ providers: { range: { ...preview, active: () => true } } })).cellState(0, 'a', row)).toBe(NO_CELL_FLAGS);
+    });
+
     it('reads the flash of a cell, unless the column opted out', () => {
         const formatting = { flash: (id: string, key: string) => (id === 'r1' && key === 'price' ? ('up' as const) : undefined) };
         const columns = [{ accessorKey: 'price' }, { accessorKey: 'name', enableCellFlash: false }];

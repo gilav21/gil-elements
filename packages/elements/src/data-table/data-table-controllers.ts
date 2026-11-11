@@ -28,8 +28,6 @@ export type DataTableControllerFactories<T = unknown> = Partial<Record<Controlle
 
 export interface AssembledControllers {
     readonly controllers: readonly DataTableRenderingController[];
-    /** The same controllers by plan id: what the element reaches for state that must outlive a disconnect (the providers do not). */
-    readonly byId: ReadonlyMap<ControllerId, DataTableRenderingController>;
     /** A service a controller exposes through `services` (also while detached), or undefined. */
     service<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined;
     /** Attaches in plan order. */
@@ -53,7 +51,6 @@ export function assembleControllers<T>(
     const controllers = built.map((s) => (factories[s.id] as DataTableControllerFactory<T>)(host));
     return {
         controllers,
-        byId: new Map(built.map((s, i) => [s.id, controllers[i] as DataTableRenderingController])),
         service<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined {
             for (const c of controllers) if (c.services?.[key] !== undefined) return c.services[key];
             return undefined;

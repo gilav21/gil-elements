@@ -4,7 +4,7 @@
  * among the navigable keys (the data columns, in drawn order).
  */
 import type { CellRange, ColumnDef, RangeAggregateStats, RangeChartPayload } from './data-table.types.js';
-import { computeAggregateValue, getCellValue, stringifyValue, toAggregatableNumber } from './data-table.utils.js';
+import { computeAggregateValue, getCellValue, isSpecialColumnKey, stringifyValue, toAggregatableNumber } from './data-table.utils.js';
 
 export interface NormalizedRange {
     minRow: number;
@@ -60,6 +60,21 @@ export function sanitizeCellRange(input: unknown, rowCount: number, keys: readon
     if (keys.length > 0 && !(keys.includes(startCol) && keys.includes(endCol))) return undefined;
     const range: CellRange = { startRow, startCol, endRow, endCol };
     return rowCount > 0 ? clampToRows(null, range, rowCount).range : range;
+}
+
+/** The keys a range may name: the data columns of the table's `columns`, visible or hidden (visibility only affects drawing), never a special column. */
+export function rangeColumnKeys(columns: readonly { accessorKey: unknown }[]): string[] {
+    return columns.map((c) => String(c.accessorKey)).filter((key) => !isSpecialColumnKey(key));
+}
+
+/** A warning function that speaks once: what the owner of a range says when it refuses a value that is not a range of the table. */
+export function rangeWarner(): (value: unknown) => void {
+    let warned = false;
+    return (value) => {
+        if (warned) return;
+        warned = true;
+        console.warn('[ge-data-table] cellRange is not a range of this table (needs integer startRow / endRow and the keys of existing data columns as startCol / endCol); it was ignored:', value);
+    };
 }
 
 /** The fill source: the selected range, or the focused cell as a 1x1 range. */

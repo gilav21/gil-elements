@@ -15,9 +15,11 @@ interface Flags {
 }
 
 /** A context with what the range shell reads: the flags, the render request, the focus, the rows and the column keys. */
-function rangeContext(flags: Flags, { focused = null, rowCount = 10, keys = ['a', 'b', 'c'] }: { focused?: { rowIndex: number; columnKey: string } | null; rowCount?: number; keys?: string[] } = {}) {
+function rangeContext(flags: Flags, { focused = null, rowCount = 10, keys = ['a', 'b', 'c'], visible = keys }: { focused?: { rowIndex: number; columnKey: string } | null; rowCount?: number; keys?: string[]; visible?: string[] } = {}) {
     const requestRender = vi.fn();
-    const context = { host: { config: flags, requestRender }, focused: () => focused, rowCount: () => rowCount, focusableKeys: () => keys } as unknown as InteractionContext<unknown>;
+    // `config.columns` is every column of the table (what a range may name); `focusableKeys` only the visible ones (what is drawn)
+    const config = Object.assign(flags, { columns: keys.map((accessorKey) => ({ accessorKey })) });
+    const context = { host: { config, requestRender }, focused: () => focused, rowCount: () => rowCount, focusableKeys: () => visible } as unknown as InteractionContext<unknown>;
     return { context, requestRender, flags };
 }
 const on: Flags = { enableCellRangeSelection: true, enableFillHandle: false };
@@ -231,6 +233,49 @@ describe('the range held by the shell', () => {
         expect(session.rangeService.active()).toBe(false);
         expect(session.service.isCellSelected(4, 'a')).toBe(true);
         expect(session.service.isCellSelected(2, 'a')).toBe(false);
+    });
+
+    it('accepts a range over a column that is configured but hidden, attached or detached: visibility only affects drawing', () => {
+        const { context } = rangeContext({ ...on }, { keys: ['a', 'b', 'c'], visible: ['a'] });
+        const session = new RangeSession(context);
+        const hidden = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'c' };
+        session.rangeService.setRange(hidden); // before attach
+        expect(session.rangeService.range()).toEqual(hidden);
+        session.attach();
+        session.rangeService.setRange({ ...hidden, startCol: 'b' }); // attached, b is hidden
+        expect(session.rangeService.range()).toEqual({ ...hidden, startCol: 'b' });
+        session.detach();
+        session.rangeService.setRange(hidden);
+        expect(session.rangeService.range()).toEqual(hidden);
+    });
+
+    it('refuses a special column and a column that is not configured, with one warning', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const { session } = make({ ...on });
+        session.rangeService.setRange(range);
+        for (const endCol of ['_selection', '_expander', '_actions', 'ghost']) session.rangeService.setRange({ ...range, endCol });
+        expect(session.rangeService.range()).toEqual(range);
+        expect(warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('turn-off only clears a value that was held in the mode: `mode off; range = r` in one tick keeps r, `range = r; mode off` clears it', () => {
+        const first = make({ ...on });
+        first.session.hostUpdate();
+        first.flags.enableCellRangeSelection = false; // the mode goes off ...
+        first.session.rangeService.setRange(range); // ... and a range is assigned before the update sees the turn-off
+        first.session.hostUpdate();
+        expect(first.session.rangeService.range()).toBeNull(); // not reported while off
+        first.flags.enableCellRangeSelection = true;
+        expect(first.session.rangeService.range()).toEqual(range); // held, applies when the mode is on again
+
+        const second = make({ ...on });
+        second.session.hostUpdate();
+        second.session.rangeService.setRange(range); // assigned while the mode is on ...
+        second.flags.enableCellRangeSelection = false; // ... then it goes off
+        second.session.hostUpdate();
+        second.flags.enableCellRangeSelection = true;
+        second.session.hostUpdate();
+        expect(second.session.rangeService.range()).toBeNull();
     });
 
     it('keeps a held range while a column is merely hidden, and trims only its rows on update (the part checks the columns)', () => {

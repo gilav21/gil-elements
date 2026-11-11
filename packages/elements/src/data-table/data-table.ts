@@ -9,6 +9,7 @@ import { createCellWriter, type HistoryResult } from './data-table-cell-write.js
 import { type AssembledControllers, assembleControllers } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
+import { rangeColumnKeys, rangeWarner, sanitizeCellRange } from './data-table-range.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
@@ -214,6 +215,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         rejectionMessage: () => this.resolvedLocale.invalidValue,
         emit: (...event) => this.emit(event[0], event[1] as never),
     });
+    /** A `cellRange` assigned before the first connect, until the range session adopts it (no controller is assembled before the first connect). */
+    private earlyRange: CellRange | null | undefined;
+    private readonly warnBadRange = rangeWarner();
     private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
     private releaseStyles: (() => void) | null = null;
@@ -530,27 +534,27 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * value assigned before the table is attached waits for the range service.
      */
     get cellRange(): CellRange | null {
-        return this.rangeService()?.range() ?? null;
+        const service = this.rangeService();
+        if (service) return service.range();
+        return this.earlyRange !== undefined && (this.enableCellRangeSelection || this.enableFillHandle) ? this.earlyRange : null;
     }
 
     set cellRange(range: CellRange | null) {
-        this.rangeService()?.setRange(range); // the session checks the value and asks for the render
+        const service = this.rangeService();
+        if (service) {
+            service.setRange(range); // the session checks the value and asks for the render
+            return;
+        }
+        // No controller exists before the first connect (nothing is assembled before it): the value waits here, checked by the same rules (rows
+        // are not known yet), and the range session adopts it right after the first attach.
+        const next = sanitizeCellRange(range, 0, rangeColumnKeys(this.columns));
+        if (next === undefined) this.warnBadRange(range);
+        else this.earlyRange = next;
     }
 
-    /**
-     * The range service, before the first connect and while detached too: the providers are empty then, but the controllers are built once
-     * (on the first need) and kept, and the range session of the cell-interaction controller OWNS the value from the start. So the getter answers
-     * the same before and after the first attach (nothing while range mode is off, the checked value while it is on).
-     */
+    /** The range service once the controllers exist (the first connect built them; they are kept across reconnects, and the range session owns the value from then on). */
     private rangeService(): DataTableProviders<T>['range'] | undefined {
-        return this.provider('range') ?? this.ensureBuilt()?.service('range');
-    }
-
-    /** The controllers, built once and kept across reconnects (what a controller holds, runtime pins, the loading trigger, the range, survives). Not on the server. */
-    private ensureBuilt(): AssembledControllers | null {
-        if (isServer) return null;
-        this.built ??= assembleControllers(this, createFactories<T>());
-        return this.built;
+        return this.provider('range') ?? this.built?.service('range');
     }
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
@@ -612,8 +616,14 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         if (isServer) return;
         const tree = this.getRootNode();
         this.releaseStyles = adoptSheet(tree instanceof ShadowRoot ? tree : this.ownerDocument, 'ge-data-table', css);
-        const built = this.ensureBuilt() as AssembledControllers;
+        // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger, the range) survives.
+        this.built ??= assembleControllers(this, createFactories<T>());
+        const built = this.built;
         built.attachAll();
+        if (this.earlyRange !== undefined) {
+            this.provider('range')?.setRange(this.earlyRange);
+            this.earlyRange = undefined;
+        }
         this.lastLocale = this.resolvedLocale;
         this.assembled = built;
         this.observer = new MutationObserver(() => {
@@ -719,7 +729,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         const flags: [string, boolean][] = [
             ['data-row-borders', this.showRowBorders],
             ['data-column-borders', this.showColumnBorders],
-            ['data-range-selection', this.enableCellRangeSelection],
+            // user-select: none on the viewport only while range selection is actually handled (the range service is active), like aria-selected
+            ['data-range-selection', this.enableCellRangeSelection && (this.provider('range')?.active() ?? false)],
             ['aria-busy', this.skeleton || (this.provider('loading')?.visible() ?? false)],
         ];
         for (const [name, on] of flags) {

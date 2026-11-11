@@ -12,7 +12,7 @@
 import type { CellSession, InteractionContext } from './data-table-cell-session.js';
 import { lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
-import { clampToRows, sanitizeCellRange } from './data-table-range.js';
+import { clampToRows, rangeColumnKeys, rangeWarner, sanitizeCellRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
@@ -21,6 +21,8 @@ export class RangeSession<T> implements CellSession {
     private held: CellRange | null = null;
     /** A range flag was on at the last update. */
     private wasOn = false;
+    /** `held` was assigned while a range flag was on, or adopted by an update that saw it on: the turn-off clears it. */
+    private heldInMode = false;
 
     /** Loaded when a range flag is on at an update (not at the first gesture), detached when it turns off or the table detaches. */
     private readonly lazy = lazyPart<RangePart<T>>(() =>
@@ -47,12 +49,13 @@ export class RangeSession<T> implements CellSession {
         setRange: (range) => {
             // The value is always HELD (a property order such as `cellRange = r; enableCellRangeSelection = true` must keep it); while range mode is off
             // it is only not reported, and it applies when the mode turns on. `undefined` is "no range"; anything that is not a range, or names a column
-            // that does not exist, is refused (warned once) and the old value stays; rows past the last drawn one are trimmed when the rows are known
-            // (an empty list changes nothing). While detached the services are gone: only the shape is checked, the clamp waits for the next update.
-            const known = this.attached;
-            const next = sanitizeCellRange(range, known ? this.context.rowCount() : 0, known ? this.context.focusableKeys() : []);
-            if (next === undefined) return this.warnOnce(range);
+            // that does not exist, is refused (warned once) and the old value stays. ONE column rule, attached or not: a data column of `config.columns`,
+            // visible or hidden (visibility only affects drawing), never a special column. Rows past the last drawn one are trimmed when the rows are known
+            // (an empty list changes nothing); while detached the services are gone, so the row clamp waits for the next update.
+            const next = sanitizeCellRange(range, this.attached ? this.context.rowCount() : 0, rangeColumnKeys(this.context.host.config.columns));
+            if (next === undefined) return this.warnBad(range);
             this.held = next;
+            this.heldInMode = this.rangeOn(); // assigned while range mode was off, it is not part of the mode that a later turn-off ends
             this.lazy.part?.setRange(next);
             this.context.host.requestRender(); // `data-in-range`, `aria-selected` and the readout read the range at render
         },
@@ -100,13 +103,7 @@ export class RangeSession<T> implements CellSession {
         return config.enableCellRangeSelection || config.enableFillHandle;
     }
 
-    private warned = false;
-
-    private warnOnce(value: unknown): void {
-        if (this.warned) return;
-        this.warned = true;
-        console.warn('[ge-data-table] cellRange is not a range of this table (needs integer startRow / endRow and the keys of existing columns as startCol / endCol); it was ignored:', value);
-    }
+    private readonly warnBad = rangeWarner();
 
     attach(): void {
         this.attached = true;
@@ -116,13 +113,17 @@ export class RangeSession<T> implements CellSession {
         const on = this.rangeOn();
         if (on) {
             this.held = this.live();
+            this.heldInMode = true; // what is held now belongs to range mode (a later turn-off ends it)
             // The shell trims the ROWS of what it holds once they are known (a part, once loaded, does it for itself). The columns are not checked
             // here: one that is merely hidden at this moment must not drop the range for good (the part validates them when it applies it).
             const rows = this.context.rowCount();
             if (this.held && rows > 0 && !this.lazy.part) this.held = clampToRows(null, this.held, rows).range;
         } else if (this.wasOn) {
-            // Turning range selection OFF ends range mode: the range goes with it (wave 6 A.2), so turning it on again starts empty.
-            this.held = null;
+            // Turning range selection OFF ends range mode: the range of that mode goes with it (wave 6 A.2), so turning it on again starts empty.
+            // Only a value that was held in the mode: one assigned after the mode went off (`enableCellRangeSelection = false; cellRange = r` in
+            // one tick, the update only sees the turn-off now) is not part of it and waits for the next time the mode is on.
+            if (this.heldInMode) this.held = null;
+            this.heldInMode = false;
         }
         // (off and never on: a value assigned before the mode was switched on waits in `held`)
         this.wasOn = on;
