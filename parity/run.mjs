@@ -262,7 +262,7 @@ async function renderJob(browser, theme, group, side) {
                 await Promise.all([...document.querySelectorAll('ge-speed-dial[data-opened]')].map((t) => t.updateComplete));
                 // `data-edit` is `rowIndex,columnKey` of a ge-data-table: that cell's editor is opened, as a double click would (wave 5; inert until the editing package lands).
                 // `data-edit-error` is a message: the column then refuses every value with it and the edited draft is committed, so the editor shows its error state.
-                // It runs BEFORE the animation wait below, so a transition the open editor starts is awaited too; the table gets its `data-props` first (they are assigned again, unchanged, with the rest).
+                // It runs BEFORE the animation wait below, so a transition the open editor starts is awaited too; the table gets its `data-props` first, there, and the generic `data-props` loop skips it.
                 for (const target of document.querySelectorAll('ge-data-table[data-edit]')) {
                     if (target.dataset.props) Object.assign(target, JSON.parse(target.dataset.props));
                     await target.updateComplete;
@@ -294,7 +294,8 @@ async function renderJob(browser, theme, group, side) {
                     }
                 }
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
-                for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
+                // A ge-data-table with `data-edit` got its props in the data-edit block above (its columns carry the validator that block added): not again here.
+                for (const target of document.querySelectorAll('[data-props]:not(ge-data-table[data-edit])')) Object.assign(target, JSON.parse(target.dataset.props));
                 // `data-file` is JSON `{name, base64}`: a file-viewer is given that file and the run waits for it to load or fail.
                 for (const target of document.querySelectorAll('ge-file-viewer[data-file]')) {
                     const { name, base64 } = JSON.parse(target.dataset.file);

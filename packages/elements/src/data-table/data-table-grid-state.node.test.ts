@@ -53,6 +53,16 @@ describe('stateView with the step-0 services', () => {
         expect(state.cellState(0, 'name', info('r2', true))).toBe(NO_CELL_FLAGS);
     });
 
+    it('asks the per-cell editing question only while an editor is open', () => {
+        const isEditing = vi.fn(() => false);
+        const closed = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction: { editingCell: () => null, isEditing } } }));
+        for (const key of ['name', 'other']) closed.cellState(0, key, row);
+        expect(isEditing).not.toHaveBeenCalled();
+        const open = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'name' }), isEditing } } }));
+        open.cellState(0, 'name', row);
+        expect(isEditing).toHaveBeenCalledTimes(1);
+    });
+
     it('marks the cell that holds the open editor', () => {
         const interaction = { editingCell: () => ({ rowIndex: 2, columnKey: 'name' }), isEditing: (rowIndex: number, columnKey: string) => rowIndex === 2 && columnKey === 'name' };
         const state = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction } }));

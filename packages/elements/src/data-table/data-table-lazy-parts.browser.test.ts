@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EditSession } from './data-table-edit-session.js';
-import { bodyRows, mountTable, settle } from './data-table-fixtures.js';
+import { bodyRows, cellAt, mountTable, settle } from './data-table-fixtures.js';
 import { frames } from './data-table-input-fixtures.js';
 import { RangeSession } from './data-table-range-session.js';
 import { RowDragPart } from './lazy/row-drag.js';
@@ -88,6 +88,58 @@ describe('lazy parts and the render', () => {
         table.requestUpdate();
         await settle(table);
         expect(table.querySelector('[data-slot="table"]')?.hasAttribute('aria-multiselectable')).toBe(false);
+    });
+});
+
+describe('a feature switching on in a plain grid', () => {
+    it('keeps every drawn row and cell node, and the DOM focus: the same template is used whether or not a feature is active', async () => {
+        const table = await mountTable();
+        table.focusCell(1, 'name');
+        await settle(table);
+        const cell = cellAt(table, 1, 'name')!;
+        const row = cell.closest('[data-slot="table-row"]')!;
+        const other = cellAt(table, 0, 'age')!;
+        expect(document.activeElement).toBe(cell);
+        // flash switches the state on (the formatting service exists): `stateActive` flips from false to true ...
+        table.enableCellFlash = true;
+        await settle(table);
+        await frames(2);
+        expect(cellAt(table, 1, 'name')).toBe(cell);
+        expect(cell.closest('[data-slot="table-row"]')).toBe(row);
+        expect(cellAt(table, 0, 'age')).toBe(other);
+        expect(document.activeElement).toBe(cell);
+        // ... and back
+        table.enableCellFlash = false;
+        await settle(table);
+        await frames(2);
+        expect(cellAt(table, 1, 'name')).toBe(cell);
+        expect(document.activeElement).toBe(cell);
+    });
+
+    it('does not remount a consumer component in a cell when a feature turns on', async () => {
+        const host = document.createElement('span');
+        let connected = 0;
+        let disconnected = 0;
+        class Probe extends HTMLElement {
+            connectedCallback(): void {
+                connected++;
+            }
+            disconnectedCallback(): void {
+                disconnected++;
+            }
+        }
+        if (!customElements.get('x-lazy-probe')) customElements.define('x-lazy-probe', Probe);
+        const probe = document.createElement('x-lazy-probe');
+        host.append(probe);
+        const table = await mountTable({
+            columns: [{ accessorKey: 'name', header: 'Name', width: '200px', cellRenderer: ({ rowIndex, value }) => (rowIndex === 0 ? probe : String(value)) }, { accessorKey: 'age', header: 'Age', width: '120px' }],
+        });
+        const before = [connected, disconnected];
+        table.enableCellFlash = true;
+        await settle(table);
+        await frames(2);
+        expect([connected, disconnected]).toEqual(before);
+        expect(probe.isConnected).toBe(true);
     });
 });
 

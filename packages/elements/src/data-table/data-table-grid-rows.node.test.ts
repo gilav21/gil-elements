@@ -46,6 +46,21 @@ function view(stateActive: boolean) {
     return { v, cellState, rowState, getRowId, isDisabled };
 }
 
+describe('an editor that draws nothing', () => {
+    it('is the answer of the editor: a null from the editor view is drawn as it is, the plain content is not rendered in its place', () => {
+        const cellRenderer = vi.fn(({ value }: { value: unknown }) => `plain ${String(value)}`);
+        const cols = columns.map((c) => ({ ...c, cellRenderer })) as unknown as EnhancedColumnDef<Row>[];
+        const { v } = view(true);
+        const edit = { cell: vi.fn(() => null) };
+        const editingFirst = vi.fn((rowIndex: number, key: string) => ({ ...NO_CELL_FLAGS, editing: rowIndex === 0 && key === 'a' }));
+        const result = renderRows({ ...v, columns: cols, edit, cellState: editingFirst } as unknown as GridView<Row>);
+        expect(result).toBeDefined();
+        expect(edit.cell).toHaveBeenCalledTimes(1);
+        // 4 rows x 2 cells, the plain renderer runs for every cell but the one whose editor answered null
+        expect(cellRenderer).toHaveBeenCalledTimes(rows.length * cols.length - 1);
+    });
+});
+
 describe('the body rows and the wave 5 and 6 state', () => {
     it('make no cellState or rowState call for a plain grid (nothing is active)', () => {
         const { v, cellState, rowState } = view(false);

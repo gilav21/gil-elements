@@ -95,9 +95,8 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;
     const editingOpen = interaction?.editingCell() != null;
-    const flashActive = config.enableCellFlash && formatting !== undefined;
     return {
-        stateActive: rangeMode || flashActive || editable.size > 0 || editingOpen || dragOn,
+        stateActive: rangeMode || flashable || editable.size > 0 || editingOpen || dragOn,
         rangeSelectable: selectionMode,
         cellState(rowIndex, key, row) {
             // The special columns (selection, expander, actions) are not cells of the range, of an editor or of a flash.
@@ -106,7 +105,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
             const inRange = rangeMode && (range?.isInRange(rowIndex, key) ?? false);
             const fill = config.enableFillHandle && rangeActive && (range?.isFillPreview(rowIndex, key) ?? false);
             const flash = flashable && !flashOff.has(key) ? formatting.flash(row.id, key) : undefined;
-            const editing = interaction?.isEditing(rowIndex, key) ?? false;
+            const editing = editingOpen && (interaction?.isEditing(rowIndex, key) ?? false); // the per-cell question only while an editor is open
             if (!inRange && !fill && flash === undefined && !editing) {
                 if (selectionMode) return canEdit ? OUT_OF_RANGE_EDITABLE_FLAGS : OUT_OF_RANGE_FLAGS;
                 return canEdit ? EDITABLE_CELL_FLAGS : NO_CELL_FLAGS;

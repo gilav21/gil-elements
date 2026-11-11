@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { PointerPress } from './data-table-cell-session.js';
-import { cellAt, mountTable, settle } from './data-table-fixtures.js';
+import { cellAt, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
 import { frames, mouseDrag, parkMouse } from './data-table-input-fixtures.js';
 import { EditSession } from './data-table-edit-session.js';
 import { RangeSession } from './data-table-range-session.js';
@@ -280,11 +280,12 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
             log.push(`down:${event.pointerId}`);
             return true;
         };
-        hooks.onPointerCancel = (event, press) => void log.push(`cancel:${event?.type}:${press.anchor === null}`);
+        hooks.onPointerCancel = (event, press) => void log.push(`cancel:${event === null ? 'no event' : event.type}:${press.anchor === null}`);
         const cell = cellAt(table, 1, 'name')!;
         cell.dispatchEvent(pointer('pointerdown', 81));
         cell.dispatchEvent(pointer('pointerdown', 81)); // no pointerup in between
-        expect(log).toEqual(['down:81', 'cancel:pointerdown:true', 'down:81']);
+        // the old press ended without an event of its own (the new pointerdown is not its end), like at detach and window blur
+        expect(log).toEqual(['down:81', 'cancel:no event:true', 'down:81']);
     });
 
     it('is not hidden by a consumer cell that stops propagation: the claimant still gets its pointerup and no press or "pointer down" is left', async () => {
@@ -355,6 +356,95 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
         } finally {
             detach.mockRestore();
         }
+    });
+});
+
+describe('sessions that throw', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('never break a press: a session that throws on pointerdown is reported once and does not claim, so the controller focuses the cell', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const table = await mountTable();
+            hooks.onPointerDown = () => {
+                throw new Error('range failed');
+            };
+            await userEvent.click(cellAt(table, 2, 'age')!);
+            await userEvent.click(cellAt(table, 1, 'name')!);
+            expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+            expect(error).toHaveBeenCalledTimes(1);
+        } finally {
+            error.mockRestore();
+        }
+    });
+
+    it('never break a press: a claimant that throws on pointerup is reported, the press is closed and nobody is "down"', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const table = await mountTable();
+            hooks.onPointerDown = () => true;
+            hooks.onPointerUp = () => {
+                throw new Error('claimant failed');
+            };
+            const cell = cellAt(table, 1, 'name')!;
+            cell.dispatchEvent(pointer('pointerdown', 121));
+            expect(() => cell.dispatchEvent(pointer('pointerup', 121))).not.toThrow();
+            expect(error).toHaveBeenCalledTimes(1);
+            // closed: a pointerup of the same id does nothing, and the viewport focus reaches a cell
+            table.focusCell(0, 'name');
+            await settle(table);
+            table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!.focus();
+            await frames(2);
+            expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
+        } finally {
+            error.mockRestore();
+        }
+    });
+});
+
+describe('a table inside the shadow root of another component', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    async function mountInShadow(): Promise<{ host: HTMLElement; table: GeDataTable }> {
+        const host = document.createElement('div');
+        document.body.append(host);
+        const shadow = host.attachShadow({ mode: 'open' });
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS, showToolbar: false, showPagination: false });
+        shadow.append(table);
+        await settle(table);
+        return { host, table };
+    }
+
+    it('ends a claimed press released on its own cells as a pointerup (the document sees the target retargeted to the host), and a release outside as a cancel', async () => {
+        const { host, table } = await mountInShadow();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event?.type}`);
+        const cell = cellAt(table, 1, 'age')!;
+        cell.dispatchEvent(pointer('pointerdown', 131));
+        cell.dispatchEvent(pointer('pointerup', 131));
+        expect(log).toEqual(['up:{"rowIndex":1,"columnKey":"age"}']);
+        log.length = 0;
+        cell.dispatchEvent(pointer('pointerdown', 132));
+        document.body.dispatchEvent(pointer('pointerup', 132));
+        expect(log).toEqual(['cancel:pointerup']);
+        host.remove();
+    });
+
+    it('focuses the cell of a touch tap', async () => {
+        const { host, table } = await mountInShadow();
+        const cell = cellAt(table, 2, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 141, { pointerType: 'touch' }));
+        cell.dispatchEvent(pointer('pointerup', 141, { pointerType: 'touch' }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'name' });
+        host.remove();
     });
 });
 

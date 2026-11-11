@@ -407,13 +407,14 @@ export class CellInteractionController<T> {
         const lost = this.presses.get(event.pointerId);
         if (lost) {
             this.presses.delete(event.pointerId);
-            this.notifyCancel(lost, event);
+            this.notifyCancel(lost, null); // no event: the old press ended without one (like at detach and window blur), the new pointerdown is not its end
         }
-        const claimedBy = this.offer(event, (session) => session.onPointerDown, anchor);
+        const target = this.targetOf(event);
+        const claimedBy = this.offer(event, target, (session) => session.onPointerDown, anchor);
         this.presses.set(event.pointerId, { anchor, claimedBy: claimedBy ?? null });
         if (claimedBy) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
-        if (event.button === 0 && event.pointerType !== 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(event.target as Element);
+        if (event.button === 0 && event.pointerType !== 'touch' && target && !this.insideOpenEditor(event)) this.pointerFocus(target);
     }
 
     /**
@@ -428,15 +429,18 @@ export class CellInteractionController<T> {
         if (!press) return;
         this.presses.delete(event.pointerId);
         this.pointer = this.presses.size > 0; // "a pointer is down" ends here (another finger may still be down)
-        const own = event.type === 'pointerup' && event.composedPath().includes(this.host.root) && ownsTarget(this.host.root, event.target);
+        // The document's listener sees a target RETARGETED to the outermost host when this table sits in another component's shadow root: the target
+        // is read from the composed path (the first node inside this table), for ownership, the cell address and the tapped cell alike.
+        const target = this.targetOf(event);
+        const own = event.type === 'pointerup' && target !== null && ownsTarget(this.host.root, target);
         if (!own) return this.notifyCancel(press, event);
         const { anchor, claimedBy } = press;
         if (claimedBy) {
-            claimedBy.onPointerUp?.(event, cellAddressOf(event.target), { anchor });
+            this.guarded(() => claimedBy.onPointerUp?.(event, cellAddressOf(target), { anchor }));
             return;
         }
-        if (this.offer(event, (session) => session.onPointerUp, anchor)) return;
-        if (event.pointerType === 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(event.target as Element);
+        if (this.offer(event, target, (session) => session.onPointerUp, anchor)) return;
+        if (event.pointerType === 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(target);
     }
 
     /** The event's composed path runs through the cell that holds the open editor (also through a shadow root, where the target is retargeted to the host). */
@@ -453,19 +457,37 @@ export class CellInteractionController<T> {
     }
 
     /** The press goes to the sessions in order (range, edit); the first that returns true claims it and is returned. */
-    private offer(event: PointerEvent, handlerOf: (session: CellSession) => CellSession['onPointerDown'], anchor: CellAddress | null): CellSession | undefined {
-        const at = cellAddressOf(event.target);
+    private offer(event: PointerEvent, target: Element | null, handlerOf: (session: CellSession) => CellSession['onPointerDown'], anchor: CellAddress | null): CellSession | undefined {
+        const at = cellAddressOf(target);
         const press: PointerPress = { anchor };
-        return this.sessions.find((session) => handlerOf(session)?.call(session, event, at, press) === true);
+        // A session that throws is reported (once) and does not claim: the press goes on to the next session and then to the controller's own behaviour.
+        return this.sessions.find((session) => this.guarded(() => handlerOf(session)?.call(session, event, at, press)) === true);
+    }
+
+    /** The first node of the event's composed path that is inside this table (the real target, also through shadow roots), or null. */
+    private targetOf(event: Event): Element | null {
+        const node = event.composedPath().find((n) => n instanceof Element && composedContains(this.host.root, n));
+        return (node as Element | undefined) ?? null;
+    }
+
+    private reportedSessionError = false;
+
+    /** Runs a session's pointer handler; one that throws is reported once (`console.error`) and answers nothing, so no press is ever broken by it. */
+    private guarded<R>(call: () => R): R | undefined {
+        try {
+            return call();
+        } catch (error) {
+            if (!this.reportedSessionError) {
+                this.reportedSessionError = true;
+                console.error('[ge-data-table] a session threw while handling a pointer:', error);
+            }
+            return undefined;
+        }
     }
 
     /** Tells the claimant its press ended without a pointerup on the table; a claimant that throws is reported and never stops the caller. */
     private notifyCancel(press: { readonly anchor: CellAddress | null; readonly claimedBy: CellSession | null }, event: PointerEvent | null): void {
-        try {
-            press.claimedBy?.onPointerCancel?.(event, { anchor: press.anchor });
-        } catch (error) {
-            console.error('[ge-data-table] a session threw while its press was cancelled:', error);
-        }
+        this.guarded(() => press.claimedBy?.onPointerCancel?.(event, { anchor: press.anchor }));
     }
 
     /** The table detaches (or the window loses focus) mid-press: every claimant is told (`event` null) before the sessions detach; one that throws does not abort the detach. */
