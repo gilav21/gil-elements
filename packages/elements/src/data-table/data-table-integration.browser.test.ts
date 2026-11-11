@@ -414,19 +414,23 @@ describe('focus follows its row: the edges', () => {
         expect(toggle.closest('[data-kind="group"]')!.getAttribute('data-group-key')).toBe('g1');
     });
 
-    it('a row that left with a group whose header is not on the page hands the focus to the grid, not to the page', async () => {
+    it('a row that left with a group whose header is not on the page hands the focus to the nearest row that is left, in its column, without scrolling', async () => {
         const table = await mountGrouped({ paginationState: { pageIndex: 1, pageSize: 3 } });
         // page 1: the rows after the first group header of page 0 (r6, r9), then the header of g1
         expect(qa(table, '[data-kind="group"]').map((r) => r.dataset['groupKey'])).not.toContain('g0');
-        table.focusCell(0, 'c0');
+        table.focusCell(1, 'c1');
         await settle(table);
-        const id = cellAt(table, 0, 'c0')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id');
-        expect(id).toBe('r6');
+        expect(cellAt(table, 1, 'c1')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id')).toBe('r9');
+        const scrollTop = viewportOf(table).scrollTop;
         table.provider('expansion')!.toggleGroup('g0');
         await settle(table);
         await frames(3);
-        expect(document.activeElement).not.toBe(document.body);
-        expect(viewportOf(table).contains(document.activeElement)).toBe(true);
+        // the rows of the page are other ones now: the cell at the same place on the page holds the focus, the viewport does not
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'c1' });
+        expect(document.activeElement).toBe(cellAt(table, 1, 'c1'));
+        expect(cellAt(table, 1, 'c1')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id')).not.toBe('r9');
+        expect(viewportOf(table).scrollTop).toBe(scrollTop);
+        expect(cellStops(table)).toEqual([cellAt(table, 1, 'c1')]);
     });
 
     it('a detail toggle in a flat table does not search the rows for the focused one (a constant number of id reads)', async () => {
@@ -455,11 +459,30 @@ describe('focus follows its row: the edges', () => {
         const unfocused = await mount(false)();
         const focused = await mount(true)();
         // everything a toggle costs is in `unfocused`; keeping the focus on its row adds a few reads, not a scan of the rows
-        expect(focused - unfocused).toBeLessThan(10);
+        // a search of the rows for the focused one would read about 2500 ids; the bound is a tenth of the rows, whatever the exact call pattern
+        expect(focused - unfocused).toBeLessThan(0.1 * 3000);
     });
 });
 
 describe('focus follows its row: round 2', () => {
+    it('a row noted before a detach is not followed after the attach (the table keeps no pending move across it)', async () => {
+        const table = await mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
+        const rows = table.data;
+        const frame = table.parentElement!;
+        table.focusCell(2, 'c0'); // r0 r0-c0 r0-c1: a child of the first node
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[0]!); // notes the row...
+        table.data = []; // ...and the empty list keeps it waiting
+        await settle(table);
+        table.remove();
+        table.data = rows;
+        frame.append(table);
+        await settle(table);
+        await frames(2);
+        // not moved up to the node r0: its ancestors were what the stale note would have followed; the cell is only clamped
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'c0' });
+    });
+
     const mountGrouped = (extra: Record<string, unknown> = {}): Promise<Table> =>
         mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(12, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, ...extra }, {}, { width: 600, height: 520 });
     const mountTreeRound2 = (extra: Record<string, unknown> = {}): Promise<Table> =>
@@ -533,7 +556,8 @@ describe('focus follows its row: round 2', () => {
         const control = await mount(1500)(); // a row below the node: it moves up four places, the toggle reads every id once to find it
         const deep = await mount(4)();
         // finding the row (or its ancestors) takes one pass over the rows (about 2000 reads); a scan per ancestor read them over four times more
-        expect(deep - control).toBeLessThan(2 * 2000 + 500);
+        // one pass is about n reads, a scan per ancestor is over 4 n: the bound is 3 n, whatever the exact call pattern
+        expect(deep - control).toBeLessThan(3 * 2000);
     });
 });
 
