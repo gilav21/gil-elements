@@ -667,6 +667,29 @@ describe('ge-data-table styles and lifecycle', () => {
         }
     });
 
+    it('redraws for a registration only when its own dictionary changed, not for an id it does not use', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const original = DATA_TABLE_LOCALES.en;
+        const lang = document.documentElement.lang;
+        try {
+            const table = await mountTable({ data: ROWS });
+            let redraws = 0;
+            const request = table.requestUpdate.bind(table);
+            table.requestUpdate = ((...args: Parameters<typeof request>) => (redraws++, request(...args))) as typeof table.requestUpdate;
+            registerDataTableLocale('xx', { filterPlaceholder: 'xx' }); // not the table's: it shows English
+            document.documentElement.lang = 'zz'; // nothing registered: still English
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(redraws).toBe(0);
+            registerDataTableLocale('en', { noResultsLabel: 'Nothing here' }); // its own dictionary
+            await settle(table);
+            expect(redraws).toBeGreaterThan(0);
+        } finally {
+            document.documentElement.lang = lang;
+            delete DATA_TABLE_LOCALES['xx'];
+            registerDataTableLocale('en', original);
+        }
+    });
+
     it('announces a locale set after the attach but before the first render (a framework wrapper), once', async () => {
         const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
         try {

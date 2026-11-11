@@ -461,9 +461,11 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         });
         this.observer.observe(this, { childList: true });
         // The language the table draws can change under it: a dictionary registered later, or (with no `locale` set) the page's `lang`.
-        const langObserver = new MutationObserver(() => this.requestUpdate()); // also with a `locale` set: one that names no dictionary follows the page
+        // A registration or a `lang` that leaves this table's dictionary as it is (an id it does not use) draws nothing.
+        const redrawIfChanged = (): void => (this.resolvedLocale !== this.lastLocale ? this.requestUpdate() : undefined);
+        const langObserver = new MutationObserver(redrawIfChanged); // also with a `locale` set: one that names no dictionary follows the page
         langObserver.observe(this.ownerDocument.documentElement, { attributes: true, attributeFilter: ['lang'] });
-        this.disposables.add(onDataTableLocaleChange(() => this.requestUpdate()));
+        this.disposables.add(onDataTableLocaleChange(redrawIfChanged));
         this.disposables.add(() => langObserver.disconnect());
         this.requestUpdate();
     }

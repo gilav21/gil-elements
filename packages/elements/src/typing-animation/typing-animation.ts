@@ -9,6 +9,10 @@ const defaultTrue = { fromAttribute: (value: string | null) => value !== 'false'
 /** The fixed gap between deleting one phrase and typing the next. */
 const GAP_MS = 300;
 
+/** `next` is `previous` with its last phrase extended (and nothing else changed). */
+const extendsLast = (previous: readonly string[] | undefined, next: readonly string[]): boolean =>
+    !!previous && previous.length === next.length && previous.every((phrase, i) => (i === previous.length - 1 ? (next[i] as string).startsWith(phrase) : phrase === next[i]));
+
 /**
  * Types phrases out one character at a time, holds each, deletes it and goes on to the next. The typing is decoration: it
  * is hidden from assistive technology, which is given every phrase at once instead (an animation that starts empty would
@@ -81,7 +85,11 @@ export class GeTypingAnimation extends UiElement {
         else if (this.stringIndex >= this.strings.length) {
             this.reset();
             this.begin();
-        } else this.refresh(this.strings[this.stringIndex] ?? '');
+        } else {
+            // The same run, its last phrase grown, stays one run (`complete` is said once); any other list is a run of its own.
+            if (!extendsLast(changed.get('strings') as string[] | undefined, this.strings)) this.completed = false;
+            this.refresh(this.strings[this.stringIndex] ?? '');
+        }
     }
 
     override disconnectedCallback(): void {
