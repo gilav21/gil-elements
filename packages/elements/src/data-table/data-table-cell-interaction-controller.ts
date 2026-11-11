@@ -1,10 +1,10 @@
 import { html, type TemplateResult } from 'lit';
 import type { CellSession, InteractionContext, PointerPress, SessionStandIn } from './data-table-cell-session.js';
-import { EditSession } from './data-table-edit-session.js';
+import { EditSession, NEUTRAL_EDIT } from './data-table-edit-session.js';
 import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
-import { RangeSession } from './data-table-range-session.js';
+import { NEUTRAL_RANGE, NEUTRAL_RANGE_CELL, RangeSession } from './data-table-range-session.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
@@ -15,7 +15,12 @@ const OVERLAY = '[data-pointer-transparent]';
 interface Press {
     readonly anchor: CellAddress | null;
     readonly claimedBy: CellSession | null;
+    /** The element the press landed on (an overlay looked through to the cell under it): an unclaimed touch tap focuses it, if the finger is still near it at the release. */
+    readonly pressed: Element | null;
 }
+
+/** A touch tap may drift this far (px) from the pressed cell and still be a tap; further away it was a drag, which focuses nothing (as a scroll does not). */
+const TAP_SLOP = 10;
 
 /** A press on one of these belongs to the control: it keeps its own focus and click. */
 const CONTROLS = 'input, textarea, select, button, a, [role="checkbox"], ge-checkbox, ge-input, [contenteditable]';
@@ -23,12 +28,6 @@ const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]
 
 /** Rows moved by one page key when nothing is drawn to measure. */
 const FALLBACK_PAGE = 10;
-
-/** The same methods as `service`, every one answering null (undefined when there is no service): the stand-in of a session that cannot make its own. */
-function neutral<S extends object>(service: S | undefined): S | undefined {
-    if (!service) return undefined;
-    return Object.fromEntries(Object.keys(service).map((key) => [key, () => null])) as unknown as S;
-}
 
 /** Whether `node` is `ancestor` or inside it, across shadow roots: Node.contains stops at a shadow boundary, this goes from a shadow root to its host. */
 function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
@@ -75,6 +74,8 @@ export class CellInteractionController<T> {
     private readonly baseService: CellInteractionService;
     /** Sessions that FAILED (their `attach()` or a `hostUpdate()` threw): detached at once and skipped by everything after, until the next attach. */
     private readonly broken = new Set<CellSession>();
+    /** The typed neutral answers of each session (one entry per session, added where it is created): the stand-in when its `inert()` throws too. */
+    private readonly neutrals = new Map<CellSession, SessionStandIn>();
     /** What replaces each failed session (`CellSession.inert`), until the next attach hands what it kept back to the session. */
     private readonly standIns = new Map<CellSession, SessionStandIn>();
     /** The sessions whose `renderOverlay` failure was already reported: it runs at every render and reports its first failure only (cleared at detach). */
@@ -109,6 +110,8 @@ export class CellInteractionController<T> {
         this.edit = new EditSession(context);
         this.range = new RangeSession(context);
         this.sessions = [this.range, this.edit];
+        this.neutrals.set(this.range, { service: NEUTRAL_RANGE_CELL, rangeService: NEUTRAL_RANGE });
+        this.neutrals.set(this.edit, { service: NEUTRAL_EDIT });
         this.services = { range: this.range.rangeService };
         this.service = {
             focusedCell: () => this.focused,
@@ -194,8 +197,8 @@ export class CellInteractionController<T> {
         this.pointer = this.presses.size > 0;
         this.guarded(() => session.detach());
         this.broken.add(session);
-        // A session whose `inert()` throws too is withdrawn by the controller's own neutral stand-in: every method it contributed answers null, nothing is kept.
-        const standIn = this.guarded(() => session.inert()) ?? { service: neutral(session.service), rangeService: neutral(session.rangeService) as RangeService | undefined };
+        // A session whose `inert()` throws too is withdrawn by its neutral stand-in (typed answers: false, '', null), nothing is kept.
+        const standIn = this.guarded(() => session.inert()) ?? this.neutrals.get(session) ?? {};
         this.standIns.set(session, standIn);
         Object.assign(this.service, standIn.service);
         if (standIn.rangeService) {
@@ -524,7 +527,8 @@ export class CellInteractionController<T> {
         const path = event.composedPath(); // once per event: a path is built at every call
         const target = this.targetOf(path);
         const claimedBy = this.offer(event, target, (session) => session.onPointerDown, anchor);
-        this.presses.set(event.pointerId, { anchor, claimedBy: claimedBy ?? null });
+        const pressed = target?.closest(OVERLAY) ? this.hitTest(event.clientX, event.clientY).cell : target; // the finger is on what is UNDER an overlay
+        this.presses.set(event.pointerId, { anchor, claimedBy: claimedBy ?? null, pressed });
         if (claimedBy) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.button === 0 && event.pointerType !== 'touch' && target && !this.insideOpenEditor(path)) this.pointerFocus(target);
@@ -557,10 +561,18 @@ export class CellInteractionController<T> {
             return;
         }
         if (this.offer(event, cell, (session) => session.onPointerUp, anchor)) return;
-        // A tap does what a mouse press on the element UNDER THE FINGER does (`pointerFocus`: it focuses a cell, clears the focus on the body outside any cell,
-        // and does nothing on a header, a control or a popover), unless that element is in the open editor's cell: the guard reads the element under the
-        // finger, not the pressed one (under implicit capture the event's own path is where the finger went DOWN).
-        if (event.pointerType === 'touch' && cell && !this.insideOpenEditor(null, cell)) this.pointerFocus(cell);
+        // A TAP does what a mouse press on the PRESSED element does (`pointerFocus`: it focuses a cell, clears the focus on the body outside any cell, and
+        // does nothing on a header, a control or a popover), unless that element is in the open editor's cell. It is a tap while the finger is released
+        // within the pressed cell's box plus a small slop; further away it was a drag and focuses nothing. (A claimant is told the cell under the finger.)
+        if (event.pointerType === 'touch') this.tapFocus(event, press.pressed);
+    }
+
+    private tapFocus(event: PointerEvent, pressed: Element | null): void {
+        if (!pressed?.isConnected) return;
+        const box = (pressed.closest('[data-slot="table-cell"]') ?? pressed).getBoundingClientRect();
+        const { clientX: x, clientY: y } = event;
+        if (x < box.left - TAP_SLOP || x > box.right + TAP_SLOP || y < box.top - TAP_SLOP || y > box.bottom + TAP_SLOP) return;
+        if (!this.insideOpenEditor(null, pressed)) this.pointerFocus(pressed);
     }
 
     /** Runs `task` after the event that scheduled it has been dispatched to every listener (the document's capture listener runs before the root's). */
@@ -625,9 +637,15 @@ export class CellInteractionController<T> {
         // An uncaptured mouse released over one of the table's overlays is looked through too, exactly as a touch at the same point is.
         const lookThrough = event.pointerType !== 'mouse' || this.captured.has(event.pointerId) || !!target?.closest(OVERLAY);
         if (!lookThrough) return { own: target !== null && ownsTarget(root, target), cell: target };
+        return this.hitTest(event.clientX, event.clientY);
+    }
+
+    /** The first element of THIS table at a point, looking through its overlays (see `locateRelease`). */
+    private hitTest(x: number, y: number): { own: boolean; cell: Element | null } {
+        const { root } = this.host;
         const tree = root.getRootNode();
         const scope = tree instanceof ShadowRoot ? tree : root.ownerDocument;
-        for (const el of scope.elementsFromPoint(event.clientX, event.clientY)) {
+        for (const el of scope.elementsFromPoint(x, y)) {
             if (!composedContains(root, el)) break; // something outside the table: on top of it (nothing of the table seen yet) or just below it (its ancestors)
             if (!ownsTarget(root, el)) return { own: false, cell: null }; // a nested table
             if (el.closest(OVERLAY)) continue; // looked through: every overlay marks itself (the readout, the fill handle, a drop edge)
@@ -638,7 +656,7 @@ export class CellInteractionController<T> {
             const host = el.closest('[data-slot="table-cell"]');
             if (host && el !== host) {
                 const box = host.getBoundingClientRect();
-                if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) return { own: true, cell: null };
+                if (x < box.left || x > box.right || y < box.top || y > box.bottom) return { own: true, cell: null };
             }
             return { own: true, cell: el }; // the element the pointer is on (`cellAddressOf` says whether it is in a cell)
         }

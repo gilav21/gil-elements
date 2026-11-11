@@ -13,7 +13,7 @@ import { rangeModeOn, sanitizeCellRange, warnBadRange } from './data-table-range
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
-import type { DataTableConfig, DataTableProviders } from './data-table-providers.js';
+import type { ClipboardResult, DataTableConfig, DataTableProviders } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
 import { buildView, type DataTableViewHost } from './data-table-view.js';
@@ -562,27 +562,28 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.provider('range')?.openChart();
     }
 
-    private async copyToClipboard(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<void> {
-        await this.provider('clipboard')?.copy(scope, row);
+    /** The `copy*ToClipboard` methods resolve to what happened: `status` is `done`, `empty`, `denied` (the browser refused), `unavailable` (no clipboard) or `ignored` (the feature is off). */
+    private copyToClipboard(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<ClipboardResult> {
+        return this.provider('clipboard')?.copy(scope, row) ?? Promise.resolve({ status: 'unavailable' });
     }
 
-    copyCellToClipboard(): Promise<void> {
+    copyCellToClipboard(): Promise<ClipboardResult> {
         return this.copyToClipboard('cell');
     }
 
-    copyRowToClipboard(row: T): Promise<void> {
+    copyRowToClipboard(row: T): Promise<ClipboardResult> {
         return this.copyToClipboard('row', row);
     }
 
-    copySelectedToClipboard(): Promise<void> {
+    copySelectedToClipboard(): Promise<ClipboardResult> {
         return this.copyToClipboard('selected');
     }
 
-    copyCellRangeToClipboard(): Promise<void> {
+    copyCellRangeToClipboard(): Promise<ClipboardResult> {
         return this.copyToClipboard('range');
     }
 
-    copyAllToClipboard(): Promise<void> {
+    copyAllToClipboard(): Promise<ClipboardResult> {
         return this.copyToClipboard('all');
     }
 

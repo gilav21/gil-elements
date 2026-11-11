@@ -75,7 +75,9 @@ function headContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
     const control = sortControl(v, c);
     const trigger = v.filters.trigger(c);
     // ONE template always: a header renderer is drawn bare (`data-bare`: the wrapper has no box of its own) until a filter trigger sits beside it. A
-    // different template when the trigger appears would rebuild the consumer's header element (a remount).
+    // different template when the trigger appears would rebuild the consumer's header element (a remount). The price: a header renderer's output is
+    // inside `div[data-slot=data-table-head-controls][data-bare]` (`display: contents`), so a consumer selector such as `[data-slot=table-head] > x`
+    // must be a descendant selector (`[data-slot=table-head] x`).
     return html`<div data-slot="data-table-head-controls" ?data-bare=${!!c.headerRenderer && isEmptyContent(trigger)}>${control}${trigger}</div>`;
 }
 

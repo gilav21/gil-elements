@@ -15,7 +15,7 @@ export class RowDragController<T> {
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 
     private readonly service: RowDragService<T> = {
-        active: () => false, // wave 6 C: true once the part is attached
+        active: () => this.drag.part?.active() ?? false, // what the PART says (like the range shell): wave 6 C's part answers true once it handles drags
         isDragging: () => false,
         dragState: () => null,
         moveRow: () => false,

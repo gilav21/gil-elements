@@ -6,21 +6,26 @@
 import type { CellSession, InteractionContext, SessionStandIn } from './data-table-cell-session.js';
 import type { CellInteractionService } from './data-table-providers.js';
 
+type EditService = Pick<CellInteractionService, 'editingCell' | 'cellEditError' | 'startEditing' | 'commitEdit' | 'cancelEdit' | 'isEditing' | 'editValue' | 'setEditValue'>;
+
+/** The editing methods that do nothing (the step 0 session is built on them; the controller's fallback when a session cannot make a stand-in). */
+export const NEUTRAL_EDIT: EditService = {
+    editingCell: () => null,
+    cellEditError: () => null,
+    startEditing: () => false,
+    commitEdit: () => undefined,
+    cancelEdit: () => undefined,
+    isEditing: () => false,
+    editValue: () => undefined,
+    setEditValue: () => undefined,
+};
+
 export class EditSession<T> implements CellSession {
     // wave 5: state (editing, error, draft, editingRowId), the double-tap detector, the key handlers (editor, history, editStart) and
     // the `retain('edit', ...)` of the edited row join here, registered in `attach` through `context.host`.
     constructor(protected readonly context: InteractionContext<T>) {}
 
-    readonly service: Pick<CellInteractionService, 'editingCell' | 'cellEditError' | 'startEditing' | 'commitEdit' | 'cancelEdit' | 'isEditing' | 'editValue' | 'setEditValue'> = {
-        editingCell: () => null,
-        cellEditError: () => null,
-        startEditing: () => false,
-        commitEdit: () => undefined,
-        cancelEdit: () => undefined,
-        isEditing: () => false,
-        editValue: () => undefined,
-        setEditValue: () => undefined,
-    };
+    readonly service: EditService = { ...NEUTRAL_EDIT };
 
     attach(): void {}
 

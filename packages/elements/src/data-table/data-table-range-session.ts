@@ -16,6 +16,26 @@ import { clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange
 import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
+/** The range service that does nothing and answers "nothing" with the right types (the shell is built on it; the controller's fallback when a session cannot make a stand-in). */
+export const NEUTRAL_RANGE: RangeService = {
+    active: () => false,
+    range: () => null,
+    normalized: () => null,
+    isInRange: () => false,
+    isFillPreview: () => false,
+    edgeOf: () => '',
+    setRange: () => undefined,
+    extendTo: () => undefined,
+    stats: () => null,
+    chartPayload: () => null,
+    openChart: () => undefined,
+    fillDownTo: () => false,
+    fillHandleCell: () => null,
+    gestureActive: () => false,
+};
+/** The range session's methods of the `interaction` service, neutral. */
+export const NEUTRAL_RANGE_CELL: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = { cellRange: () => null, isCellSelected: () => false };
+
 export class RangeSession<T> implements CellSession {
     /** The range while no part is attached; see the header. */
     private held: CellRange | null = null;
@@ -45,11 +65,8 @@ export class RangeSession<T> implements CellSession {
 
     // wave 6: the methods below that answer "nothing" delegate to `this.lazy.part` once the part implements them.
     readonly rangeService: RangeService = {
+        ...NEUTRAL_RANGE,
         range: () => this.current(),
-        normalized: () => null,
-        isInRange: () => false,
-        isFillPreview: () => false,
-        edgeOf: () => '',
         // What the PART says (like `rowDrag.active()`): a loaded part that does not handle ranges yet is not active, so nothing of range mode is drawn.
         active: () => this.lazy.part?.active() ?? false,
         setRange: (range) => {
@@ -68,13 +85,6 @@ export class RangeSession<T> implements CellSession {
             // `data-in-range`, `aria-selected` and the readout read the range at render, and only in range mode: an equal value, or a value held while the mode is off, draws nothing new
             if (changed && this.rangeOn()) this.context.host.requestRender();
         },
-        extendTo: () => undefined,
-        stats: () => null,
-        chartPayload: () => null,
-        openChart: () => undefined,
-        fillDownTo: () => false,
-        fillHandleCell: () => null,
-        gestureActive: () => false,
     };
 
     /**

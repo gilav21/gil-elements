@@ -9,16 +9,22 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('lazy parts and the render', () => {
     it('draws the change a part makes when it attaches: rows become draggable with no other trigger', async () => {
-        const inert = { active: () => false, isDragging: () => false, dragState: () => null, moveRow: () => false, reorderData: (data: readonly unknown[]) => [...data] };
-        // The part answers `active()` through the service it plugs in when it attaches (what wave 6 C does).
-        vi.spyOn(RowDragPart.prototype, 'attach').mockImplementation(function (this: { host: { provide(key: string, service: unknown): void } }) {
-            this.host.provide('rowDrag', { ...inert, active: () => true });
-        });
+        // The part says it handles drags (what wave 6 C does): the controller's service reports it, with no edit of the controller.
+        vi.spyOn(RowDragPart.prototype, 'active').mockReturnValue(true);
         const table = await mountTable({ enableRowDrag: true });
         await frames(3);
         await settle(table);
         expect(bodyRows(table).length).toBeGreaterThan(0);
         expect(bodyRows(table).every((row) => row.getAttribute('data-draggable') === '')).toBe(true);
+    });
+
+    it('lets the copy methods resolve to the ClipboardResult, so a caller can tell what happened', async () => {
+        const table = await mountTable();
+        expect(await table.copyCellToClipboard()).toEqual({ status: 'unavailable' }); // the step 0 service
+        const service = table.provider('clipboard') as { copy(scope: string): Promise<unknown> };
+        service.copy = (scope) => Promise.resolve({ status: scope === 'all' ? 'denied' : 'done', cells: 1 });
+        expect(await table.copyAllToClipboard()).toEqual({ status: 'denied', cells: 1 });
+        expect(await table.copyRowToClipboard(table.data[0]!)).toEqual({ status: 'done', cells: 1 });
     });
 
     it('asks for exactly one render when a range is assigned to an attached table (the session asks, the setter does not repeat it)', async () => {

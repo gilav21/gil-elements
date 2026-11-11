@@ -580,11 +580,13 @@ describe('a session whose inert() throws too', () => {
         try {
             const table = await mountTable({ enableCellRangeSelection: true });
             expect(error).toHaveBeenCalledTimes(2); // the attach and the inert
-            expect(table.provider('range')!.active()).toBeFalsy();
-            expect(table.provider('range')!.isInRange(0, 'name')).toBeFalsy();
+            const range = table.provider('range')!;
+            // typed neutral answers, not null: booleans false, strings '', the rest null
+            expect([range.active(), range.isInRange(0, 'name'), range.isFillPreview(0, 'name'), range.gestureActive(), range.fillDownTo(1)]).toEqual([false, false, false, false, false]);
+            expect(range.edgeOf(0, 'name')).toBe('');
             expect(table.cellRange).toBeNull();
             expect(() => (table.cellRange = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' })).not.toThrow();
-            expect(table.provider('interaction')!.isCellSelected(0, 'name')).toBeFalsy();
+            expect(table.provider('interaction')!.isCellSelected(0, 'name')).toBe(false);
         } finally {
             attach.mockRestore();
             inert.mockRestore();
@@ -649,12 +651,39 @@ describe('a touch tap acts on the element under the finger', () => {
             expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
         });
 
-        it('focuses the cell under the finger when a press that started in the editor is released over it', async () => {
+        it('leaves the focus alone for a press that started in the editor, wherever it is released (a tap there is the editor\'s)', async () => {
             const { table, editor, a } = await withEditor();
             editor.dispatchEvent(pointer('pointerdown', 262, { pointerType: 'touch', over: editor }));
-            editor.dispatchEvent(pointer('pointerup', 262, { pointerType: 'touch', over: a }));
+            editor.dispatchEvent(pointer('pointerup', 262, { pointerType: 'touch', over: editor }));
+            await settle(table);
+            expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+            editor.dispatchEvent(pointer('pointerdown', 263, { pointerType: 'touch', over: editor }));
+            editor.dispatchEvent(pointer('pointerup', 263, { pointerType: 'touch', over: a })); // a drag away: nothing either
+            await settle(table);
+            expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        });
+    });
+
+    describe('that drifts', () => {
+        it('focuses the PRESSED cell when the finger is released a few px into the next row (a tap), and nothing when it is released far away (a drag)', async () => {
+            const table = await mountTable();
+            table.focusCell(0, 'name');
+            await settle(table);
+            const pressed = cellAt(table, 1, 'name')!;
+            const box = pressed.getBoundingClientRect();
+            const x = box.left + box.width / 2;
+            const tapAt = (id: number, y: number): void => {
+                pressed.dispatchEvent(pointer('pointerdown', id, { pointerType: 'touch', over: pressed }));
+                pressed.dispatchEvent(pointer('pointerup', id, { pointerType: 'touch', clientX: x, clientY: y })); // implicit capture: the pointerup goes to the pressed cell
+            };
+            tapAt(281, box.bottom + 4); // 4 px into the next row
             await settle(table);
             expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+            table.focusCell(0, 'name');
+            await settle(table);
+            tapAt(282, box.bottom + 40); // 40 px away
+            await settle(table);
+            expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
         });
     });
 });
