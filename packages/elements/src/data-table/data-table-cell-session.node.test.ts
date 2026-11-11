@@ -1,9 +1,9 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InteractionContext } from './data-table-cell-session.js';
-import { EditSession } from './data-table-edit-session.js';
+import { EditSession, NEUTRAL_EDIT } from './data-table-edit-session.js';
 import { resetBadRangeWarning } from './data-table-range.js';
-import { RangeSession } from './data-table-range-session.js';
+import { NEUTRAL_RANGE, NEUTRAL_RANGE_CELL, RangeSession } from './data-table-range-session.js';
 import { RangePart } from './lazy/range.js';
 
 const DIRECTORY = new URL('.', import.meta.url);
@@ -29,6 +29,18 @@ const off: Flags = { enableCellRangeSelection: false, enableFillHandle: false };
 const range = { startRow: 1, startCol: 'a', endRow: 3, endCol: 'b' };
 
 afterEach(() => vi.restoreAllMocks());
+
+describe('the neutral services', () => {
+    it('are frozen, so no table (or consumer) can patch the one object every table shares', () => {
+        for (const neutral of [NEUTRAL_RANGE, NEUTRAL_RANGE_CELL, NEUTRAL_EDIT]) {
+            expect(Object.isFrozen(neutral)).toBe(true);
+            expect(() => {
+                (neutral as unknown as Record<string, unknown>)['active'] = () => true; // ES modules are strict: assigning to a frozen object throws
+            }).toThrow(TypeError);
+        }
+        expect(NEUTRAL_RANGE.active()).toBe(false);
+    });
+});
 
 describe('the joint step 0 sessions', () => {
     it('answers "nothing is being edited" and no editor can open', () => {

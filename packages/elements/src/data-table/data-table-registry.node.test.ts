@@ -71,6 +71,14 @@ describe('KEY_PRIORITY', () => {
         expect(new Set(values).size).toBe(values.length);
     });
 
+    it('is frozen: a public table nobody can renumber at run time', () => {
+        expect(Object.isFrozen(KEY_PRIORITY)).toBe(true);
+        expect(() => {
+            (KEY_PRIORITY as unknown as Record<string, number>)['navigation'] = 1;
+        }).toThrow(TypeError);
+        expect(KEY_PRIORITY.navigation).toBe(100);
+    });
+
     it('keeps the numbers the grid had before waves 5 and 6 (addKeyHandler is public API): resize 20, column drag 30, selection and expansion 50, navigation 100', () => {
         expect(KEY_PRIORITY.columnResize).toBe(20);
         expect(KEY_PRIORITY.columnDrag).toBe(30);

@@ -118,6 +118,16 @@ describe('lazyElement', () => {
         expect(onError).toHaveBeenCalledTimes(2);
     });
 
+    it('failed() says a failure is latched (so a hot caller allocates no promise), until reset', async () => {
+        fakeRegistry();
+        const element = lazyElement('ge-x', () => Promise.reject(new Error('404')), vi.fn());
+        expect(element.failed()).toBe(false);
+        await element.load();
+        expect(element.failed()).toBe(true);
+        element.reset();
+        expect(element.failed()).toBe(false);
+    });
+
     it('reports a failure once for CONCURRENT loads too: they share one promise', async () => {
         fakeRegistry();
         const onError = vi.fn();

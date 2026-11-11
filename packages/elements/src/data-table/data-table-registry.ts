@@ -124,7 +124,7 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
  * those two keys are not claimed by any row; a wave that adds one takes the free priority 70 (`reserved`) and amends this table.
  * Escape: the editor (5) while one is open, else the range (35) when one exists; a popover closes itself before the chain sees it.
  */
-export const KEY_PRIORITY = {
+export const KEY_PRIORITY = Object.freeze({
     editor: 5,
     clipboard: 10,
     columnResize: 20,
@@ -136,7 +136,7 @@ export const KEY_PRIORITY = {
     editStart: 60,
     reserved: 70,
     navigation: 100,
-} as const;
+} as const);
 
 /** Topics the element itself publishes (an input changed, the locale changed), so no controller has to. */
 const ELEMENT_TOPICS: readonly DataTableTopic[] = ['config', 'locale'];

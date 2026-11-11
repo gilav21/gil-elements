@@ -159,7 +159,7 @@ export interface FormattingService<T> {
     /** Wave 6 (flash, package C implements): the direction a cell is flashing now, or undefined. */
     flash(rowId: string, columnKey: string): CellFlashDirection | undefined;
     /** Some cell is flashing now: a cheap question the renderer asks once per render, so `enable-cell-flash` alone (nothing flashing) costs no per-cell work. */
-    anyFlashing(): boolean;
+    anyFlashing?(): boolean;
 }
 
 /** The filter UI's read-outs (wave 5, provided by the `filter-ui` controller under `filters`). */
@@ -255,21 +255,23 @@ export interface ResizeService {
 export interface CellInteractionService {
     focusedCell(): { rowIndex: number; columnKey: string } | null;
     cellRange(): CellRange | null;
-    editingCell(): EditingCell | null;
-    cellEditError(): CellEditError | null;
+    // The editing methods below (wave 5) are OPTIONAL in the type: a provider of the older shape (a test stub, a consumer's) lacks them, and every
+    // caller guards (`?.()`). The sessions still implement them all.
+    editingCell?(): EditingCell | null;
+    cellEditError?(): CellEditError | null;
     focusCell(rowIndex: number, columnKey: string): void;
     isCellSelected(rowIndex: number, columnKey: string): boolean;
     /** Wave 5 (edit session): opens an editor on the cell of a data row; false when none opened (not editable, disabled row, no such row). */
-    startEditing(row: unknown, columnKey: string): boolean;
+    startEditing?(row: unknown, columnKey: string): boolean;
     /** Wave 5: commits the open editor's draft (validation, write, close); no-op with nothing open. */
-    commitEdit(): void;
+    commitEdit?(): void;
     /** Wave 5: drops the open editor's draft without an event. */
-    cancelEdit(): void;
+    cancelEdit?(): void;
     /** Wave 5: the cell at this drawn index and column holds the open editor. */
-    isEditing(rowIndex: number, columnKey: string): boolean;
+    isEditing?(rowIndex: number, columnKey: string): boolean;
     /** Wave 5: the open editor's draft (undefined with none open). */
-    editValue(): unknown;
-    setEditValue(value: unknown): void;
+    editValue?(): unknown;
+    setEditValue?(value: unknown): void;
 }
 
 /** Range selection, the fill handle and the readout (wave 6). Always provided by `cell-interaction`; inert until `enable-cell-range-selection` loads its lazy part. */

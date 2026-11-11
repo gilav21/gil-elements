@@ -9,7 +9,7 @@ import type { CellInteractionService } from './data-table-providers.js';
 type EditService = Pick<CellInteractionService, 'editingCell' | 'cellEditError' | 'startEditing' | 'commitEdit' | 'cancelEdit' | 'isEditing' | 'editValue' | 'setEditValue'>;
 
 /** The editing methods that do nothing: the step 0 session is built on them, and the controller installs them when this session fails. */
-export const NEUTRAL_EDIT: EditService = {
+export const NEUTRAL_EDIT: Readonly<EditService> = Object.freeze({
     editingCell: () => null,
     cellEditError: () => null,
     startEditing: () => false,
@@ -18,7 +18,7 @@ export const NEUTRAL_EDIT: EditService = {
     isEditing: () => false,
     editValue: () => undefined,
     setEditValue: () => undefined,
-};
+});
 
 export class EditSession<T> implements CellSession {
     // wave 5: state (editing, error, draft, editingRowId), the double-tap detector, the key handlers (editor, history, editStart) and

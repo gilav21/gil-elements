@@ -17,7 +17,7 @@ import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
 /** The range service that does nothing and answers "nothing" with the right types: the shell is built on it, and the controller installs it when this session fails. */
-export const NEUTRAL_RANGE: RangeService = {
+export const NEUTRAL_RANGE: Readonly<RangeService> = Object.freeze({
     active: () => false,
     range: () => null,
     normalized: () => null,
@@ -32,9 +32,9 @@ export const NEUTRAL_RANGE: RangeService = {
     fillDownTo: () => false,
     fillHandleCell: () => null,
     gestureActive: () => false,
-};
+});
 /** The range session's methods of the `interaction` service, neutral (installed when it fails: `isCellSelected` answers false there, not the focused cell). */
-export const NEUTRAL_RANGE_CELL: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = { cellRange: () => null, isCellSelected: () => false };
+export const NEUTRAL_RANGE_CELL: Readonly<Pick<CellInteractionService, 'cellRange' | 'isCellSelected'>> = Object.freeze({ cellRange: () => null, isCellSelected: () => false });
 
 export class RangeSession<T> implements CellSession {
     /** The range while no part is attached; see the header. */

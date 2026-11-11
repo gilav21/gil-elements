@@ -138,7 +138,7 @@ export class CellInteractionController<T> {
             focusableKeys: () => requireProvider(host, 'columns').focusableKeys(),
             pageSize: () => this.pageSize(),
             afterRender: (task) => this.afterRender(task),
-            hasOpenEditor: () => this.service.editingCell() != null,
+            hasOpenEditor: () => this.service.editingCell?.() != null,
             deepActive: () => this.deepActive(),
         };
         this.edit = new EditSession(context);
@@ -713,7 +713,7 @@ export class CellInteractionController<T> {
 
     /** `address` is the cell that holds the open editor (the one question both the element-based guard and the replaced-DOM tap ask, by address). */
     private isEditorCell(address: CellAddress | null): boolean {
-        const editing = this.service.editingCell();
+        const editing = this.service.editingCell?.();
         return address !== null && editing != null && editing.rowIndex === address.rowIndex && editing.columnKey === address.columnKey;
     }
 

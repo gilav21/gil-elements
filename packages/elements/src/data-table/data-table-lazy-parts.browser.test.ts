@@ -18,6 +18,25 @@ describe('lazy parts and the render', () => {
         expect(bodyRows(table).every((row) => row.getAttribute('data-draggable') === '')).toBe(true);
     });
 
+    it('renders with old-shaped formatting and interaction providers (no anyFlashing, no editingCell): nothing throws', async () => {
+        const table = await mountTable({ enableCellFlash: true });
+        await settle(table);
+        const real = table.provider('formatting') as object;
+        table.provide('formatting', { ...real, anyFlashing: undefined, flash: () => undefined } as never);
+        table.provide('interaction', { focusedCell: () => null, cellRange: () => null, focusCell() {}, isCellSelected: () => false } as never);
+        const errors: unknown[] = [];
+        const onError = (event: ErrorEvent): void => void errors.push(event.error);
+        window.addEventListener('error', onError);
+        try {
+            table.requestUpdate();
+            await settle(table); // AWAITED: a throw in the render would reject or fire an error event
+            expect(bodyRows(table).length).toBeGreaterThan(0);
+            expect(errors).toEqual([]);
+        } finally {
+            window.removeEventListener('error', onError);
+        }
+    });
+
     it('a part whose active() throws does not break the render: the table draws, the part counts as inactive, one warning per part', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         vi.spyOn(RowDragPart.prototype, 'active').mockImplementation(() => {

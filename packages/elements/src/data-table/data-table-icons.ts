@@ -42,6 +42,8 @@ const iconElement = lazyElement('ge-icon', () => import('../icon/define.js'));
  * The retry is BEST EFFORT: a browser may keep the failed module record and reject the same specifier again without refetching, until the page reloads.
  */
 export function ensureIconElement(): void {
+    // Called for every icon cell at every render: defined or latched-failed answers at once, with no promise allocated.
+    if (iconElement.ready() || iconElement.failed()) return;
     void iconElement.load();
 }
 

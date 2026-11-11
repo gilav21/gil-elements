@@ -58,6 +58,8 @@ export interface LazyElement {
     load(): Promise<boolean>;
     /** The tag is defined now (no load needed). */
     ready(): boolean;
+    /** A load failed and is latched (until `reset()`): `load()` would only answer false, so a hot caller can skip it without allocating a promise. */
+    failed(): boolean;
     /** Forgets a latched failure: the next `load()` imports again. It also makes a load in flight stale (its failure is neither latched nor reported). */
     reset(): void;
     /** `reset()` only when a failure is latched: safe to call at every attach (a load in flight, e.g. another table's, is left alone). */
@@ -91,6 +93,7 @@ export function lazyElement(
     return {
         load: () => (failed ? Promise.resolve(false) : (loading ??= run(generation))),
         ready: () => customElements.get(tag) !== undefined,
+        failed: () => failed,
         reset,
         // A caller that may run at every attach cannot use `reset`: it would make a load another caller has in flight stale and swallow its failure.
         resetIfFailed: () => {
