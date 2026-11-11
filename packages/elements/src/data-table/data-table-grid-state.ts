@@ -98,7 +98,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
             const inRange = rangeMode && (range?.isInRange(rowIndex, key) ?? false);
             const fill = config.enableFillHandle && rangeActive && (range?.isFillPreview(rowIndex, key) ?? false);
             const flash = flashable && !flashOff.has(key) ? formatting.flash(rowId, key) : undefined;
-            const editing = editingOpen && (interaction?.isEditing(rowIndex, key) ?? false); // the per-cell question only while an editor is open
+            const editing = editingOpen && (interaction?.isEditing?.(rowIndex, key) ?? false); // the per-cell question only while an editor is open
             if (!inRange && !fill && flash === undefined && !editing) {
                 return selectionMode ? OUT_OF_RANGE_FLAGS : NO_CELL_FLAGS;
             }

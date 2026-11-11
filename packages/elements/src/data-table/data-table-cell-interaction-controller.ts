@@ -557,8 +557,15 @@ export class CellInteractionController<T> {
         press.bubbled = true;
         if (press.bypass) return; // not a cell press: no offer, no focus
         const target = press.pressed;
-        press.claimedBy = this.offer(event, target, (session) => session.onPointerDown, pressOf(press)) ?? null;
-        if (press.claimedBy) return; // the claimant owns the press: no focus from the controller
+        const claimant = this.offer(event, target, (session) => session.onPointerDown, pressOf(press)) ?? null;
+        press.claimedBy = claimant; // recorded before any further work
+        // A session's `onPointerDown` may END the press itself (it blurs the window, detaches the table): then the end path found no claimant yet, so the
+        // claimant that returned true is told now, once, and the press is not routed or focused any more.
+        if (this.presses.get(event.pointerId) !== press) {
+            if (claimant) this.notifyCancel(press, null);
+            return;
+        }
+        if (claimant) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.pointerType !== 'touch' && target && !this.insideOpenEditor(event.composedPath())) this.pointerFocus(target);
     }
@@ -633,7 +640,14 @@ export class CellInteractionController<T> {
     private tapFocus(event: PointerEvent, press: Press): void {
         const { pressed } = press;
         // Not a cell press (`bypass`), or one a cell widget stopped at its pointerdown (`!bubbled`): the widget's own, for a touch as for a mouse.
-        if (press.bypass || !press.bubbled || !pressed?.isConnected) return;
+        if (press.bypass || !press.bubbled) return;
+        if (!pressed?.isConnected) {
+            // A renderer replaced the DOM between the down and the up: the press's start cell (an address) is still the cell that was tapped, if the finger
+            // is where it went down.
+            const start = press.startCell;
+            if (start && withinTouchSlop(event.clientX - press.x, event.clientY - press.y)) this.focusCell(start.rowIndex, start.columnKey, false);
+            return;
+        }
         // Still a tap: within the pressed DATA cell's box plus the slop (the shared touch slop). Anything else (the stretch / spacer cell, a full-width
         // or group cell, a header, the body outside any cell) is measured from where the press went down: such a box spans the row, and would make any
         // drag along it a tap.
@@ -653,8 +667,11 @@ export class CellInteractionController<T> {
      */
     private closeUnheard(event: PointerEvent): void {
         const press = this.presses.get(event.pointerId);
-        // The root hears a release it can see in the path: nothing to look at after it then (only a closed root, or a release outside, needs the look).
-        if (!press || event.composedPath().includes(this.host.root)) return;
+        // ALWAYS scheduled, whatever the path says: an ancestor's capture listener that stops the event keeps it from the root, and the press would stay
+        // open for ever. The look below does nothing when the root already ended the press (the usual case: the document hears it first, the root right after).
+        if (!press) return;
+        // The event is kept only until that look (or the same pointer's next pointerdown, which hands it to the claimant): the timer, `endPress` and `detach`
+        // all drop it, so no event (and no node of its path) outlives the tick.
         this.closing.set(event.pointerId, event); // marked NOW: the same pointer's next pointerdown may come before the deferred look below
         this.afterDispatch(() => {
             if (this.closing.get(event.pointerId) === event) this.closing.delete(event.pointerId);

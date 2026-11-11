@@ -53,6 +53,12 @@ describe('stateView with the step-0 services', () => {
         expect(anyActive(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: { active: () => false, dragState: () => null } } })))).toBe(false);
     });
 
+    it('does not crash on an interaction provider without isEditing (a pre-wave-5 shape) while an editor looks open', () => {
+        const state = stateView(fakeHost({ providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'a' }) } } }));
+        expect(() => state.cellState(0, 'a', row)).not.toThrow();
+        expect(state.cellState(0, 'a', row)).toBe(NO_CELL_FLAGS); // not editing as far as it can tell
+    });
+
     it('splits the activity: draggable rows make the rows active but not the cells; range, flash and an open editor make the cells active but not the rows', () => {
         const drag = stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: dragPart() } }));
         expect([drag.cellStateActive, drag.rowStateActive, anyActive(drag)]).toEqual([false, true, true]);

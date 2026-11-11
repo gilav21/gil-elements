@@ -18,6 +18,14 @@ describe('lazy parts and the render', () => {
         expect(bodyRows(table).every((row) => row.getAttribute('data-draggable') === '')).toBe(true);
     });
 
+    it('loads ge-icon through the lazy element (reported once, retried at an attach): ensureIconElement defines it', async () => {
+        const { ensureIconElement, resetIconElement } = await import('./data-table-icons.js');
+        resetIconElement();
+        ensureIconElement();
+        await customElements.whenDefined('ge-icon');
+        expect(customElements.get('ge-icon')).toBeDefined();
+    });
+
     it('forwards reorderData and moveRow to the controller\'s row-drag service (also after a disconnect), and only the neutral service copies', async () => {
         const fresh = document.createElement('ge-data-table') as unknown as { reorderData(data: number[], event: unknown): number[]; moveRow(row: unknown, direction: string): boolean };
         const data = [1, 2, 3];

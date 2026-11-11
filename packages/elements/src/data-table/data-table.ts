@@ -11,6 +11,7 @@ import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
 import { rangeModeOn, rangeSelectionDrawn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
+import { resetIconElement } from './data-table-icons.js';
 import { neutralRowDrag } from './data-table-row-drag-controller.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
@@ -634,6 +635,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         const built = this.built;
         built.attachAll();
         this.handOverEarlyRange();
+        resetIconElement(); // a failed `ge-icon` load is retried at an attach
         this.lastLocale = this.resolvedLocale;
         this.assembled = built;
         this.observer = new MutationObserver(() => {
