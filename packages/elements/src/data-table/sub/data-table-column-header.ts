@@ -3,7 +3,7 @@ import { UiElement } from '@gilav21/elements-base';
 import '../../button/define.js';
 import { chromeIcon, type ChromeIconName } from '../data-table-icons.js';
 import { sortAriaLabel } from '../data-table-cells.js';
-import { resolveDataTableLocale } from '../data-table.locales.js';
+import { DATA_TABLE_LOCALES } from '../data-table.locales.js';
 import type { SortDirection } from '../data-table.types.js';
 import css from './data-table-column-header.css?inline';
 
@@ -69,7 +69,7 @@ export class GeDataTableColumnHeader extends UiElement {
 
     protected override render() {
         if (!this.enableSorting) return html`<div part="base" data-slot="data-table-column-header"><div>${this.title}</div></div>`;
-        const label = this.label || sortAriaLabel(this.title, this.direction, this.sortIndex, resolveDataTableLocale('en'));
+        const label = this.label || sortAriaLabel(this.title, this.direction, this.sortIndex, DATA_TABLE_LOCALES.en);
         return html`<div part="base" data-slot="data-table-column-header">
             <ge-button variant="ghost" size="sm" aria-label=${label} aria-keyshortcuts=${this.shortcuts || nothing} @click=${this.request}>
                 <span class="title">${this.title}</span>

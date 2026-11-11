@@ -241,6 +241,38 @@ describe('ge-typing-animation', () => {
             expect(seen.completes).toBe(2);
         });
 
+        it('arms nothing while detached whichever way the list changes (emptied then refilled, or shorter), and runs it on attach', async () => {
+            const { el, seen } = await finished(['a', 'b']);
+            const parent = el.parentElement!;
+            el.remove();
+            el.strings = []; // emptied
+            await el.updateComplete;
+            el.strings = ['x', 'y']; // refilled: not started, so a begin would arm timers
+            await el.updateComplete;
+            await advance(el, 3000);
+            expect(shown(el)).toBe('');
+            expect(seen.completes).toBe(1);
+            parent.append(el);
+            await advance(el, 4000);
+            expect(shown(el)).toBe('y');
+            expect(seen.completes).toBe(2);
+        });
+
+        it('a finished run given a shorter list while detached waits for the attach', async () => {
+            const { el, seen } = await finished(['a', 'b']);
+            const parent = el.parentElement!;
+            el.remove();
+            el.strings = ['z']; // shorter than the phrase index of the finished run: reset, and a begin would arm timers
+            await el.updateComplete;
+            await advance(el, 3000);
+            expect(shown(el)).toBe('');
+            expect(seen.completes).toBe(1);
+            parent.append(el);
+            await advance(el, 2000);
+            expect(shown(el)).toBe('z');
+            expect(seen.completes).toBe(2);
+        });
+
         it('starts exactly one run for one change, however it is typed', async () => {
             const { el, seen } = await finished(['a', 'b']);
             el.strings = ['x', 'y'];

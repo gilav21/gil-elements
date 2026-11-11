@@ -5,7 +5,7 @@ import '../../pagination/define.js';
 import '../../select/define.js';
 import { isRtl } from '../../shared/menu.js';
 import { type PageAction, pageSizeTarget, pageTarget, totalPages } from '../data-table-paging.js';
-import { resolveDataTableLocale } from '../data-table.locales.js';
+import { DATA_TABLE_LOCALES } from '../data-table.locales.js';
 import type { PaginationState } from '../data-table.types.js';
 import css from './data-table-pager.css?inline';
 
@@ -135,7 +135,7 @@ for (const name of Object.keys(ENGLISH_OF) as LabelName[]) {
     Object.defineProperty(GeDataTablePager.prototype, name, {
         configurable: true,
         get(this: GeDataTablePager): string {
-            return setLabels(this).get(name) ?? resolveDataTableLocale('en')[ENGLISH_OF[name]];
+            return setLabels(this).get(name) ?? DATA_TABLE_LOCALES.en[ENGLISH_OF[name]];
         },
         set(this: GeDataTablePager, value: string | null | undefined) {
             const before = this[name];

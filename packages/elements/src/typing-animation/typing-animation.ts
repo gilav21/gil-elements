@@ -90,9 +90,8 @@ export class GeTypingAnimation extends UiElement {
             this.begin();
         } else if (this.finished) {
             // A finished run (nothing pending) has nothing to carry on: a changed list is a new run, typed from its first phrase, and its own `complete`.
-            // Detached, it only waits: arming timers on an element nothing will stop would run on; `connectedCallback` starts it.
             this.reset();
-            if (this.isConnected) this.begin();
+            this.begin();
         } else this.refresh(this.strings[this.stringIndex] ?? '');
     }
 
@@ -108,8 +107,9 @@ export class GeTypingAnimation extends UiElement {
         else if (this.hasUpdated && !this.started) this.begin(); // a list that arrived while detached starts its run now
     }
 
+    /** Starts a run; detached it does nothing (timers would run on an element nothing stops): `connectedCallback` starts it on attach. */
     private begin(): void {
-        if (this.strings.length === 0) return;
+        if (this.strings.length === 0 || !this.isConnected) return;
         this.started = true;
         this.finished = false;
         if (prefersReducedMotion()) {

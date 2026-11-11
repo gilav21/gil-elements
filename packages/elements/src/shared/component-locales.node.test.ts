@@ -80,6 +80,17 @@ describe('the resolvers', () => {
         for (const id of ['pt-br', 'PT-BR', 'pt_BR', 'pt-BR']) expect(lookupLocale(regional, id)).toBe('BR');
         expect(lookupLocale(regional, 'pt-PT')).toBe('PT');
         for (const name of ['__proto__', 'constructor', 'toString']) expect(lookupLocale(regional, name)).toBeUndefined();
+        // two keys that read alike: the one written exactly as asked wins, else the first of the record
+        const both = { 'pt-BR': 'upper', 'pt-br': 'lower' };
+        expect(lookupLocale(both, 'pt-br')).toBe('lower');
+        expect(lookupLocale(both, 'pt-BR')).toBe('upper');
+        expect(lookupLocale(both, 'PT-BR')).toBe('upper');
+        expect(lookupLocale(both, 'pt_BR')).toBe('upper');
+        // a record is mutable: a key added later is found (the normalised keys are cached per record)
+        const growing: Record<string, string> = { en: 'EN' };
+        expect(lookupLocale(growing, 'De-AT')).toBeUndefined();
+        growing['de-AT'] = 'DE';
+        expect(lookupLocale(growing, 'de-at')).toBe('DE');
     });
 
     it('ignore case and region in an id, and never answer with an inherited member', () => {
