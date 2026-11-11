@@ -10,6 +10,7 @@ import { emulateTouch, frames, mouseDblClick, mouseDrag, parkMouse, press, touch
 afterEach(() => parkMouse());
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+const viewportOf = (table: Element): HTMLElement => q(table, '[data-slot="data-table-viewport"]');
 const widthOf = (el: Element | null): number => el!.getBoundingClientRect().width;
 const handleOf = (table: Element, key: string): HTMLElement => q(headCell(table, key), '[data-slot="data-table-resize-handle"]');
 /** A point on the resize handle of `key` (the handle sits inside the head, at its inline-end edge). */
@@ -195,6 +196,42 @@ describe('column resize by mouse', () => {
             await press(grows > 0 ? '{ArrowLeft}' : '{ArrowRight}');
             await settle(table);
             expect(Math.round(head(table).width)).toBe(width);
+        });
+    });
+
+    // The same, in a table narrower than its box: nothing holds a pinned column at the edge, so every column grows toward the end.
+    describe.each([
+        { pin: 'start', key: 'c0', rtl: false, grows: 1 },
+        { pin: 'start', key: 'c0', rtl: true, grows: -1 },
+        { pin: 'end', key: 'c3', rtl: false, grows: 1 },
+        { pin: 'end', key: 'c3', rtl: true, grows: -1 },
+    ])('a $pin-pinned column of a table that does not overflow, rtl: $rtl', ({ pin, key, rtl, grows }) => {
+        const mountRoomy = async () => {
+            const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinLeft: pin === 'start' ? 1 : 0, pinRight: pin === 'end' ? 1 : 0 }), data: makeRows(3, { columns: 4 }) }, { width: 800, height: 300 });
+            if (rtl) await withRtl(table);
+            return table;
+        };
+        const head = (table: Element) => headCell(table, key).getBoundingClientRect();
+        const anchored = (table: Element) => (grows > 0 ? head(table).left : head(table).right);
+
+        it('grows toward the end, the edge it started from staying put, by drag', async () => {
+            const table = await mountRoomy();
+            expect(viewportOf(table).scrollWidth).toBeLessThanOrEqual(viewportOf(table).clientWidth);
+            const [width, edge] = [head(table).width, anchored(table)];
+            await mouseDrag(onHandle(table, key, rtl), { dx: 40 * grows, dy: 0 });
+            await settle(table);
+            expect(head(table).width).toBe(width + 40);
+            expect(anchored(table)).toBeCloseTo(edge, 0);
+        });
+
+        it('and by the arrow key that points that way', async () => {
+            const table = await mountRoomy();
+            const [width, edge] = [Math.round(head(table).width), anchored(table)];
+            q(headCell(table, key), '[data-slot="data-table-resize-handle"]').focus();
+            await press(grows > 0 ? '{ArrowRight}' : '{ArrowLeft}');
+            await settle(table);
+            expect(Math.round(head(table).width)).toBe(width + 10);
+            expect(anchored(table)).toBeCloseTo(edge, 0);
         });
     });
 

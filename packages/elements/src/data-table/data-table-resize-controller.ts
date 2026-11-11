@@ -42,11 +42,23 @@ const px = (n: number): string => `${n}px`;
 
 /**
  * Which way the handle moves the column's width: `1` when dragging it toward the physical right widens the column. The handle
- * sits on the inline-end edge, so an unpinned column widens that way (left in rtl). A column pinned to the end (`pin: 'right'`,
- * a logical pin like the start one) is anchored at that edge and grows toward the start, which flips it; one pinned to the
- * start grows toward the end like an unpinned one.
+ * sits on the inline-end edge, so a column widens that way (left in rtl). The exception is a column pinned to the end that is
+ * stuck: its end edge sits at the scroller's end edge, where `position: sticky` holds it, so the edge cannot move and the column
+ * grows toward the start instead. A pinned column in a table that does not overflow is at its natural position, nothing holds
+ * it, and it grows toward the end like any other (`stuck` is read from the geometry, see `isStuck`).
  */
-export const resizeSign = (column: { _pin?: 'left' | 'right' | undefined }, rtl: boolean): number => (rtl ? -1 : 1) * (column._pin === 'right' ? -1 : 1);
+export const resizeSign = (column: { _pin?: 'left' | 'right' | undefined }, rtl: boolean, stuck: boolean): number =>
+    (rtl ? -1 : 1) * (stuck && column._pin === 'right' ? -1 : 1);
+
+/**
+ * A pinned column is stuck when the table overflows its scroller: the table ends beyond the scroller's edge, so the column's
+ * natural place is past it and `position: sticky` holds it at the edge. Without overflow nothing holds it. (Reading its own
+ * edge against the scroller's would say the same, but a scrollbar and the browser's scroll-into-view on a focused handle make
+ * that read unreliable at key time.)
+ */
+export function isStuck(column: { _pin?: 'left' | 'right' | undefined }, viewport: Element | null): boolean {
+    return !!column._pin && !!viewport && viewport.scrollWidth > viewport.clientWidth + 1;
+}
 
 /**
  * Column resize: a pointer drag on the head's handle (mouse, pen and touch share one path, with pointer capture), a
@@ -138,7 +150,7 @@ export class ResizeController<T> {
             startY: event.clientY,
             startWidth,
             floor: columnMinWidthPx(column, this.rootFontPx()),
-            sign: resizeSign(column, direction === 'rtl'),
+            sign: resizeSign(column, direction === 'rtl', isStuck(column, this.viewport())),
             oldWidth: this.declaredWidth(key, column),
             original: table.style.getPropertyValue(name),
             wasAuto: column._width === 'auto',
@@ -293,7 +305,7 @@ export class ResizeController<T> {
         const floor = columnMinWidthPx(found.column, this.rootFontPx());
         const current = Math.round(handle.closest(HEAD)?.getBoundingClientRect().width ?? floor);
         let next: number;
-        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = current + (event.key === 'ArrowRight' ? 1 : -1) * resizeSign(found.column, rtl) * step;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = current + (event.key === 'ArrowRight' ? 1 : -1) * resizeSign(found.column, rtl, isStuck(found.column, this.viewport())) * step;
         else if (event.key === 'Home') next = floor;
         else if (event.key === 'Enter') {
             event.preventDefault();

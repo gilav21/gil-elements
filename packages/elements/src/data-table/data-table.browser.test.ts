@@ -616,6 +616,34 @@ describe('ge-data-table styles and lifecycle', () => {
         }
     });
 
+    it('tells the locale subscribers when the language changes under it, and a locale that names nothing follows the page', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const placeholder = (table: Element) => q(table, '[data-slot="data-table-filter"] ge-input').getAttribute('placeholder');
+        const lang = document.documentElement.lang;
+        const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+        try {
+            const table = await mountTable({ locale: 'de', data: [] });
+            const seen: string[] = [];
+            table.topics.on('locale', () => seen.push(table.resolvedLocale.code));
+            registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+            await settle(table);
+            expect(seen).toEqual(['de']);
+            // `xx` is no dictionary: it follows the page language, a change of which reaches the subscribers too
+            const follower = await mountTable({ locale: 'xx', data: [] });
+            const heard: string[] = [];
+            follower.topics.on('locale', () => heard.push(follower.resolvedLocale.code));
+            expect(placeholder(follower)).toBe(DATA_TABLE_LOCALES.en.filterPlaceholder);
+            document.documentElement.lang = 'de';
+            await tick();
+            await settle(follower);
+            expect(placeholder(follower)).toBe('Filtern...');
+            expect(heard).toEqual(['de']);
+        } finally {
+            document.documentElement.lang = lang;
+            delete DATA_TABLE_LOCALES['de'];
+        }
+    });
+
     it.each(['light', 'dark'])('passes axe in %s mode', async (mode) => {
         useTheme(mode);
         const table = await mountTable({ columns: [{ ...COLUMNS[0]!, footer: 'Total' }, COLUMNS[1]!], enableRowSelection: true });

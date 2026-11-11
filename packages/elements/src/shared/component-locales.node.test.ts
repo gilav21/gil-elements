@@ -71,6 +71,10 @@ describe('the resolvers', () => {
         expect(lookupLocale({ 'pt-br': 'BR', pt: 'PT' }, 'pt_BR')).toBe('BR');
         expect(lookupLocale({ 'pt-br': 'BR', pt: 'PT' }, 'PT_pt')).toBe('PT');
         expect(lookupLocale({ 'zh-cn': 'CN', zh: 'ZH' }, 'zh_TW')).toBe('ZH');
+        // prefixes are tried longest first: zh-Hant-TW finds zh-hant before zh
+        expect(lookupLocale({ 'zh-hant': 'HANT', zh: 'ZH' }, 'zh-Hant-TW')).toBe('HANT');
+        expect(lookupLocale({ zh: 'ZH' }, 'zh-Hant-TW')).toBe('ZH');
+        expect(lookupLocale({ zh: 'ZH' }, 'xx-Hant-TW')).toBeUndefined();
     });
 
     it('ignore case and region in an id, and never answer with an inherited member', () => {

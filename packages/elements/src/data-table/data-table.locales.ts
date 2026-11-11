@@ -241,19 +241,28 @@ export const dataTableLocaleVersion = (): number => registryVersion;
 
 /**
  * Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively, whole (`pt-br`) before its
- * language (`pt`). `__proto__` is not an id: assigning it would replace the table's prototype.
+ * shorter prefixes (`pt`). It is stored as given: English, as it is when the dictionary is resolved, fills what it omits.
+ * `__proto__` is not an id (assigning it would replace the table's prototype): it is ignored, with a warning.
  */
 export function registerDataTableLocale(code: string, dict: Partial<DataTableLocale>): void {
-    if (code.toLowerCase() === '__proto__') return;
+    if (code.toLowerCase() === '__proto__') {
+        console.warn(`[ge-data-table] registerDataTableLocale: '${code}' is not a usable language id and was ignored.`);
+        return;
+    }
     const id = code.toLowerCase().replaceAll('_', '-');
-    DATA_TABLE_LOCALES[id] = withFallback(DATA_TABLE_LOCALES.en, { ...dict, code: dict.code ?? code } as DataTableLocale);
+    const own = { ...dict, code: dict.code ?? code } as DataTableLocale;
+    // English is what the others are filled from, so it is always whole: its own gaps come from the built-in one.
+    DATA_TABLE_LOCALES[id] = id === 'en' ? withFallback(en, own) : own;
     registryVersion++;
     for (const listener of [...registryListeners]) listener();
 }
 
-/** An object is used as it is (English fills the gaps); an id is looked up, region first; anything else follows the page's `lang`, then English. */
-export function resolveDataTableLocale(input?: string | DataTableLocale | null): DataTableLocale {
-    return pickLocale(DATA_TABLE_LOCALES, input);
+/**
+ * An object is used as it is, an id is looked up (the whole id before its prefixes), anything else follows the page's `lang`
+ * (`pageLang`: the table's own document's), then English. The registry's current English fills what the dictionary omits.
+ */
+export function resolveDataTableLocale(input?: string | DataTableLocale | null, pageLang?: string): DataTableLocale {
+    return pickLocale(DATA_TABLE_LOCALES, input, pageLang);
 }
 
 /** The advanced-filter labels of a locale, English for any it omits (a partial dictionary stays usable). */
@@ -269,5 +278,5 @@ export function filterBuilderLabels(locale: DataTableLocale): FilterBuilderLabel
  * `undefined` in the range readout.
  */
 export function withEnglishFallback(locale: DataTableLocale): DataTableLocale {
-    return withFallback(en, locale);
+    return withFallback(DATA_TABLE_LOCALES.en, locale);
 }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     DATA_TABLE_LOCALES,
     dataTableLocaleVersion,
@@ -15,6 +15,8 @@ const en = DATA_TABLE_LOCALES.en;
 const de: DataTableLocale = { ...en, code: 'de', filterPlaceholder: 'Filtern...' };
 
 afterEach(() => {
+    DATA_TABLE_LOCALES.en = en;
+    vi.restoreAllMocks();
     delete DATA_TABLE_LOCALES['de'];
     delete DATA_TABLE_LOCALES['he'];
     for (const id of ['pt', 'pt-br', 'zh-tw', 'zh-cn']) delete DATA_TABLE_LOCALES[id];
@@ -120,6 +122,32 @@ describe('data-table locales', () => {
         expect(dataTableLocaleVersion()).toBe(before);
         registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
         expect(dataTableLocaleVersion()).toBe(before + 1);
+    });
+
+    it('fills a registered dictionary from the English there is when it is resolved, not when it was registered', () => {
+        registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+        expect(resolveDataTableLocale('de').noResultsLabel).toBe(en.noResultsLabel);
+        registerDataTableLocale('en', { noResultsLabel: 'Nothing here' });
+        expect(resolveDataTableLocale('de').noResultsLabel).toBe('Nothing here');
+        expect(resolveDataTableLocale('de').filterPlaceholder).toBe('Filtern...');
+        expect(withEnglishFallback({ code: 'xx' } as DataTableLocale).noResultsLabel).toBe('Nothing here');
+        // the overridden English is itself whole
+        expect(resolveDataTableLocale('en').filterPlaceholder).toBe(en.filterPlaceholder);
+    });
+
+    it('takes the page language it is given, the global document only by default', () => {
+        registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+        expect(resolveDataTableLocale('xx', 'de').filterPlaceholder).toBe('Filtern...');
+        expect(resolveDataTableLocale(undefined, 'de-AT').filterPlaceholder).toBe('Filtern...');
+        expect(resolveDataTableLocale('xx', 'ja')).toBe(en);
+        expect(resolveDataTableLocale('de', 'ja').filterPlaceholder).toBe('Filtern...');
+    });
+
+    it('warns once per ignored id', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        registerDataTableLocale('__proto__', {});
+        expect(warn).toHaveBeenCalledOnce();
+        expect(String(warn.mock.calls[0]![0])).toContain('__proto__');
     });
 
     it('interpolates {column} and leaves unknown names', () => {
