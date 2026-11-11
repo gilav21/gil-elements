@@ -222,9 +222,6 @@ describe('virtual variable heights, detail rows and a column resize', () => {
 // ---- 3. grouped rows + local paging + keyboard + collapse ----------------------------------------------------------
 
 describe('grouped rows, local paging, the keyboard and collapsing', () => {
-    const mountGrouped = (extra: Record<string, unknown> = {}): Promise<Table> =>
-        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(12, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false, ...extra }, {}, { width: 600, height: 520 });
-
     it('ArrowDown crosses a group header and Ctrl+End is the last drawn row while the last group is collapsed', async () => {
         const table = await mountGrouped();
         expect(bodyRows(table)).toHaveLength(12);
@@ -280,12 +277,24 @@ describe('grouped rows, local paging, the keyboard and collapsing', () => {
     });
 });
 
-describe('a tree: focus follows its row, and goes to the ancestor of a closed node', () => {
-    const mountTreeKeys = (extra: Record<string, unknown> = {}): Promise<Table> =>
-        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false, ...extra }, {}, { width: 600, height: 500 });
+// ---- focus: following its row, dropping it, waiting, detaching ------------------------------------------------------------
 
+const mountFocusTree = (extra: Record<string, unknown> = {}): Promise<Table> =>
+    mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false, ...extra }, {}, { width: 600, height: 500 });
+const mountGrouped = (extra: Record<string, unknown> = {}): Promise<Table> =>
+    mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(12, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false, ...extra }, {}, { width: 600, height: 520 });
+/** Six rows spread over `groups` groups. */
+const mountSixRows = (groups: number, extra: Record<string, unknown> = {}): Promise<Table> =>
+    mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(6, { columns: 3, groups }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false, ...extra }, {}, { width: 600, height: 500 });
+const mountGroupsOfSize = (rows: number, groups: number, extra: Record<string, unknown> = {}): Promise<Table> =>
+    mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(rows, { columns: 3, groups }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 1000 }, showToolbar: false, ...extra }, {}, { width: 600, height: 400 });
+// A JS consumer's `getRowId` may answer with numbers; the DOM carries them as strings.
+interface Numbered { id: number; name: string; group?: string; children?: Numbered[] }
+const numberedColumns: ColumnDef<Numbered>[] = [{ accessorKey: 'name', header: 'Name', width: '200px' }];
+
+describe('focus follows its row in a tree', () => {
     it('closing the node of the focused child moves the focus to the node, in the same column', async () => {
-        const table = await mountTreeKeys();
+        const table = await mountFocusTree();
         table.focusCell(2, 'c1'); // r0 (0), r0-c0 (1), r0-c1 (2)
         await settle(table);
         table.provider('expansion')!.collapseSubRow(table.data[0]!);
@@ -298,7 +307,7 @@ describe('a tree: focus follows its row, and goes to the ancestor of a closed no
     });
 
     it('opening a node above the focused row moves the roving cell along with its row, not with its position', async () => {
-        const table = await mountTreeKeys({ subRowDefaultExpanded: false });
+        const table = await mountFocusTree({ subRowDefaultExpanded: false });
         table.focusCell(1, 'c0'); // r1, the second root
         await settle(table);
         expect(cellAt(table, 1, 'c0')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id')).toBe('r1');
@@ -311,7 +320,7 @@ describe('a tree: focus follows its row, and goes to the ancestor of a closed no
     });
 
     it('ArrowLeft on a node closes it and ArrowRight opens it again, the focus staying on the node', async () => {
-        const table = await mountTreeKeys();
+        const table = await mountFocusTree();
         table.focusCell(0, 'c0');
         await settle(table);
         await press('{ArrowLeft}');
@@ -323,16 +332,9 @@ describe('a tree: focus follows its row, and goes to the ancestor of a closed no
         expect(bodyRows(table)).toHaveLength(12);
         expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c0' });
     });
-});
-
-describe('focus follows its row: the edges', () => {
-    const mountGrouped = (extra: Record<string, unknown> = {}): Promise<Table> =>
-        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(12, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false, ...extra }, {}, { width: 600, height: 520 });
-    const mountTreeEdges = (extra: Record<string, unknown> = {}): Promise<Table> =>
-        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false, ...extra }, {}, { width: 600, height: 500 });
 
     it('a column hidden in the same update as the toggle is left for its neighbour, as in any other update', async () => {
-        const table = await mountTreeEdges();
+        const table = await mountFocusTree();
         table.focusCell(2, 'c1');
         await settle(table);
         table.provider('expansion')!.collapseSubRow(table.data[0]!);
@@ -344,32 +346,74 @@ describe('focus follows its row: the edges', () => {
         expect(cellAt(table, 0, table.focusedCell!.columnKey)).toBe(document.activeElement);
     });
 
-    it('an empty list after the toggle (a page loading) keeps the focus waiting, and it is there when the rows come back', async () => {
-        const table = await mountTreeEdges();
-        const rows = table.data;
-        table.focusCell(2, 'c0');
+    it('a row that is not drawn for a reason other than a collapsed group (a filter in the same tick) leaves the roving cell clamped, not cleared', async () => {
+        const table = await mountFocusTree();
+        table.focusCell(5, 'c0'); // r0 r0-c0 r0-c1 r1 r1-c0 r1-c1
         await settle(table);
-        table.provider('expansion')!.collapseSubRow(rows[0]!);
-        table.data = [];
-        await settle(table);
-        expect(table.focusedCell).not.toBeNull();
-        table.data = rows;
+        table.provider('expansion')!.collapseSubRow(table.data[1]!);
+        table.data = table.data.slice(3); // only r3 and its children remain, r1 and its descendants are gone with no ancestor drawn
         await settle(table);
         await frames(2);
-        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c0' }); // the child is closed away: its node holds the focus
-        expect(document.activeElement).toBe(cellAt(table, 0, 'c0'));
+        const rows = bodyRows(table).length;
+        expect(rows).toBeGreaterThan(0);
+        expect(table.focusedCell).toEqual({ rowIndex: rows - 1, columnKey: 'c0' });
+        expect(cellStops(table)).toEqual([cellAt(table, rows - 1, 'c0')]);
     });
 
-    it('a toggle while nothing is focused is not applied to the row focused after it', async () => {
-        const table = await mountTreeEdges();
-        table.provider('expansion')!.collapseSubRow(table.data[0]!);
+    it('numeric row ids: opening a node above the focused row keeps the roving cell on its row, and a closed node hands it to the node', async () => {
+        const data: Numbered[] = Array.from({ length: 4 }, (_, i) => ({ id: i * 10, name: `n${i}`, children: [{ id: i * 10 + 1, name: `c${i}a` }, { id: i * 10 + 2, name: `c${i}b` }] }));
+        const table = await mountTable<Numbered>({ columns: numberedColumns, data, getRowId: (row: Numbered) => row.id, enableSubRows: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
+        table.focusCell(1, 'name'); // 0, 10, 20, 30: the second root
         await settle(table);
-        table.focusCell(4, 'c1');
-        await settle(table);
-        table.requestUpdate();
+        expect(cellAt(table as never, 1, 'name')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id')).toBe('10');
+        table.provider('expansion')!.expandSubRow(data[0]!); // two rows slide in above it
         await settle(table);
         await frames(2);
-        expect(table.focusedCell).toEqual({ rowIndex: 4, columnKey: 'c1' });
+        expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'name' });
+        // a child of an open node, then its node closed: the node (found through the tree index) holds the focus
+        table.provider('expansion')!.expandSubRow(data[1]!);
+        await settle(table);
+        table.focusCell(5, 'name'); // 0, 1, 2, 10, 11, 12: the second child of the second root
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(data[1]!);
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'name' });
+        expect(cellAt(table as never, 3, 'name')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id')).toBe('10');
+    });
+});
+
+describe('focus and a collapsed group', () => {
+    it('collapsing the only open group leaves no data rows, not a loading table: the focus goes to that group\'s toggle', async () => {
+        const table = await mountSixRows(1);
+        table.focusCell(1, 'c1');
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g0');
+        await settle(table);
+        await frames(3);
+        expect(bodyRows(table)).toHaveLength(0);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
+        // and the table is not left waiting on a note: opening the group again and focusing a cell works as ever
+        table.provider('expansion')!.toggleGroup('g0');
+        await settle(table);
+        table.focusCell(2, 'c0');
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'c0' });
+    });
+
+    it('collapsing every group at once lands the focus on a group toggle, not on the page', async () => {
+        const table = await mountSixRows(3);
+        table.focusCell(3, 'c0');
+        await settle(table);
+        table.provider('expansion')!.collapseAllGroups();
+        await settle(table);
+        await frames(3);
+        expect(bodyRows(table)).toHaveLength(0);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).not.toBe(document.body);
+        expect((document.activeElement as HTMLElement).matches('[data-kind="group"] [data-toggle]')).toBe(true);
+        expect((document.activeElement as HTMLElement).closest('ge-data-table')).toBe(table);
     });
 
     it('a grouped, virtual table has no groups: a retained focused row keeps the focus when a "group" is toggled', async () => {
@@ -432,39 +476,233 @@ describe('focus follows its row: the edges', () => {
         expect(cellStops(table)).toEqual([cellAt(table, 1, 'c1')]);
     });
 
-    it('a detail toggle in a flat table does not search the rows for the focused one (a constant number of id reads)', async () => {
-        const reads = { count: 0 };
-        const mount = (focus: boolean) => async (): Promise<number> => {
-            const table = await mountTable<SampleRow>(
-                {
-                    columns: makeColumns(3),
-                    data: makeRows(3000, { columns: 3 }),
-                    getRowId: (row: SampleRow) => (reads.count++, row.id),
-                    enableRowExpansion: true,
-                    renderDetail: () => html`<span>detail</span>`,
-                    showPagination: false,
-                    showToolbar: false,
-                },
-                {},
-                { width: 600, height: 400 },
-            );
-            if (focus) table.focusCell(2500, 'c0'); // deep: a search from the top would read every id up to it
-            await rest(table);
-            reads.count = 0;
-            table.provider('expansion')!.toggleRow(table.data[2]!);
-            await rest(table);
-            return reads.count;
-        };
-        const unfocused = await mount(false)();
-        const focused = await mount(true)();
-        // everything a toggle costs is in `unfocused`; keeping the focus on its row adds a few reads, not a scan of the rows
-        // Calibrated the same way: the current code adds 1 read over an unfocused toggle (measured 15002 against 15001), a search for the
-        // focused row from the top (row 2500) adds about 2500. The bound, a tenth of the rows (300), is clear of both whatever the call pattern.
-        expect(focused - unfocused).toBeLessThan(0.1 * 3000);
+    it('a button of the consumer that collapses the group keeps its focus: only focus on the dropped cell is moved', async () => {
+        const table = await mountGrouped({ showToolbar: true });
+        const button = Object.assign(document.createElement('button'), { textContent: 'collapse', slot: 'toolbar-start' });
+        table.append(button);
+        await settle(table);
+        table.focusCell(1, 'c0');
+        await settle(table);
+        button.focus();
+        expect(document.activeElement).toBe(button);
+        table.provider('expansion')!.toggleGroup('g0');
+        await settle(table);
+        await frames(3);
+        expect(bodyRows(table)).toHaveLength(8);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).toBe(button);
+    });
+
+    it('the toggle that takes the focus does not scroll the viewport to its header, which is above it', async () => {
+        const table = await mountGroupsOfSize(120, 3); // 40 rows per group, all drawn
+        table.focusCell(30, 'c0'); // far down g0: its header is scrolled out above
+        await rest(table);
+        const view = viewportOf(table);
+        const scrollTop = view.scrollTop;
+        expect(scrollTop).toBeGreaterThan(500);
+        table.provider('expansion')!.toggleGroup('g0');
+        await rest(table);
+        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
+        expect(Math.abs(view.scrollTop - scrollTop)).toBeLessThan(2);
+    });
+
+    it('a deferred drop whose focus the user moved meanwhile, with a column hidden, changes neither the focus nor the column the next focus remembers', async () => {
+        const table = await mountSixRows(3);
+        const button = Object.assign(document.createElement('button'), { textContent: 'other', slot: 'toolbar-start' });
+        table.showToolbar = true;
+        table.append(button);
+        await settle(table);
+        table.focusCell(1, 'c2');
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g0'); // (1, c2) is in g0: the drop would take the focus to its toggle after the render
+        table.columnVisibility = { c2: false };
+        button.focus(); // the user is elsewhere before it renders
+        await settle(table);
+        await frames(3);
+        expect(document.activeElement).toBe(button);
+        expect(table.focusedCell).toBeNull();
+        // the column comes back and the grid is entered at its first cell, as with any table that had no focus
+        table.columnVisibility = {};
+        await settle(table);
+        table.focusCell(0, 'c2');
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c2' });
+    });
+
+    it('numeric row ids: collapsing the group of the focused row still hands the focus to its toggle', async () => {
+        const data: Numbered[] = Array.from({ length: 6 }, (_, i) => ({ id: i + 100, name: `n${i}`, group: `g${i % 2}` }));
+        const table = await mountTable<Numbered>({ columns: numberedColumns, data, getRowId: (row: Numbered) => row.id, groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false }, {}, { width: 600, height: 500 });
+        table.focusCell(1, 'name');
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g0');
+        await settle(table);
+        await frames(3);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
     });
 });
 
-describe('focus follows its row: round 8', () => {
+describe('focus while the list is empty or loading', () => {
+    it('an empty list after the toggle (a page loading) keeps the focus waiting, and it is there when the rows come back', async () => {
+        const table = await mountFocusTree();
+        const rows = table.data;
+        table.focusCell(2, 'c0');
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[0]!);
+        table.data = [];
+        await settle(table);
+        expect(table.focusedCell).not.toBeNull();
+        table.data = rows;
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c0' }); // the child is closed away: its node holds the focus
+        expect(document.activeElement).toBe(cellAt(table, 0, 'c0'));
+    });
+
+    it('a toggle while nothing is focused is not applied to the row focused after it', async () => {
+        const table = await mountFocusTree();
+        table.provider('expansion')!.collapseSubRow(table.data[0]!);
+        await settle(table);
+        table.focusCell(4, 'c1');
+        await settle(table);
+        table.requestUpdate();
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 4, columnKey: 'c1' });
+    });
+
+    it('no data at all (a loading table) after a toggle is not that: the focus waits for rows', async () => {
+        const table = await mountSixRows(3);
+        const rows = table.data;
+        table.focusCell(1, 'c0');
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g1'); // a group the focused row is not in
+        table.data = [];
+        await settle(table);
+        expect(table.focusedCell).not.toBeNull();
+        table.data = rows;
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'c0' });
+        expect(document.activeElement).toBe(cellAt(table, 1, 'c0'));
+    });
+
+    it('a second toggle while the list is empty does not discard the row the first one noted', async () => {
+        const table = await mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
+        const rows = table.data;
+        table.focusCell(2, 'c0'); // r0 r0-c0 r0-c1: a child of the first node
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[0]!); // notes the row of (2, c0)
+        table.data = [];
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[1]!); // a second toggle with nothing drawn: no row to note, the first note stays
+        await settle(table);
+        table.data = rows;
+        await settle(table);
+        await frames(2);
+        // the row followed by its id: its node r0 is what is left of it
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c0' });
+    });
+
+    it('a row noted before an empty list is not a claim on the focus later: where the user clicked meanwhile stays theirs', async () => {
+        const table = await mountGroupsOfSize(6, 3);
+        const rows = table.data;
+        table.focusCell(1, 'c0'); // a row of g0, with the DOM focus on its cell
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g1'); // a group the row is not in: the note waits through the empty list
+        table.provider('expansion')!.toggleGroup('g0'); // and the row's own group is closed too
+        table.data = [];
+        await settle(table);
+        (document.activeElement as HTMLElement | null)?.blur(); // a click on the page background: the focus is on the body
+        expect(document.activeElement).toBe(document.body);
+        table.data = rows;
+        await settle(table);
+        await frames(3);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).toBe(document.body); // nothing was pulled onto a toggle
+    });
+
+    it('a row recorded for one cell is not applied to another cell focused while the list was empty', async () => {
+        const table = await mountFocusTree();
+        const rows = table.data;
+        table.focusCell(2, 'c0');
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[0]!); // records the row of (2, c0)...
+        table.data = []; // ...and the list is empty for a render: the focus waits
+        await settle(table);
+        table.data = rows;
+        table.focusCell(5, 'c1'); // another cell takes the focus before the rows are drawn again
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 5, columnKey: 'c1' });
+    });
+});
+
+describe('focus across a detach and an attach', () => {
+    it('a table removed before the frame that finishes a dropped focus throws nothing, and what was queued for that frame is not run by the next attach', async () => {
+        const errors: string[] = [];
+        const onError = (event: ErrorEvent): void => void errors.push(event.message);
+        window.addEventListener('error', onError);
+        try {
+            const table = await mountGroupsOfSize(6, 3);
+            const frame = table.parentElement!;
+            table.focusCell(1, 'c0');
+            await settle(table);
+            let stale = false;
+            let fresh = false;
+            table.provider('expansion')!.toggleGroup('g0');
+            await table.updateComplete; // rendered: the task that gives the focus to the toggle is queued for the frame
+            table.afterRender(() => (stale = true)); // and one after it
+            table.remove(); // the providers are gone before the frame
+            await frames(3);
+            frame.append(table); // attached again
+            table.afterRender(() => (fresh = true)); // queued in this attach
+            await settle(table);
+            await frames(3);
+            expect(errors).toEqual([]);
+            expect(stale).toBe(false); // the first attach's queue went with it
+            expect(fresh).toBe(true);
+            // the dropped focus was the first attach's: it is not given to a toggle by the second
+            expect((document.activeElement as HTMLElement | null)?.matches('[data-toggle]')).toBeFalsy();
+        } finally {
+            window.removeEventListener('error', onError);
+        }
+    });
+
+    it('any task queued for the next frame is dropped with the attach that queued it, not run against the providers of the next one', async () => {
+        const table = await mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(300, { columns: 3 }), enableVirtualScroll: true, virtualRowHeight: 40, showPagination: false, showToolbar: false }, {}, { width: 600, height: 400 });
+        const frame = table.parentElement!;
+        const ran: string[] = [];
+        table.focusCell(250, 'c0'); // not drawn yet: finishing the focus is queued for after the render
+        table.afterRender(() => ran.push('first attach'));
+        table.remove();
+        frame.append(table);
+        table.afterRender(() => ran.push('second attach'));
+        await settle(table);
+        await frames(3);
+        expect(ran).toEqual(['second attach']);
+    });
+
+    it('a row noted before a detach is not followed after the attach (the table keeps no pending move across it)', async () => {
+        const table = await mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
+        const rows = table.data;
+        const frame = table.parentElement!;
+        table.focusCell(2, 'c0'); // r0 r0-c0 r0-c1: a child of the first node
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[0]!); // notes the row...
+        table.data = []; // ...and the empty list keeps it waiting
+        await settle(table);
+        table.remove();
+        table.data = rows;
+        frame.append(table);
+        await settle(table);
+        await frames(2);
+        // not moved up to the node r0: its ancestors were what the stale note would have followed; the cell is only clamped
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'c0' });
+    });
+});
+
+describe('focus in a shadow root', () => {
     it('a table in a consumer\'s shadow root leaves focus the user put on an outside input alone when the dropped focus is finished', async () => {
         const host = document.createElement('div');
         document.body.append(host);
@@ -519,270 +757,66 @@ describe('focus follows its row: round 8', () => {
     });
 });
 
-describe('focus follows its row: round 7', () => {
-    // A JS consumer's `getRowId` may answer with numbers; the DOM carries them as strings.
-    interface Numbered { id: number; name: string; group?: string; children?: Numbered[] }
-    const columns: ColumnDef<Numbered>[] = [{ accessorKey: 'name', header: 'Name', width: '200px' }];
-
-    it('numeric row ids: opening a node above the focused row keeps the roving cell on its row, and a closed node hands it to the node', async () => {
-        const data: Numbered[] = Array.from({ length: 4 }, (_, i) => ({ id: i * 10, name: `n${i}`, children: [{ id: i * 10 + 1, name: `c${i}a` }, { id: i * 10 + 2, name: `c${i}b` }] }));
-        const table = await mountTable<Numbered>({ columns, data, getRowId: (row: Numbered) => row.id, enableSubRows: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
-        table.focusCell(1, 'name'); // 0, 10, 20, 30: the second root
-        await settle(table);
-        expect(cellAt(table as never, 1, 'name')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id')).toBe('10');
-        table.provider('expansion')!.expandSubRow(data[0]!); // two rows slide in above it
-        await settle(table);
-        await frames(2);
-        expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'name' });
-        // a child of an open node, then its node closed: the node (found through the tree index) holds the focus
-        table.provider('expansion')!.expandSubRow(data[1]!);
-        await settle(table);
-        table.focusCell(5, 'name'); // 0, 1, 2, 10, 11, 12: the second child of the second root
-        await settle(table);
-        table.provider('expansion')!.collapseSubRow(data[1]!);
-        await settle(table);
-        await frames(2);
-        expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'name' });
-        expect(cellAt(table as never, 3, 'name')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id')).toBe('10');
-    });
-
-    it('numeric row ids: collapsing the group of the focused row still hands the focus to its toggle', async () => {
-        const data: Numbered[] = Array.from({ length: 6 }, (_, i) => ({ id: i + 100, name: `n${i}`, group: `g${i % 2}` }));
-        const table = await mountTable<Numbered>({ columns, data, getRowId: (row: Numbered) => row.id, groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false }, {}, { width: 600, height: 500 });
-        table.focusCell(1, 'name');
-        await settle(table);
-        table.provider('expansion')!.toggleGroup('g0');
-        await settle(table);
-        await frames(3);
-        expect(table.focusedCell).toBeNull();
-        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
-    });
-});
-
-describe('focus follows its row: round 6', () => {
-    const mountGroups = (rows: number, groups: number, extra: Record<string, unknown> = {}): Promise<Table> =>
-        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(rows, { columns: 3, groups }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 1000 }, showToolbar: false, ...extra }, {}, { width: 600, height: 400 });
-
-    it('a table removed before the frame that finishes a dropped focus throws nothing, and the tasks queued after it still run', async () => {
-        const errors: string[] = [];
-        const onError = (event: ErrorEvent): void => void errors.push(event.message);
-        window.addEventListener('error', onError);
+describe('focus in a closed shadow root', () => {
+    it('a table in a closed shadow root does not take its own focus for lost when rows are added around it', async () => {
+        const host = document.createElement('div');
+        document.body.append(host);
+        const shadow = host.attachShadow({ mode: 'closed' }); // `host.shadowRoot` is null: only this reference reaches inside
+        const frame = document.createElement('div');
+        frame.style.cssText = 'width:600px;height:400px;';
+        shadow.append(frame);
+        const table = document.createElement('ge-data-table') as Table;
+        Object.assign(table, { columns: makeColumns(3), data: makeRows(6, { columns: 3 }), showToolbar: false, showPagination: false });
+        frame.append(table);
         try {
-            const table = await mountGroups(6, 3);
-            const frame = table.parentElement!;
+            await settle(table);
             table.focusCell(1, 'c0');
             await settle(table);
-            let ran = false;
-            table.provider('expansion')!.toggleGroup('g0');
-            await table.updateComplete; // rendered: the task that gives the focus to the toggle is queued for the frame
-            table.afterRender(() => (ran = true)); // and one after it
-            table.remove(); // the providers are gone before the frame
-            await frames(3);
-            frame.append(table); // attached again: the frame runs the queue, the old task is not for this attach
+            const cell = table.cellAt(1, 'c0')!;
+            expect(shadow.activeElement).toBe(cell);
+            let refocused = 0;
+            cell.focus = () => void refocused++; // what the observer does when it thinks the focus is lost
+            table.data = [...table.data, { id: 'extra', name: 'extra', age: 1, c0: 'x', c1: 'x', c2: 'x' }]; // a row streams in: a mutation of the viewport
             await settle(table);
             await frames(3);
-            expect(errors).toEqual([]);
-            expect(ran).toBe(true);
-            // the dropped focus was the first attach's: it is not given to a toggle by the second
-            expect((document.activeElement as HTMLElement | null)?.matches('[data-toggle]')).toBeFalsy();
+            expect(shadow.activeElement).not.toBeNull();
+            expect(refocused).toBe(0);
         } finally {
-            window.removeEventListener('error', onError);
+            host.remove();
         }
     });
-
-    it('a row noted before an empty list is not a claim on the focus later: where the user clicked meanwhile stays theirs', async () => {
-        const table = await mountGroups(6, 3);
-        const rows = table.data;
-        table.focusCell(1, 'c0'); // a row of g0, with the DOM focus on its cell
-        await settle(table);
-        table.provider('expansion')!.toggleGroup('g1'); // a group the row is not in: the note waits through the empty list
-        table.provider('expansion')!.toggleGroup('g0'); // and the row's own group is closed too
-        table.data = [];
-        await settle(table);
-        (document.activeElement as HTMLElement | null)?.blur(); // a click on the page background: the focus is on the body
-        expect(document.activeElement).toBe(document.body);
-        table.data = rows;
-        await settle(table);
-        await frames(3);
-        expect(table.focusedCell).toBeNull();
-        expect(document.activeElement).toBe(document.body); // nothing was pulled onto a toggle
-    });
-
-    it('the toggle that takes the focus does not scroll the viewport to its header, which is above it', async () => {
-        const table = await mountGroups(120, 3); // 40 rows per group, all drawn
-        table.focusCell(30, 'c0'); // far down g0: its header is scrolled out above
-        await rest(table);
-        const view = viewportOf(table);
-        const scrollTop = view.scrollTop;
-        expect(scrollTop).toBeGreaterThan(500);
-        table.provider('expansion')!.toggleGroup('g0');
-        await rest(table);
-        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
-        expect(Math.abs(view.scrollTop - scrollTop)).toBeLessThan(2);
-    });
 });
 
-describe('focus follows its row: round 4', () => {
-    const mountGroups = (groups: number, extra: Record<string, unknown> = {}): Promise<Table> =>
-        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(6, { columns: 3, groups }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false, ...extra }, {}, { width: 600, height: 500 });
-
-    it('collapsing the only open group leaves no data rows, not a loading table: the focus goes to that group\'s toggle', async () => {
-        const table = await mountGroups(1);
-        table.focusCell(1, 'c1');
-        await settle(table);
-        table.provider('expansion')!.toggleGroup('g0');
-        await settle(table);
-        await frames(3);
-        expect(bodyRows(table)).toHaveLength(0);
-        expect(table.focusedCell).toBeNull();
-        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
-        // and the table is not left waiting on a note: opening the group again and focusing a cell works as ever
-        table.provider('expansion')!.toggleGroup('g0');
-        await settle(table);
-        table.focusCell(2, 'c0');
-        await settle(table);
-        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'c0' });
-    });
-
-    it('collapsing every group at once lands the focus on a group toggle, not on the page', async () => {
-        const table = await mountGroups(3);
-        table.focusCell(3, 'c0');
-        await settle(table);
-        table.provider('expansion')!.collapseAllGroups();
-        await settle(table);
-        await frames(3);
-        expect(bodyRows(table)).toHaveLength(0);
-        expect(table.focusedCell).toBeNull();
-        expect(document.activeElement).not.toBe(document.body);
-        expect((document.activeElement as HTMLElement).matches('[data-kind="group"] [data-toggle]')).toBe(true);
-        expect((document.activeElement as HTMLElement).closest('ge-data-table')).toBe(table);
-    });
-
-    it('a deferred drop whose focus the user moved meanwhile, with a column hidden, changes neither the focus nor the column the next focus remembers', async () => {
-        const table = await mountGroups(3);
-        const button = Object.assign(document.createElement('button'), { textContent: 'other', slot: 'toolbar-start' });
-        table.showToolbar = true;
-        table.append(button);
-        await settle(table);
-        table.focusCell(1, 'c2');
-        await settle(table);
-        table.provider('expansion')!.toggleGroup('g0'); // (1, c2) is in g0: the drop would take the focus to its toggle after the render
-        table.columnVisibility = { c2: false };
-        button.focus(); // the user is elsewhere before it renders
-        await settle(table);
-        await frames(3);
-        expect(document.activeElement).toBe(button);
-        expect(table.focusedCell).toBeNull();
-        // the column comes back and the grid is entered at its first cell, as with any table that had no focus
-        table.columnVisibility = {};
-        await settle(table);
-        table.focusCell(0, 'c2');
-        await settle(table);
-        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c2' });
-    });
-
-    it('no data at all (a loading table) after a toggle is not that: the focus waits for rows', async () => {
-        const table = await mountGroups(3);
-        const rows = table.data;
-        table.focusCell(1, 'c0');
-        await settle(table);
-        table.provider('expansion')!.toggleGroup('g1'); // a group the focused row is not in
-        table.data = [];
-        await settle(table);
-        expect(table.focusedCell).not.toBeNull();
-        table.data = rows;
-        await settle(table);
-        await frames(2);
-        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'c0' });
-        expect(document.activeElement).toBe(cellAt(table, 1, 'c0'));
-    });
-
-    it('a second toggle while the list is empty does not discard the row the first one noted', async () => {
-        const table = await mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
-        const rows = table.data;
-        table.focusCell(2, 'c0'); // r0 r0-c0 r0-c1: a child of the first node
-        await settle(table);
-        table.provider('expansion')!.collapseSubRow(rows[0]!); // notes the row of (2, c0)
-        table.data = [];
-        await settle(table);
-        table.provider('expansion')!.collapseSubRow(rows[1]!); // a second toggle with nothing drawn: no row to note, the first note stays
-        await settle(table);
-        table.data = rows;
-        await settle(table);
-        await frames(2);
-        // the row followed by its id: its node r0 is what is left of it
-        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c0' });
-    });
-});
-
-describe('focus follows its row: round 2', () => {
-    it('a row noted before a detach is not followed after the attach (the table keeps no pending move across it)', async () => {
-        const table = await mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
-        const rows = table.data;
-        const frame = table.parentElement!;
-        table.focusCell(2, 'c0'); // r0 r0-c0 r0-c1: a child of the first node
-        await settle(table);
-        table.provider('expansion')!.collapseSubRow(rows[0]!); // notes the row...
-        table.data = []; // ...and the empty list keeps it waiting
-        await settle(table);
-        table.remove();
-        table.data = rows;
-        frame.append(table);
-        await settle(table);
-        await frames(2);
-        // not moved up to the node r0: its ancestors were what the stale note would have followed; the cell is only clamped
-        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'c0' });
-    });
-
-    const mountGrouped = (extra: Record<string, unknown> = {}): Promise<Table> =>
-        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(12, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, ...extra }, {}, { width: 600, height: 520 });
-    const mountTreeRound2 = (extra: Record<string, unknown> = {}): Promise<Table> =>
-        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false, ...extra }, {}, { width: 600, height: 500 });
-
-    it('a button of the consumer that collapses the group keeps its focus: only focus on the dropped cell is moved', async () => {
-        const table = await mountGrouped();
-        const button = Object.assign(document.createElement('button'), { textContent: 'collapse', slot: 'toolbar-start' });
-        table.append(button);
-        await settle(table);
-        table.focusCell(1, 'c0');
-        await settle(table);
-        button.focus();
-        expect(document.activeElement).toBe(button);
-        table.provider('expansion')!.toggleGroup('g0');
-        await settle(table);
-        await frames(3);
-        expect(bodyRows(table)).toHaveLength(8);
-        expect(table.focusedCell).toBeNull();
-        expect(document.activeElement).toBe(button);
-    });
-
-    it('a row that is not drawn for a reason other than a collapsed group (a filter in the same tick) leaves the roving cell clamped, not cleared', async () => {
-        const table = await mountTreeRound2();
-        table.focusCell(5, 'c0'); // r0 r0-c0 r0-c1 r1 r1-c0 r1-c1
-        await settle(table);
-        table.provider('expansion')!.collapseSubRow(table.data[1]!);
-        table.data = table.data.slice(3); // only r3 and its children remain, r1 and its descendants are gone with no ancestor drawn
-        await settle(table);
-        await frames(2);
-        const rows = bodyRows(table).length;
-        expect(rows).toBeGreaterThan(0);
-        expect(table.focusedCell).toEqual({ rowIndex: rows - 1, columnKey: 'c0' });
-        expect(cellStops(table)).toEqual([cellAt(table, rows - 1, 'c0')]);
-    });
-
-    it('a row recorded for one cell is not applied to another cell focused while the list was empty', async () => {
-        const table = await mountTreeRound2();
-        const rows = table.data;
-        table.focusCell(2, 'c0');
-        await settle(table);
-        table.provider('expansion')!.collapseSubRow(rows[0]!); // records the row of (2, c0)...
-        table.data = []; // ...and the list is empty for a render: the focus waits
-        await settle(table);
-        table.data = rows;
-        table.focusCell(5, 'c1'); // another cell takes the focus before the rows are drawn again
-        await settle(table);
-        await frames(2);
-        expect(table.focusedCell).toEqual({ rowIndex: 5, columnKey: 'c1' });
+describe('what following the row costs in id reads', () => {
+    it('a detail toggle in a flat table does not search the rows for the focused one (a constant number of id reads)', async () => {
+        const reads = { count: 0 };
+        const mount = (focus: boolean) => async (): Promise<number> => {
+            const table = await mountTable<SampleRow>(
+                {
+                    columns: makeColumns(3),
+                    data: makeRows(3000, { columns: 3 }),
+                    getRowId: (row: SampleRow) => (reads.count++, row.id),
+                    enableRowExpansion: true,
+                    renderDetail: () => html`<span>detail</span>`,
+                    showPagination: false,
+                    showToolbar: false,
+                },
+                {},
+                { width: 600, height: 400 },
+            );
+            if (focus) table.focusCell(2500, 'c0'); // deep: a search from the top would read every id up to it
+            await rest(table);
+            reads.count = 0;
+            table.provider('expansion')!.toggleRow(table.data[2]!);
+            await rest(table);
+            return reads.count;
+        };
+        const unfocused = await mount(false)();
+        const focused = await mount(true)();
+        // everything a toggle costs is in `unfocused`; keeping the focus on its row adds a few reads, not a scan of the rows
+        // Calibrated the same way: following the row adds 1 read over an unfocused toggle (measured 15002 against 15001), a search for the
+        // focused row from the top (row 2500) adds about 2500. The bound, a tenth of the rows (300), is clear of both whatever the call pattern.
+        expect(focused - unfocused).toBeLessThan(0.1 * 3000);
     });
 
     it('finding the row of a deep child under closed ancestors reads the ids a constant number of times, not once per ancestor', async () => {
@@ -806,12 +840,13 @@ describe('focus follows its row: round 2', () => {
         };
         const control = await mount(1500)(); // a row below the node: it moves up four places, the toggle reads every id once to find it
         const deep = await mount(4)();
-        // Calibrated on the current code and on a per-ancestor scan (the round-1 code): the single pass adds about n = 2000 reads over the
-        // control (measured 2009), a scan per ancestor adds about 4 n more (measured 8517 then). The bound, 2 n, passes the first with
-        // a factor two to spare and fails the second by a factor two, whatever the exact call pattern.
+        // Calibrated against a single pass over the rows and against a scan per ancestor: the single pass adds about n = 2000 reads over
+        // the control (measured 2009), a scan per ancestor adds about 4 n more (measured 8517). The bound, 2 n, passes the first with a
+        // factor two to spare and fails the second by a factor two, whatever the exact call pattern.
         expect(deep - control).toBeLessThan(2 * 2000);
     });
 });
+
 
 // ---- 4. rtl + pinned columns + virtual columns ---------------------------------------------------------------------
 

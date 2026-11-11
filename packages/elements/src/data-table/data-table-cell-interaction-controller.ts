@@ -29,8 +29,6 @@ export class CellInteractionController<T> {
     private observer: MutationObserver | null = null;
     /** The row that held the focus when a node or group was opened or closed: the render that follows follows it. */
     private rowAtExpansion: { at: CellAddress; id: string; hadFocus: boolean } | null = null;
-    /** Bumped by every attach and every detach, so it is odd while attached: a task queued in one state (the host runs it a frame later) is not run in another. */
-    private attachment = 0;
     private watched: Element | null = null;
     private teardown: (() => void)[] = [];
 
@@ -46,7 +44,6 @@ export class CellInteractionController<T> {
     };
 
     attach(): void {
-        this.attachment++;
         const { host } = this;
         const { root, disposables } = host;
         this.teardown = [
@@ -73,7 +70,6 @@ export class CellInteractionController<T> {
         this.observer?.disconnect();
         this.observer = this.watched = null;
         this.within = this.pointer = false;
-        this.attachment++;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
     }
 
@@ -182,10 +178,7 @@ export class CellInteractionController<T> {
     private dropFocus(hadFocus: boolean, group: string, at?: CellAddress): void {
         this.clear();
         if (!hadFocus) return;
-        const attachment = this.attachment;
         this.host.afterRender(() => {
-            // The host runs this a frame later: by then the table may have been detached (the providers are gone), or attached again.
-            if (attachment !== this.attachment) return;
             // Still nowhere: focus fell to the page with the cell, or is on the viewport; something else has it by now otherwise. Unlike the
             // observer below, focus on another part of the page is not nowhere: it is the user's, and is left alone.
             if (!this.onPage() && this.rootNode().activeElement !== this.host.root.querySelector(VIEWPORT)) return;
@@ -259,11 +252,13 @@ export class CellInteractionController<T> {
     }
 
     /**
-     * The element that has DOM focus, wherever it is: `document.activeElement` answers the outermost shadow host, so this goes down through
-     * the shadow roots. (The table's own `rootNode().activeElement` is null while focus is outside the shadow tree the table sits in.)
+     * The element that has DOM focus, wherever it is. A table in a shadow root asks that root first: it answers for a closed one too, where
+     * `document.activeElement` is only the host. Elsewhere (the table's own root has none: focus is outside it) the document's answer is
+     * followed down through the open shadow roots.
      */
     private deepActive(): Element | null {
-        let active = this.host.root.ownerDocument.activeElement;
+        const node = this.rootNode();
+        let active = (node instanceof ShadowRoot ? node.activeElement : null) ?? this.host.root.ownerDocument.activeElement;
         while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
         return active;
     }
