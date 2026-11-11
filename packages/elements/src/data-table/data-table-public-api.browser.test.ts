@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { mountTable } from './data-table-fixtures.js';
 import { KEY_PRIORITY, type CellAddress, type ClipboardResult, type GeDataTable, type HistoryResult, type StaleChange } from './index.js';
 import { KEY_PRIORITY as registry } from './data-table-registry.js';
 
@@ -10,6 +11,19 @@ describe('the types of the public methods', () => {
         type Methods = Pick<GeDataTable, 'undoEdit' | 'redoEdit' | 'copyAllToClipboard' | 'focusedCell'>;
         const check: { [K in keyof Methods]: unknown } = {} as Methods;
         expect([history.done, address, copied.status, typeof check]).toEqual([false, null, 'done', 'object']);
+    });
+});
+
+describe('the edit methods of the element with an old-shaped interaction provider', () => {
+    it('do not throw when the provider has no edit methods: startEditing answers false, the rest do nothing, the read-outs answer null', async () => {
+        const table = await mountTable();
+        table.provide('interaction', { focusedCell: () => null, cellRange: () => null, focusCell() {}, isCellSelected: () => false } as never);
+        expect(table.startEditing(table.data[0]!, 'name')).toBe(false);
+        expect(() => table.commitEdit()).not.toThrow();
+        expect(() => table.cancelEdit()).not.toThrow();
+        expect(table.editingCell).toBeNull();
+        expect(table.cellEditError).toBeNull();
+        expect(table.isEditingCell()).toBe(false);
     });
 });
 

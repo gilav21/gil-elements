@@ -619,7 +619,9 @@ export class CellInteractionController<T> {
         // the press ends: the capture of the pointer is part of the answer.)
         // A press with no claimant and no start cell (it began on a header, a handle, an overlay, a widget that keeps its focus) needs no cell at its
         // release: no hit test; only a touch tap may still focus what it pressed.
-        if (event.type === 'pointerup' && !press.claimedBy && !(press.bubbled && press.startCell)) {
+        // Nor does one that no healthy session would be offered at its release (none defines `onPointerUp`: the step-0 sessions): only `own` would matter.
+        const offered = press.bubbled && press.startCell && this.sessions.some((session) => !this.broken.has(session) && session.onPointerUp);
+        if (event.type === 'pointerup' && !press.claimedBy && !offered) {
             this.endPress(event.pointerId, press, event, false);
             if (event.pointerType === 'touch') this.tapFocus(event, press);
             return;

@@ -1698,12 +1698,28 @@ describe('a release that needs no cell', () => {
             head.dispatchEvent(pointer('pointerup', 291, { pointerType: 'touch', over: head }));
             expect(spy).not.toHaveBeenCalled();
             const cell = cellAt(table, 1, 'name')!;
+            // the step-0 sessions define no onPointerUp: nothing would be offered at the release, so a tap on a cell needs no hit test either
+            cell.dispatchEvent(pointer('pointerdown', 293, { pointerType: 'touch', over: cell }));
+            cell.dispatchEvent(pointer('pointerup', 293, { pointerType: 'touch', over: cell }));
+            expect(spy).not.toHaveBeenCalled();
+            // a session that DOES define onPointerUp is offered the release: it needs the cell
+            hooks.onPointerUp = () => undefined;
             cell.dispatchEvent(pointer('pointerdown', 292, { pointerType: 'touch', over: cell }));
             cell.dispatchEvent(pointer('pointerup', 292, { pointerType: 'touch', over: cell }));
-            expect(spy).toHaveBeenCalled(); // an unclaimed press that began on a cell is offered at its release: it needs the cell
+            expect(spy).toHaveBeenCalled();
         } finally {
+            delete hooks.onPointerUp;
             spy.mockRestore();
         }
+    });
+
+    it('a touch tap on a cell still focuses it without the hit test (the step-0 sessions)', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 2, 'age')!;
+        cell.dispatchEvent(pointer('pointerdown', 294, { pointerType: 'touch', over: cell }));
+        cell.dispatchEvent(pointer('pointerup', 294, { pointerType: 'touch', over: cell }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'age' });
     });
 });
 

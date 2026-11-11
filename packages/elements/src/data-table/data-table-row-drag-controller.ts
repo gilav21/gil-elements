@@ -3,16 +3,17 @@ import { lazyPart } from './data-table-lazy.js';
 import type { RowDragService } from './data-table-providers.js';
 import type { RowDragPart } from './lazy/row-drag.js';
 
-/** The ONE neutral row-drag service: nothing is draggable, nothing moves, `reorderData` answers a copy. The controller's shell is built on it and the element uses it before the controllers exist. */
-export function neutralRowDrag<T>(): RowDragService<T> {
-    return {
-        active: () => false,
-        isDragging: () => false,
-        dragState: () => null,
-        moveRow: () => false,
-        reorderData: (data) => [...data],
-    };
-}
+/** The ONE neutral row-drag service (a frozen module constant, like the sessions' `NEUTRAL_*`): nothing is draggable, nothing moves, `reorderData` answers a copy. The controller's shell is built on it and the element uses it before the controllers exist. */
+export const NEUTRAL_ROW_DRAG: Readonly<RowDragService<unknown>> = Object.freeze({
+    active: () => false,
+    isDragging: () => false,
+    dragState: () => null,
+    moveRow: () => false,
+    reorderData: (data: readonly unknown[]) => [...data],
+});
+
+/** `NEUTRAL_ROW_DRAG` for a row type `T` (it never reads a row, so the one frozen object serves every `T`). */
+export const neutralRowDrag = <T>(): RowDragService<T> => NEUTRAL_ROW_DRAG as RowDragService<T>;
 
 /**
  * Row drag reorder and its keyboard alternative (wave 6, package C owns this file). Joint step 0: it provides an inert `rowDrag`

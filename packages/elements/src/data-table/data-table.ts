@@ -478,17 +478,17 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Opens an editor on the cell of `row` and column `columnKey`; false when none opened (not editable, a disabled row, no such row). */
     startEditing(row: T, columnKey: string): boolean {
-        return this.provider('interaction')?.startEditing(row, columnKey) ?? false;
+        return this.provider('interaction')?.startEditing?.(row, columnKey) ?? false;
     }
 
     /** Commits the open editor's draft; does nothing with none open. */
     commitEdit(): void {
-        this.provider('interaction')?.commitEdit();
+        this.provider('interaction')?.commitEdit?.();
     }
 
     /** Drops the open editor's draft without an event. */
     cancelEdit(): void {
-        this.provider('interaction')?.cancelEdit();
+        this.provider('interaction')?.cancelEdit?.();
     }
 
     /** Undoes the last edit step (needs `enable-edit-history`); `stale` lists the entries whose row or column is gone. */
@@ -507,7 +507,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The cell whose editor is open, or null. */
     get editingCell(): EditingCell | null {
-        return this.provider('interaction')?.editingCell() ?? null;
+        return this.provider('interaction')?.editingCell?.() ?? null;
     }
 
     /** Read-only (Angular exposes it as a signal): a property binding or an assignment is ignored with a one-time warning, it does not throw. */
@@ -517,7 +517,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The validation error shown on the open editor, or null. */
     get cellEditError(): CellEditError | null {
-        return this.provider('interaction')?.cellEditError() ?? null;
+        return this.provider('interaction')?.cellEditError?.() ?? null;
     }
 
     /** Read-only, like `editingCell`. */
