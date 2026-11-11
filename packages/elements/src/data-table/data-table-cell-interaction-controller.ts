@@ -1,4 +1,5 @@
 import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, requireProvider } from './data-table-host.js';
+import { isGroupingActive } from './data-table-group.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import type { CellEditError, CellRange, EditingCell } from './data-table.types.js';
@@ -27,8 +28,8 @@ export class CellInteractionController<T> {
     /** A pointer is down: the focus it causes on the viewport is not a Tab arrival. */
     private pointer = false;
     private observer: MutationObserver | null = null;
-    /** The row that held the focus, and the group header above it, when a node or group was opened or closed: the render that follows follows it. */
-    private rowAtExpansion: { id: string | undefined; group: string | undefined } | null = null;
+    /** The row that held the focus when a node or group was opened or closed: the render that follows follows it. */
+    private rowAtExpansion: { id: string } | null = null;
     private watched: Element | null = null;
     private teardown: (() => void)[] = [];
 
@@ -72,55 +73,78 @@ export class CellInteractionController<T> {
         this.within = this.pointer = false;
     }
 
-    /** Before every render: the focused cell follows the data (clamped to the rows that exist) and the layout. */
+    /** Before every render: the focused cell follows its row (when a node or group moved it), the data (clamped to the rows that exist) and the layout. */
     hostUpdate(): void {
         this.watchDom();
+        // Consumed once, whatever the rest of this update does: it belongs to the render that follows its `expansion`, not to a later one.
+        const moved = this.rowAtExpansion;
+        this.rowAtExpansion = null;
         const at = this.focused;
         if (!at) return;
-        if (this.rowAtExpansion) return this.followRow(at, this.rowAtExpansion);
         const rows = this.rowCount();
-        // An empty list (a server page loading) changes nothing: the focus waits for rows.
-        if (rows === 0) return;
+        // An empty list (a server page loading) changes nothing: the focus waits for rows, and so does the row it was following.
+        if (rows === 0) {
+            this.rowAtExpansion = moved;
+            return;
+        }
+        const row = moved ? this.followRow(at, moved) : at.rowIndex;
+        if (row === -1) return this.dropFocus(moved?.id);
         const keys = requireProvider(this.host, 'columns').focusableKeys();
         const col = nearestColumn(keys, at.columnKey, this.lastColumn);
         if (col === -1) return this.clear();
-        const next = { rowIndex: Math.min(at.rowIndex, rows - 1), columnKey: keys[col] as string };
+        const next = { rowIndex: Math.min(row, rows - 1), columnKey: keys[col] as string };
         this.lastColumn = col;
         if (next.rowIndex !== at.rowIndex || next.columnKey !== at.columnKey) this.set(next);
     }
 
-    /** A node or group opened or closed: remember the focused row (from the drawn DOM, which is still the old one) and its group header. */
+    /** A node or group opened or closed while a row held the focus: remember which row (from the drawn DOM, still the old one). */
     private noteFocusedRow(): void {
         const row = this.focused ? this.host.rowAt(this.focused.rowIndex) : null;
-        let header: Element | null = row;
-        while (header && header.getAttribute('data-kind') !== 'group') header = header.previousElementSibling;
-        this.rowAtExpansion = row ? { id: row.dataset['rowId'], group: header?.getAttribute('data-group-key') ?? undefined } : null;
+        this.rowAtExpansion = row?.dataset['rowId'] === undefined ? null : { id: row.dataset['rowId'] };
     }
 
     /**
-     * Focus follows the row, not the position: a row that is still there keeps it at its new place, a tree row that left (its node
-     * closed) hands it to its nearest ancestor that is drawn, and a row of a closed group hands it to the group's header toggle.
+     * Where the row that held the focus is now: its own index, or its nearest ancestor's when a tree node closed over it, and -1 when
+     * it left with its group. A row still at the index the focus is at costs one id read, which is every detail toggle.
      */
-    private followRow(at: CellAddress, was: { id: string | undefined; group: string | undefined }): void {
-        this.rowAtExpansion = null;
+    private followRow(at: CellAddress, was: { id: string }): number {
         const { config } = this.host;
         const query = requireProvider(this.host, 'query');
+        const idOf = (row: unknown): string => config.getRowId(row as never);
+        const here = query.renderedRowAt(at.rowIndex);
+        if (here !== undefined && idOf(here) === was.id) return at.rowIndex;
         const rows = query.renderedRows();
-        const indexOf = (id: string): number => rows.findIndex((row) => config.getRowId(row) === id);
-        let index = was.id === undefined ? -1 : indexOf(was.id);
-        if (index === -1 && was.id !== undefined && config.enableSubRows) {
+        const indexOf = (id: string): number => rows.findIndex((row) => idOf(row) === id);
+        let index = indexOf(was.id);
+        if (index === -1 && config.enableSubRows) {
             const parents = query.treeIndex().parent;
             for (let parent = parents.get(was.id); parent !== undefined && index === -1; parent = parents.get(parent)) index = indexOf(parent);
         }
-        if (index !== -1) {
-            if (index !== at.rowIndex) this.set({ rowIndex: index, columnKey: at.columnKey });
-            return;
-        }
-        // The row is gone with its group: the roving cell has nowhere to stay, the group's toggle is the nearest thing that is drawn.
+        return index;
+    }
+
+    /**
+     * The focused row left with its group (or its tree has no node of it drawn): the roving cell has nowhere to stay. The toggle of its
+     * group header is the nearest thing drawn; failing that the viewport is, so the keyboard never falls out of the grid onto the page.
+     */
+    private dropFocus(id: string | undefined): void {
         const hadFocus = this.within;
+        const group = id === undefined ? undefined : this.groupOf(id);
         this.clear();
-        const group = was.group;
-        if (hadFocus && group !== undefined) this.host.afterRender(() => this.host.root.querySelector<HTMLElement>(`[data-kind="group"][data-group-key="${CSS.escape(group)}"] [data-toggle]`)?.focus());
+        if (!hadFocus) return;
+        this.host.afterRender(() => {
+            const toggle = group === undefined ? undefined : ownElements(this.host.root, this.host.root.querySelectorAll<HTMLElement>(`[data-kind="group"][data-group-key="${CSS.escape(group)}"] [data-toggle]`))[0];
+            (toggle ?? this.host.root.querySelector<HTMLElement>(VIEWPORT))?.focus();
+        });
+    }
+
+    /** The key of the group a row belongs to, read from the data (the drawn header may not be in the DOM); only while rows are grouped. */
+    private groupOf(id: string): string | undefined {
+        const { config, model } = this.host;
+        if (!isGroupingActive(config.groupBy, config.enableSubRows, this.host.provider('virtual')?.active() ?? false)) return undefined;
+        const row = model.get('data').find((candidate) => config.getRowId(candidate) === id);
+        const column = config.columns.find((c) => String(c.accessorKey) === config.groupBy);
+        return row === undefined ? undefined : String(requireProvider(this.host, 'query').cellValue(row, config.groupBy as string, column));
     }
 
     // ---- state ------------------------------------------------------------------------------------------------------

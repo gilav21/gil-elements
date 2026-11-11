@@ -326,6 +326,139 @@ describe('a tree: focus follows its row, and goes to the ancestor of a closed no
     });
 });
 
+describe('focus follows its row: the edges', () => {
+    const mountGrouped = (extra: Record<string, unknown> = {}): Promise<Table> =>
+        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(12, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false, ...extra }, {}, { width: 600, height: 520 });
+    const mountTreeEdges = (extra: Record<string, unknown> = {}): Promise<Table> =>
+        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false, ...extra }, {}, { width: 600, height: 500 });
+
+    it('a column hidden in the same update as the toggle is left for its neighbour, as in any other update', async () => {
+        const table = await mountTreeEdges();
+        table.focusCell(2, 'c1');
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(table.data[0]!);
+        table.columnVisibility = { c1: false };
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell!.rowIndex).toBe(0);
+        expect(['c0', 'c2']).toContain(table.focusedCell!.columnKey);
+        expect(cellAt(table, 0, table.focusedCell!.columnKey)).toBe(document.activeElement);
+    });
+
+    it('an empty list after the toggle (a page loading) keeps the focus waiting, and it is there when the rows come back', async () => {
+        const table = await mountTreeEdges();
+        const rows = table.data;
+        table.focusCell(2, 'c0');
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[0]!);
+        table.data = [];
+        await settle(table);
+        expect(table.focusedCell).not.toBeNull();
+        table.data = rows;
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c0' }); // the child is closed away: its node holds the focus
+        expect(document.activeElement).toBe(cellAt(table, 0, 'c0'));
+    });
+
+    it('a toggle while nothing is focused is not applied to the row focused after it', async () => {
+        const table = await mountTreeEdges();
+        table.provider('expansion')!.collapseSubRow(table.data[0]!);
+        await settle(table);
+        table.focusCell(4, 'c1');
+        await settle(table);
+        table.requestUpdate();
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 4, columnKey: 'c1' });
+    });
+
+    it('a grouped, virtual table has no groups: a retained focused row keeps the focus when a "group" is toggled', async () => {
+        const table = await mountTable<SampleRow>(
+            { columns: makeColumns(3), data: makeRows(300, { columns: 3, groups: 3 }), groupBy: 'group', enableVirtualScroll: true, virtualRowHeight: 40, showPagination: false, showToolbar: false },
+            {},
+            { width: 600, height: 400 },
+        );
+        expect(qa(table, '[data-kind="group"]')).toHaveLength(0);
+        table.focusCell(5, 'c0');
+        await settle(table);
+        await scrollTo(table, 5000);
+        expect(rowOf(table, 'r5').hasAttribute('data-retained')).toBe(true);
+        table.provider('expansion')!.toggleGroup('g0');
+        await rest(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 5, columnKey: 'c0' });
+        expect(rowOf(table, 'r5').hasAttribute('data-retained')).toBe(true);
+        expect(cellStops(table)).toEqual([cellAt(table, 5, 'c0')]);
+    });
+
+    it('the group toggle that takes the focus is the one of this table, not that of a table nested in a detail row', async () => {
+        const inner = document.createElement('ge-data-table') as Table;
+        Object.assign(inner, { columns: makeColumns(3), data: makeRows(6, { columns: 3, groups: 2 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false });
+        const table = await mountTable<SampleRow>(
+            { columns: makeColumns(3), data: makeRows(6, { columns: 3, groups: 2 }), groupBy: 'group', enableRowExpansion: true, expandedRows: { r0: true }, renderDetail: () => inner, paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false },
+            {},
+            { width: 600, height: 700 },
+        );
+        await settle(inner);
+        // the outer rows are r0 r2 r4 (g0), then r1 r3 r5 (g1); the inner table sits in r0's detail row, above the outer g1 header
+        expect(qa(table, '[data-group-key="g1"] [data-toggle]')).toHaveLength(2);
+        table.focusCell(3, 'c0');
+        await settle(table);
+        expect(document.activeElement).toBe(table.cellAt(3, 'c0')); // the table's own cell: the nested table has an r1 of its own
+        table.provider('expansion')!.toggleGroup('g1');
+        await settle(table);
+        await frames(2);
+        const toggle = document.activeElement as HTMLElement;
+        expect(toggle.matches('[data-toggle]')).toBe(true);
+        expect(toggle.closest('ge-data-table')).toBe(table);
+        expect(toggle.closest('[data-kind="group"]')!.getAttribute('data-group-key')).toBe('g1');
+    });
+
+    it('a row that left with a group whose header is not on the page hands the focus to the grid, not to the page', async () => {
+        const table = await mountGrouped({ paginationState: { pageIndex: 1, pageSize: 3 } });
+        // page 1: the rows after the first group header of page 0 (r6, r9), then the header of g1
+        expect(qa(table, '[data-kind="group"]').map((r) => r.dataset['groupKey'])).not.toContain('g0');
+        table.focusCell(0, 'c0');
+        await settle(table);
+        const id = cellAt(table, 0, 'c0')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id');
+        expect(id).toBe('r6');
+        table.provider('expansion')!.toggleGroup('g0');
+        await settle(table);
+        await frames(3);
+        expect(document.activeElement).not.toBe(document.body);
+        expect(viewportOf(table).contains(document.activeElement)).toBe(true);
+    });
+
+    it('a detail toggle in a flat table does not search the rows for the focused one (a constant number of id reads)', async () => {
+        const reads = { count: 0 };
+        const mount = (focus: boolean) => async (): Promise<number> => {
+            const table = await mountTable<SampleRow>(
+                {
+                    columns: makeColumns(3),
+                    data: makeRows(3000, { columns: 3 }),
+                    getRowId: (row: SampleRow) => (reads.count++, row.id),
+                    enableRowExpansion: true,
+                    renderDetail: () => html`<span>detail</span>`,
+                    showPagination: false,
+                    showToolbar: false,
+                },
+                {},
+                { width: 600, height: 400 },
+            );
+            if (focus) table.focusCell(2500, 'c0'); // deep: a search from the top would read every id up to it
+            await rest(table);
+            reads.count = 0;
+            table.provider('expansion')!.toggleRow(table.data[2]!);
+            await rest(table);
+            return reads.count;
+        };
+        const unfocused = await mount(false)();
+        const focused = await mount(true)();
+        // everything a toggle costs is in `unfocused`; keeping the focus on its row adds a few reads, not a scan of the rows
+        expect(focused - unfocused).toBeLessThan(10);
+    });
+});
+
 // ---- 4. rtl + pinned columns + virtual columns ---------------------------------------------------------------------
 
 describe.each([
