@@ -98,8 +98,8 @@ export class GeTypingAnimation extends UiElement {
 
     override connectedCallback(): void {
         super.connectedCallback();
-        // Re-attached after the run was stopped by a disconnect: pick it up where it was.
-        if (this.hasUpdated && this.started && !prefersReducedMotion()) this.tick();
+        // Re-attached after the run was stopped by a disconnect: pick it up where it was (a finished run stays finished).
+        if (this.hasUpdated && this.started && !this.finished && !prefersReducedMotion()) this.tick();
     }
 
     private begin(): void {

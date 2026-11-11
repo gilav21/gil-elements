@@ -103,6 +103,20 @@ describe('ge-typing-animation', () => {
         expect(loops).toBe(0);
     });
 
+    it('a finished run that is moved in the DOM stays finished: it does not say so again', async () => {
+        const el = await typing('loop="false" type-speed="10" delete-speed="10" pause-duration="10"', ['ab']);
+        let completes = 0;
+        el.addEventListener('complete', () => completes++);
+        await advance(el, 2000);
+        expect(completes).toBe(1);
+        const parent = el.parentElement!;
+        el.remove();
+        parent.append(el);
+        await advance(el, 2000);
+        expect(shown(el)).toBe('ab');
+        expect(completes).toBe(1);
+    });
+
     it('hides the typing from assistive technology and gives it every phrase at once', async () => {
         const el = await typing('', ['One', 'Two']);
         expect(el.shadowRoot!.querySelector('.sr-only')!.textContent).toBe('One, Two');
