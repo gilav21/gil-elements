@@ -12,6 +12,13 @@ const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]
 /** Rows moved by one page key when nothing is drawn to measure. */
 const FALLBACK_PAGE = 10;
 
+/** Whether `node` is `ancestor` or inside it, across shadow roots: Node.contains stops at a shadow boundary, this goes from a shadow root to its host. */
+function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
+    if (!ancestor) return false;
+    for (let at = node; at; at = at.parentNode ?? (at as ShadowRoot).host ?? null) if (at === ancestor) return true;
+    return false;
+}
+
 /**
  * Focus, and later editing and range, of the grid's cells: one owner because reconciling them after a render writes
  * them together. Wave 4 is focus: the roving tabindex (exactly one cell, the focused one, is a tab stop; the viewport
@@ -122,15 +129,14 @@ export class CellInteractionController<T> {
     /** A node or group opened or closed while a row held the focus: remember which row (from the drawn DOM, still the old one) and whether DOM focus sat in its cell. */
     private noteFocusedRow(): void {
         const at = this.focused;
-        const id = at ? this.host.rowAt(at.rowIndex)?.dataset['rowId'] : undefined;
         if (!at) {
             this.rowAtExpansion = null;
             return;
         }
-        // No row drawn at the focused index (the list is empty): a note kept waiting for rows stays, it is not replaced by nothing.
+        const id = this.host.rowAt(at.rowIndex)?.dataset['rowId'];
+        // The one rule for an empty list: with no row drawn at the focused index, a note already waiting for rows stays, it is not replaced by nothing.
         if (id === undefined) return;
-        const cell = this.host.cellAt(at.rowIndex, at.columnKey);
-        this.rowAtExpansion = { at, id, hadFocus: !!cell?.contains(this.deepActive()) };
+        this.rowAtExpansion = { at, id, hadFocus: composedContains(this.host.cellAt(at.rowIndex, at.columnKey), this.deepActive()) };
     }
 
     /**
@@ -282,11 +288,6 @@ export class CellInteractionController<T> {
         return !active || active === active.ownerDocument.body || active === active.ownerDocument.documentElement;
     }
 
-    /** `node` is inside this table, across shadow roots (a parent is the shadow host when the node is the root of a shadow tree). */
-    private insideTable(node: Node | null): boolean {
-        for (let at = node; at; at = at.parentNode ?? (at as ShadowRoot).host ?? null) if (at === this.host.root) return true;
-        return false;
-    }
 
     /** A render can remove or move the focused element (a sort, a row leaving the window): DOM focus then falls to the page. */
     private watchDom(): void {
@@ -297,7 +298,7 @@ export class CellInteractionController<T> {
         this.watched = viewport;
         this.observer = new MutationObserver(() => {
             // Lost: nothing has the focus, the page has, or something outside the table has (a removed row's focus can fall anywhere).
-            if (this.within && this.focused && (this.onPage() || !this.insideTable(this.deepActive()))) this.focusDom();
+            if (this.within && this.focused && !composedContains(this.host.root, this.deepActive())) this.focusDom();
         });
         this.observer.observe(viewport, { childList: true, subtree: true });
     }

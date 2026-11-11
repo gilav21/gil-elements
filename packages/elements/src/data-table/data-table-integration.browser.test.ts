@@ -514,6 +514,21 @@ describe('focus and a collapsed group', () => {
         expect(document.activeElement).toBe(button);
     });
 
+    it('a shadow-DOM button in a cell (ge-button) that collapses its own group: its focus is in the cell, so the toggle of the group takes it, not the page', async () => {
+        const table = await mountGroups({ columns: [...makeColumns(2), { accessorKey: 'c2', header: 'c2', cellRenderer: () => Object.assign(document.createElement('ge-button'), { textContent: 'collapse' }) }] });
+        table.focusCell(1, 'c2');
+        await settle(table);
+        const host = cellAt(table, 1, 'c2')!.querySelector('ge-button') as HTMLElement;
+        const inner = host.shadowRoot!.querySelector('button') as HTMLButtonElement;
+        inner.focus();
+        expect(host.shadowRoot!.activeElement).toBe(inner);
+        table.provider('expansion')!.toggleGroup('g0'); // what the button's handler does
+        await settle(table);
+        await frames(3);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
+    });
+
     it('the toggle that takes the focus does not scroll the viewport to its header, which is above it', async () => {
         const table = await mountGroups({ rows: 120, height: 400 }); // 40 rows per group, all drawn
         table.focusCell(30, 'c0'); // far down g0: its header is scrolled out above
