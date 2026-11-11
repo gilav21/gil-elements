@@ -3,8 +3,10 @@
  * they are appended inside the closing brace of the `ge-data-table` layer of data-table.css (see data-table-styles.ts),
  * so do not wrap them in `@layer` and keep the comment style below.
  */
-    /* Not a retained row: that one is `position: absolute` (data-table-window.css) and must stay so whatever the order of the region files. */
-    ge-data-table [data-slot="table-row"][data-draggable]:not([data-retained]) {
+    /* Not a retained row: that one is `position: absolute` (data-table-window.css) and must stay so whatever the order of the region files.
+       A row that shows a drop edge is positioned too (the edge is absolute), also when it is not draggable itself (a disabled target, a loading table). */
+    ge-data-table [data-slot="table-row"][data-draggable]:not([data-retained]),
+    ge-data-table [data-slot="table-row"][data-drop-target]:not([data-retained]) {
         position: relative;
     }
     ge-data-table [data-slot="table-row"][data-dragging] {

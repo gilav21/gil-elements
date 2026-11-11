@@ -336,21 +336,21 @@ export function fakeClipboard({ denyWrite = false, denyRead = false, missing = f
     const original = Object.getOwnPropertyDescriptor(Navigator.prototype, 'clipboard');
     const state: { text: string; writes: string[]; reads: { count: number } } = { text, writes: [], reads: { count: 0 } };
     const denied = (): Promise<never> => Promise.reject(new DOMException('Clipboard permission denied', 'NotAllowedError'));
-    const clipboard = missing
-        ? undefined
-        : {
-              writeText: (value: string): Promise<void> => {
-                  if (denyWrite) return denied();
-                  state.writes.push(value);
-                  state.text = value;
-                  return Promise.resolve();
-              },
-              readText: (): Promise<string> => {
-                  state.reads.count++;
-                  return denyRead ? denied() : Promise.resolve(state.text);
-              },
-          };
-    Object.defineProperty(navigator, 'clipboard', { value: clipboard, configurable: true });
+    const clipboard = {
+        writeText: (value: string): Promise<void> => {
+            if (denyWrite) return denied();
+            state.writes.push(value);
+            state.text = value;
+            return Promise.resolve();
+        },
+        readText: (): Promise<string> => {
+            state.reads.count++;
+            return denyRead ? denied() : Promise.resolve(state.text);
+        },
+    };
+    // `missing` takes the API away for real: the accessor is removed from the prototype, so `'clipboard' in navigator` is false (restore puts it back).
+    if (missing) Reflect.deleteProperty(Navigator.prototype, 'clipboard');
+    else Object.defineProperty(navigator, 'clipboard', { value: clipboard, configurable: true });
     return {
         get text() {
             return state.text;

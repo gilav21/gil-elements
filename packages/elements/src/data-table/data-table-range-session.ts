@@ -18,6 +18,8 @@ import type { RangePart } from './lazy/range.js';
 export class RangeSession<T> implements CellSession {
     /** The range while no part is attached; see the header. */
     private held: CellRange | null = null;
+    /** A range flag was on at the last update. */
+    private wasOn = false;
 
     /** Loaded when a range flag is on at an update (not at the first gesture), detached when it turns off or the table detaches. */
     private readonly lazy = lazyPart<RangePart<T>>(() =>
@@ -32,7 +34,7 @@ export class RangeSession<T> implements CellSession {
 
     // wave 6: the methods below that answer "nothing" delegate to `this.lazy.part` once the part implements them.
     readonly rangeService: RangeService = {
-        range: () => this.lazy.part?.getRange() ?? this.held,
+        range: () => this.current(),
         normalized: () => null,
         isInRange: () => false,
         isFillPreview: () => false,
@@ -59,15 +61,27 @@ export class RangeSession<T> implements CellSession {
         },
     };
 
+    /** The attached part's range when there is a part (it may have cleared it: null is an answer), else the held one. */
+    private current(): CellRange | null {
+        const { part } = this.lazy;
+        return part ? part.getRange() : this.held;
+    }
+
     attach(): void {}
 
     hostUpdate(): void {
         const { config } = this.context.host;
-        this.lazy.sync(config.enableCellRangeSelection || config.enableFillHandle);
+        const on = config.enableCellRangeSelection || config.enableFillHandle;
+        // Turning range selection off ends range mode: the range goes with it (wave 6 A.2), so turning it on again starts empty.
+        if (!on && this.wasOn) this.held = null;
+        else this.held = this.current();
+        this.wasOn = on;
+        this.lazy.sync(on);
     }
 
     detach(): void {
-        this.held = this.lazy.part?.getRange() ?? this.held;
+        // A detach keeps the range (a DOM move): the next attach's part gets it back.
+        this.held = this.current();
         this.lazy.dispose();
     }
 }

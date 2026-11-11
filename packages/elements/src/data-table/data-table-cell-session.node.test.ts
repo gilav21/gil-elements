@@ -87,6 +87,43 @@ describe('the range held by the shell', () => {
         expect(session.rangeService.range()).toEqual(range);
     });
 
+    const partOf = (session: RangeSession<unknown>) => (session as unknown as { lazy: { part: { setRange(range: unknown): void } | null } }).lazy.part!;
+
+    it('does not bring back a range the attached part cleared: null is its answer, also at detach', async () => {
+        const { session } = make();
+        session.rangeService.setRange(range);
+        session.hostUpdate();
+        await flush();
+        partOf(session).setRange(null);
+        expect(session.rangeService.range()).toBeNull();
+        session.detach();
+        expect(session.rangeService.range()).toBeNull();
+        session.hostUpdate();
+        await flush();
+        expect(session.rangeService.range()).toBeNull();
+    });
+
+    it('clears the range when the range flags turn off, so turning them on again starts empty', async () => {
+        const { session, flags } = make();
+        session.hostUpdate();
+        await flush();
+        session.rangeService.setRange(range);
+        flags.enableCellRangeSelection = false;
+        session.hostUpdate();
+        expect(session.rangeService.range()).toBeNull();
+        flags.enableCellRangeSelection = true;
+        session.hostUpdate();
+        await flush();
+        expect(session.rangeService.range()).toBeNull();
+    });
+
+    it('lets a range set while the flags are off wait, and keeps what the live part holds when the flag stays on', async () => {
+        const { session } = make({ enableCellRangeSelection: false, enableFillHandle: false });
+        session.rangeService.setRange(range);
+        session.hostUpdate();
+        expect(session.rangeService.range()).toBe(range);
+    });
+
     it('answers the held range with the flags off', () => {
         const { session } = make({ enableCellRangeSelection: false, enableFillHandle: false });
         session.rangeService.setRange(range);

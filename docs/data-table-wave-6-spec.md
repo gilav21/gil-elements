@@ -41,7 +41,7 @@ Lower runs first; the first handler to return true consumes the event. A handler
 | 25 | `columnDrag` | wave 4 | Alt+Shift+Arrow on a reorderable header (header target only) |
 | 30 | `range` | wave 6 A | Escape (only while a range exists), Shift+Arrow / Home / End / PageUp / PageDown, Ctrl/Cmd+A, Ctrl/Cmd+D (`enable-cell-range-selection`; `enable-fill-handle` for Ctrl+D; not editing; no text-field target) |
 | 40 | `rowMove` | wave 6 C | Alt+ArrowUp / Alt+ArrowDown (`enable-row-drag`) |
-| 50 | `rowControls` | wave 4 | Space on a cell (selects the row; now false while an editor is open), tree ArrowLeft / ArrowRight, group and detail toggles |
+| 50 | `rowControls` | wave 4 | Space on a cell (selects the row; an open editor's own keys are taken before it at priority 5, so no special case here), tree ArrowLeft / ArrowRight, group and detail toggles |
 | 60 | `editStart` | wave 5 B | Enter and F2 on the focused cell (a press on a control inside the cell does not open it) |
 | 70 | `reserved` | nobody | free: a wave that adds Delete / Backspace or type-to-edit takes it and amends this table |
 | 100 | `navigation` | wave 4 | arrows, Home, End, PageUp, PageDown without Alt (Shift is the range's at 30 when its gate is on, else plain navigation as in Angular) |
@@ -56,7 +56,7 @@ Escape: the editor (5) while one is open, else the range (30) when one exists; a
 - Registry: `cell-interaction` provides `interaction` and `range`; `clipboard` provides `clipboard` (needs `query`, `columns`, `interaction`; uses `range`, `selection`, `virtual`); `row-drag` provides `rowDrag`; `filter-ui` provides `filters`; `formatting` also writes the `cell` topic (flash). `validatePlan(DEFAULT_ORDER)` is empty.
 - Config: new `rowDragAllowDrop` element property (and `DataTableConfig` member). Types: `EditContext<T>` (`editRenderer` now receives it; `value` is the draft), `DataTableDateRange`, the filter and edit component contracts written on `ColumnDef` (D4, D21), `ClipboardResult`, `RowDragState`.
 - Element methods (thin delegations): wave 5 `startEditing`, `commitEdit`, `cancelEdit`, `undoEdit`, `redoEdit`, `isEditingCell()`, `editingCell`, `cellEditError`, `clearAdvancedFilter()` (`canUndo` and `canRedo` existed); wave 6 `cellRange` (property), `fillDownTo`, `openRangeChart`, `copyCellToClipboard`, `copyRowToClipboard`, `copySelectedToClipboard`, `copyCellRangeToClipboard`, `copyAllToClipboard`, `reorderData`, `moveRow`. They answer `false` / `undefined` / a resolved promise until the feature's service does something.
-- Small wave 4 follow-ups done: the selection Space handler returns false while an editor is open; `cell-write` takes an optional `rejectionMessage()` port, the element passes the locale's `invalidValue` (the default text stays `'Invalid value'`).
+- Small wave 4 follow-ups done: the selection Space handler needs NO editor guard (review round 2: a global "an editor is open" test swallowed Space on other rows; the editor's own keys are owned by the priority-5 handler); `cell-write` takes an optional `rejectionMessage()` port, the element passes the locale's `invalidValue` (the default text stays `'Invalid value'`).
 
 ### J4 Render hooks (what the renderer already does for both waves)
 - Every data cell writes, always in the template (an unset one leaves no attribute): `aria-selected` (range mode only), `data-in-range`, `data-range-edge` (space-separated `top bottom start end`), `data-fill-preview`, `data-flash`, `data-editable`, `data-editing`; the grid is `aria-multiselectable` also with `enable-cell-range-selection`. The editor replaces the plain content when `data-editing` (the tree-host wrapper stays around it): `GridView.edit.cell(column, row, rowIndex)`.
@@ -87,8 +87,8 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 - Node tests added by step 0: `data-table-lazy`, `data-table-grid-state`, `data-table-cell-session` (inert sessions, no literal key priority, sessions import no controller), the registry plan and `KEY_PRIORITY` cases, the locale keys.
 
 ### J8 Measured at the end of step 0
-- Typecheck `tsc -p packages/elements --noEmit`: clean. Node project: 78 files, 1487 tests, all green. Browser project (`packages/elements/src/data-table`): 8 files, 317 tests, all green, none edited. Parity `data-table data-table-rows data-table-integration`: 48 comparisons, 0 differing. Build: green.
-- Size (gzip, `node scripts/size.mjs`, `size-budget.json` untouched as instructed): after review round 1 `data-table/define.js` is 80 358 B and `data-table/index.js` 80 812 B (before step 0: 76 921; the lead's budget lines are 80 500 and 80 950, all entries within budget); the five lazy entries are 20 to 160 B each. The +3.3 KB is the real static cost of the seams: the two sessions and the cell-state composition, three stub controllers and their lazy shells, about 20 element delegations, the 22 locale strings, the lazy helper. It comes out of the 7 KB the two waves estimated for their static code, so the integration PR measures the final figure rather than the estimates of wave 5 section 4 and wave 6 section G.
+- Typecheck `tsc -p packages/elements --noEmit`: clean. Node project: 78 files, 1502 tests, all green. Browser project (`packages/elements/src/data-table`): 10 files, 325 tests, all green, none edited. Parity `data-table data-table-rows data-table-integration`: 48 comparisons, 0 differing. Build: green.
+- Size (gzip, `node scripts/size.mjs`, `size-budget.json` untouched as instructed): after review round 2 `data-table/define.js` is 80 470 B and `data-table/index.js` 80 924 B (before step 0: 76 921; the lead's budget lines are 80 500 and 80 950, all entries within budget); the five lazy entries are 20 to 160 B each. The +3.3 KB is the real static cost of the seams: the two sessions and the cell-state composition, three stub controllers and their lazy shells, about 20 element delegations, the 22 locale strings, the lazy helper. It comes out of the 7 KB the two waves estimated for their static code, so the integration PR measures the final figure rather than the estimates of wave 5 section 4 and wave 6 section G.
 - Known not covered here: `nativeDrag` and `fakeClipboard` are written but not yet exercised by a test (no wave 6 test exists); the `data-edit` parity hook is untested until editing lands.
 
 ### J9 Contract changes from review round 1 (they amend J1 to J8)
@@ -100,6 +100,17 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 - **Diagnostics snapshot:** `sortState` and `multiSortState` enter it only with `enable-row-drag` and `local-reorder` on (the one check that reads them), so a sort no longer re-runs the config check and the O(rows) id scan.
 - **`stateView` allocates nothing in range mode without a range:** shared frozen objects for the out-of-range cells (`OUT_OF_RANGE_FLAGS`, `OUT_OF_RANGE_EDITABLE_FLAGS`); the row id and the disabled flag are computed once per row, not per cell.
 - Removed unused exports `CellSessionFactory` and `KeyOwner`; the five `copy*ToClipboard` element methods share one private helper.
+
+**Round 2 (amends the above):**
+- **The part's range is authoritative while a part is attached** (`part ? part.getRange() : held`, so a part that cleared its range stays cleared, also at detach). The shell reads it back at EVERY update and at detach, so no dispose can leave a stale `held`.
+- **Turning the range flags off clears the range** (wave 6 A.2: "turned off clears the range and removes listeners"); turning them on again starts empty. A DOM move (detach and attach with the flags still on) keeps it.
+- **A row that shows a drop edge carries `data-drop-target`** and the drag CSS positions `[data-draggable]` and `[data-drop-target]` rows (not retained ones), so a disabled target or a loading table still lays its absolute edge out against its own row.
+- `rowState` compares the dragged id as `String(rowId)` (`getRowId` may answer numbers).
+- **`cellRange` on the element:** reclaimed in the constructor like the model keys (a value set before the upgrade goes through the setter); read while detached from the snapshot the element takes at disconnect (the services are gone then) and given back at the next connect.
+- **Selection Space:** no editor guard in the selection controller (see J3); the priority table owns it. Test: an editor "open" in row 1 does not stop Space on row 3.
+- **`lazyElement.load()` resolves to a boolean** after the import (true = the tag is defined, false = the module did not define it); it never waits on a tag nobody defines, and rejects when the import fails.
+- **Boundary test scans `lazy/` and `sub/`** (everything but `addons/`).
+- **Kit:** `fakeClipboard({ missing: true })` removes the API from `Navigator.prototype` (so `'clipboard' in navigator` is false) and `restore` puts it back; the fixture has its own browser test.
 
 ## 0. What exists, and what the reading changed (read first)
 

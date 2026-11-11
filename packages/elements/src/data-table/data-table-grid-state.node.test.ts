@@ -126,6 +126,20 @@ describe('stateView with the step-0 services', () => {
         expect(stateView(fakeHost({ config: { enableRowDrag: true, loading: true }, providers: { rowDrag: dragPart() } })).rowState(0, 'r1', row)).toBe(NO_ROW_FLAGS);
     });
 
+    it('finds the dragged row when getRowId answers numbers', () => {
+        const state = stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: dragPart({ draggedId: '7', overIndex: -1, edge: null }) } }));
+        expect(state.rowState(0, 7 as unknown as string, { id: '7' })).toMatchObject({ dragging: true });
+        expect(state.rowState(1, 8 as unknown as string, { id: '8' })).toBe(DRAGGABLE_ROW_FLAGS);
+    });
+
+    it('marks a disabled target row (or any row while loading) that shows an edge, so its edge can be positioned', () => {
+        const rowDrag = dragPart({ draggedId: 'r1', overIndex: 2, edge: 'top' });
+        const disabled = stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag } })).rowState(2, 'r3', { id: 'r3', disabled: true });
+        expect(disabled).toEqual({ draggable: false, dragging: false, dropEdge: 'top' });
+        const loading = stateView(fakeHost({ config: { enableRowDrag: true, loading: true }, providers: { rowDrag } })).rowState(2, 'r3', { id: 'r3' });
+        expect(loading).toMatchObject({ draggable: false, dropEdge: 'top' });
+    });
+
     it('marks the dragged row and the edge of the row under the pointer', () => {
         const rowDrag = dragPart({ draggedId: 'r1', overIndex: 3, edge: 'bottom' });
         const state = stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag } }));

@@ -225,9 +225,13 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // A model state written before the element upgraded is an own property that would shadow the accessor: take it back.
         const early = MODEL_KEYS.filter((key) => Object.hasOwn(this, key)).map((key) => [key, (this as Record<string, unknown>)[key]] as const);
         for (const [key] of early) delete (this as Record<string, unknown>)[key];
+        // The `cellRange` accessor is reclaimed the same way: a range assigned before the upgrade goes through the setter.
+        const rangeBefore = Object.hasOwn(this, 'cellRange') ? { value: (this as Record<string, unknown>)['cellRange'] as CellRange | null } : undefined;
+        if (rangeBefore) delete (this as Record<string, unknown>)['cellRange'];
         Object.assign(this, Object.fromEntries(Object.entries(INPUTS).map(([name, [, value]]) => [name, value])));
         this.store.onFlush(() => this.requestUpdate());
         for (const [key, value] of early) Object.assign(this, { [key]: value });
+        if (rangeBefore) this.cellRange = rangeBefore.value;
     }
 
     /** No controllers, no services: nothing can render, so a property written while detached waits for the next connect. */
@@ -502,7 +506,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * value assigned before the table is attached waits for the range service.
      */
     get cellRange(): CellRange | null {
-        return this.provider('range')?.range() ?? this.earlyRange ?? null;
+        const service = this.provider('range');
+        return service ? service.range() : (this.earlyRange ?? null);
     }
 
     set cellRange(range: CellRange | null) {
@@ -598,6 +603,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         super.disconnectedCallback();
         this.observer?.disconnect();
         this.observer = null;
+        // The services go with the controllers: a range read while detached comes from here, and is given back at the next connect.
+        const range = this.provider('range');
+        if (range) this.earlyRange = range.range();
         try {
             this.assembled?.detachAll();
         } finally {

@@ -52,9 +52,22 @@ describe('lazyElement', () => {
         const importer = vi.fn(async () => void defined.add('ge-x'));
         const element = lazyElement('ge-x', importer);
         expect(element.ready()).toBe(false);
-        await Promise.all([element.load(), element.load()]);
+        await expect(Promise.all([element.load(), element.load()])).resolves.toEqual([true, true]);
         expect(element.ready()).toBe(true);
         expect(importer).toHaveBeenCalledTimes(1);
+    });
+
+    it('settles with false when the module is loaded but does not define the tag, instead of waiting for ever', async () => {
+        fakeRegistry();
+        const element = lazyElement('ge-never', async () => ({}));
+        await expect(element.load()).resolves.toBe(false);
+        expect(element.ready()).toBe(false);
+    });
+
+    it('rejects when the import fails', async () => {
+        fakeRegistry();
+        const element = lazyElement('ge-x', () => Promise.reject(new Error('404')));
+        await expect(element.load()).rejects.toThrow('404');
     });
 });
 

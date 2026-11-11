@@ -196,6 +196,15 @@ describe('selection by keyboard', () => {
         expect(selectedIds(table)).toEqual([]);
     });
 
+    it('toggles a row on Space while an editor is open in another row: only keys from inside the editor are its own', async () => {
+        const table = await mountSelectable();
+        const real = table.provider('interaction')!;
+        table.provide('interaction', { ...real, editingCell: () => ({ rowIndex: 0, columnKey: 'name' }) });
+        focusCell(table, 'r3', 'name');
+        await press(' ');
+        expect(selectedIds(table)).toEqual(['r3']);
+    });
+
     it('lets Space type inside a text control of a row instead of selecting it', async () => {
         // One stable element: a renderer that makes a new input per render would lose the focus the test gives it.
         const input = document.createElement('input');

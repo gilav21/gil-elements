@@ -30,8 +30,12 @@ export function lazyOnce<M>(importer: () => Promise<M>): () => Promise<M> {
 }
 
 export interface LazyElement {
-    /** Starts (or joins) the load; resolves once `tag` is defined. */
-    load(): Promise<void>;
+    /**
+     * Starts (or joins) the load and resolves once the module has been evaluated: with true when `tag` is defined then, with false when
+     * the module did not define it (a module defines its tags while it is evaluated, so nothing is left to wait for). Rejects when the
+     * import fails. It never waits on a tag that nothing will define.
+     */
+    load(): Promise<boolean>;
     /** The tag is defined now (no load needed). */
     ready(): boolean;
 }
@@ -42,7 +46,7 @@ export function lazyElement(tag: string, importer: () => Promise<unknown>): Lazy
     return {
         load: async () => {
             await once();
-            await customElements.whenDefined(tag);
+            return customElements.get(tag) !== undefined;
         },
         ready: () => customElements.get(tag) !== undefined,
     };

@@ -150,7 +150,6 @@ export class SelectionController<T> {
     private readonly onKey = (event: KeyboardEvent): boolean => {
         if (!this.host.config.enableRowSelection || event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return false;
         if (event.key !== ' ' && event.key !== 'Enter') return false;
-        if (this.host.provider('interaction')?.editingCell()) return false; // an open editor owns its keys (KEY_PRIORITY.editor)
         const cell = event.target;
         if (!(cell instanceof Element) || !cell.matches('[data-slot="table-cell"]')) return false;
         const address = cellAddressOf(cell);

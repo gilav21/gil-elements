@@ -482,6 +482,22 @@ describe('row drag next to the window', () => {
         expect(table.querySelector('[data-slot="data-table-drop-edge"]')).toBeNull();
     });
 
+    it('positions a disabled drop target that shows an edge, so the edge sits on its own row', async () => {
+        const table = await mountVirtual({ enableRowDrag: true });
+        const disabledRow = table.data[2]!;
+        table.isRowDisabled = (row) => row === disabledRow;
+        const state = { draggedId: 'x', overIndex: 2, edge: 'top' as const };
+        table.provide('rowDrag', { ...rowDrag(true), dragState: () => state } as never);
+        table.requestUpdate();
+        await settle(table);
+        const target = bodyRows(table).find((r) => r.getAttribute('data-row-index') === '2')!;
+        expect(target.hasAttribute('data-draggable')).toBe(false);
+        expect(target.hasAttribute('data-drop-target')).toBe(true);
+        expect(getComputedStyle(target).position).toBe('relative');
+        const edge = q(target, '[data-slot="data-table-drop-edge"]');
+        expect((edge as HTMLElement).offsetParent).toBe(target);
+    });
+
     it('keeps the retained focused row out of flow at its own offset when rows are draggable', async () => {
         const table = await mountVirtual({ enableRowDrag: true });
         table.provide('rowDrag', rowDrag(true) as never);

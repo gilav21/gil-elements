@@ -210,7 +210,7 @@ function dataRow<T>(v: GridView<T>, row: T, i: number, ordinal: number, node: Fl
     const wide = v.renderFullWidth?.(row);
     const drag = v.rowState(i, id, row);
     return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(ordinal)} aria-selected=${v.selectable ? String(selected) : nothing}
-        draggable=${drag.draggable ? 'true' : nothing} ?data-draggable=${drag.draggable} ?data-dragging=${drag.dragging}
+        draggable=${drag.draggable ? 'true' : nothing} ?data-draggable=${drag.draggable} ?data-dragging=${drag.dragging} ?data-drop-target=${drag.dropEdge !== undefined}
         aria-level=${level?.level ?? nothing} aria-expanded=${level?.expanded == null ? nothing : String(level.expanded)} aria-setsize=${node?.setSize ?? nothing} aria-posinset=${node?.posInSet ?? nothing}
         data-kind="data" data-row-index=${i} data-row-id=${id} data-depth=${node?.depth ?? nothing} style=${rowStyle(node, retainedTop)} ?data-retained=${retainedTop !== undefined}
         data-state=${selected ? 'selected' : nothing} ?data-disabled=${disabled} aria-disabled=${disabled ? 'true' : nothing}>

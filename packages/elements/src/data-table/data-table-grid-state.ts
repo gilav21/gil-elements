@@ -102,7 +102,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView<T> {
         rowState(rowIndex, rowId, row) {
             if (!dragOn) return NO_ROW_FLAGS;
             const draggable = !disabledOf(row) && !config.loading;
-            const isDragged = dragging !== null && dragging.draggedId === rowId;
+            const isDragged = dragging !== null && dragging.draggedId === String(rowId); // `getRowId` may answer a number
             const edge = dragging !== null && dragging.overIndex === rowIndex ? (dragging.edge ?? undefined) : undefined;
             if (!isDragged && edge === undefined) return draggable ? DRAGGABLE_ROW_FLAGS : NO_ROW_FLAGS;
             return { draggable, dragging: isDragged, dropEdge: edge };
