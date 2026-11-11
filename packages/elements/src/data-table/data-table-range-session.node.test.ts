@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { InteractionContext } from './data-table-cell-session.js';
 import { resetBadRangeWarning } from './data-table-range.js';
 import { RangeSession } from './data-table-range-session.js';
+import { RangePart } from './lazy/range.js';
 
 function session(columns: { accessorKey: string }[], rows = 10) {
     const requestRender = vi.fn();
@@ -65,6 +66,38 @@ describe('RangeSession column validation by value', () => {
         expect(range.rangeService.range()).toBeNull();
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
+    });
+});
+
+describe('RangeSession with a part whose getRange throws', () => {
+    it('still disposes the part at detach (the held range answers), and the next attach builds a fresh part', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const getRange = vi.spyOn(RangePart.prototype, 'getRange').mockImplementation(() => {
+            throw new Error('getRange failed');
+        });
+        const attach = vi.spyOn(RangePart.prototype, 'attach');
+        const detach = vi.spyOn(RangePart.prototype, 'detach');
+        try {
+            const { range } = session([{ accessorKey: 'a' }]);
+            const mine = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'a' };
+            range.rangeService.setRange(mine);
+            range.hostUpdate(); // the part loads
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            expect(attach).toHaveBeenCalledTimes(1);
+            expect(() => range.detach()).not.toThrow();
+            expect(detach).toHaveBeenCalledTimes(1); // disposed although getRange threw
+            expect(getRange).toHaveBeenCalled();
+            range.hostUpdate(); // the next attach: a fresh part
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            expect(attach).toHaveBeenCalledTimes(2);
+            expect(range.rangeService.range()).toEqual(mine); // the held value survived
+            range.detach();
+        } finally {
+            getRange.mockRestore();
+            attach.mockRestore();
+            detach.mockRestore();
+            warn.mockRestore();
+        }
     });
 });
 

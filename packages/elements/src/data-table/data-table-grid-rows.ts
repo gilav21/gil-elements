@@ -169,7 +169,17 @@ function plainContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInd
     }
 }
 
-function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined, editing: boolean): unknown {
+/** What every cell of one data row shares, built ONCE per row in `dataRow` (no per-cell allocation): the row, its index and tree node, and what the state functions take. */
+interface RowContext<T> {
+    readonly row: T;
+    readonly rowIndex: number;
+    readonly node: FlattenedTreeRow<T> | undefined;
+    /** Set only while a wave state function can be asked (`cellStateActive || rowStateActive`). */
+    readonly rowId: string | undefined;
+    readonly disabled: boolean;
+}
+
+function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, { row, rowIndex, node }: RowContext<T>, editing: boolean): unknown {
     const special = specialCell(v, c, row);
     if (special !== undefined) return special;
     // The open editor (wave 5) takes the place of the plain content; the tree-host wrapper stays around it.
@@ -179,7 +189,8 @@ function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInde
     return node && String(c.accessorKey) === v.treeHost ? treeHostCell(v, node, content) : content;
 }
 
-function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined, rowId: string | undefined, disabled: boolean): TemplateResult {
+function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, ctx: RowContext<T>): TemplateResult {
+    const { rowIndex, rowId, disabled } = ctx;
     const key = String(c.accessorKey);
     const focused = v.focusedCell?.rowIndex === rowIndex && v.focusedCell.columnKey === key;
     // Range, fill, flash and editor state of waves 5 and 6: one shared object per cell (data-table-grid-state.ts). ONE template always carries the bindings
@@ -190,7 +201,7 @@ function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T,
         data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(key) ? specialSlotOf(c) : nothing}
         aria-selected=${state.selected ?? nothing} ?data-in-range=${state.inRange} data-range-edge=${state.rangeEdge || nothing} ?data-fill-preview=${state.fillPreview}
         data-flash=${state.flash ?? nothing} ?data-editable=${c.editable === true && !disabled} ?data-editing=${state.editing}
-        data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, row, rowIndex, node, state.editing)}</div>`;
+        data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, ctx, state.editing)}</div>`;
 }
 
 const filler = html`<div data-slot="table-cell" role="presentation" aria-hidden="true" data-border></div>`;
@@ -215,12 +226,13 @@ function dataRow<T>(v: GridView<T>, row: T, i: number, ordinal: number, node: Fl
     const wide = v.renderFullWidth?.(row);
     const rowId = v.cellStateActive || v.rowStateActive ? String(id) : undefined; // plain arguments to the state functions: no per-row object
     const drag = rowId !== undefined && v.rowStateActive ? v.rowState(i, rowId, disabled) : NO_ROW_FLAGS;
+    const ctx: RowContext<T> = { row, rowIndex: i, node, rowId, disabled }; // shared by every cell of the row
     return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(ordinal)} aria-selected=${v.selectable ? String(selected) : nothing}
         draggable=${drag.draggable ? 'true' : nothing} ?data-draggable=${drag.draggable} ?data-dragging=${drag.dragging} ?data-drop-target=${drag.dropEdge !== undefined}
         aria-level=${level?.level ?? nothing} aria-expanded=${level?.expanded == null ? nothing : String(level.expanded)} aria-setsize=${node?.setSize ?? nothing} aria-posinset=${node?.posInSet ?? nothing}
         data-kind="data" data-row-index=${i} data-row-id=${id} data-depth=${node?.depth ?? nothing} style=${rowStyle(node, retainedTop)} ?data-retained=${retainedTop !== undefined}
         data-state=${selected ? 'selected' : nothing} ?data-disabled=${disabled} aria-disabled=${disabled ? 'true' : nothing}>
-        ${claims(wide) ? wideCell(v, wide) : html`${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : bodyCell(v, p.column, p.n, row, i, node, rowId, disabled)))}${v.hasFlexible ? nothing : filler}`}${drag.dropEdge ? html`<div data-slot="data-table-drop-edge" data-pointer-transparent data-edge=${drag.dropEdge} aria-hidden="true"></div>` : nothing}
+        ${claims(wide) ? wideCell(v, wide) : html`${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : bodyCell(v, p.column, p.n, ctx)))}${v.hasFlexible ? nothing : filler}`}${drag.dropEdge ? html`<div data-slot="data-table-drop-edge" data-pointer-transparent data-edge=${drag.dropEdge} aria-hidden="true"></div>` : nothing}
     </div>`;
 }
 

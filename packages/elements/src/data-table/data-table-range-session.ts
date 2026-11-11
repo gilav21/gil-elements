@@ -11,6 +11,7 @@
  */
 import type { CellSession, InteractionContext } from './data-table-cell-session.js';
 import { lazyPart } from './data-table-lazy.js';
+import { warnOnce } from './data-table-warn.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
@@ -114,7 +115,14 @@ export class RangeSession<T> implements CellSession {
     /** The attached part's range when there is a part (it may have cleared it: null is an answer), else the held one; whatever the range mode. */
     private live(): CellRange | null {
         const { part } = this.lazy;
-        return part ? part.getRange() : this.held;
+        if (!part) return this.held;
+        try {
+            return part.getRange();
+        } catch (error) {
+            // A part that throws while asked for its range must not break the shell (a detach would skip the part's disposal): the held value answers.
+            warnOnce('range-part-getRange', '[ge-data-table] the range part threw in getRange(); the held range is used:', error);
+            return this.held;
+        }
     }
 
     /** What is reported: the range while range mode is on, nothing while it is off. */
@@ -192,7 +200,10 @@ export class RangeSession<T> implements CellSession {
 
     detach(): void {
         // A detach keeps the range (a DOM move): the next attach's part gets it back.
-        this.held = this.live();
-        this.lazy.dispose();
+        try {
+            this.held = this.live();
+        } finally {
+            this.lazy.dispose(); // always: a part left attached would be reused by the next attach
+        }
     }
 }

@@ -1233,6 +1233,27 @@ describe('a primary-button rule', () => {
     });
 });
 
+describe('a press on the cell itself', () => {
+    it('measures no geometry at the pointerdown: the cell is not floating, so its rect is not read (and a control or overlay is decided before any geometry)', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        openEditorAt(table, 1, 'name'); // a press in the open editor's cell moves no focus: only the recording is measured
+        const onCell = pointer('pointerdown', 431, { over: cell }); // built before the spy: the helper itself measures `over`
+        const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect');
+        try {
+            cell.dispatchEvent(onCell);
+            expect(spy).not.toHaveBeenCalled();
+            const button = document.createElement('button');
+            cell.append(button);
+            spy.mockClear();
+            button.dispatchEvent(pointer('pointerdown', 432, { clientX: 5, clientY: 5 })); // a control: decided before any geometry
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+        }
+    });
+});
+
 describe('a press inside its cell\'s box', () => {
     it('reads no computed style: the point in the box is the common case, only a point outside it asks whether the element is positioned', async () => {
         const table = await mountTable();
