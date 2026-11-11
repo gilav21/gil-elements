@@ -1,5 +1,5 @@
 import type { DataTableCoreHost } from './data-table-host.js';
-import { lazyPart } from './data-table-lazy.js';
+import { callPart, lazyPart } from './data-table-lazy.js';
 import type { RowDragService } from './data-table-providers.js';
 import type { RowDragPart } from './lazy/row-drag.js';
 
@@ -28,7 +28,7 @@ export class RowDragController<T> {
 
     private readonly service: RowDragService<T> = {
         ...neutralRowDrag<T>(),
-        active: () => this.drag.part?.active() ?? false, // what the PART says (like the range shell): wave 6 C's part answers true once it handles drags
+        active: () => callPart(this.drag.part, 'row-drag-part-active', (part) => part.active(), false), // what the PART says (like the range shell): wave 6 C's part answers true once it handles drags
     };
 
     /** The row-drag service outlives a disconnect (the controller is built once), unlike its provider entry: the element's `reorderData` / `moveRow` read it here. */

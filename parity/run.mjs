@@ -260,7 +260,7 @@ async function renderJob(browser, theme, group, side) {
                 // `data-opened` shows a speed dial open; its items animate out, so wait for them to land.
                 for (const target of document.querySelectorAll('ge-speed-dial[data-opened]')) target.show();
                 await Promise.all([...document.querySelectorAll('ge-speed-dial[data-opened]')].map((t) => t.updateComplete));
-                // `data-edit` is `rowIndex,columnKey` of a ge-data-table: that cell's editor is opened, as a double click would (wave 5; inert until the editing package lands).
+                // `data-edit` is `rowIndex,columnKey` of a ge-data-table: that cell's editor is opened, as a double click would. The hook THROWS (with the case id) when the editor does not open: at joint step 0 `startEditing` is inert and always answers false, so NO parity case may use `data-edit` before wave 5 B makes editing real.
                 // `data-edit-error` is a message: the column then refuses every value with it and the edited draft is committed, so the editor shows its error state.
                 // It runs BEFORE the animation wait below, so a transition the open editor starts is awaited too; the table gets its `data-props` first, there, and the generic `data-props` loop skips it.
                 for (const target of document.querySelectorAll('ge-data-table[data-edit]')) {

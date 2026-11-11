@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { lazyElement, lazyOnce, lazyPart, type LazyPartInstance } from './data-table-lazy.js';
+import { callPart, lazyElement, lazyOnce, lazyPart, type LazyPartInstance } from './data-table-lazy.js';
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -264,6 +264,40 @@ describe('lazyPart', () => {
         lazy.sync(true);
         await flush();
         expect(lazy.part).toBe(instance);
+    });
+
+    it('treats a create() that throws synchronously like a rejected one: reported once, latched, wanted is released', async () => {
+        const onError = vi.fn();
+        const create = vi.fn((): Promise<LazyPartInstance> => {
+            throw new Error('create blew up');
+        });
+        const lazy = lazyPart(create, { onError });
+        lazy.sync(true);
+        lazy.sync(true); // latched: not asked again, not reported again
+        await flush();
+        expect(create).toHaveBeenCalledTimes(1);
+        expect(onError).toHaveBeenCalledTimes(1);
+        expect(lazy.part).toBeNull();
+        lazy.dispose(); // the next attach tries again
+        lazy.sync(true);
+        expect(create).toHaveBeenCalledTimes(2);
+    });
+
+    it('callPart answers the fallback for a part that is not loaded or throws (reported once per key)', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            expect(callPart(null, 'k-null', () => true, false)).toBe(false);
+            const bad = {
+                active: () => {
+                    throw new Error('active failed');
+                },
+            };
+            expect(callPart(bad, 'k-bad', (p) => p.active(), false)).toBe(false);
+            expect(callPart(bad, 'k-bad', (p) => p.active(), false)).toBe(false);
+            expect(warn).toHaveBeenCalledTimes(1);
+        } finally {
+            warn.mockRestore();
+        }
     });
 
     it('lets a dispose from inside the part\'s own attach win: no second detach, no stale latch, and the next sync(true) loads again', async () => {

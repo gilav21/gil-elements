@@ -262,7 +262,7 @@ export class CellInteractionController<T> {
         this.within = false; // (`pointer` was reset by `endPress`)
         this.clearedAt = null;
         this.captured.clear(); // captures of pointers that had no press
-        this.closing.clear();
+        // (`closing` is empty here: `cancelPresses` above ended every press through `endPress`, which cancels and drops its pending look)
         this.reported.clear();
         this.attachment++;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's

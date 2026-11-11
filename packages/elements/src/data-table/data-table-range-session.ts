@@ -10,8 +10,7 @@
  * part before it is disposed. The part keeps the live range while it is attached.
  */
 import type { CellSession, InteractionContext } from './data-table-cell-session.js';
-import { lazyPart } from './data-table-lazy.js';
-import { warnOnce } from './data-table-warn.js';
+import { callPart, lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
@@ -59,7 +58,7 @@ export class RangeSession<T> implements CellSession {
         // The part reads `context` / the shell for anything it needs in `attach()`; its own range is set after it.
         {
             changed: () => {
-                this.lazy.part?.setRange(this.held);
+                this.setPartRange(this.held);
                 this.context.host.requestRender();
             },
         },
@@ -74,7 +73,7 @@ export class RangeSession<T> implements CellSession {
         ...NEUTRAL_RANGE,
         range: () => this.current(),
         // What the PART says (like `rowDrag.active()`): a loaded part that does not handle ranges yet is not active, so nothing of range mode is drawn.
-        active: () => this.lazy.part?.active() ?? false,
+        active: () => callPart(this.lazy.part, 'range-part-active', (part) => part.active(), false),
         setRange: (range) => {
             // The value is always HELD (a property order such as `cellRange = r; enableCellRangeSelection = true` must keep it); while range mode is off
             // it is only not reported, and it applies when the mode turns on. `undefined` is "no range"; anything that is not a range, or names a column
@@ -89,7 +88,7 @@ export class RangeSession<T> implements CellSession {
             this.seen = next && { ...next };
             this.heldInMode = this.rangeOn(); // assigned while range mode was off, it is not part of the mode that a later turn-off ends
             this.assignedSince = true; // and one assigned since the last update survives a turn-off that update sees
-            this.lazy.part?.setRange(next);
+            this.setPartRange(next);
             // `data-in-range`, `aria-selected` and the readout read the range at render, and only in range mode: an equal value, or a value held while the mode is off, draws nothing new
             if (changed && this.rangeOn()) this.context.host.requestRender();
         },
@@ -113,15 +112,13 @@ export class RangeSession<T> implements CellSession {
 
     /** The attached part's range when there is a part (it may have cleared it: null is an answer), else the held one; whatever the range mode. */
     private live(): CellRange | null {
-        const { part } = this.lazy;
-        if (!part) return this.held;
-        try {
-            return part.getRange();
-        } catch (error) {
-            // A part that throws while asked for its range must not break the shell (a detach would skip the part's disposal): the held value answers.
-            warnOnce('range-part-getRange', '[ge-data-table] the range part threw in getRange(); the held range is used:', error);
-            return this.held;
-        }
+        // Every call into the part goes through `callPart`: one that throws is reported once and answers the held value / "inactive" / a no-op, so a render
+        // or a detach is never broken (a detach would otherwise skip the part's disposal).
+        return callPart(this.lazy.part, 'range-part-getRange', (part) => part.getRange(), this.held);
+    }
+
+    private setPartRange(range: CellRange | null): void {
+        callPart(this.lazy.part, 'range-part-setRange', (part) => part.setRange(range), undefined);
     }
 
     /** What is reported: the range while range mode is on, nothing while it is off. */
@@ -151,7 +148,7 @@ export class RangeSession<T> implements CellSession {
         warnBadRange(this.held);
         this.held = null;
         this.checked = null;
-        this.lazy.part?.setRange(null);
+        this.setPartRange(null);
     }
 
     private rangeOn(): boolean {
@@ -179,7 +176,7 @@ export class RangeSession<T> implements CellSession {
                 const trimmed = clampToRows(null, this.held, rows).range;
                 if (trimmed !== this.held) {
                     this.held = trimmed;
-                    this.lazy.part?.setRange(trimmed);
+                    this.setPartRange(trimmed);
                 }
             }
         } else if (this.wasOn) {

@@ -39,6 +39,7 @@ const iconElement = lazyElement('ge-icon', () => import('../icon/define.js'));
 /**
  * Loads `ge-icon` once, for a cell icon picked by name; the element upgrades in place when it is defined. A failed load is reported once (never an
  * unhandled rejection) and latched until `resetIconElement()` (a table attach, a no-op unless a failure is latched), so it is retried without re-importing at every render.
+ * The retry is BEST EFFORT: a browser may keep the failed module record and reject the same specifier again without refetching, until the page reloads.
  */
 export function ensureIconElement(): void {
     void iconElement.load();

@@ -16,8 +16,26 @@
  *   failed load is latched: `sync` runs on every render and must not re-import (and re-log) every time, so it tries again only
  *   after the flag turned off and on, or after `dispose()` (the next attach).
  */
+import { warnOnce } from './data-table-warn.js';
 
-/** One memoised `import()`; a rejection clears the memo so a later call tries again. */
+/**
+ * Calls the part from a path that must never break (a render, a detach): a part that throws is reported ONCE per `key` and answers `fallback`
+ * ("inactive", the held value), so the grid still renders and the part is still disposed. `part` null (not loaded) answers `fallback` too.
+ */
+export function callPart<P, R>(part: P | null, key: string, call: (part: P) => R, fallback: R): R {
+    if (!part) return fallback;
+    try {
+        return call(part);
+    } catch (error) {
+        warnOnce(key, `[ge-data-table] a lazy part threw in ${key}; its fallback is used:`, error);
+        return fallback;
+    }
+}
+
+/**
+ * One memoised `import()`; a rejection clears the memo so a later call tries again. A retry is BEST EFFORT: a browser may keep the failed module
+ * record and reject the same specifier again without refetching (so "retried at the next attach" may fail again until the page reloads).
+ */
 export function lazyOnce<M>(importer: () => Promise<M>): () => Promise<M> {
     let pending: Promise<M> | undefined;
     return () => {
@@ -159,7 +177,15 @@ export function lazyPart<P extends LazyPartInstance>(
                 failed = true;
                 onError(error);
             };
-            create().then(
+            // A `create` that throws SYNCHRONOUSLY (before it returns a promise) fails like a rejected one: reported once, latched.
+            let creating: Promise<P>;
+            try {
+                creating = create();
+            } catch (error) {
+                fail(error);
+                return;
+            }
+            creating.then(
                 (part) => {
                     if (mine !== generation) return;
                     current = part; // visible while it attaches: its own setup may call back into the shell that reads it

@@ -18,6 +18,20 @@ describe('lazy parts and the render', () => {
         expect(bodyRows(table).every((row) => row.getAttribute('data-draggable') === '')).toBe(true);
     });
 
+    it('a part whose active() throws does not break the render: the table draws, the part counts as inactive, one warning per part', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        vi.spyOn(RowDragPart.prototype, 'active').mockImplementation(() => {
+            throw new Error('active failed');
+        });
+        const table = await mountTable({ enableRowDrag: true });
+        await frames(3);
+        await settle(table);
+        expect(bodyRows(table).length).toBeGreaterThan(0); // rendered
+        expect(bodyRows(table).some((row) => row.hasAttribute('data-draggable'))).toBe(false); // inactive: nothing draggable
+        expect(warn.mock.calls.filter((call) => String(call[0]).includes('row-drag-part-active')).length).toBe(1);
+        warn.mockRestore();
+    });
+
     it('loads ge-icon through the lazy element (reported once, retried at an attach): ensureIconElement defines it', async () => {
         const { ensureIconElement, resetIconElement } = await import('./data-table-icons.js');
         resetIconElement();
