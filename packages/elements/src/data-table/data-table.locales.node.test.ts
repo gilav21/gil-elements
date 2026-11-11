@@ -4,7 +4,6 @@ import {
     dataTableLocaleVersion,
     onDataTableLocaleChange,
     EN_FILTER_BUILDER_LABELS,
-    filterBuilderLabels,
     interpolate,
     registerDataTableLocale,
     resolveDataTableLocale,
@@ -97,7 +96,7 @@ describe('data-table locales', () => {
         expect(full.advancedFilter?.and).toBe('UND');
         expect(full.advancedFilter?.operators.contains).toBe('enthält');
         expect(full.advancedFilter?.operators.equals).toBe('equals');
-        expect(filterBuilderLabels({ ...en, advancedFilter: undefined })).toBe(EN_FILTER_BUILDER_LABELS);
+        expect(withEnglishFallback({ ...en, advancedFilter: undefined }).advancedFilter).toEqual(EN_FILTER_BUILDER_LABELS);
         expect(full.rangeCount).toBe('Count');
     });
 

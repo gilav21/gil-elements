@@ -282,14 +282,6 @@ export function resolveDataTableLocale(input?: string | DataTableLocale | null, 
     return pickLocale(DATA_TABLE_LOCALES, input, pageLang);
 }
 
-/** The advanced-filter labels of a locale, English for any it omits (a partial dictionary stays usable). */
-export function filterBuilderLabels(locale: DataTableLocale): FilterBuilderLabels {
-    const own = locale.advancedFilter;
-    return own
-        ? { ...EN_FILTER_BUILDER_LABELS, ...own, operators: { ...EN_FILTER_BUILDER_LABELS.operators, ...own.operators } }
-        : EN_FILTER_BUILDER_LABELS;
-}
-
 /**
  * A locale with every optional key filled from English. A partial dictionary (a custom object) must not render
  * `undefined` in the range readout.

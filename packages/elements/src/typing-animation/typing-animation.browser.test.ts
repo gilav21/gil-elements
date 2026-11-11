@@ -186,6 +186,18 @@ describe('ge-typing-animation', () => {
             expect(seen.completes).toBe(2);
         });
 
+        it('is not restarted by a fresh array with the same phrases (a template re-rendering)', async () => {
+            const { el, seen } = await finished(['a', 'b']);
+            el.strings = ['a', 'b'];
+            await advance(el, 5000);
+            expect(shown(el)).toBe('b');
+            expect(seen.completes).toBe(1);
+            el.strings = ['a', 'c']; // a changed list is a run again
+            await advance(el, 5000);
+            expect(shown(el)).toBe('c');
+            expect(seen.completes).toBe(2);
+        });
+
         it('starts exactly one run for one change, however it is typed', async () => {
             const { el, seen } = await finished(['a', 'b']);
             el.strings = ['x', 'y'];

@@ -47,6 +47,8 @@ export class GeTypingAnimation extends UiElement {
     declare phase: TypingState;
 
     private started = false;
+    /** The run reached the end of its last phrase (no loop) and has nothing left to do; a begin or a reset starts the next. */
+    private finished = false;
     private stringIndex = 0;
     private charIndex = 0;
     private timer: ReturnType<typeof setTimeout> | null = null;
@@ -70,6 +72,9 @@ export class GeTypingAnimation extends UiElement {
 
     protected override updated(changed: PropertyValues<this>): void {
         if (!changed.has('strings')) return;
+        // A fresh array with the same phrases (a template that re-renders) is no change: nothing restarts, nothing completes again.
+        const previous = changed.get('strings') as string[] | undefined;
+        if (previous && previous.length === this.strings.length && previous.every((phrase, i) => phrase === this.strings[i])) return;
         // Emptied: stop and clear, so a list that fills again starts over from the first phrase.
         if (this.strings.length === 0) this.reset();
         else if (!this.started) this.begin();
@@ -79,7 +84,7 @@ export class GeTypingAnimation extends UiElement {
         else if (this.stringIndex >= this.strings.length) {
             this.reset();
             this.begin();
-        } else if (this.timer === null && this.isConnected) {
+        } else if (this.finished) {
             // A finished run (nothing pending) has nothing to carry on: a changed list is a new run, typed from its first phrase, and its own `complete`.
             this.reset();
             this.begin();
@@ -100,6 +105,7 @@ export class GeTypingAnimation extends UiElement {
     private begin(): void {
         if (this.strings.length === 0) return;
         this.started = true;
+        this.finished = false;
         if (prefersReducedMotion()) {
             this.shown = this.strings[0] ?? '';
             return;
@@ -110,6 +116,7 @@ export class GeTypingAnimation extends UiElement {
     private reset(): void {
         this.stop();
         this.started = false;
+        this.finished = false;
         this.stringIndex = 0;
         this.charIndex = 0;
         this.phase = 'typing';
@@ -165,6 +172,7 @@ export class GeTypingAnimation extends UiElement {
             return;
         }
         if (!this.loop && this.stringIndex === count - 1) {
+            this.finished = true;
             this.dispatchEvent(new CustomEvent('complete', { bubbles: true, composed: true }));
             return;
         }
