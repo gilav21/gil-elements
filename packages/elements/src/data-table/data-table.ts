@@ -9,7 +9,7 @@ import { createCellWriter, type HistoryResult } from './data-table-cell-write.js
 import { type AssembledControllers, assembleControllers } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
-import { rangeColumnKeys, rangeModeOn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
+import { rangeModeOn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
@@ -542,7 +542,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         }
         // No controller exists before the first connect (nothing is assembled before it): the value waits here, checked by the same rules (rows
         // are not known yet), and the range session adopts it right after the first attach.
-        const next = sanitizeCellRange(range, 0, rangeColumnKeys(this.columns));
+        const next = sanitizeCellRange(range, 0, []); // the columns are looked up by the session at its next update
         if (next === undefined) warnBadRange(range);
         else this.earlyRange = next;
     }

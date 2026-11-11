@@ -17,7 +17,6 @@
  * setter that returns a new object changes the id, so they could not; `validateConfig` warns about that setup and
  * `undo`/`redo` report the entries they could not apply in `stale` instead of doing nothing silently.
  */
-import { DATA_TABLE_LOCALES } from './data-table.locales.js';
 import type { CellEditErrorEvent, CellEditEvent, ColumnDef } from './data-table.types.js';
 
 export interface CellTarget {
@@ -80,8 +79,8 @@ export interface CellWritePorts<T> {
     rowAt(rowIndex: number): T | undefined;
     cellValue(row: T, column: ColumnDef<T>): unknown;
     historyEnabled(): boolean;
-    /** The message of a rejection whose validator gave none (the table's locale `invalidValue`); absent = the English dictionary's. */
-    rejectionMessage?(): string;
+    /** The message of a rejection whose validator gave none: the table's locale `invalidValue` (the element passes it; this module knows no dictionary). */
+    rejectionMessage(): string;
     emit(
         ...event:
             | [name: 'cell-edit', detail: CellEditEvent<T>]
@@ -167,7 +166,7 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
             const oldValue = ports.cellValue(row, column);
             const verdict = column.editValidator?.(value, row) ?? true;
             if (verdict !== true) {
-                const message = typeof verdict === 'string' ? verdict : (ports.rejectionMessage?.() ?? DATA_TABLE_LOCALES.en.invalidValue);
+                const message = typeof verdict === 'string' ? verdict : ports.rejectionMessage();
                 if (options.report !== false) ports.emit('edit-error', { row, column, value, rowIndex: target.rowIndex, message });
                 results[at] = { status: 'rejected', message, row, column };
                 return;

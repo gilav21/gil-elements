@@ -46,7 +46,7 @@ export interface StateView {
     rangeSelectable: boolean;
     /**
      * Some wave 5 or 6 feature can mark a cell or a row now (range mode, flash, an open editor, draggable rows; an editable column alone does not count: the renderer writes `data-editable` itself). When false the
-     * renderer uses the cell and row templates of before step 0 and never calls `cellState` / `rowState`: a plain grid pays nothing per cell.
+     * renderer binds the shared frozen `NO_CELL_FLAGS` / `NO_ROW_FLAGS` in the one template and never calls `cellState` / `rowState`: a plain grid pays no function call per cell, and the template (so the DOM) never changes when this flips.
      */
     stateActive: boolean;
     cellState(rowIndex: number, columnKey: string, row: RowInfo): CellFlags;

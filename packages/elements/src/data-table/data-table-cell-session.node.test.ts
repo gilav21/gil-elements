@@ -250,14 +250,39 @@ describe('the range held by the shell', () => {
         expect(session.rangeService.range()).toEqual(hidden);
     });
 
-    it('refuses a special column and a column that is not configured, with one warning', () => {
+    it('drops, at the next update and with one warning, a range that names a special column or a column that is not configured', () => {
         resetBadRangeWarning();
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         const { session } = make({ ...on });
-        session.rangeService.setRange(range);
-        for (const endCol of ['_selection', '_expander', '_actions', 'ghost']) session.rangeService.setRange({ ...range, endCol });
-        expect(session.rangeService.range()).toEqual(range);
+        for (const endCol of ['_selection', '_expander', '_actions', 'ghost']) {
+            session.rangeService.setRange({ ...range, endCol });
+            expect(session.rangeService.range()).toEqual({ ...range, endCol }); // held: the columns are looked up at the update
+            session.hostUpdate();
+            expect(session.rangeService.range()).toBeNull();
+        }
         expect(warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps `cellRange = r; columns = [...]` and `columns = [...]; cellRange = r` in one tick: the columns are looked up at the update, against the columns of that moment', () => {
+        const { context } = rangeContext({ ...on }, { keys: ['a'] });
+        const config = (context as unknown as { host: { config: { columns: { accessorKey: string }[] } } }).host.config;
+        const session = new RangeSession(context);
+        session.attach();
+        // the range names b and c, which are not columns yet: assigned first, the columns arrive in the same tick
+        session.rangeService.setRange({ startRow: 0, startCol: 'a', endRow: 1, endCol: 'c' });
+        config.columns = ['a', 'b', 'c'].map((accessorKey) => ({ accessorKey }));
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual({ startRow: 0, startCol: 'a', endRow: 1, endCol: 'c' });
+        // the other order: the new columns first, then the range
+        config.columns = ['x', 'y'].map((accessorKey) => ({ accessorKey }));
+        session.rangeService.setRange({ startRow: 0, startCol: 'x', endRow: 1, endCol: 'y' });
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual({ startRow: 0, startCol: 'x', endRow: 1, endCol: 'y' });
+        // and no columns at all yet: nothing is checked
+        config.columns = [];
+        session.rangeService.setRange({ startRow: 0, startCol: 'q', endRow: 0, endCol: 'q' });
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual({ startRow: 0, startCol: 'q', endRow: 0, endCol: 'q' });
     });
 
     it('turn-off only clears a value that was held in the mode: `mode off; range = r` in one tick keeps r, `range = r; mode off` clears it', () => {
@@ -361,7 +386,7 @@ describe('the range held by the shell', () => {
             const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
             const { session } = make();
             session.rangeService.setRange(range);
-            for (const bad of ['a1:b3', { startRow: 'x' }, { ...range, endCol: 'nope' }, 42]) session.rangeService.setRange(bad as never);
+            for (const bad of ['a1:b3', { startRow: 'x' }, { ...range, endCol: 7 }, 42]) session.rangeService.setRange(bad as never);
             expect(session.rangeService.range()).toEqual(range);
             expect(warn).toHaveBeenCalledTimes(1);
         });

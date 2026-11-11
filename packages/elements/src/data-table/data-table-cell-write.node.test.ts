@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ColumnDef } from './data-table.types.js';
 import { createCellWriter } from './data-table-cell-write.js';
-import { DATA_TABLE_LOCALES, registerDataTableLocale } from './data-table.locales.js';
 
 interface Row {
     id: string;
@@ -9,7 +8,7 @@ interface Row {
     qty: number;
 }
 
-function setup(options: { history?: boolean; validator?: ColumnDef<Row>['editValidator']; rows?: Row[]; rowAt?: (i: number, data: Row[]) => Row | undefined } = {}) {
+function setup(options: { history?: boolean; rejectionMessage?: () => string; validator?: ColumnDef<Row>['editValidator']; rows?: Row[]; rowAt?: (i: number, data: Row[]) => Row | undefined } = {}) {
     let data: Row[] = options.rows ?? [
         { id: 'a', name: 'Ann', qty: 1 },
         { id: 'b', name: 'Bob', qty: 2 },
@@ -47,6 +46,7 @@ function setup(options: { history?: boolean; validator?: ColumnDef<Row>['editVal
         rowAt: (i) => (options.rowAt ? options.rowAt(i, data) : data[i]),
         cellValue: (row, column) => row[column.accessorKey as keyof Row],
         historyEnabled: () => options.history ?? true,
+        rejectionMessage: options.rejectionMessage ?? (() => 'Invalid value'),
         emit: (name, detail) => events.push([name, detail]),
     });
     return {
@@ -85,20 +85,14 @@ describe('writeCell', () => {
         expect(events).toEqual([['edit-error', expect.objectContaining({ value: '', rowIndex: 1, message: 'Required' })]]);
     });
 
-    it('takes the default message from the English dictionary, not a copy of it: a registered English changes it', () => {
-        const original = DATA_TABLE_LOCALES.en.invalidValue;
-        registerDataTableLocale('en', { invalidValue: 'Nope' });
-        try {
-            const { writer } = setup({ validator: () => false });
-            expect(writer.writeCell({ rowIndex: 0, columnKey: 'name' }, 'x', { report: false })).toMatchObject({ message: 'Nope' });
-        } finally {
-            registerDataTableLocale('en', { invalidValue: original });
-        }
+    it('takes the default message from the port, so the table can pass the message of its locale', () => {
+        const { writer } = setup({ validator: () => false, rejectionMessage: () => 'Nope' });
+        expect(writer.writeCell({ rowIndex: 0, columnKey: 'name' }, 'x', { report: false })).toMatchObject({ message: 'Nope' });
     });
 
     it('uses the default message for a validator that says false, and stays quiet with report: false', () => {
         const { writer, events } = setup({ validator: () => false });
-        expect(writer.writeCell({ rowIndex: 0, columnKey: 'name' }, 'x', { report: false })).toMatchObject({ message: DATA_TABLE_LOCALES.en.invalidValue });
+        expect(writer.writeCell({ rowIndex: 0, columnKey: 'name' }, 'x', { report: false })).toMatchObject({ message: 'Invalid value' });
         expect(events).toEqual([]);
     });
 

@@ -54,6 +54,10 @@ describe('the table core', () => {
         }
     });
 
+    it('keeps the cell-write pipeline free of any dictionary: the message of a rejection is a port the element fills', () => {
+        expect(importsOf(read('data-table-cell-write.ts')).filter((specifier) => /locales/.test(specifier))).toEqual([]);
+    });
+
     it.each(['data-table-model.ts', 'data-table-cell-write.ts', 'data-table-registry.ts', 'data-table-events.ts', 'data-table-providers.ts'])(
         '%s is plain TypeScript: no DOM globals, no lit',
         (name) => {

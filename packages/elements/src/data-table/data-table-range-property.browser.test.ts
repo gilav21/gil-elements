@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { GeDataTable } from './data-table.js';
 import { mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
 import { resetBadRangeWarning } from './data-table-range.js';
+import { registerDataTableLocale } from './data-table.locales.js';
 
 const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
 
@@ -130,6 +131,22 @@ describe('the cellRange property', () => {
         table.remove();
     });
 
+    it('survives `cellRange = r; columns = [...]` and `columns = [...]; cellRange = r` in one tick (the columns are looked up at the update)', async () => {
+        const columns = [{ accessorKey: 'name', header: 'Name' }, { accessorKey: 'age', header: 'Age' }, { accessorKey: 'city', header: 'City' }];
+        const data = [{ name: 'a', age: 1, city: 'x' }, { name: 'b', age: 2, city: 'y' }, { name: 'c', age: 3, city: 'z' }];
+        const wideRange = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'city' };
+        const first = await mountTable({ enableCellRangeSelection: true, columns: [{ accessorKey: 'name', header: 'Name' }], data });
+        first.cellRange = wideRange; // `city` is not a column yet ...
+        first.columns = columns; // ... the columns arrive in the same tick
+        await settle(first);
+        expect(first.cellRange).toEqual(wideRange);
+        const second = await mountTable({ enableCellRangeSelection: true, columns: [{ accessorKey: 'name', header: 'Name' }], data });
+        second.columns = columns;
+        second.cellRange = wideRange;
+        await settle(second);
+        expect(second.cellRange).toEqual(wideRange);
+    });
+
     it('can be assigned to a detached table without throwing: the checked value waits and is clamped at the next attach', async () => {
         const table = await mountTable({ enableCellRangeSelection: true });
         const rows = table.data.length;
@@ -154,7 +171,7 @@ describe('the cellRange property', () => {
         try {
             const table = await mountTable({ enableCellRangeSelection: true });
             table.cellRange = range;
-            table.cellRange = { startRow: 0, startCol: 'nope', endRow: 1, endCol: 'age' };
+            table.cellRange = { startRow: 0, startCol: 7, endRow: 1, endCol: 'age' } as never;
             table.cellRange = 'A1:B2' as never;
             expect(table.cellRange).toEqual(range);
             expect(warnings.filter((args) => String(args[0]).includes('cellRange'))).toHaveLength(1);
@@ -198,6 +215,18 @@ describe('a range across a phase with no drawn rows', () => {
         table.skeleton = false;
         await settle(table);
         expect(table.cellRange).toEqual({ ...wide, endRow: Math.min(2, SAMPLE_ROWS.length - 1) });
+    });
+});
+
+describe('the default message of a rejected write', () => {
+    it('is the invalidValue of the locale of the table', async () => {
+        registerDataTableLocale('xx', { invalidValue: 'Nope, not that' });
+        try {
+            const table = await mountTable({ locale: 'xx', columns: [{ accessorKey: 'name', header: 'Name', editable: true, editValidator: () => false, valueSetter: (row: { name: string }, value: unknown) => ({ ...row, name: String(value) }) }] });
+            expect(table.writeCell({ rowIndex: 0, columnKey: 'name' }, 'x', { report: false })).toMatchObject({ status: 'rejected', message: 'Nope, not that' });
+        } finally {
+            registerDataTableLocale('xx', {});
+        }
     });
 });
 

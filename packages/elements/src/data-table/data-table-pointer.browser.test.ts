@@ -159,8 +159,13 @@ describe('a press is offered to the sessions before the controller moves the foc
 type Hooks = { onPointerDown?: Handler; onPointerUp?: Handler; onPointerCancel?: (event: PointerEvent | null, press: PointerPress) => void };
 const hooks = RangeSession.prototype as unknown as Hooks;
 const editHooks = EditSession.prototype as unknown as Hooks;
-const pointer = (type: string, pointerId: number, init: PointerEventInit = {}): PointerEvent =>
-    new PointerEvent(type, { pointerId, bubbles: true, composed: true, button: 0, pointerType: 'mouse', ...init });
+/** A pointer event; `over` puts it at the centre of that element (a touch's pointerup is hit-tested by its coordinates). */
+const pointer = (type: string, pointerId: number, init: PointerEventInit & { over?: Element } = {}): PointerEvent => {
+    const { over, ...rest } = init;
+    const rect = over?.getBoundingClientRect();
+    const at = rect ? { clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2 } : {};
+    return new PointerEvent(type, { pointerId, bubbles: true, composed: true, button: 0, pointerType: 'mouse', ...at, ...rest });
+};
 
 describe('the press contract: one press per pointer, routed to its claimant', () => {
     afterEach(() => {
@@ -196,7 +201,7 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
         const b = cellAt(table, 2, 'age')!;
         a.dispatchEvent(pointer('pointerdown', 41)); // claimed
         b.dispatchEvent(pointer('pointerdown', 42, { pointerType: 'touch' })); // unclaimed, a second finger
-        b.dispatchEvent(pointer('pointerup', 42, { pointerType: 'touch' })); // its tap ends ONLY its own press (offered to the sessions: unclaimed)
+        b.dispatchEvent(pointer('pointerup', 42, { pointerType: 'touch', over: b })); // its tap ends ONLY its own press (offered to the sessions: unclaimed)
         expect(log).toEqual(['up:42']);
         // A is released outside the table: its press is still there and its claimant is told
         document.body.dispatchEvent(pointer('pointerup', 41));
@@ -213,7 +218,7 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
         editHooks.onPointerUp = (...args) => void edit(...args);
         const cell = cellAt(table, 2, 'age')!;
         cell.dispatchEvent(pointer('pointerdown', 51, { pointerType: 'touch' }));
-        cell.dispatchEvent(pointer('pointerup', 51, { pointerType: 'touch' }));
+        cell.dispatchEvent(pointer('pointerup', 51, { pointerType: 'touch', over: cell }));
         expect(edit).not.toHaveBeenCalled();
         expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' }); // not even the touch tap focus
     });
@@ -268,7 +273,7 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
             ],
         });
         widget.dispatchEvent(pointer('pointerdown', 111, { pointerType: 'touch' }));
-        widget.dispatchEvent(pointer('pointerup', 111, { pointerType: 'touch' }));
+        widget.dispatchEvent(pointer('pointerup', 111, { pointerType: 'touch', over: widget }));
         await settle(table);
         expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
     });
@@ -364,7 +369,23 @@ describe('sessions that throw', () => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
     });
 
-    it('never break a press: a session that throws on pointerdown is reported once and does not claim, so the controller focuses the cell', async () => {
+    it('reports EVERY error (they are bugs, not noise), each with its own message', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const table = await mountTable();
+            let count = 0;
+            hooks.onPointerDown = () => {
+                throw new Error(`failure ${++count}`);
+            };
+            await userEvent.click(cellAt(table, 2, 'age')!);
+            await userEvent.click(cellAt(table, 1, 'name')!);
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(['failure 1', 'failure 2']);
+        } finally {
+            error.mockRestore();
+        }
+    });
+
+    it('never break a press: a session that throws on pointerdown is reported and does not claim, so the controller focuses the cell', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         try {
             const table = await mountTable();
@@ -374,7 +395,7 @@ describe('sessions that throw', () => {
             await userEvent.click(cellAt(table, 2, 'age')!);
             await userEvent.click(cellAt(table, 1, 'name')!);
             expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
-            expect(error).toHaveBeenCalledTimes(1);
+            expect(error).toHaveBeenCalledTimes(2); // one per press
         } finally {
             error.mockRestore();
         }
@@ -401,6 +422,66 @@ describe('sessions that throw', () => {
         } finally {
             error.mockRestore();
         }
+    });
+});
+
+describe('a session that throws while attaching', () => {
+    it('is reported and left out: the table still mounts, the other session works, and the broken one is not detached', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const attach = vi.spyOn(EditSession.prototype, 'attach').mockImplementation(() => {
+            throw new Error('edit attach failed');
+        });
+        const editDetach = vi.spyOn(EditSession.prototype, 'detach');
+        const rangeAttach = vi.spyOn(RangeSession.prototype, 'attach');
+        try {
+            const table = await mountTable();
+            expect(error).toHaveBeenCalledTimes(1);
+            expect(rangeAttach).toHaveBeenCalledTimes(1); // the session after it attached, and so did every other controller
+            expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull();
+            expect(table.provider('footer')).toBeDefined();
+            table.remove();
+            expect(editDetach).not.toHaveBeenCalled();
+        } finally {
+            attach.mockRestore();
+            editDetach.mockRestore();
+            rangeAttach.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
+describe('a touch release is decided by where the finger is, not by the pressed element', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is a cancel for the claimant when the finger is released outside the table, and a pointerup with the cell under the finger when it is released on another cell', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event?.type}`);
+        const a = cellAt(table, 1, 'name')!;
+        const b = cellAt(table, 2, 'age')!;
+        // a touch delivers its pointerup to the PRESSED element (implicit capture), here A, whatever is under the finger
+        a.dispatchEvent(pointer('pointerdown', 171, { pointerType: 'touch' }));
+        a.dispatchEvent(pointer('pointerup', 171, { pointerType: 'touch', clientX: window.innerWidth - 3, clientY: window.innerHeight - 3 }));
+        expect(log).toEqual(['cancel:pointerup']);
+        log.length = 0;
+        a.dispatchEvent(pointer('pointerdown', 172, { pointerType: 'touch' }));
+        a.dispatchEvent(pointer('pointerup', 172, { pointerType: 'touch', over: b }));
+        expect(log).toEqual(['up:{"rowIndex":2,"columnKey":"age"}']);
+    });
+
+    it('keeps the mouse as it was: a mouse release without capture is read from its own target', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 173));
+        cell.dispatchEvent(pointer('pointerup', 173)); // coordinates 0,0: not used for a mouse
+        expect(log).toEqual(['up:{"rowIndex":1,"columnKey":"name"}']);
     });
 });
 
@@ -523,11 +604,26 @@ describe('a table inside the shadow root of another component', () => {
         host.remove();
     });
 
+    it('does not count a press inside the table as a press outside: a render that moves the focused cell keeps the DOM focus', async () => {
+        const { host, table } = await mountInShadow();
+        const shadow = host.shadowRoot!;
+        table.focusCell(1, 'name');
+        await settle(table);
+        await userEvent.click(cellAt(table, 1, 'name')!); // a press inside: the document sees its target retargeted to the host
+        await settle(table);
+        expect((shadow.activeElement as HTMLElement | null)?.matches('[data-slot="table-cell"]')).toBe(true);
+        table.data = [...table.data].reverse(); // the focused cell's row moves in the DOM
+        await settle(table);
+        await frames(3);
+        expect((shadow.activeElement as HTMLElement | null)?.matches('[data-slot="table-cell"]')).toBe(true);
+        host.remove();
+    });
+
     it('focuses the cell of a touch tap', async () => {
         const { host, table } = await mountInShadow();
         const cell = cellAt(table, 2, 'name')!;
         cell.dispatchEvent(pointer('pointerdown', 141, { pointerType: 'touch' }));
-        cell.dispatchEvent(pointer('pointerup', 141, { pointerType: 'touch' }));
+        cell.dispatchEvent(pointer('pointerup', 141, { pointerType: 'touch', over: cell }));
         await settle(table);
         expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'name' });
         host.remove();

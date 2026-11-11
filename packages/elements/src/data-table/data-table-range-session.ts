@@ -49,10 +49,11 @@ export class RangeSession<T> implements CellSession {
         setRange: (range) => {
             // The value is always HELD (a property order such as `cellRange = r; enableCellRangeSelection = true` must keep it); while range mode is off
             // it is only not reported, and it applies when the mode turns on. `undefined` is "no range"; anything that is not a range, or names a column
-            // that does not exist, is refused (warned once) and the old value stays. ONE column rule, attached or not: a data column of `config.columns`,
-            // visible or hidden (visibility only affects drawing), never a special column. Rows past the last drawn one are trimmed when the rows are known
-            // (an empty list changes nothing); while detached the services are gone, so the row clamp waits for the next update.
-            const next = sanitizeCellRange(range, this.attached ? this.context.rowCount() : 0, rangeColumnKeys(this.context.host.config.columns));
+            // that is not a range of integer rows and string columns is refused (warned once) and the old value stays. The COLUMNS are not looked up here:
+            // `cellRange = r; columns = [...]` in one tick (an Angular binding order) must keep `r`, so they are validated at the next update against the
+            // columns of that moment (`validateColumns`). Rows past the last drawn one are trimmed when the rows are known (an empty list changes
+            // nothing); while detached the services are gone, so the row clamp waits for the next update too.
+            const next = sanitizeCellRange(range, this.attached ? this.context.rowCount() : 0, []);
             if (next === undefined) return warnBadRange(range);
             this.held = next;
             this.heldInMode = this.rangeOn(); // assigned while range mode was off, it is not part of the mode that a later turn-off ends
@@ -98,6 +99,21 @@ export class RangeSession<T> implements CellSession {
     /** Between `attach()` and `detach()`: the services (rows, columns) can be asked. */
     private attached = false;
 
+    /**
+     * ONE column rule: a data column of `config.columns` (visible or hidden: visibility only affects drawing), never a special column. Checked at the
+     * update, against the columns of that moment; a range that names a column that is not there is dropped then, with the one warning. Nothing is
+     * checked while there are no columns at all (they may not have been assigned yet).
+     */
+    private validateColumns(): void {
+        if (!this.held) return;
+        const keys = rangeColumnKeys(this.context.host.config.columns);
+        if (keys.length === 0) return;
+        if (sanitizeCellRange(this.held, 0, keys) !== undefined) return;
+        warnBadRange(this.held);
+        this.held = null;
+        this.lazy.part?.setRange(null);
+    }
+
     private rangeOn(): boolean {
         return rangeModeOn(this.context.host.config);
     }
@@ -112,6 +128,7 @@ export class RangeSession<T> implements CellSession {
         if (on) {
             this.held = this.live();
             this.heldInMode = true; // what is held now belongs to range mode (a later turn-off ends it)
+            this.validateColumns();
             // The SHELL trims the ROWS of the range, always, once they are known: with or without a part, so a data set that shrinks never leaves a
             // range past its rows (one place, the part need not do it). A changed range is written back to the part. The columns are not checked here:
             // one that is merely hidden at this moment must not drop the range for good.

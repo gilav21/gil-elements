@@ -21,7 +21,7 @@ const dragPart = (state: unknown = null) => ({ active: () => true, dragState: ()
 const rangeService = (over: Record<string, unknown> = {}) => ({ active: () => true, isInRange: () => false, isFillPreview: () => false, edgeOf: () => '', ...over });
 
 describe('stateView with the step-0 services', () => {
-    it('is not active for a plain grid, so the renderer uses the pre-step-0 templates; every feature that can mark a cell or a row makes it active', () => {
+    it('is not active for a plain grid, so the renderer calls neither cellState nor rowState; every feature that can mark a cell or a row makes it active', () => {
         expect(stateView(fakeHost({})).stateActive).toBe(false);
         const range = rangeService();
         const noInteraction = { editingCell: () => null };

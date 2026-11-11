@@ -104,7 +104,8 @@ export class CellInteractionController<T> {
             // (no focus, no offer) nor leave one open for ever. The start is on the table's root (own events only: a nested table records its own); the
             // end is closed by POINTER ID on the document, wherever the pointer is released (outside, over a nested table, on this table's own cells).
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event)), true),
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => !root.contains(event.target as Node) && (this.within = false), true),
+            // A press outside the table: read from the composed path (the target is retargeted when the table sits in another component's shadow root).
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => this.targetOf(event) === null && (this.within = false), true),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.onRelease(event), true),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.onRelease(event), true),
             // The window lost focus (alt-tab, a release over an iframe never heard): no pointer is down any more.
@@ -117,7 +118,16 @@ export class CellInteractionController<T> {
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
             disposables.add(() => this.observer?.disconnect()),
         ];
-        for (const session of this.sessions) session.attach();
+        for (const session of this.sessions) {
+            try {
+                session.attach();
+            } catch (error) {
+                // A session that fails to attach is reported and left out of everything after (pointer, hostUpdate, overlay, detach): the controller and
+                // the other controllers still attach.
+                this.broken.add(session);
+                this.report(error);
+            }
+        }
     }
 
     detach(): void {
@@ -126,6 +136,7 @@ export class CellInteractionController<T> {
         // The reverse of attach: the sessions go first, while the services they read are still provided.
         // A session that throws while detaching is reported (once) and the rest still detach, and the services and listeners are always removed.
         this.eachBackwards((session) => void this.guarded(() => session.detach()));
+        this.broken.clear();
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
         this.observer?.disconnect();
@@ -432,7 +443,7 @@ export class CellInteractionController<T> {
         this.pointer = this.presses.size > 0; // "a pointer is down" ends here (another finger may still be down)
         // The document's listener sees a target RETARGETED to the outermost host when this table sits in another component's shadow root: the target
         // is read from the composed path (the first node inside this table), for ownership, the cell address and the tapped cell alike.
-        const target = this.targetOf(event);
+        const target = this.releaseTargetOf(event);
         const own = event.type === 'pointerup' && target !== null && ownsTarget(this.host.root, target);
         if (!own) return this.notifyCancel(press, event);
         const { anchor, claimedBy } = press;
@@ -455,7 +466,7 @@ export class CellInteractionController<T> {
 
     /** What the sessions draw over the grid (the range readout and fill handle); the element calls it after the table, inside the viewport. */
     renderOverlay(): TemplateResult | null {
-        const drawn = this.sessions.map((session) => session.renderOverlay?.());
+        const drawn = this.sessions.map((session) => (this.broken.has(session) ? undefined : session.renderOverlay?.()));
         return drawn.some(Boolean) ? html`${drawn}` : null; // Lit draws nothing for an undefined or null entry
     }
 
@@ -464,7 +475,23 @@ export class CellInteractionController<T> {
         const at = cellAddressOf(target);
         const press: PointerPress = { anchor };
         // A session that throws is reported (once) and does not claim: the press goes on to the next session and then to the controller's own behaviour.
-        return this.sessions.find((session) => this.guarded(() => handlerOf(session)?.call(session, event, at, press)) === true);
+        return this.sessions.find((session) => !this.broken.has(session) && this.guarded(() => handlerOf(session)?.call(session, event, at, press)) === true);
+    }
+
+    /**
+     * Where a pointer was RELEASED, in the tree of this table's own cells, or null outside the table. A touch (and any captured pointer: the pointer
+     * capture a gesture sets, or the implicit capture of a touch) delivers its pointerup to the element that was PRESSED, whatever is under the finger
+     * now, so for those the element under the release point is found by a hit test (`elementFromPoint` of the table's own root node: the document, or
+     * the shadow root the table sits in) and kept only when it is inside this table. A mouse without capture releases on the element it is over.
+     */
+    private releaseTargetOf(event: PointerEvent): Element | null {
+        const pressed = event.target as Element | null;
+        const captured = event.pointerType !== 'mouse' || (pressed?.hasPointerCapture?.(event.pointerId) ?? false);
+        if (!captured) return this.targetOf(event);
+        const tree = this.host.root.getRootNode();
+        const scope = tree instanceof ShadowRoot ? tree : this.host.root.ownerDocument;
+        const hit = scope.elementFromPoint(event.clientX, event.clientY);
+        return hit !== null && composedContains(this.host.root, hit) ? hit : null;
     }
 
     /**
@@ -479,17 +506,20 @@ export class CellInteractionController<T> {
         return (node as Element | undefined) ?? null;
     }
 
-    private reportedSessionError = false;
+    /** Sessions whose `attach()` threw: skipped by everything after it. */
+    private readonly broken = new Set<CellSession>();
 
-    /** Runs a session callback (a pointer handler, a cancel, a detach); one that throws is reported once (`console.error`) and answers nothing, so no press is ever broken by it. */
+    /** A session error is a bug, not noise: every one is reported (`console.error`). */
+    private report(error: unknown): void {
+        console.error('[ge-data-table] a session threw:', error);
+    }
+
+    /** Runs a session callback (a pointer handler, a cancel, a detach); one that throws is reported and answers nothing, so no press is ever broken by it. */
     private guarded<R>(call: () => R): R | undefined {
         try {
             return call();
         } catch (error) {
-            if (!this.reportedSessionError) {
-                this.reportedSessionError = true;
-                console.error('[ge-data-table] a session threw (pointer handling or detach):', error);
-            }
+            this.report(error);
             return undefined;
         }
     }
@@ -508,7 +538,10 @@ export class CellInteractionController<T> {
     }
 
     private eachBackwards(visit: (session: CellSession) => void): void {
-        for (let i = this.sessions.length - 1; i >= 0; i--) visit(this.sessions[i] as CellSession);
+        for (let i = this.sessions.length - 1; i >= 0; i--) {
+            const session = this.sessions[i] as CellSession;
+            if (!this.broken.has(session)) visit(session);
+        }
     }
 
     private pointerFocus(target: Element): void {
