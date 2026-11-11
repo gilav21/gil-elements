@@ -28,7 +28,10 @@ export class CellInteractionController<T> {
     private pointer = false;
     private observer: MutationObserver | null = null;
     /** The row that held the focus when a node or group was opened or closed: the render that follows follows it. */
-    private rowAtExpansion: { at: CellAddress; id: string; cell: HTMLElement | null } | null = null;
+    private rowAtExpansion: { at: CellAddress; id: string; hadFocus: boolean } | null = null;
+    /** Counts attaches: a task queued in one (the host runs it a frame later) is not run in another, nor after a detach. */
+    private epoch = 0;
+    private attached = false;
     private watched: Element | null = null;
     private teardown: (() => void)[] = [];
 
@@ -44,6 +47,8 @@ export class CellInteractionController<T> {
     };
 
     attach(): void {
+        this.attached = true;
+        this.epoch++;
         const { host } = this;
         const { root, disposables } = host;
         this.teardown = [
@@ -70,6 +75,7 @@ export class CellInteractionController<T> {
         this.observer?.disconnect();
         this.observer = this.watched = null;
         this.within = this.pointer = false;
+        this.attached = false;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
     }
 
@@ -85,17 +91,16 @@ export class CellInteractionController<T> {
         const rows = this.rowCount();
         if (rows === 0) {
             // No data rows because the row's group (the last open one) is collapsed: the focus has nowhere to stay, and the group header is what is drawn.
-            const group = moved ? this.collapsedGroupOf(moved.id) : undefined;
-            if (moved && group !== undefined) return this.dropFocus(moved.cell, group);
-            // No rows because they are loading changes nothing: the focus waits for rows, and so does the row it was following.
-            this.rowAtExpansion = moved;
+            if (this.dropIfCollapsed(moved)) return;
+            // No rows because they are loading changes nothing: the focus waits for rows, and so does the row it was following. DOM focus does not:
+            // the cell is gone, and where the user put it meanwhile is theirs, so a later drop must not take it for the cell's.
+            this.rowAtExpansion = moved && { ...moved, hadFocus: false };
             return;
         }
         let row = moved ? this.followRow(at, moved.id) : at.rowIndex;
         if (row === -1) {
             // Gone with a collapsed group, the roving cell has nowhere to stay; gone for any other reason (a page, a filter) it is clamped like any cell.
-            const group = moved ? this.collapsedGroupOf(moved.id) : undefined;
-            if (moved && group !== undefined) return this.dropFocus(moved.cell, group, at);
+            if (this.dropIfCollapsed(moved, at)) return;
             row = at.rowIndex;
         }
         const next = this.landOn(row, at.columnKey);
@@ -124,8 +129,7 @@ export class CellInteractionController<T> {
         // No row drawn at the focused index (the list is empty): a note kept waiting for rows stays, it is not replaced by nothing.
         if (id === undefined) return;
         const cell = this.host.cellAt(at.rowIndex, at.columnKey);
-        const active = this.rootNode().activeElement;
-        this.rowAtExpansion = { at, id, cell: cell?.contains(active) ? cell : null };
+        this.rowAtExpansion = { at, id, hadFocus: !!cell?.contains(this.rootNode().activeElement) };
     }
 
     /**
@@ -152,13 +156,21 @@ export class CellInteractionController<T> {
         return index;
     }
 
+    /** The row's group is collapsed now, so it left with it: the roving cell has nowhere to stay. Drops the focus and says so. */
+    private dropIfCollapsed(moved: { id: string; hadFocus: boolean } | null, at?: CellAddress): boolean {
+        const group = moved ? this.collapsedGroupOf(moved.id) : undefined;
+        if (!moved || group === undefined) return false;
+        this.dropFocus(moved.hadFocus, group, at);
+        return true;
+    }
+
     /** The key of the collapsed group a row belongs to, from the query's grouping: only the collapsed groups are searched, not every row. */
     private collapsedGroupOf(id: string): string | undefined {
-        const { config, model } = this.host;
-        const collapsed = model.get('collapsedGroups');
+        const { config } = this.host;
+        const expansion = requireProvider(this.host, 'expansion');
         return requireProvider(this.host, 'query')
             .groupRows()
-            .find((group) => collapsed[group.groupKey] === true && group.rows.some((row) => config.getRowId(row) === id))?.groupKey;
+            .find((group) => expansion.isGroupCollapsed(group.groupKey) && group.rows.some((row) => config.getRowId(row) === id))?.groupKey;
     }
 
     /**
@@ -167,19 +179,22 @@ export class CellInteractionController<T> {
      * scrolling: the keyboard stays where the user was. If DOM focus was anywhere else (a toolbar button that collapsed the group, a widget
      * in a detail row) it stays there.
      */
-    private dropFocus(cell: HTMLElement | null, group: string, at?: CellAddress): void {
+    private dropFocus(hadFocus: boolean, group: string, at?: CellAddress): void {
         this.clear();
-        if (!cell) return;
+        if (!hadFocus) return;
+        const epoch = this.epoch;
         this.host.afterRender(() => {
+            // The host runs this a frame later: by then the table may have been detached (the providers are gone), or attached again.
+            if (!this.attached || epoch !== this.epoch) return;
             const active = this.rootNode().activeElement;
             // Still nowhere: the cell is gone with its row (focus fell to the page) or is the viewport; something else has it by now otherwise.
-            if (active && active !== this.host.root.ownerDocument.body && active !== cell && active !== this.host.root.querySelector(VIEWPORT)) return;
+            if (active && active !== this.host.root.ownerDocument.body && active !== this.host.root.querySelector(VIEWPORT)) return;
             const toggle = this.groupToggle(group);
-            if (toggle) return toggle.focus();
+            if (toggle) return toggle.focus({ preventScroll: true });
             const next = at && this.landOn(at.rowIndex, at.columnKey);
             // The header is on another page: a row that is left takes the focus; with no rows at all (every group closed) any group header does.
             if (next) this.focusCell(next.rowIndex, next.columnKey, false);
-            else this.groupToggle()?.focus();
+            else this.groupToggle()?.focus({ preventScroll: true });
         });
     }
 

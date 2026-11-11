@@ -463,6 +463,69 @@ describe('focus follows its row: the edges', () => {
     });
 });
 
+describe('focus follows its row: round 6', () => {
+    const mountGroups = (rows: number, groups: number, extra: Record<string, unknown> = {}): Promise<Table> =>
+        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(rows, { columns: 3, groups }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 1000 }, showToolbar: false, ...extra }, {}, { width: 600, height: 400 });
+
+    it('a table removed before the frame that finishes a dropped focus throws nothing, and the tasks queued after it still run', async () => {
+        const errors: string[] = [];
+        const onError = (event: ErrorEvent): void => void errors.push(event.message);
+        window.addEventListener('error', onError);
+        try {
+            const table = await mountGroups(6, 3);
+            const frame = table.parentElement!;
+            table.focusCell(1, 'c0');
+            await settle(table);
+            let ran = false;
+            table.provider('expansion')!.toggleGroup('g0');
+            await table.updateComplete; // rendered: the task that gives the focus to the toggle is queued for the frame
+            table.afterRender(() => (ran = true)); // and one after it
+            table.remove(); // the providers are gone before the frame
+            await frames(3);
+            frame.append(table); // attached again: the frame runs the queue, the old task is not for this attach
+            await settle(table);
+            await frames(3);
+            expect(errors).toEqual([]);
+            expect(ran).toBe(true);
+            // the dropped focus was the first attach's: it is not given to a toggle by the second
+            expect((document.activeElement as HTMLElement | null)?.matches('[data-toggle]')).toBeFalsy();
+        } finally {
+            window.removeEventListener('error', onError);
+        }
+    });
+
+    it('a row noted before an empty list is not a claim on the focus later: where the user clicked meanwhile stays theirs', async () => {
+        const table = await mountGroups(6, 3);
+        const rows = table.data;
+        table.focusCell(1, 'c0'); // a row of g0, with the DOM focus on its cell
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g1'); // a group the row is not in: the note waits through the empty list
+        table.provider('expansion')!.toggleGroup('g0'); // and the row's own group is closed too
+        table.data = [];
+        await settle(table);
+        (document.activeElement as HTMLElement | null)?.blur(); // a click on the page background: the focus is on the body
+        expect(document.activeElement).toBe(document.body);
+        table.data = rows;
+        await settle(table);
+        await frames(3);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).toBe(document.body); // nothing was pulled onto a toggle
+    });
+
+    it('the toggle that takes the focus does not scroll the viewport to its header, which is above it', async () => {
+        const table = await mountGroups(120, 3); // 40 rows per group, all drawn
+        table.focusCell(30, 'c0'); // far down g0: its header is scrolled out above
+        await rest(table);
+        const view = viewportOf(table);
+        const scrollTop = view.scrollTop;
+        expect(scrollTop).toBeGreaterThan(500);
+        table.provider('expansion')!.toggleGroup('g0');
+        await rest(table);
+        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
+        expect(Math.abs(view.scrollTop - scrollTop)).toBeLessThan(2);
+    });
+});
+
 describe('focus follows its row: round 4', () => {
     const mountGroups = (groups: number, extra: Record<string, unknown> = {}): Promise<Table> =>
         mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(6, { columns: 3, groups }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false, ...extra }, {}, { width: 600, height: 500 });
