@@ -260,23 +260,11 @@ async function renderJob(browser, theme, group, side) {
                 // `data-opened` shows a speed dial open; its items animate out, so wait for them to land.
                 for (const target of document.querySelectorAll('ge-speed-dial[data-opened]')) target.show();
                 await Promise.all([...document.querySelectorAll('ge-speed-dial[data-opened]')].map((t) => t.updateComplete));
-                // An infinite animation (a spinner, a marquee) never finishes, so waiting on it would hang the run.
-                await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));
-                // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
-                for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
-                // `data-shortcuts` is the JSON list `[{ component, actions: [{ actionId, description, defaultShortcut, category }] }]` a
-                // shortcut-bindings dialog finds registered; an entry with `definition` only declares it, with no live instance.
-                for (const target of document.querySelectorAll('[data-shortcuts]')) {
-                    for (const { component, definition, actions } of JSON.parse(target.dataset.shortcuts)) {
-                        if (definition) globalThis.geShortcutBindings.defineShortcuts(component, actions);
-                        else globalThis.geShortcutBindings.registerComponent(component, actions.map((action) => ({ ...action, handler: () => {} })));
-                    }
-                }
-                // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
-                for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
                 // `data-edit` is `rowIndex,columnKey` of a ge-data-table: that cell's editor is opened, as a double click would (wave 5; inert until the editing package lands).
                 // `data-edit-error` is a message: the column then refuses every value with it and the edited draft is committed, so the editor shows its error state.
+                // It runs BEFORE the animation wait below, so a transition the open editor starts is awaited too; the table gets its `data-props` first (they are assigned again, unchanged, with the rest).
                 for (const target of document.querySelectorAll('ge-data-table[data-edit]')) {
+                    if (target.dataset.props) Object.assign(target, JSON.parse(target.dataset.props));
                     await target.updateComplete;
                     const [rowIndex, columnKey] = target.dataset.edit.split(',');
                     const message = target.dataset.editError;
@@ -293,6 +281,20 @@ async function renderJob(browser, theme, group, side) {
                         await target.updateComplete;
                     }
                 }
+                // An infinite animation (a spinner, a marquee) never finishes, so waiting on it would hang the run.
+                await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));
+                // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
+                for (const target of document.querySelectorAll('ge-dock[data-items]')) target.items = JSON.parse(target.dataset.items).map((item) => (item.button ? { ...item, onClick: () => {} } : item));
+                // `data-shortcuts` is the JSON list `[{ component, actions: [{ actionId, description, defaultShortcut, category }] }]` a
+                // shortcut-bindings dialog finds registered; an entry with `definition` only declares it, with no live instance.
+                for (const target of document.querySelectorAll('[data-shortcuts]')) {
+                    for (const { component, definition, actions } of JSON.parse(target.dataset.shortcuts)) {
+                        if (definition) globalThis.geShortcutBindings.defineShortcuts(component, actions);
+                        else globalThis.geShortcutBindings.registerComponent(component, actions.map((action) => ({ ...action, handler: () => {} })));
+                    }
+                }
+                // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
+                for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
                 // `data-file` is JSON `{name, base64}`: a file-viewer is given that file and the run waits for it to load or fail.
                 for (const target of document.querySelectorAll('ge-file-viewer[data-file]')) {
                     const { name, base64 } = JSON.parse(target.dataset.file);

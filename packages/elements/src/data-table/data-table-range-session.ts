@@ -16,9 +16,6 @@ import { clampToRows, rangeColumnKeys, rangeModeOn, sanitizeCellRange, warnBadRa
 import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
-const sameRange = (a: CellRange | null, b: CellRange | null): boolean =>
-    a === b || (a !== null && b !== null && a.startRow === b.startRow && a.endRow === b.endRow && a.startCol === b.startCol && a.endCol === b.endCol);
-
 export class RangeSession<T> implements CellSession {
     /** The range while no part is attached; see the header. */
     private held: CellRange | null = null;
@@ -118,10 +115,12 @@ export class RangeSession<T> implements CellSession {
             // The SHELL trims the ROWS of the range, always, once they are known: with or without a part, so a data set that shrinks never leaves a
             // range past its rows (one place, the part need not do it). A changed range is written back to the part. The columns are not checked here:
             // one that is merely hidden at this moment must not drop the range for good.
+            // No rows at all and not loading: the data was emptied, so the range goes (a later load must not trim it onto rows the user never selected);
+            // while loading the rows are just not there yet and the range waits. `clampToRows` answers the same object when nothing changes.
             const rows = this.context.rowCount();
-            if (this.held && rows > 0) {
-                const trimmed = clampToRows(null, this.held, rows).range;
-                if (!sameRange(trimmed, this.held)) {
+            if (this.held) {
+                const trimmed = rows === 0 ? (this.context.host.config.loading ? this.held : null) : clampToRows(null, this.held, rows).range;
+                if (trimmed !== this.held) {
                     this.held = trimmed;
                     this.lazy.part?.setRange(trimmed);
                 }

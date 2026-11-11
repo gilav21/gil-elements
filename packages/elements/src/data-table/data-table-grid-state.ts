@@ -10,6 +10,7 @@
  *
  * The lead owns this file: a wave implements its service, not this composition.
  */
+import { rangeModeOn } from './data-table-range.js';
 import type { DataTableViewHost } from './data-table-view.js';
 import type { CellFlashDirection } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
@@ -79,7 +80,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     // Range mode is drawn (`aria-selected`, `aria-multiselectable`) only once the range part is loaded and handles ranges: not while it loads,
     // and not after a load that failed (the same rule as `rowDrag.active()` for draggable rows).
     const rangeActive = range?.active() ?? false;
-    const rangeMode = config.enableCellRangeSelection && rangeActive;
+    const rangeMode = rangeModeOn(config) && rangeActive; // the one predicate the session and the `cellRange` getter use (selection OR fill handle)
     const { editable, flashOff } = columnSets(config.columns);
     const flashable = config.enableCellFlash && formatting !== undefined;
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).

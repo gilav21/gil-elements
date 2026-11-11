@@ -299,6 +299,28 @@ describe('the range held by the shell', () => {
         expect(session.rangeService.range()).toBeNull();
     });
 
+    it('clears the range when the data is emptied and the table is not loading, and keeps it while loading', () => {
+        const state = { rows: 10 };
+        const { context, flags } = rangeContext({ ...on }, { rowCount: 10 });
+        Object.assign(context, { rowCount: () => state.rows });
+        const config = (context as unknown as { host: { config: Record<string, unknown> } }).host.config;
+        const session = new RangeSession(context);
+        session.attach();
+        session.rangeService.setRange({ ...range, endRow: 8 });
+        session.hostUpdate();
+        state.rows = 0;
+        config['loading'] = true; // rows are not there yet: the range waits
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 8 });
+        config['loading'] = false; // emptied: gone, a later load must not trim it onto rows nobody selected
+        session.hostUpdate();
+        expect(session.rangeService.range()).toBeNull();
+        state.rows = 20;
+        session.hostUpdate();
+        expect(session.rangeService.range()).toBeNull();
+        expect(flags.enableCellRangeSelection).toBe(true);
+    });
+
     it('keeps a held range while a column is merely hidden, and trims only its rows on update (the part checks the columns)', () => {
         const keys = ['a', 'b', 'c'];
         const context = rangeContext({ ...on }, { rowCount: 5, keys }).context;

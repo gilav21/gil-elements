@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GeDataTable } from './data-table.js';
-import { mountTable, settle } from './data-table-fixtures.js';
+import { mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
 import { resetBadRangeWarning } from './data-table-range.js';
 
 const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
@@ -24,6 +24,7 @@ describe('the cellRange property', () => {
         (early as unknown as { cellRange: unknown }).cellRange = range;
         expect(Object.hasOwn(early, 'cellRange')).toBe(true);
         const table = document.adoptNode(early);
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS }); // rows: an emptied data set ends the range
         document.body.append(table);
         await settle(table);
         expect(Object.hasOwn(table, 'cellRange')).toBe(false);
@@ -100,6 +101,7 @@ describe('the cellRange property', () => {
         customElements.upgrade(table); // the constructor runs, the element is not connected
         expect(assembled(table)).toBe(false);
         expect(Object.hasOwn(table, 'cellRange')).toBe(false);
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS });
         document.body.append(table);
         await settle(table);
         expect(assembled(table)).toBe(true);

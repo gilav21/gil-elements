@@ -102,12 +102,19 @@ export class CellInteractionController<T> {
             host.addKeyHandler(KEY_PRIORITY.navigation, (event) => this.onKey(event)),
             host.topics.on('expansion', () => this.noteFocusedRow()),
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event))),
-            disposables.listen<PointerEvent>(root, 'pointerup', ownEvents(root, (event: PointerEvent) => this.onPointerUp(event))),
+            // The ends of a press are heard in the CAPTURE phase: a consumer cell (or anything else) that stops propagation cannot hide them and leave a
+            // press, and "a pointer is down", for ever. On the table's root they run before the target's own handlers; the document's run first of all,
+            // so they only take a release that is OUTSIDE the table (inside, the root's own handlers route it to the claimant).
+            disposables.listen<PointerEvent>(root, 'pointerup', ownEvents(root, (event: PointerEvent) => this.onPointerUp(event)), true),
+            disposables.listen<PointerEvent>(root, 'pointercancel', ownEvents(root, (event: PointerEvent) => this.endPress(event)), true),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => !root.contains(event.target as Node) && (this.within = false), true),
-            // Bubble phase on the document: the table's own pointerup (above, on the root) has already used the press by the time these run.
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.endPress(event)),
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.endPress(event)),
-            disposables.listen(root.ownerDocument.defaultView ?? window, 'blur', () => (this.within = false)),
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.endPressOutside(event), true),
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.endPressOutside(event), true),
+            // The window lost focus (alt-tab, a release over an iframe never heard): no pointer is down any more.
+            disposables.listen(root.ownerDocument.defaultView ?? window, 'blur', () => {
+                this.within = false;
+                this.cancelPresses();
+            }),
             disposables.listen(root, 'keydown', () => (this.pointer = false), true),
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => this.onFocusIn(event))),
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
@@ -399,6 +406,12 @@ export class CellInteractionController<T> {
         this.pointer = true;
         // The anchor is read BEFORE the offer: a claimant that moves the focus in its onPointerDown must not change the anchor of its own press.
         const anchor = this.focused;
+        // The same pointer already has an open press (its pointerup was lost: a release over an iframe, alt-tab): that one ends first, its claimant is told.
+        const lost = this.presses.get(event.pointerId);
+        if (lost) {
+            this.presses.delete(event.pointerId);
+            this.notifyCancel(lost, event);
+        }
         const claimedBy = this.offer(event, (session) => session.onPointerDown, anchor);
         this.presses.set(event.pointerId, { anchor, claimedBy: claimedBy ?? null });
         if (claimedBy) return; // the claimant owns the press: no focus from the controller
@@ -416,6 +429,7 @@ export class CellInteractionController<T> {
         const press = this.presses.get(event.pointerId);
         if (!press) return;
         this.presses.delete(event.pointerId);
+        this.pointer = this.presses.size > 0;
         const { anchor, claimedBy } = press;
         if (claimedBy) {
             claimedBy.onPointerUp?.(event, cellAddressOf(event.target), { anchor });
@@ -453,16 +467,30 @@ export class CellInteractionController<T> {
     private endPress(event: PointerEvent): void {
         const press = this.presses.get(event.pointerId);
         this.presses.delete(event.pointerId);
-        this.pointer = this.presses.size > 0; // the one place that ends "a pointer is down" (another finger may still be)
-        press?.claimedBy?.onPointerCancel?.(event, { anchor: press.anchor });
+        this.pointer = this.presses.size > 0; // "a pointer is down" ends here and in `onPointerUp` (another finger may still be down)
+        if (press) this.notifyCancel(press, event);
     }
 
-    /** The table detaches mid-press: every claimant is told (`event` null) before the sessions detach. */
+    /** The document heard a release or cancel first: only one outside the table is taken here (inside it, the root's own handlers do it). */
+    private endPressOutside(event: PointerEvent): void {
+        if (!event.composedPath().includes(this.host.root)) this.endPress(event);
+    }
+
+    /** Tells the claimant its press ended without a pointerup on the table; a claimant that throws is reported and never stops the caller. */
+    private notifyCancel(press: { readonly anchor: CellAddress | null; readonly claimedBy: CellSession | null }, event: PointerEvent | null): void {
+        try {
+            press.claimedBy?.onPointerCancel?.(event, { anchor: press.anchor });
+        } catch (error) {
+            console.error('[ge-data-table] a session threw while its press was cancelled:', error);
+        }
+    }
+
+    /** The table detaches (or the window loses focus) mid-press: every claimant is told (`event` null) before the sessions detach; one that throws does not abort the detach. */
     private cancelPresses(): void {
         const open = [...this.presses.values()];
         this.presses.clear();
         this.pointer = false;
-        for (const press of open) press.claimedBy?.onPointerCancel?.(null, { anchor: press.anchor });
+        for (const press of open) this.notifyCancel(press, null);
     }
 
     private eachBackwards(visit: (session: CellSession) => void): void {

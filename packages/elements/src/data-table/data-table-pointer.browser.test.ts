@@ -230,6 +230,75 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
         expect(table.focusedCell).toBeNull();
     });
 
+    it('ends a press that is still open when its pointer goes down again (a lost pointerup): the claimant is told first', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = (event) => {
+            log.push(`down:${event.pointerId}`);
+            return true;
+        };
+        hooks.onPointerCancel = (event, press) => void log.push(`cancel:${event?.type}:${press.anchor === null}`);
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 81));
+        cell.dispatchEvent(pointer('pointerdown', 81)); // no pointerup in between
+        expect(log).toEqual(['down:81', 'cancel:pointerdown:true', 'down:81']);
+    });
+
+    it('is not hidden by a consumer cell that stops propagation: the claimant still gets its pointerup and no press or "pointer down" is left', async () => {
+        const table = await mountTable();
+        const ups: number[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (event) => void ups.push(event.pointerId);
+        const cell = cellAt(table, 1, 'name')!;
+        cell.addEventListener('pointerup', (event) => event.stopPropagation()); // bubble phase, a consumer's handler
+        cell.addEventListener('pointercancel', (event) => event.stopPropagation());
+        cell.dispatchEvent(pointer('pointerdown', 91));
+        cell.dispatchEvent(pointer('pointerup', 91));
+        expect(ups).toEqual([91]);
+        // the pointer is no longer down: focus on the viewport reaches a cell
+        table.focusCell(0, 'name');
+        await settle(table);
+        table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!.focus();
+        await frames(2);
+        expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
+        // a cancel that is stopped is heard too
+        const cancels: unknown[] = [];
+        hooks.onPointerCancel = (event) => void cancels.push(event?.type);
+        cell.dispatchEvent(pointer('pointerdown', 92));
+        cell.dispatchEvent(pointer('pointercancel', 92));
+        expect(cancels).toEqual(['pointercancel']);
+    });
+
+    it('tells the claimants when the window loses focus mid-press, and nobody is "down" afterwards', async () => {
+        const table = await mountTable();
+        const log: unknown[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerCancel = (event) => void log.push(event);
+        cellAt(table, 1, 'name')!.dispatchEvent(pointer('pointerdown', 95));
+        window.dispatchEvent(new Event('blur'));
+        expect(log).toEqual([null]);
+    });
+
+    it('detaches completely although a claimant throws while its press is cancelled: the error is reported, the sessions still detach', async () => {
+        const table = await mountTable();
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const detach = vi.spyOn(RangeSession.prototype, 'detach');
+        hooks.onPointerDown = () => true;
+        hooks.onPointerCancel = () => {
+            throw new Error('claimant failed');
+        };
+        try {
+            cellAt(table, 1, 'name')!.dispatchEvent(pointer('pointerdown', 99));
+            expect(() => table.remove()).not.toThrow();
+            expect(detach).toHaveBeenCalledTimes(1);
+            expect(error).toHaveBeenCalledTimes(1);
+            expect(table.provider('range')).toBeUndefined(); // the services were unprovided: the controller's teardown ran
+        } finally {
+            detach.mockRestore();
+            error.mockRestore();
+        }
+    });
+
     it('cancels an open claimed press for its claimant BEFORE the sessions detach when the table is removed mid-press', async () => {
         const table = await mountTable();
         const order: string[] = [];

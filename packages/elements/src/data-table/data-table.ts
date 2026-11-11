@@ -553,7 +553,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The range service once the controllers exist (the first connect built them; they are kept across reconnects, and the range session owns the value from then on). */
     private rangeService(): DataTableProviders<T>['range'] | undefined {
-        return this.provider('range') ?? this.built?.service('range');
+        return this.built?.service('range');
     }
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */

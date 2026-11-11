@@ -80,6 +80,16 @@ describe('stateView with the step-0 services', () => {
             expect(state.cellState(0, 'c', row)).toBe(OUT_OF_RANGE_FLAGS);
         });
 
+        it('is range mode with the fill handle alone, the same predicate the session and the getter use', () => {
+            const range = rangeService({ isInRange: (r: number) => r === 0, edgeOf: () => 'top' });
+            const state = stateView(fakeHost({ config: { enableCellRangeSelection: false, enableFillHandle: true }, providers: { range } }));
+            expect(state.rangeSelectable).toBe(true);
+            expect(state.cellState(0, 'a', row)).toMatchObject({ inRange: true, selected: 'true' });
+            expect(state.cellState(1, 'a', row)).toBe(OUT_OF_RANGE_FLAGS);
+            // neither flag: nothing, whatever the service says
+            expect(stateView(fakeHost({ providers: { range } })).cellState(0, 'a', row)).toBe(NO_CELL_FLAGS);
+        });
+
         it('leaves the special columns (selection, expander, actions) out of it', () => {
             const state = stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range: rangeService({ isInRange: () => true }) } }));
             for (const key of ['_selection', '_expander', '_actions']) expect(state.cellState(0, key, row)).toBe(NO_CELL_FLAGS);
