@@ -13,20 +13,36 @@
  * Contract, so the two waves never need to know each other:
  * - A session registers its OWN key handlers (`host.addKeyHandler(KEY_PRIORITY.x, ...)`) and its own listeners through
  *   `context.host.disposables`; the controller never routes keys to it.
- * - Pointer: the controller's ONE delegated `pointerdown` / `pointerup` listener OFFERS the press to the sessions first, in the order
- *   range, edit, as `onPointerDown / onPointerUp(event, at, press)`. The first one that returns true claims the press (and moves the focus
- *   itself) and the rest are skipped; if none claims it the controller then focuses the pressed cell, except inside the open editor's cell.
- *   `at` is the cell under the pointer, null outside any cell; `press.anchor` is the roving cell BEFORE the press moved it, the same one
- *   for the pointerdown and the pointerup of one press. A press a session claimed that ends without a pointerup on the table (cancelled,
- *   or released outside) is reported to that session as `onPointerCancel(event, press)`, and so is a press still open when the table detaches
- *   (`event` is null; the claimant is told BEFORE the sessions detach). The press contract, per pointer id: the anchor is captured before the
- *   offer; a CLAIMED press is routed only to its claimant (its pointerup, its cancel; no other session sees them, the controller does not
- *   focus); an unclaimed press is offered to the sessions at its pointerup (and, for a touch, focuses the tapped cell); a pointerup or cancel
- *   with no press of this table behind it does nothing; presses of different pointers never touch each other.
+ * - Pointer. The controller listens, all in the CAPTURE phase (a consumer's `stopPropagation` cannot hide an event):
+ *   on the table's ROOT: `pointerdown` (records a press, own events only: a nested table records its own), `pointerup` and `pointercancel`
+ *   (end it, whatever they landed on inside the root, a nested table and a closed shadow root included), `gotpointercapture` (records that the
+ *   pointer is captured); on the DOCUMENT: `pointerdown` (a press outside the root clears the focus guard at once), `pointerup` /
+ *   `pointercancel` (close what the root did not hear: a release OUTSIDE the table), `lostpointercapture` (forgets the capture), and on the
+ *   window `blur` (every open press is cancelled). A press is recorded per POINTER ID (a finger and a mouse never touch each other's).
+ *   At its pointerdown the sessions are OFFERED the press in the order range, edit, as `onPointerDown(event, at, press)`: `at` is the cell
+ *   under the pointer (null outside any cell) and `press` is `{ anchor, pressed, startCell }` (`anchor`: the roving cell BEFORE the press
+ *   moved it; `pressed`: the element of the table it began on, an overlay looked through to the cell under it; `startCell`: the body cell it began
+ *   on, null when it began on a resize handle, a header, a popover or elsewhere), the same object content for every call of one press. The first
+ *   session that returns true CLAIMS the press and moves the focus itself; if none does, the controller focuses the pressed cell (a mouse, at the
+ *   pointerdown, except in the open editor's cell).
+ *   A CLAIMED press is routed only to its claimant, and it is told how the press ended exactly once: `onPointerUp(event, at, press)` when the
+ *   pointer was released on this table (`at`: the cell under the pointer there; a touch and a captured pointer are located by a hit test at the
+ *   release point, looking through elements marked `data-pointer-transparent`, an element that floats out of its cell is not that cell), else
+ *   `onPointerCancel(event, press)`: the browser cancelled it, or it was released outside the table or over a nested one (`event` is then the
+ *   pointerup / pointercancel; when the same pointer presses again before the close ran it is still the real pointerup), or `event` is null:
+ *   the window lost focus, the table detached (told BEFORE the sessions detach), the pointer pressed again with its pointerup lost, or the
+ *   claimant itself failed. No other session sees a claimed press and the controller does not focus.
+ *   An UNCLAIMED press is offered to the sessions again at its pointerup, as `onPointerUp(event, at, press)`, but only when it began on a body
+ *   cell (`press.startCell`) and was released on this table; a touch tap then focuses the pressed cell if the finger is within a small slop
+ *   of it (further away it was a drag). A pointerup or cancel with no press of this table behind it does nothing.
  * - `hostUpdate()` runs before every render, after the controller's own reconcile, in the order edit, range.
  * - `service` holds the methods the session adds to the one `CellInteractionService` object; `rangeService` is provided under `range`.
+ * - A session that throws in `attach()` or `hostUpdate()` has a bug, so nothing of it is kept: the error is reported once, its claimed presses
+ *   are cancelled (`event` null), it is detached and left out of everything until the next attach, and neutral services (`NEUTRAL_RANGE`,
+ *   `NEUTRAL_RANGE_CELL`, `NEUTRAL_EDIT`: one definition per session, in its file) replace its `service` / `rangeService`; the range held
+ *   by a failed range session is lost with it. An error in any other callback is reported and the callback answers nothing.
  * - Cross-wave reads go through providers only: the range session reads `interaction.editingCell()`, the edit session reads
- *   `provider('range')?.gestureActive()`.
+ *   `provider('range').gestureActive()` (`range` is always provided; ask `active()` whether the part handles ranges).
  *
  * After this step nobody but the lead edits `data-table-cell-interaction-controller.ts`: a wave edits its session file.
  */
@@ -61,6 +77,10 @@ export interface InteractionContext<T> {
 /** What a session knows of the press besides the event: the roving cell BEFORE the press moved it (a shift+click extends from it). */
 export interface PointerPress {
     readonly anchor: CellAddress | null;
+    /** The element of this table the press began on (an overlay looked through to the cell under it), null when it began on none (outside any element of the table). */
+    readonly pressed: Element | null;
+    /** The body cell the press began on, null when it began elsewhere (a resize handle, a header, a popover, the body outside any cell). The same for every call of one press. */
+    readonly startCell: CellAddress | null;
 }
 
 export interface CellSession {
@@ -81,20 +101,4 @@ export interface CellSession {
     readonly service?: Partial<CellInteractionService>;
     /** Provided under `range` (range session only). */
     readonly rangeService?: RangeService;
-    /**
-     * Called by the controller after it FAILED this session (its `attach()` or `hostUpdate()` threw) and detached it: answers the stand-in that takes
-     * over everything the session contributes (`service` with the SAME keys, `rangeService` when it has one) while it is out, and what it holds that
-     * must survive. The controller never checks which session it is: a session adds nothing the stand-in does not replace.
-     */
-    inert(): SessionStandIn;
-    /** At the next attach, before `attach()`: the session takes back what its stand-in kept (`SessionStandIn.kept`). */
-    adopt?(kept: unknown): void;
-}
-
-/** What replaces a failed session (see `CellSession.inert`): inert services that keep the session's state, nothing that touches the DOM. */
-export interface SessionStandIn {
-    readonly service?: Partial<CellInteractionService>;
-    readonly rangeService?: RangeService;
-    /** The state the stand-in holds now (values set while the session was out), handed to `CellSession.adopt` at the next attach. */
-    kept?(): unknown;
 }

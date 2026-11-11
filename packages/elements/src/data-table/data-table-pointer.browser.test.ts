@@ -42,7 +42,8 @@ describe('a press is offered to the sessions before the controller moves the foc
         table.focusCell(0, 'name');
         await settle(table);
         await shiftClick(cellAt(table, 3, 'age')!, table);
-        expect(seen).toEqual([{ anchor: { rowIndex: 0, columnKey: 'name' } }]);
+        expect(seen).toHaveLength(1);
+        expect(seen[0]!.anchor).toEqual({ rowIndex: 0, columnKey: 'name' });
         // not claimed: the controller then focused the pressed cell, after the session had seen the old one
         expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'age' });
     });
@@ -454,7 +455,7 @@ describe('a session that throws while attaching', () => {
 });
 
 describe('a range session whose attach threw', () => {
-    it('is withdrawn: the range provider answers inertly (not active), cellRange still stores, nothing throws', async () => {
+    it('is withdrawn: the range provider answers neutrally (not active), a cellRange assigned meanwhile is lost, nothing throws', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const attach = vi.spyOn(RangeSession.prototype, 'attach').mockImplementation(() => {
             throw new Error('range attach failed');
@@ -465,9 +466,9 @@ describe('a range session whose attach threw', () => {
             const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
             table.cellRange = range;
             await settle(table);
-            expect(table.cellRange).toEqual(range);
+            expect(table.cellRange).toBeNull();
             expect(table.provider('range')!.isInRange(0, 'name')).toBe(false);
-            expect(table.provider('interaction')!.isCellSelected(0, 'name')).toBe(false); // the inert shell answers with the focused cell
+            expect(table.provider('interaction')!.isCellSelected(0, 'name')).toBe(false); // neutral: false, not the focused cell
             // and a reconnect tries the real session again: nothing throws
             attach.mockRestore();
             table.remove();
@@ -481,7 +482,7 @@ describe('a range session whose attach threw', () => {
     });
 });
 
-describe('a failed session is withdrawn through its own stand-in', () => {
+describe('a failed session is withdrawn: its presses end, its neutral services take over', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
     });
@@ -513,7 +514,7 @@ describe('a failed session is withdrawn through its own stand-in', () => {
         }
     });
 
-    it('keeps the range across a failure, and a value set while the session is out survives the reconnect', async () => {
+    it('installs the neutral services while it is out (the held range is lost), renders, and a reconnect restores the real session', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         let fail = false;
         const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
@@ -521,65 +522,62 @@ describe('a failed session is withdrawn through its own stand-in', () => {
         });
         try {
             const table = await mountTable({ enableCellRangeSelection: true });
-            const first = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
-            const second = { startRow: 1, startCol: 'name', endRow: 2, endCol: 'age' };
-            table.cellRange = first;
+            const realService = table.provider('range')!;
+            const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
+            table.cellRange = range;
             fail = true;
             table.requestUpdate();
             await settle(table);
-            expect(table.provider('range')!.active()).toBe(false); // the stand-in
-            expect(table.cellRange).toEqual(first); // what the failed session held
-            table.cellRange = second; // set while it is out
-            expect(table.cellRange).toEqual(second);
+            expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull(); // the table still renders
+            expect(table.provider('range')).not.toBe(realService); // the neutral one
+            expect(table.cellRange).toBeNull(); // the range held by the failed session is lost
+            table.cellRange = range; // stored nowhere
+            expect(table.cellRange).toBeNull();
             update.mockRestore();
             table.remove();
             document.body.append(table);
             await settle(table);
-            expect(table.cellRange).toEqual(second); // the real session adopted it
+            expect(table.provider('range')).toBe(realService); // the real session is back
+            table.cellRange = range;
+            expect(table.cellRange).toEqual(range);
+            expect(error).toHaveBeenCalledTimes(1);
         } finally {
             update.mockRestore();
             error.mockRestore();
         }
     });
 
-    it('uses what the session itself answers (`inert`, `kept`, `adopt`), not a branch on the session: any session is withdrawn the same way', async () => {
+    it('an edit session that fails to attach is replaced by the neutral editing methods, the table works, and a reconnect tries it again', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const attach = vi.spyOn(EditSession.prototype, 'attach').mockImplementation(() => {
             throw new Error('edit attach failed');
         });
-        const inert = vi.spyOn(EditSession.prototype, 'inert').mockImplementation(() => ({ service: { editingCell: () => ({ rowIndex: 9, columnKey: 'zz' }) }, kept: () => 'kept value' }));
-        const adopt = vi.fn();
-        (EditSession.prototype as unknown as { adopt?: unknown }).adopt = adopt;
         try {
             const table = await mountTable();
-            expect(table.provider('interaction')!.editingCell()).toEqual({ rowIndex: 9, columnKey: 'zz' });
+            expect(table.provider('interaction')!.editingCell()).toBeNull();
+            expect(table.provider('interaction')!.startEditing(table.data[0]!, 'name')).toBe(false);
             attach.mockRestore();
             table.remove();
             document.body.append(table);
             await settle(table);
-            expect(adopt).toHaveBeenCalledWith('kept value');
-            expect(table.provider('interaction')!.editingCell()).toBeNull(); // the real contribution is back
+            expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull();
+            expect(error).toHaveBeenCalledTimes(1); // the failure was reported once, and the retry (the real attach) does not fail
         } finally {
-            delete (EditSession.prototype as unknown as { adopt?: unknown }).adopt;
             attach.mockRestore();
-            inert.mockRestore();
             error.mockRestore();
         }
     });
 });
 
-describe('a session whose inert() throws too', () => {
-    it('is still withdrawn: the controller answers with a neutral stand-in, nothing calls the detached session', async () => {
+describe('the neutral services of a failed range session', () => {
+    it('answer with typed values (false, \'\', null) and nothing calls the detached session', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const attach = vi.spyOn(RangeSession.prototype, 'attach').mockImplementation(() => {
             throw new Error('range attach failed');
         });
-        const inert = vi.spyOn(RangeSession.prototype, 'inert').mockImplementation(() => {
-            throw new Error('inert failed');
-        });
         try {
             const table = await mountTable({ enableCellRangeSelection: true });
-            expect(error).toHaveBeenCalledTimes(2); // the attach and the inert
+            expect(error).toHaveBeenCalledTimes(1);
             const range = table.provider('range')!;
             // typed neutral answers, not null: booleans false, strings '', the rest null
             expect([range.active(), range.isInRange(0, 'name'), range.isFillPreview(0, 'name'), range.gestureActive(), range.fillDownTo(1)]).toEqual([false, false, false, false, false]);
@@ -589,9 +587,60 @@ describe('a session whose inert() throws too', () => {
             expect(table.provider('interaction')!.isCellSelected(0, 'name')).toBe(false);
         } finally {
             attach.mockRestore();
-            inert.mockRestore();
             error.mockRestore();
         }
+    });
+});
+
+describe('an unclaimed press is offered at its pointerup only when it began on a body cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('a click on a cell is offered with startCell and pressed of that cell', async () => {
+        const table = await mountTable();
+        const seen: PointerPress[] = [];
+        hooks.onPointerUp = (_event, _at, press) => void seen.push(press);
+        const cell = cellAt(table, 1, 'age')!;
+        await userEvent.click(cell);
+        expect(seen).toHaveLength(1);
+        expect(seen[0]!.startCell).toEqual({ rowIndex: 1, columnKey: 'age' });
+        expect(cell.contains(seen[0]!.pressed)).toBe(true);
+    });
+
+    it('a drag that began on a resize handle and is released over a body cell is offered to no session', async () => {
+        const table = await mountTable({ enableColumnResize: true });
+        const ups: unknown[] = [];
+        const downs: PointerPress[] = [];
+        hooks.onPointerUp = (_event, at) => void ups.push(at);
+        hooks.onPointerDown = (_event, _at, press) => void downs.push(press); // seen, not claimed
+        const handle = table.querySelector<HTMLElement>('[data-slot="table-head"] [data-slot="data-table-resize-handle"]')!;
+        await mouseDrag(handle, cellAt(table, 2, 'age')!, { steps: 3 });
+        expect(ups).toEqual([]);
+        expect(downs[0]!.startCell).toBeNull(); // it began on the handle
+    });
+});
+
+describe('a release outside followed at once by a press of the same pointer', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('tells the claimant of the first press about its REAL pointerup, not a null event', async () => {
+        const table = await mountTable();
+        const cancels: unknown[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerCancel = (event) => void cancels.push(event);
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 301));
+        const up = pointer('pointerup', 301);
+        document.body.dispatchEvent(up); // outside: the deferred close has not run yet
+        cell.dispatchEvent(pointer('pointerdown', 301)); // the same pointer presses again in the same task
+        expect(cancels).toEqual([up]);
+        expect(cancels[0]).toBe(up);
+        await frames(2);
+        expect(cancels).toHaveLength(1); // and the deferred close finds nothing left for it
+        cell.dispatchEvent(pointer('pointerup', 301));
     });
 });
 

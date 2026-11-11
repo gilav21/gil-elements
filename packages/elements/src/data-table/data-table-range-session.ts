@@ -9,14 +9,14 @@
  * or kept across a detach and attach (a DOM move disposes the part), is handed to the next part when it is built, and read back from the
  * part before it is disposed. The part keeps the live range while it is attached.
  */
-import type { CellSession, InteractionContext, SessionStandIn } from './data-table-cell-session.js';
+import type { CellSession, InteractionContext } from './data-table-cell-session.js';
 import { lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
-/** The range service that does nothing and answers "nothing" with the right types (the shell is built on it; the controller's fallback when a session cannot make a stand-in). */
+/** The range service that does nothing and answers "nothing" with the right types: the shell is built on it, and the controller installs it when this session fails. */
 export const NEUTRAL_RANGE: RangeService = {
     active: () => false,
     range: () => null,
@@ -33,7 +33,7 @@ export const NEUTRAL_RANGE: RangeService = {
     fillHandleCell: () => null,
     gestureActive: () => false,
 };
-/** The range session's methods of the `interaction` service, neutral. */
+/** The range session's methods of the `interaction` service, neutral (installed when it fails: `isCellSelected` answers false there, not the focused cell). */
 export const NEUTRAL_RANGE_CELL: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = { cellRange: () => null, isCellSelected: () => false };
 
 export class RangeSession<T> implements CellSession {
@@ -183,19 +183,5 @@ export class RangeSession<T> implements CellSession {
         // A detach keeps the range (a DOM move): the next attach's part gets it back.
         this.held = this.live();
         this.lazy.dispose();
-    }
-
-    /** After a failure of this session (see `CellSession.inert`): an unattached shell that starts with the range held now (read after the detach) and keeps what is set while the session is out. */
-    inert(): SessionStandIn {
-        const shell = new RangeSession(this.context);
-        shell.held = this.held;
-        shell.heldInMode = this.heldInMode;
-        return { service: shell.service, rangeService: shell.rangeService, kept: () => shell.held };
-    }
-
-    /** The range the stand-in holds (`inert().kept()`) is the range now: a value set while the session was out survives its next attach. */
-    adopt(kept: unknown): void {
-        this.held = kept as CellRange | null;
-        this.heldInMode = this.rangeOn();
     }
 }
