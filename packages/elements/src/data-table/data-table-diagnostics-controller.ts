@@ -57,8 +57,9 @@ export class DiagnosticsController<T> {
             enableFillHandle: config.enableFillHandle,
             enableClipboardPaste: config.enableClipboardPaste,
             localReorder: config.localReorder,
-            sortState: model.get('sortState'),
-            multiSortState: model.get('multiSortState'),
+            // Only the row-drag-with-sort check reads them: any other table would re-run the whole check (and the O(rows) id scan) on every sort.
+            sortState: config.enableRowDrag && config.localReorder ? model.get('sortState') : undefined,
+            multiSortState: config.enableRowDrag && config.localReorder ? model.get('multiSortState') : undefined,
         };
         if (!sameSnapshot(this.last, snapshot)) {
             this.last = snapshot;

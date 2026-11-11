@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { InteractionContext } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
 import { RangeSession } from './data-table-range-session.js';
@@ -7,7 +7,7 @@ import { RangeSession } from './data-table-range-session.js';
 const DIRECTORY = new URL('.', import.meta.url);
 const SOURCES = readdirSync(DIRECTORY).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
 const read = (name: string): string => readFileSync(new URL(name, DIRECTORY), 'utf8');
-const context = {} as InteractionContext<unknown>;
+const context = { focused: () => null } as unknown as InteractionContext<unknown>;
 
 describe('the joint step 0 sessions', () => {
     it('answers "nothing is being edited" and no editor can open', () => {
@@ -18,6 +18,19 @@ describe('the joint step 0 sessions', () => {
         expect(service.isEditing?.(0, 'name')).toBe(false);
         expect(service.editValue?.()).toBeUndefined();
         expect(() => [service.commitEdit?.(), service.cancelEdit?.(), service.setEditValue?.(1)]).not.toThrow();
+    });
+
+    it('derives cellRange and isCellSelected from the range service, so one pair is implemented', () => {
+        const focused = { rowIndex: 1, columnKey: 'a' };
+        const session = new RangeSession({ focused: () => focused } as unknown as InteractionContext<unknown>);
+        expect(session.service.isCellSelected(1, 'a')).toBe(true);
+        expect(session.service.isCellSelected(2, 'a')).toBe(false);
+        const isInRange = vi.spyOn(session.rangeService, 'isInRange').mockImplementation((r) => r === 2);
+        expect(session.service.isCellSelected(2, 'a')).toBe(true);
+        expect(isInRange).toHaveBeenCalled();
+        const range = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' };
+        session.rangeService.setRange(range);
+        expect(session.service.cellRange()).toBe(range);
     });
 
     it('answers "no range" and no gesture, and fills nothing', () => {
@@ -34,6 +47,53 @@ describe('the joint step 0 sessions', () => {
         expect(range.fillDownTo(3)).toBe(false);
         expect(range.fillHandleCell()).toBeNull();
         expect(range.gestureActive()).toBe(false);
+    });
+});
+
+describe('the range held by the shell', () => {
+    const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+    const range = { startRow: 1, startCol: 'a', endRow: 3, endCol: 'b' };
+    const make = (flags = { enableCellRangeSelection: true, enableFillHandle: false }): { session: RangeSession<unknown>; flags: typeof flags } => ({
+        session: new RangeSession({ host: { config: flags }, focused: () => null } as unknown as InteractionContext<unknown>),
+        flags,
+    });
+
+    it('keeps a range set before the part is loaded, and hands it to the part when it attaches', async () => {
+        const { session } = make();
+        session.rangeService.setRange(range);
+        expect(session.rangeService.range()).toBe(range);
+        session.hostUpdate();
+        await flush();
+        expect(session.rangeService.range()).toEqual(range);
+    });
+
+    it('applies a range set between attach and load to the part that is built', async () => {
+        const { session } = make();
+        session.hostUpdate();
+        session.rangeService.setRange(range);
+        await flush();
+        expect(session.rangeService.range()).toEqual(range);
+    });
+
+    it('keeps the range across a detach and attach (a DOM move) and gives it to the next part', async () => {
+        const { session } = make();
+        session.hostUpdate();
+        await flush();
+        session.rangeService.setRange(range);
+        session.detach();
+        expect(session.rangeService.range()).toEqual(range);
+        session.hostUpdate();
+        await flush();
+        expect(session.rangeService.range()).toEqual(range);
+    });
+
+    it('answers the held range with the flags off', () => {
+        const { session } = make({ enableCellRangeSelection: false, enableFillHandle: false });
+        session.rangeService.setRange(range);
+        session.hostUpdate();
+        expect(session.rangeService.range()).toBe(range);
+        session.rangeService.setRange(null);
+        expect(session.rangeService.range()).toBeNull();
     });
 });
 

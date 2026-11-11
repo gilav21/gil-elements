@@ -473,6 +473,31 @@ describe('the focused row stays drawn', () => {
     });
 });
 
+describe('row drag next to the window', () => {
+    const rowDrag = (active: boolean) => ({ active: () => active, isDragging: () => false, dragState: () => null, moveRow: () => false, reorderData: (data: readonly unknown[]) => [...data] });
+
+    it('draws no draggable row while the drag part is inert: no drag ghost, rows keep their text selection', async () => {
+        const table = await mountVirtual({ enableRowDrag: true });
+        expect(bodyRows(table).some((r) => r.hasAttribute('draggable') || r.hasAttribute('data-draggable'))).toBe(false);
+        expect(table.querySelector('[data-slot="data-table-drop-edge"]')).toBeNull();
+    });
+
+    it('keeps the retained focused row out of flow at its own offset when rows are draggable', async () => {
+        const table = await mountVirtual({ enableRowDrag: true });
+        table.provide('rowDrag', rowDrag(true) as never);
+        table.focusCell(100, 'c1');
+        await settle(table);
+        await scrollTo(table, { top: 200000 });
+        const kept = cellAt(table, 100, 'c1')!.closest<HTMLElement>('[data-slot="table-row"]')!;
+        expect(kept.hasAttribute('data-retained')).toBe(true);
+        expect(kept.hasAttribute('data-draggable')).toBe(true);
+        expect(getComputedStyle(kept).position).toBe('absolute');
+        const drawn = bodyRows(table).filter((r) => !r.hasAttribute('data-retained'));
+        expect(drawn.length).toBeGreaterThan(0);
+        expect(getComputedStyle(drawn[0]!).position).toBe('relative');
+    });
+});
+
 describe('cells that are custom elements', () => {
     it('constructs few elements per scroll step (the recycling benchmark)', async () => {
         const counter = countConstructions('ge-bench-cell');

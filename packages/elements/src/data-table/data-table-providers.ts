@@ -277,6 +277,8 @@ export interface RangeService {
     normalized(): NormalizedRange | null;
     isInRange(rowIndex: number, columnKey: string): boolean;
     isFillPreview(rowIndex: number, columnKey: string): boolean;
+    /** The edges of the range this cell sits on (`top`, `bottom`, `start`, `end`, space-separated; `rangeEdges` in `data-table-range.ts`), '' for an inner cell. */
+    edgeOf(rowIndex: number, columnKey: string): string;
     /** Programmatic: no event, clamped like any range. */
     setRange(range: CellRange | null): void;
     extendTo(rowIndex: number, columnKey: string): void;
@@ -315,6 +317,8 @@ export interface RowDragState {
 
 /** Row drag reorder and its keyboard alternative (wave 6, provided by the `row-drag` controller). */
 export interface RowDragService<T> {
+    /** The drag part is loaded and handles drags: rows are draggable only then (the step 0 shell answers false). */
+    active(): boolean;
     isDragging(): boolean;
     /** What the renderer draws of a drag in progress: the dragged row and the edge indicator on the target; null when no drag runs. */
     dragState(): RowDragState | null;

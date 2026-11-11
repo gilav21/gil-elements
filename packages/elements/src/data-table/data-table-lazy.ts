@@ -12,7 +12,9 @@
  *   defined by the time it is shown. A caller that resolves after the table was detached must check its own attach state.
  * - `lazyPart`: a flag-gated piece of a controller or session. `sync(on)` loads it when the flag turns on (at the first update, so
  *   the first gesture does not wait), attaches it, and detaches it when the flag turns off or the table detaches. A load that
- *   resolves after the flag turned off, or after `dispose()`, is dropped without attaching, so nothing runs after a disconnect.
+ *   resolves after the flag turned off, or after `dispose()`, is dropped without attaching, so nothing runs after a disconnect. A
+ *   failed load is latched: `sync` runs on every render and must not re-import (and re-log) every time, so it tries again only
+ *   after the flag turned off and on, or after `dispose()` (the next attach).
  */
 
 /** One memoised `import()`; a rejection clears the memo so a later call tries again. */
@@ -65,15 +67,18 @@ export interface LazyPart<P extends LazyPartInstance> {
  * `create` imports the module and builds the part (`() => import('./lazy/x.js').then((m) => new m.XPart(context))`); the part is
  * attached here, after the flag is checked again, never inside `create`.
  */
-export function lazyPart<P extends LazyPartInstance>(create: () => Promise<P>, onError: (error: unknown) => void = defaultOnError): LazyPart<P> {
+export function lazyPart<P extends LazyPartInstance>(
+    create: () => Promise<P>,
+    onError: (error: unknown) => void = (error) => console.error('[ge-data-table] a lazy part failed to load:', error),
+): LazyPart<P> {
     let current: P | null = null;
     let wanted = false;
-    let loading = false;
+    /** A load failed with the flag still on: not tried again (and not logged again) until the flag turns off or `dispose()`. */
+    let failed = false;
     let generation = 0;
     const stop = (): void => {
         wanted = false;
         generation++;
-        loading = false;
         const part = current;
         current = null;
         part?.detach();
@@ -84,35 +89,31 @@ export function lazyPart<P extends LazyPartInstance>(create: () => Promise<P>, o
         },
         sync(on) {
             if (!on) {
+                failed = false;
                 if (wanted) stop();
                 return;
             }
-            if (wanted) return;
+            // `sync` runs on every render: a part that is wanted, loading or failed is left alone.
+            if (wanted || failed) return;
             wanted = true;
-            loading = true;
             const mine = ++generation;
             create().then(
                 (part) => {
-                    if (mine !== generation || !wanted) return;
-                    loading = false;
+                    if (mine !== generation) return;
                     current = part;
                     part.attach();
                 },
                 (error: unknown) => {
                     if (mine !== generation) return;
-                    // Forgotten, so the flag turning off and on again (or the next attach) tries again.
                     wanted = false;
-                    loading = false;
+                    failed = true;
                     onError(error);
                 },
             );
         },
         dispose: () => {
-            if (wanted || loading || current) stop();
+            failed = false;
+            if (wanted) stop();
         },
     };
-}
-
-function defaultOnError(error: unknown): void {
-    console.error('[ge-data-table] a lazy part failed to load:', error);
 }

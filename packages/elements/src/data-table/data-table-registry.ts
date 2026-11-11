@@ -138,8 +138,6 @@ export const KEY_PRIORITY = {
     navigation: 100,
 } as const;
 
-export type KeyOwner = keyof typeof KEY_PRIORITY;
-
 /** Topics the element itself publishes (an input changed, the locale changed), so no controller has to. */
 const ELEMENT_TOPICS: readonly DataTableTopic[] = ['config', 'locale'];
 

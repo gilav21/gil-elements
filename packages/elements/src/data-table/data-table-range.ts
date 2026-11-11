@@ -36,6 +36,16 @@ export function isCellInRange(range: NormalizedRange | null, navigableKeys: read
     return rowIndex >= range.minRow && rowIndex <= range.maxRow && col >= range.minCol && col <= range.maxCol;
 }
 
+/** The edges of `range` that the cell at (`rowIndex`, column index `col`) touches, space-separated (`top`, `bottom`, `start` = lower column index, `end`); '' for an inner cell. */
+export function rangeEdges(range: NormalizedRange, rowIndex: number, col: number): string {
+    const edges: string[] = [];
+    if (rowIndex === range.minRow) edges.push('top');
+    if (rowIndex === range.maxRow) edges.push('bottom');
+    if (col === range.minCol) edges.push('start');
+    if (col === range.maxCol) edges.push('end');
+    return edges.join(' ');
+}
+
 /** The fill source: the selected range, or the focused cell as a 1x1 range. */
 export function fillSourceRange(
     range: NormalizedRange | null,

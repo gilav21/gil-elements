@@ -149,15 +149,39 @@ describe('lazyPart', () => {
         expect(lazy.part).toBe(fast);
     });
 
-    it('reports a failed load once and tries again at the next on', async () => {
+    it('latches a failed load: one import and one error across many syncs (one per render), while the flag stays on', async () => {
         const onError = vi.fn();
-        const instance = part();
-        const create = vi.fn().mockRejectedValueOnce(new Error('chunk 404')).mockResolvedValueOnce(instance);
+        const create = vi.fn().mockRejectedValue(new Error('chunk 404'));
         const lazy = lazyPart<LazyPartInstance>(create, onError);
-        lazy.sync(true);
-        await flush();
+        for (let render = 0; render < 5; render++) {
+            lazy.sync(true);
+            await flush();
+        }
+        expect(create).toHaveBeenCalledTimes(1);
         expect(onError).toHaveBeenCalledTimes(1);
         expect(lazy.part).toBeNull();
+    });
+
+    it('tries a failed load again after the flag turned off and on', async () => {
+        const instance = part();
+        const create = vi.fn().mockRejectedValueOnce(new Error('chunk 404')).mockResolvedValueOnce(instance);
+        const lazy = lazyPart<LazyPartInstance>(create, vi.fn());
+        lazy.sync(true);
+        await flush();
+        lazy.sync(false);
+        lazy.sync(true);
+        await flush();
+        expect(create).toHaveBeenCalledTimes(2);
+        expect(lazy.part).toBe(instance);
+    });
+
+    it('tries a failed load again after dispose (the next attach)', async () => {
+        const instance = part();
+        const create = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(instance);
+        const lazy = lazyPart<LazyPartInstance>(create, vi.fn());
+        lazy.sync(true);
+        await flush();
+        lazy.dispose();
         lazy.sync(true);
         await flush();
         expect(lazy.part).toBe(instance);

@@ -61,5 +61,3 @@ export interface CellSession {
     /** Provided under `range` (range session only). */
     readonly rangeService?: RangeService;
 }
-
-export type CellSessionFactory<T> = (context: InteractionContext<T>) => CellSession;

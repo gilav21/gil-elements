@@ -521,24 +521,28 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.provider('range')?.openChart();
     }
 
-    async copyCellToClipboard(): Promise<void> {
-        await this.provider('clipboard')?.copy('cell');
+    private async copyToClipboard(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<void> {
+        await this.provider('clipboard')?.copy(scope, row);
     }
 
-    async copyRowToClipboard(row: T): Promise<void> {
-        await this.provider('clipboard')?.copy('row', row);
+    copyCellToClipboard(): Promise<void> {
+        return this.copyToClipboard('cell');
     }
 
-    async copySelectedToClipboard(): Promise<void> {
-        await this.provider('clipboard')?.copy('selected');
+    copyRowToClipboard(row: T): Promise<void> {
+        return this.copyToClipboard('row', row);
     }
 
-    async copyCellRangeToClipboard(): Promise<void> {
-        await this.provider('clipboard')?.copy('range');
+    copySelectedToClipboard(): Promise<void> {
+        return this.copyToClipboard('selected');
     }
 
-    async copyAllToClipboard(): Promise<void> {
-        await this.provider('clipboard')?.copy('all');
+    copyCellRangeToClipboard(): Promise<void> {
+        return this.copyToClipboard('range');
+    }
+
+    copyAllToClipboard(): Promise<void> {
+        return this.copyToClipboard('all');
     }
 
     /** `data` with the dragged row moved as `event` says (flat or tree), without touching the table; a copy of `data` when row drag is not set up. */
