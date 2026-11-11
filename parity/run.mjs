@@ -288,7 +288,7 @@ async function renderJob(browser, theme, group, side) {
                     if (row === undefined || !target.startEditing(row, columnKey)) continue;
                     await target.updateComplete;
                     if (message !== undefined) {
-                        target.provider('interaction').setEditValue('​');
+                        target.provider('interaction').setEditValue(String.fromCharCode(0x200b)); // a zero-width space: a value no validator of the case accepts, invisible if it were ever drawn
                         target.commitEdit();
                         await target.updateComplete;
                     }

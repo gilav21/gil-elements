@@ -3,6 +3,7 @@ import { userEvent } from 'vitest/browser';
 import type { PointerPress } from './data-table-cell-session.js';
 import { cellAt, mountTable, settle } from './data-table-fixtures.js';
 import { frames, mouseDrag, parkMouse } from './data-table-input-fixtures.js';
+import { EditSession } from './data-table-edit-session.js';
 import { RangeSession } from './data-table-range-session.js';
 import type { GeDataTable } from './data-table.js';
 
@@ -78,9 +79,9 @@ describe('a press is offered to the sessions before the controller moves the foc
             await mouseDrag(cellAt(table, 3, 'age')!, outside, { steps: 3 });
             expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'age' });
             expect(ups).toEqual([]);
-            // press outside, released on a cell: no pointerdown of this table started it, so the anchor is the roving cell NOW, not the old one
+            // press outside, released on a cell: no pointerdown of this table is behind it, so it does nothing (no stale anchor, no made-up one)
             await mouseDrag(outside, cellAt(table, 1, 'name')!, { steps: 3 });
-            expect(ups).toEqual([{ rowIndex: 3, columnKey: 'age' }]);
+            expect(ups).toEqual([]);
         } finally {
             delete (proto as { onPointerUp?: Handler }).onPointerUp;
         }
@@ -152,6 +153,96 @@ describe('a press is offered to the sessions before the controller moves the foc
         await userEvent.click(cellAt(table, 1, 'name')!);
         await settle(table);
         expect(anchors).toEqual([null]);
+    });
+});
+
+type Hooks = { onPointerDown?: Handler; onPointerUp?: Handler; onPointerCancel?: (event: PointerEvent | null, press: PointerPress) => void };
+const hooks = RangeSession.prototype as unknown as Hooks;
+const editHooks = EditSession.prototype as unknown as Hooks;
+const pointer = (type: string, pointerId: number, init: PointerEventInit = {}): PointerEvent =>
+    new PointerEvent(type, { pointerId, bubbles: true, composed: true, button: 0, pointerType: 'mouse', ...init });
+
+describe('the press contract: one press per pointer, routed to its claimant', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('keeps the anchor of a claimed press that moved the focus itself: its claimant gets the ORIGINAL anchor', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const ups: unknown[] = [];
+        hooks.onPointerDown = () => {
+            table.focusCell(3, 'age'); // the claimant moves the focus in its own pointerdown (a shift+click starting a range)
+            return true;
+        };
+        hooks.onPointerUp = (_event, _at, press) => void ups.push(press.anchor);
+        const cell = cellAt(table, 3, 'age')!;
+        cell.dispatchEvent(pointer('pointerdown', 31));
+        expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'age' });
+        cell.dispatchEvent(pointer('pointerup', 31));
+        expect(ups).toEqual([{ rowIndex: 0, columnKey: 'name' }]);
+    });
+
+    it('is multi-touch safe: another pointer tapping elsewhere neither overwrites nor ends the claimed press', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const log: string[] = [];
+        hooks.onPointerDown = (event) => event.pointerId === 41;
+        hooks.onPointerUp = (event) => void log.push(`up:${event.pointerId}`);
+        hooks.onPointerCancel = (event, press) => void log.push(`cancel:${event?.pointerId}:${press.anchor?.rowIndex}`);
+        const a = cellAt(table, 1, 'name')!;
+        const b = cellAt(table, 2, 'age')!;
+        a.dispatchEvent(pointer('pointerdown', 41)); // claimed
+        b.dispatchEvent(pointer('pointerdown', 42, { pointerType: 'touch' })); // unclaimed, a second finger
+        b.dispatchEvent(pointer('pointerup', 42, { pointerType: 'touch' })); // its tap ends ONLY its own press (offered to the sessions: unclaimed)
+        expect(log).toEqual(['up:42']);
+        // A is released outside the table: its press is still there and its claimant is told
+        document.body.dispatchEvent(pointer('pointerup', 41));
+        expect(log).toEqual(['up:42', 'cancel:41:0']);
+    });
+
+    it('routes a claimed press only to its claimant: its pointerup reaches no other session and the controller does not move the focus', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const edit = vi.fn();
+        hooks.onPointerDown = () => true; // the range shell claims, and answers nothing from its pointerup
+        hooks.onPointerUp = () => undefined;
+        editHooks.onPointerUp = (...args) => void edit(...args);
+        const cell = cellAt(table, 2, 'age')!;
+        cell.dispatchEvent(pointer('pointerdown', 51, { pointerType: 'touch' }));
+        cell.dispatchEvent(pointer('pointerup', 51, { pointerType: 'touch' }));
+        expect(edit).not.toHaveBeenCalled();
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' }); // not even the touch tap focus
+    });
+
+    it('does nothing for a pointerup or cancel of a pointer whose pointerdown it never saw', async () => {
+        const table = await mountTable();
+        const calls: string[] = [];
+        hooks.onPointerUp = () => void calls.push('range-up');
+        editHooks.onPointerUp = () => void calls.push('edit-up');
+        hooks.onPointerCancel = () => void calls.push('cancel');
+        cellAt(table, 1, 'name')!.dispatchEvent(pointer('pointerup', 61));
+        cellAt(table, 1, 'name')!.dispatchEvent(pointer('pointercancel', 62));
+        expect(calls).toEqual([]);
+        expect(table.focusedCell).toBeNull();
+    });
+
+    it('cancels an open claimed press for its claimant BEFORE the sessions detach when the table is removed mid-press', async () => {
+        const table = await mountTable();
+        const order: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerCancel = (event, press) => void order.push(`cancel:${event === null}:${press.anchor === null}`);
+        const detach = vi.spyOn(RangeSession.prototype, 'detach').mockImplementation(() => void order.push('detach'));
+        try {
+            cellAt(table, 1, 'name')!.dispatchEvent(pointer('pointerdown', 71));
+            table.remove();
+            expect(order).toEqual(['cancel:true:true', 'detach']);
+        } finally {
+            detach.mockRestore();
+        }
     });
 });
 

@@ -9,7 +9,7 @@ import { createCellWriter, type HistoryResult } from './data-table-cell-write.js
 import { type AssembledControllers, assembleControllers } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
-import { rangeColumnKeys, rangeWarner, sanitizeCellRange } from './data-table-range.js';
+import { rangeColumnKeys, rangeModeOn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
@@ -217,7 +217,6 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     });
     /** A `cellRange` assigned before the first connect, until the range session adopts it (no controller is assembled before the first connect). */
     private earlyRange: CellRange | null | undefined;
-    private readonly warnBadRange = rangeWarner();
     private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
     private releaseStyles: (() => void) | null = null;
@@ -536,7 +535,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     get cellRange(): CellRange | null {
         const service = this.rangeService();
         if (service) return service.range();
-        return this.earlyRange !== undefined && (this.enableCellRangeSelection || this.enableFillHandle) ? this.earlyRange : null;
+        return this.earlyRange !== undefined && rangeModeOn(this) ? this.earlyRange : null;
     }
 
     set cellRange(range: CellRange | null) {
@@ -548,7 +547,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // No controller exists before the first connect (nothing is assembled before it): the value waits here, checked by the same rules (rows
         // are not known yet), and the range session adopts it right after the first attach.
         const next = sanitizeCellRange(range, 0, rangeColumnKeys(this.columns));
-        if (next === undefined) this.warnBadRange(range);
+        if (next === undefined) warnBadRange(range);
         else this.earlyRange = next;
     }
 

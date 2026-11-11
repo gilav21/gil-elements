@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InteractionContext } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
+import { resetBadRangeWarning } from './data-table-range.js';
 import { RangeSession } from './data-table-range-session.js';
 
 const DIRECTORY = new URL('.', import.meta.url);
@@ -250,6 +251,7 @@ describe('the range held by the shell', () => {
     });
 
     it('refuses a special column and a column that is not configured, with one warning', () => {
+        resetBadRangeWarning();
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         const { session } = make({ ...on });
         session.rangeService.setRange(range);
@@ -276,6 +278,25 @@ describe('the range held by the shell', () => {
         second.flags.enableCellRangeSelection = true;
         second.session.hostUpdate();
         expect(second.session.rangeService.range()).toBeNull();
+    });
+
+    it('trims the rows of the range at the shell with a part loaded too: a data set that shrinks never leaves the range past its rows', async () => {
+        const state = { rows: 10 };
+        const context = rangeContext({ ...on }, { rowCount: 10 }).context;
+        Object.assign(context, { rowCount: () => state.rows });
+        const session = new RangeSession(context);
+        session.attach();
+        session.rangeService.setRange({ ...range, endRow: 8 });
+        session.hostUpdate();
+        const loaded = (): unknown => (session as unknown as { lazy: { part: unknown } }).lazy.part;
+        await vi.waitFor(() => expect(loaded()).not.toBeNull());
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 8 });
+        state.rows = 5;
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 4 });
+        state.rows = 1; // the range starts at row 1: wholly past the rows, dropped
+        session.hostUpdate();
+        expect(session.rangeService.range()).toBeNull();
     });
 
     it('keeps a held range while a column is merely hidden, and trims only its rows on update (the part checks the columns)', () => {
@@ -316,6 +337,7 @@ describe('the range held by the shell', () => {
         });
 
         it('refuses a value that is not a range, warns once, and keeps the old range', () => {
+            resetBadRangeWarning();
             const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
             const { session } = make();
             session.rangeService.setRange(range);

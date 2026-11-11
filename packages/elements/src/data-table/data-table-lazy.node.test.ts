@@ -216,7 +216,7 @@ describe('lazyPart', () => {
         expect(lazy.part).toBe(instance);
     });
 
-    it('asks the host to render once the part is attached, and again when an attached part is detached', async () => {
+    it('asks the host to render once the part is attached (the load finishes outside any update), and not when it leaves: sync(false) and dispose run inside an update or a detach', async () => {
         const changed = vi.fn();
         const instance = part();
         const lazy = lazyPart(() => Promise.resolve(instance), { changed });
@@ -227,9 +227,12 @@ describe('lazyPart', () => {
         // what a render reads from the part is already true when the host is asked
         expect(instance.attach).toHaveBeenCalledTimes(1);
         lazy.sync(false);
-        expect(changed).toHaveBeenCalledTimes(2);
+        expect(instance.detach).toHaveBeenCalledTimes(1);
+        lazy.sync(true);
+        await flush();
+        expect(changed).toHaveBeenCalledTimes(2); // the second attach
         lazy.dispose();
-        expect(changed).toHaveBeenCalledTimes(2);
+        expect(changed).toHaveBeenCalledTimes(2); // none for the departures
     });
 
     it('does not ask for a render for a load that failed, was dropped, or never had a part', async () => {
@@ -269,7 +272,7 @@ describe('lazyPart', () => {
         expect(create).toHaveBeenCalledTimes(2);
     });
 
-    it('survives a part whose detach throws: sync(false) and dispose() do not throw, the failure is reported and the host is still told', async () => {
+    it('survives a part whose detach throws: sync(false) and dispose() do not throw, the failure is reported, the part is gone', async () => {
         const onError = vi.fn();
         const changed = vi.fn();
         const sturdy = part();
@@ -283,13 +286,13 @@ describe('lazyPart', () => {
         expect(() => lazy.sync(false)).not.toThrow();
         expect(lazy.part).toBeNull();
         expect(onError).toHaveBeenCalledTimes(1);
-        expect(changed).toHaveBeenCalledTimes(2);
+        expect(changed).toHaveBeenCalledTimes(1);
         lazy.sync(true);
         await flush();
         expect(() => lazy.dispose()).not.toThrow();
         expect(lazy.part).toBeNull();
         expect(onError).toHaveBeenCalledTimes(2);
-        expect(changed).toHaveBeenCalledTimes(4);
+        expect(changed).toHaveBeenCalledTimes(2); // only the two attaches
     });
 
     it('lets a part that reads the shell during attach see itself', async () => {

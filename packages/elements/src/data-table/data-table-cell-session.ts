@@ -18,7 +18,11 @@
  *   itself) and the rest are skipped; if none claims it the controller then focuses the pressed cell, except inside the open editor's cell.
  *   `at` is the cell under the pointer, null outside any cell; `press.anchor` is the roving cell BEFORE the press moved it, the same one
  *   for the pointerdown and the pointerup of one press. A press a session claimed that ends without a pointerup on the table (cancelled,
- *   or released outside) is reported to that session as `onPointerCancel(event, press)`.
+ *   or released outside) is reported to that session as `onPointerCancel(event, press)`, and so is a press still open when the table detaches
+ *   (`event` is null; the claimant is told BEFORE the sessions detach). The press contract, per pointer id: the anchor is captured before the
+ *   offer; a CLAIMED press is routed only to its claimant (its pointerup, its cancel; no other session sees them, the controller does not
+ *   focus); an unclaimed press is offered to the sessions at its pointerup (and, for a touch, focuses the tapped cell); a pointerup or cancel
+ *   with no press of this table behind it does nothing; presses of different pointers never touch each other.
  * - `hostUpdate()` runs before every render, after the controller's own reconcile, in the order edit, range.
  * - `service` holds the methods the session adds to the one `CellInteractionService` object; `rangeService` is provided under `range`.
  * - Cross-wave reads go through providers only: the range session reads `interaction.editingCell()`, the edit session reads
@@ -72,7 +76,7 @@ export interface CellSession {
      * outside the table (that arrives as the page-level `pointerup`, reported here as a cancel: the session decides whether a release outside
      * commits its gesture). A session that claims a press is always told how it ended, by `onPointerUp` or by this.
      */
-    onPointerCancel?(event: PointerEvent, press: PointerPress): void;
+    onPointerCancel?(event: PointerEvent | null, press: PointerPress): void;
     /** Methods merged into the `interaction` service. */
     readonly service?: Partial<CellInteractionService>;
     /** Provided under `range` (range session only). */

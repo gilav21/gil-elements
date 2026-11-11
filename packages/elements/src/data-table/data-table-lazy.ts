@@ -92,8 +92,9 @@ export interface LazyPartOptions {
     /** A load or an attach failed (default: `console.error`); it is latched, see `lazyPart`. */
     onError?: (error: unknown) => void;
     /**
-     * The part was attached or detached, so what the render reads from it changed (`rowDrag.active()`, the range overlay, the fill handle):
-     * pass the host's `requestRender`, or nothing draws the change until an unrelated update.
+     * The part was attached (the load finished, outside any update), so what the render reads from it changed (`rowDrag.active()`, the range
+     * overlay, the fill handle): pass the host's `requestRender`, or nothing draws the change until an unrelated update. A part that leaves
+     * (`sync(false)`, `dispose()`) does not ask: those run inside an update or a detach.
      */
     changed?: () => void;
 }
@@ -117,10 +118,10 @@ export function lazyPart<P extends LazyPartInstance>(
             part.detach();
         } catch (error) {
             // `sync(false)` and `dispose()` run inside the host's update and detach: a part that throws while leaving must not abort them.
-            // It is gone either way (`current` is already cleared), the failure is reported, and the host is told.
+            // It is gone either way (`current` is already cleared) and the failure is reported. No render is requested: `sync(false)` runs inside
+            // the update that is already drawing, and `dispose()` inside the detach.
             onError(error);
         }
-        changed?.();
     };
     return {
         get part() {

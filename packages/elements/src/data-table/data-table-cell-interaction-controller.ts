@@ -56,11 +56,12 @@ export class CellInteractionController<T> {
     private readonly sessions: readonly CellSession[];
     private readonly service: CellInteractionService;
     /**
-     * The press in progress: the roving cell at its pointerdown, so both ends of one press see the same anchor. ONE slot (a later pointerdown
-     * replaces it), ended by the matching pointerup or cancel ANYWHERE on the page (a press released outside the table must not leave an anchor
-     * for a later press with the same pointer id).
+     * The presses in progress, one per pointer id (several fingers are several presses; a pointerdown never overwrites another pointer's):
+     * the roving cell at its pointerdown, so both ends of one press see the same anchor, and the session that claimed it, which alone gets its
+     * pointerup, cancel, and the cancel at detach. Ended by the pointerup on the table, or by the page-level pointerup / pointercancel
+     * (a release outside), or by `detach()`.
      */
-    private press: { readonly pointerId: number; readonly anchor: CellAddress | null; readonly claimedBy: CellSession | null } | null = null;
+    private readonly presses = new Map<number, { readonly anchor: CellAddress | null; readonly claimedBy: CellSession | null }>();
 
     constructor(private readonly host: DataTableCoreHost<T>) {
         const context: InteractionContext<T> = {
@@ -107,7 +108,6 @@ export class CellInteractionController<T> {
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.endPress(event)),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.endPress(event)),
             disposables.listen(root.ownerDocument.defaultView ?? window, 'blur', () => (this.within = false)),
-            disposables.listen<PointerEvent>(root, 'pointercancel', () => (this.pointer = false)),
             disposables.listen(root, 'keydown', () => (this.pointer = false), true),
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => this.onFocusIn(event))),
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
@@ -117,9 +117,10 @@ export class CellInteractionController<T> {
     }
 
     detach(): void {
+        // A press still open (the table is removed mid-gesture) is cancelled for its claimant FIRST, while the session is still attached.
+        this.cancelPresses();
         // The reverse of attach: the sessions go first, while the services they read are still provided.
         this.eachBackwards((session) => session.detach());
-        this.press = null;
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
         this.observer?.disconnect();
@@ -396,18 +397,30 @@ export class CellInteractionController<T> {
      */
     private onPointerDown(event: PointerEvent): void {
         this.pointer = true;
-        const claimedBy = this.offer(event, (session) => session.onPointerDown, this.focused);
-        this.press = { pointerId: event.pointerId, anchor: this.focused, claimedBy: claimedBy ?? null };
-        if (claimedBy) return;
+        // The anchor is read BEFORE the offer: a claimant that moves the focus in its onPointerDown must not change the anchor of its own press.
+        const anchor = this.focused;
+        const claimedBy = this.offer(event, (session) => session.onPointerDown, anchor);
+        this.presses.set(event.pointerId, { anchor, claimedBy: claimedBy ?? null });
+        if (claimedBy) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.button === 0 && event.pointerType !== 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(event.target as Element);
     }
 
+    /**
+     * A pointerup on the table ends the press of that pointer. A press with no pointerdown of this table behind it (it started outside, or was
+     * already ended) does nothing. A CLAIMED press is routed only to its claimant (no other session sees it, the controller does not focus); an
+     * unclaimed one is offered to the sessions and, for a touch, focuses the tapped cell, as before. The page-level `endPress` that runs next
+     * only finds presses that ended elsewhere.
+     */
     private onPointerUp(event: PointerEvent): void {
-        this.pointer = false;
-        // The anchor of the press that is ending, not the roving cell now (an unclaimed pointerdown has already moved it).
-        const anchor = this.press?.pointerId === event.pointerId ? this.press.anchor : this.focused;
-        this.press = null;
+        const press = this.presses.get(event.pointerId);
+        if (!press) return;
+        this.presses.delete(event.pointerId);
+        const { anchor, claimedBy } = press;
+        if (claimedBy) {
+            claimedBy.onPointerUp?.(event, cellAddressOf(event.target), { anchor });
+            return;
+        }
         if (this.offer(event, (session) => session.onPointerUp, anchor)) return;
         if (event.pointerType === 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(event.target as Element);
     }
@@ -438,11 +451,18 @@ export class CellInteractionController<T> {
      * session that claimed it is told through `onPointerCancel`, and the pointer is no longer "down" (the next Tab into the grid is not a click).
      */
     private endPress(event: PointerEvent): void {
+        const press = this.presses.get(event.pointerId);
+        this.presses.delete(event.pointerId);
+        this.pointer = this.presses.size > 0; // the one place that ends "a pointer is down" (another finger may still be)
+        press?.claimedBy?.onPointerCancel?.(event, { anchor: press.anchor });
+    }
+
+    /** The table detaches mid-press: every claimant is told (`event` null) before the sessions detach. */
+    private cancelPresses(): void {
+        const open = [...this.presses.values()];
+        this.presses.clear();
         this.pointer = false;
-        const press = this.press;
-        if (press?.pointerId !== event.pointerId) return;
-        this.press = null;
-        press.claimedBy?.onPointerCancel?.(event, { anchor: press.anchor });
+        for (const press of open) press.claimedBy?.onPointerCancel?.(null, { anchor: press.anchor });
     }
 
     private eachBackwards(visit: (session: CellSession) => void): void {

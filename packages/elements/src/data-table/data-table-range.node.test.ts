@@ -9,7 +9,9 @@ import {
     planPaste,
     rangeChartPayload,
     rangeStats,
-    rangeWarner,
+    rangeModeOn,
+    resetBadRangeWarning,
+    warnBadRange,
     rangeColumnKeys,
     rangeEdges,
     readRangeColumns,
@@ -187,19 +189,27 @@ describe('rangeEdges', () => {
     });
 });
 
-describe('rangeColumnKeys and rangeWarner', () => {
+describe('rangeColumnKeys, rangeModeOn and warnBadRange', () => {
     it('lists the data columns, hidden or not, and never a special one', () => {
         expect(rangeColumnKeys([{ accessorKey: 'a' }, { accessorKey: '_selection' }, { accessorKey: 'b' }, { accessorKey: '_actions' }])).toEqual(['a', 'b']);
     });
 
-    it('warns once per warner', () => {
+    it('warns once per page, however many owners call it, until it is reset (tests)', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-        const warner = rangeWarner();
-        warner(1);
-        warner(2);
-        rangeWarner()(3);
+        resetBadRangeWarning();
+        warnBadRange(1);
+        warnBadRange(2);
+        expect(warn).toHaveBeenCalledTimes(1);
+        resetBadRangeWarning();
+        warnBadRange(3);
         expect(warn).toHaveBeenCalledTimes(2);
         warn.mockRestore();
+    });
+
+    it('is range mode with range selection or the fill handle', () => {
+        expect(rangeModeOn({ enableCellRangeSelection: false, enableFillHandle: false })).toBe(false);
+        expect(rangeModeOn({ enableCellRangeSelection: true, enableFillHandle: false })).toBe(true);
+        expect(rangeModeOn({ enableCellRangeSelection: false, enableFillHandle: true })).toBe(true);
     });
 });
 
