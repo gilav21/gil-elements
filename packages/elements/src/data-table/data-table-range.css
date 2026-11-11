@@ -2,6 +2,8 @@
  * Wave 6, package A (range): range selection, fill handle and the range readout. Bare rules, scoped under `ge-data-table [data-slot=...]`:
  * they are appended inside the closing brace of the `ge-data-table` layer of data-table.css (see data-table-styles.ts),
  * so do not wrap them in `@layer` and keep the comment style below.
+ * Every overlay drawn over the cells (the fill handle, the range readout) must carry the `data-pointer-transparent` attribute in its template:
+ * the interaction controller looks a release through such an element to the cell below, and keeps no list of overlay slot names.
  */
     ge-data-table[data-range-selection] [data-slot="data-table-viewport"] {
         user-select: none;

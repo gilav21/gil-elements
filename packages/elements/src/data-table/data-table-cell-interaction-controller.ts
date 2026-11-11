@@ -9,8 +9,8 @@ import { KEY_PRIORITY } from './data-table-registry.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
 const BODY = '[data-slot="table-body"]';
-/** Elements of the table that sit over its cells and must not take a release: the pointer is looked through them to the cell below. */
-const OVERLAYS = '[data-pointer-transparent], [data-slot="range-actions"], [data-slot="fill-handle"], [data-slot="data-table-drop-edge"]';
+/** Every element of the table that sits over its cells marks itself with this attribute: a release is looked through it to the cell below. */
+const OVERLAY = '[data-pointer-transparent]';
 
 interface Press {
     readonly anchor: CellAddress | null;
@@ -72,8 +72,13 @@ export class CellInteractionController<T> {
      * (a release outside), or by `detach()`.
      */
     private readonly presses = new Map<number, Press>();
-    /** The press the document cleared `within` for, until the root hears it (then `within` is restored: the press was inside). */
-    private withinBeforePress: { readonly event: Event; readonly within: boolean } | null = null;
+    /** The pointers that hold pointer capture on an element of this table (any depth, closed shadow roots included), from its composed capture events. */
+    private readonly captured = new Set<number>();
+    /**
+     * The `timeStamp` of the press the document cleared `within` for, until the root hears that same event: then `within` is restored, the press
+     * was inside. A bare number, so no event (and no node of its path) is kept alive between presses; cleared at detach.
+     */
+    private clearedAt: number | null = null;
 
     constructor(private readonly host: DataTableCoreHost<T>) {
         const context: InteractionContext<T> = {
@@ -118,6 +123,10 @@ export class CellInteractionController<T> {
             // phase: it sees the table's own nodes even inside a closed shadow root, and a consumer's stopPropagation cannot hide it.
             disposables.listen<PointerEvent>(root, 'pointerup', (event) => this.onRelease(event), true),
             disposables.listen<PointerEvent>(root, 'pointercancel', (event) => this.onRelease(event), true),
+            // Pointer capture is tracked from its own (composed) events: an element inside a consumer component's closed shadow root that captures
+            // cannot be asked (the path shows its host). `lostpointercapture` comes after the pointerup, so a release still sees its capture.
+            disposables.listen<PointerEvent>(root, 'gotpointercapture', (event) => this.captured.add(event.pointerId), true),
+            disposables.listen<PointerEvent>(root, 'lostpointercapture', (event) => this.captured.delete(event.pointerId), true),
             // The document hears a press FIRST (before the root's capture listener): one whose composed path does not include the root is outside, as far as
             // it can tell, and clears `within` NOW (the focus guard must not pull the focus back into the grid while that press's own handlers change the
             // data); a press the root then hears (a table in a CLOSED shadow root, invisible to the document's path) restores it, in the same dispatch.
@@ -160,6 +169,8 @@ export class CellInteractionController<T> {
         this.observer?.disconnect();
         this.observer = this.watched = null;
         this.within = this.pointer = false;
+        this.clearedAt = null;
+        this.captured.clear();
         this.attachment++;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
     }
@@ -431,14 +442,15 @@ export class CellInteractionController<T> {
      * for a press inside the open editor's cell, which never moves focus (an editor may be a custom element the tag list below does not know).
      */
     private onDocumentDown(event: PointerEvent): void {
-        if (!this.within) return; // nothing to clear
-        this.withinBeforePress = { event, within: true };
-        if (!event.composedPath().includes(this.host.root)) this.within = false;
+        this.clearedAt = null;
+        if (!this.within || event.composedPath().includes(this.host.root)) return; // nothing to clear
+        this.clearedAt = event.timeStamp;
+        this.within = false;
     }
 
     private onRootDown(event: PointerEvent): void {
-        if (this.withinBeforePress?.event === event) this.within = this.withinBeforePress.within; // the root heard it: it is a press inside
-        this.withinBeforePress = null;
+        if (this.clearedAt === event.timeStamp) this.within = true; // the root heard it: it is a press inside
+        this.clearedAt = null;
         if (ownsTarget(this.host.root, event.target)) this.onPointerDown(event); // a nested table records its own presses
     }
 
@@ -534,25 +546,24 @@ export class CellInteractionController<T> {
     /**
      * Where a pointer was released, as the root hears it: whether it is on THIS table, and the cell under it. A mouse without capture releases on the
      * element it is over: the first element of the root-local composed path. A touch (implicit capture) and any captured pointer (a gesture's
-     * `setPointerCapture`, read on the node that holds it: the first node of the path, not the retargeted `event.target`) deliver the pointerup to
-     * the element that was PRESSED, so for those the point is hit-tested (`elementsFromPoint` on the table's own root node): the table's overlays
-     * (`OVERLAYS`: the range readout, the fill handle, drop edges, anything marked `data-pointer-transparent`) are looked through to the first CELL
-     * under them; an element of a nested table, or one outside the table that is on top, makes it not this table's release.
+     * `setPointerCapture`; tracked from the root's `gotpointercapture` / `lostpointercapture`, which are composed: the node that holds it may be
+     * inside a consumer component's closed shadow root, where it cannot be asked) deliver the pointerup to the element that was PRESSED, so for
+     * those, and for a mouse released over an overlay, the point is hit-tested (`elementsFromPoint` on the table's own root node): the table's
+     * overlays (every one marks itself `data-pointer-transparent`: the range readout, the fill handle, drop edges) are looked through to the first
+     * CELL under them; an element of a nested table, or one outside the table that is on top, makes it not this table's release.
      */
     private locateRelease(event: PointerEvent): { own: boolean; cell: Element | null } {
         const { root } = this.host;
-        const holder = event.composedPath()[0] as Element | undefined;
-        const captured = event.pointerType !== 'mouse' || (holder?.hasPointerCapture?.(event.pointerId) ?? false);
-        if (!captured) {
-            const target = this.targetOf(event);
-            return { own: target !== null && ownsTarget(root, target), cell: target };
-        }
+        const target = this.targetOf(event);
+        // An uncaptured mouse released over one of the table's overlays is looked through too, exactly as a touch at the same point is.
+        const lookThrough = event.pointerType !== 'mouse' || this.captured.has(event.pointerId) || !!target?.closest(OVERLAY);
+        if (!lookThrough) return { own: target !== null && ownsTarget(root, target), cell: target };
         const tree = root.getRootNode();
         const scope = tree instanceof ShadowRoot ? tree : root.ownerDocument;
         for (const el of scope.elementsFromPoint(event.clientX, event.clientY)) {
             if (!composedContains(root, el)) break; // something outside the table: on top of it (nothing of the table seen yet) or just below it (its ancestors)
             if (!ownsTarget(root, el)) return { own: false, cell: null }; // a nested table
-            if (el.closest(OVERLAYS)) continue; // looked through: the readout, the fill handle, a drop edge
+            if (el.closest(OVERLAY)) continue; // looked through: every overlay marks itself (the readout, the fill handle, a drop edge)
             // The FIRST element of the table that is not an overlay decides: a cell, or something that is not one (the sticky header or footer, a popover
             // or menu of the table, the busy overlay). The cells scrolled under those are not what the pointer is on.
             return { own: true, cell: cellAddressOf(el) ? el : null };

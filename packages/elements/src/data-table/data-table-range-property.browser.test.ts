@@ -58,6 +58,27 @@ describe('the cellRange property', () => {
         expect(other.cellRange).toEqual(range);
     });
 
+    it('reads back the very object that was assigned, and an equal re-assignment asks for no render', async () => {
+        const table = await mountTable();
+        table.enableCellRangeSelection = true;
+        await settle(table);
+        const mine = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
+        table.cellRange = mine;
+        expect(table.cellRange).toBe(mine);
+        await settle(table);
+        let renders = 0;
+        const requestUpdate = table.requestUpdate.bind(table);
+        table.requestUpdate = ((...args: Parameters<typeof requestUpdate>) => {
+            renders++;
+            return requestUpdate(...args);
+        }) as typeof table.requestUpdate;
+        table.cellRange = { ...mine }; // equal field by field
+        expect(renders).toBe(0);
+        table.cellRange = { ...mine, endRow: 2 }; // a different range does render
+        expect(renders).toBeGreaterThan(0);
+        table.requestUpdate = requestUpdate;
+    });
+
     it('answers the same before the first connect as after it: held, reported only while range mode is on, malformed values refused', () => {
         resetBadRangeWarning();
         const warn = console.warn;

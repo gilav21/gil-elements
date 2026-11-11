@@ -12,7 +12,7 @@
 import type { CellSession, InteractionContext } from './data-table-cell-session.js';
 import { lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
-import { clampToRows, rangeColumnKeys, rangeModeOn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
+import { clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
@@ -61,10 +61,11 @@ export class RangeSession<T> implements CellSession {
             // nothing); while detached the services are gone, so the row clamp waits for the next update too.
             const next = sanitizeCellRange(range, this.attached ? this.context.rowCount() : 0, []);
             if (next === undefined) return warnBadRange(range);
+            const changed = !sameRange(this.live(), next);
             this.held = next;
             this.heldInMode = this.rangeOn(); // assigned while range mode was off, it is not part of the mode that a later turn-off ends
             this.lazy.part?.setRange(next);
-            this.context.host.requestRender(); // `data-in-range`, `aria-selected` and the readout read the range at render
+            if (changed) this.context.host.requestRender(); // `data-in-range`, `aria-selected` and the readout read the range at render; an equal value draws nothing new
         },
         extendTo: () => undefined,
         stats: () => null,

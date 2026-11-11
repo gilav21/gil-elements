@@ -228,6 +228,12 @@ describe('sanitizeCellRange', () => {
         expect(Object.keys(result as object)).toHaveLength(4);
     });
 
+    it('returns the very same object for a valid range that needs no trimming, and a new one when it is trimmed', () => {
+        expect(sanitizeCellRange(range, 10, KEYS)).toBe(range);
+        expect(sanitizeCellRange(range, 0, [])).toBe(range);
+        expect(sanitizeCellRange({ ...range, endRow: 50 }, 5, KEYS)).not.toBe(range);
+    });
+
     it.each([
         ['a string', 'q1'],
         ['an empty object', {}],

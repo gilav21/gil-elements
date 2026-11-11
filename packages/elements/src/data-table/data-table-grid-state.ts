@@ -49,6 +49,10 @@ export interface StateView {
      * renderer binds the shared frozen `NO_CELL_FLAGS` / `NO_ROW_FLAGS` in the one template and never calls `cellState` / `rowState`: a plain grid pays no function call per cell, and the template (so the DOM) never changes when this flips.
      */
     stateActive: boolean;
+    /** `cellState` can say something now (range mode, flash, an open editor): rows that are only draggable do not make the renderer ask every cell. */
+    cellStateActive: boolean;
+    /** `rowState` can say something now (draggable rows). */
+    rowStateActive: boolean;
     cellState(rowIndex: number, columnKey: string, row: RowInfo): CellFlags;
     rowState(rowIndex: number, row: RowInfo): RowFlags;
 }
@@ -91,8 +95,11 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;
     const editingOpen = interaction?.editingCell() != null;
+    const cellStateActive = rangeMode || flashable || editingOpen;
     return {
-        stateActive: rangeMode || flashable || editingOpen || dragOn,
+        stateActive: cellStateActive || dragOn,
+        cellStateActive,
+        rowStateActive: dragOn,
         rangeSelectable: selectionMode,
         cellState(rowIndex, key, row) {
             // The special columns (selection, expander, actions) are not cells of the range, of an editor or of a flash.

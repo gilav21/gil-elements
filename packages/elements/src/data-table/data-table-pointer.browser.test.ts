@@ -639,6 +639,61 @@ describe('a captured pointer in an open shadow root', () => {
     });
 });
 
+describe('a captured pointer inside a consumer component with a CLOSED shadow root', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is located by where it is released: the capture is tracked from gotpointercapture, not asked of the retargeted host', async () => {
+        class Grabber extends HTMLElement {
+            constructor() {
+                super();
+                const shadow = this.attachShadow({ mode: 'closed' });
+                const button = document.createElement('div');
+                button.style.cssText = 'position:absolute;inset:0';
+                button.addEventListener('pointerdown', (event) => button.setPointerCapture(event.pointerId));
+                shadow.append(button);
+            }
+        }
+        if (!customElements.get('ge-test-grabber')) customElements.define('ge-test-grabber', Grabber);
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        const start = cellAt(table, 0, 'name')!;
+        start.style.position = 'relative';
+        const grabber = document.createElement('ge-test-grabber');
+        grabber.style.cssText = 'position:absolute;inset:0;display:block';
+        start.append(grabber);
+        await mouseDrag(start, cellAt(table, 2, 'age')!, { steps: 4 });
+        expect(log).toEqual(['up:{"rowIndex":2,"columnKey":"age"}']);
+    });
+});
+
+describe('a mouse release over an overlay of the table', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('reports the cell below it, as a touch at the same point does', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        const target = cellAt(table, 2, 'age')!;
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        const rect = target.getBoundingClientRect();
+        const cover = document.createElement('div');
+        cover.setAttribute('data-pointer-transparent', '');
+        cover.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;z-index:50`;
+        viewport.append(cover);
+        cellAt(table, 0, 'name')!.dispatchEvent(pointer('pointerdown', 211));
+        cover.dispatchEvent(pointer('pointerup', 211, { over: cover })); // a mouse, no capture: it is released on the overlay it is over
+        expect(log).toEqual(['up:{"rowIndex":2,"columnKey":"age"}']);
+        cover.remove();
+    });
+});
+
 describe('a touch tap on a cell covered by an overlay of the table', () => {
     it('focuses the cell below the overlay (the range readout and the fill handle are looked through): the last row under the sticky readout', async () => {
         const table = await mountTable();
@@ -647,6 +702,7 @@ describe('a touch tap on a cell covered by an overlay of the table', () => {
         const rect = last.getBoundingClientRect();
         const readout = document.createElement('div');
         readout.setAttribute('data-slot', 'range-actions');
+        readout.setAttribute('data-pointer-transparent', ''); // every overlay marks itself: the controller keeps no list of wave slots
         readout.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;z-index:50`;
         viewport.append(readout);
         // the tap lands on the readout (its pointerdown, and the pointerup delivered to it by the implicit capture), over the last cell

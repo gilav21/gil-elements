@@ -15,7 +15,7 @@ const rows: Row[] = Array.from({ length: 4 }, (_, i) => ({ id: `r${i}`, a: `a${i
 const columns = ['a', 'b'].map((accessorKey) => ({ accessorKey, header: accessorKey, _width: '100px', _minWidth: '50px' })) as unknown as EnhancedColumnDef<Row>[];
 
 /** The parts of a `GridView` the body rows read, with counters on the two wave state functions. */
-function view(stateActive: boolean) {
+function view(cellStateActive: boolean, rowStateActive = cellStateActive) {
     const cellState = vi.fn(() => NO_CELL_FLAGS);
     const rowState = vi.fn((): RowFlags => NO_ROW_FLAGS);
     const getRowId = vi.fn((row: Row) => row.id);
@@ -36,7 +36,9 @@ function view(stateActive: boolean) {
         renderFullWidth: undefined,
         getRowId,
         isDisabled,
-        stateActive,
+        stateActive: cellStateActive || rowStateActive,
+        cellStateActive,
+        rowStateActive,
         cellState,
         rowState,
         locale: {},
@@ -76,6 +78,17 @@ describe('the body rows and the wave 5 and 6 state', () => {
         expect(cellState).toHaveBeenCalledTimes(rows.length * columns.length);
         expect(cellState).toHaveBeenCalledWith(0, 'a', { id: 'r0', disabled: false });
         expect(rowState).toHaveBeenCalledWith(1, { id: 'r1', disabled: false });
+    });
+
+    it('ask a row for its state but no cell when only the rows are active (draggable rows), and no row when only the cells are', () => {
+        const drag = view(false, true);
+        renderRows(drag.v);
+        expect(drag.cellState).not.toHaveBeenCalled();
+        expect(drag.rowState).toHaveBeenCalledTimes(rows.length);
+        const cells = view(true, false);
+        renderRows(cells.v);
+        expect(cells.rowState).not.toHaveBeenCalled();
+        expect(cells.cellState).toHaveBeenCalledTimes(rows.length * columns.length);
     });
 
     it('read getRowId and isDisabled no more often with a feature active than without (the state functions never ask again)', () => {

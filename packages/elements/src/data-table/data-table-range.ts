@@ -60,7 +60,14 @@ export function sanitizeCellRange(input: unknown, rowCount: number, keys: readon
     if (!row(startRow) || !row(endRow) || typeof startCol !== 'string' || typeof endCol !== 'string') return undefined;
     if (keys.length > 0 && !(keys.includes(startCol) && keys.includes(endCol))) return undefined;
     const range: CellRange = { startRow, startCol, endRow, endCol };
-    return rowCount > 0 ? clampToRows(null, range, rowCount).range : range;
+    const clamped = rowCount > 0 ? clampToRows(null, range, rowCount).range : range;
+    // A valid range that needs no trimming and carries nothing else comes back as the SAME object (`table.cellRange = r; table.cellRange === r`).
+    return clamped && sameRange(clamped, range) && Object.keys(input as object).length === 4 ? (input as CellRange) : clamped;
+}
+
+/** Field-wise equality of two ranges (either may be absent). */
+export function sameRange(a: CellRange | null | undefined, b: CellRange | null | undefined): boolean {
+    return a && b ? a.startRow === b.startRow && a.endRow === b.endRow && a.startCol === b.startCol && a.endCol === b.endCol : !a === !b;
 }
 
 /** The keys a range may name: the data columns of the table's `columns`, visible or hidden (visibility only affects drawing), never a special column. */

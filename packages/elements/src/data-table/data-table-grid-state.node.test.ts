@@ -39,6 +39,15 @@ describe('stateView with the step-0 services', () => {
         expect(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: { active: () => false, dragState: () => null } } })).stateActive).toBe(false);
     });
 
+    it('splits the activity: draggable rows make the rows active but not the cells; range, flash and an open editor make the cells active but not the rows', () => {
+        const drag = stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: dragPart() } }));
+        expect([drag.cellStateActive, drag.rowStateActive, drag.stateActive]).toEqual([false, true, true]);
+        const range = stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range: rangeService() } }));
+        expect([range.cellStateActive, range.rowStateActive, range.stateActive]).toEqual([true, false, true]);
+        const plain = stateView(fakeHost({}));
+        expect([plain.cellStateActive, plain.rowStateActive, plain.stateActive]).toEqual([false, false, false]);
+    });
+
     it('answers the shared frozen none object for every cell and row of a plain grid', () => {
         const state = stateView(fakeHost({}));
         expect(state.cellState(0, 'name', row)).toBe(NO_CELL_FLAGS);
