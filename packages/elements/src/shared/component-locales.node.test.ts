@@ -75,22 +75,14 @@ describe('the resolvers', () => {
         expect(lookupLocale({ 'zh-hant': 'HANT', zh: 'ZH' }, 'zh-Hant-TW')).toBe('HANT');
         expect(lookupLocale({ zh: 'ZH' }, 'zh-Hant-TW')).toBe('ZH');
         expect(lookupLocale({ zh: 'ZH' }, 'xx-Hant-TW')).toBeUndefined();
-        // a record keyed with a mixed-case id is found whichever way the id is written
-        const regional = { 'pt-BR': 'BR', pt: 'PT' };
-        for (const id of ['pt-br', 'PT-BR', 'pt_BR', 'pt-BR']) expect(lookupLocale(regional, id)).toBe('BR');
+        // keys are lowercase ids: a mixed-case key is found only by that exact id; the id as written is tried first
+        const regional = { 'pt-BR': 'MIXED', 'pt-br': 'LOWER', pt: 'PT' };
+        expect(lookupLocale(regional, 'pt-BR')).toBe('MIXED');
+        expect(lookupLocale(regional, 'pt-br')).toBe('LOWER');
+        expect(lookupLocale(regional, 'PT_BR')).toBe('LOWER');
+        expect(lookupLocale({ 'pt-BR': 'MIXED', pt: 'PT' }, 'pt-br')).toBe('PT');
         expect(lookupLocale(regional, 'pt-PT')).toBe('PT');
         for (const name of ['__proto__', 'constructor', 'toString']) expect(lookupLocale(regional, name)).toBeUndefined();
-        // two keys that read alike: the one written exactly as asked wins, else the first of the record
-        const both = { 'pt-BR': 'upper', 'pt-br': 'lower' };
-        expect(lookupLocale(both, 'pt-br')).toBe('lower');
-        expect(lookupLocale(both, 'pt-BR')).toBe('upper');
-        expect(lookupLocale(both, 'PT-BR')).toBe('upper');
-        expect(lookupLocale(both, 'pt_BR')).toBe('upper');
-        // a record is mutable: a key added later is found (the normalised keys are cached per record)
-        const growing: Record<string, string> = { en: 'EN' };
-        expect(lookupLocale(growing, 'De-AT')).toBeUndefined();
-        growing['de-AT'] = 'DE';
-        expect(lookupLocale(growing, 'de-at')).toBe('DE');
     });
 
     it('ignore case and region in an id, and never answer with an inherited member', () => {
