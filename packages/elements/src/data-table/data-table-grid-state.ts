@@ -63,6 +63,7 @@ export interface RowInfo {
 }
 
 /** The keys of the columns that opted out of flash, per `columns` array: a render with the same columns builds the set once. */
+const NO_KEYS: ReadonlySet<string> = new Set();
 const flashOffCache = new WeakMap<readonly object[], ReadonlySet<string>>();
 function flashOffKeys(columns: readonly { accessorKey: unknown; enableCellFlash?: boolean }[]): ReadonlySet<string> {
     let keys = flashOffCache.get(columns);
@@ -83,9 +84,9 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     // (`aria-selected`, `aria-multiselectable`) follows the SELECTION flag alone, like `data-range-selection`: a fill-handle-only grid is not multiselectable.
     const rangeMode = rangeModeOn(config) && rangeActive;
     const selectionMode = config.enableCellRangeSelection && rangeActive;
-    const flashOff = flashOffKeys(config.columns);
     // Flash costs per-cell work only while some cell is actually flashing (`enable-cell-flash` alone, with nothing flashing, does not).
     const flashable = config.enableCellFlash && formatting !== undefined && formatting.anyFlashing();
+    const flashOff = flashable ? flashOffKeys(config.columns) : NO_KEYS; // only built while something flashes
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;

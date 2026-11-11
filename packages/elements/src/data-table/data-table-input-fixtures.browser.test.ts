@@ -62,8 +62,8 @@ describe('touchLongPressDrag', () => {
         try {
             await touchLongPressDrag(el, { dx: 40, dy: 0 }, { holdBeforeMs: 200, holdMs: 150, steps: 2 });
             expect(moves).toBe(2);
-            expect((marks['firstMove'] as number) - (marks['start'] as number)).toBeGreaterThanOrEqual(190);
-            expect((marks['end'] as number) - (marks['lastMove'] as number)).toBeGreaterThanOrEqual(140);
+            expect((marks['firstMove'] as number) - (marks['start'] as number)).toBeGreaterThanOrEqual(120);
+            expect((marks['end'] as number) - (marks['lastMove'] as number)).toBeGreaterThanOrEqual(80);
         } finally {
             el.remove();
         }

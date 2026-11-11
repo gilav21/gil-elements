@@ -15,8 +15,6 @@ const OVERLAYS = '[data-pointer-transparent], [data-slot="range-actions"], [data
 interface Press {
     readonly anchor: CellAddress | null;
     readonly claimedBy: CellSession | null;
-    /** The element the pointerdown landed on (the tapped cell of a touch, when nothing better is found under the release). */
-    readonly pressed: Element | null;
 }
 
 /** A press on one of these belongs to the control: it keeps its own focus and click. */
@@ -74,8 +72,8 @@ export class CellInteractionController<T> {
      * (a release outside), or by `detach()`.
      */
     private readonly presses = new Map<number, Press>();
-    /** The pointerdowns the table's root has heard (the document hears them first, and a table in a closed shadow root is invisible to its path): what the document's deferred check asks. */
-    private readonly heardDown = new WeakSet<Event>();
+    /** The press the document cleared `within` for, until the root hears it (then `within` is restored: the press was inside). */
+    private withinBeforePress: { readonly event: Event; readonly within: boolean } | null = null;
 
     constructor(private readonly host: DataTableCoreHost<T>) {
         const context: InteractionContext<T> = {
@@ -120,9 +118,10 @@ export class CellInteractionController<T> {
             // phase: it sees the table's own nodes even inside a closed shadow root, and a consumer's stopPropagation cannot hide it.
             disposables.listen<PointerEvent>(root, 'pointerup', (event) => this.onRelease(event), true),
             disposables.listen<PointerEvent>(root, 'pointercancel', (event) => this.onRelease(event), true),
-            // The document hears every event FIRST (before the root's capture listener) and cannot tell, for a table in a closed shadow root, whether the
-            // root will hear it: so it only schedules a look after the dispatch, at what the root left open (a release or a press OUTSIDE the table).
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => this.afterDispatch(() => !this.heardDown.has(event) && (this.within = false)), true),
+            // The document hears a press FIRST (before the root's capture listener): one whose composed path does not include the root is outside, as far as
+            // it can tell, and clears `within` NOW (the focus guard must not pull the focus back into the grid while that press's own handlers change the
+            // data); a press the root then hears (a table in a CLOSED shadow root, invisible to the document's path) restores it, in the same dispatch.
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => this.onDocumentDown(event), true),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.closeUnheard(event), true),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.closeUnheard(event), true),
             // The window lost focus (alt-tab, a release over an iframe never heard): no pointer is down any more.
@@ -141,8 +140,10 @@ export class CellInteractionController<T> {
             } catch (error) {
                 // A session that fails to attach is reported and left out of everything after (pointer, hostUpdate, overlay, detach): the controller and
                 // the other controllers still attach.
-                this.broken.add(session);
+                // What it registered before it threw (a key handler, a listener) is removed by its detach, which runs now: the session is then left out.
                 this.report(error);
+                this.guarded(() => session.detach());
+                this.broken.add(session);
             }
         }
     }
@@ -166,7 +167,8 @@ export class CellInteractionController<T> {
     /** Before every render: the focused cell follows its row (when a node or group moved it), the data (clamped to the rows that exist) and the layout. */
     hostUpdate(): void {
         this.reconcile();
-        this.eachBackwards((session) => session.hostUpdate?.());
+        // A session that throws is reported and skipped for this call: the others, and the rest of the update, still run.
+        this.eachBackwards((session) => void this.guarded(() => session.hostUpdate?.()));
     }
 
     private reconcile(): void {
@@ -428,8 +430,15 @@ export class CellInteractionController<T> {
      * range from it). A session that claims it (returns true) moves the focus itself; otherwise the controller focuses the pressed cell, except
      * for a press inside the open editor's cell, which never moves focus (an editor may be a custom element the tag list below does not know).
      */
+    private onDocumentDown(event: PointerEvent): void {
+        if (!this.within) return; // nothing to clear
+        this.withinBeforePress = { event, within: true };
+        if (!event.composedPath().includes(this.host.root)) this.within = false;
+    }
+
     private onRootDown(event: PointerEvent): void {
-        this.heardDown.add(event);
+        if (this.withinBeforePress?.event === event) this.within = this.withinBeforePress.within; // the root heard it: it is a press inside
+        this.withinBeforePress = null;
         if (ownsTarget(this.host.root, event.target)) this.onPointerDown(event); // a nested table records its own presses
     }
 
@@ -445,7 +454,7 @@ export class CellInteractionController<T> {
         }
         const target = this.targetOf(event);
         const claimedBy = this.offer(event, target, (session) => session.onPointerDown, anchor);
-        this.presses.set(event.pointerId, { anchor, claimedBy: claimedBy ?? null, pressed: target });
+        this.presses.set(event.pointerId, { anchor, claimedBy: claimedBy ?? null });
         if (claimedBy) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.button === 0 && event.pointerType !== 'touch' && target && !this.insideOpenEditor(event)) this.pointerFocus(target);
@@ -476,8 +485,8 @@ export class CellInteractionController<T> {
             return;
         }
         if (this.offer(event, cell, (session) => session.onPointerUp, anchor)) return;
-        const tapped = cell ?? press.pressed; // the cell under the finger, else the one that was pressed
-        if (event.pointerType === 'touch' && tapped && !this.insideOpenEditor(event)) this.pointerFocus(tapped);
+        // A tap focuses the cell under the finger; released on something that is not a cell (a header, a popover) it does nothing.
+        if (event.pointerType === 'touch' && cell && !this.insideOpenEditor(event)) this.pointerFocus(cell);
     }
 
     /** Runs `task` after the event that scheduled it has been dispatched to every listener (the document's capture listener runs before the root's). */
@@ -491,7 +500,8 @@ export class CellInteractionController<T> {
      */
     private closeUnheard(event: PointerEvent): void {
         const press = this.presses.get(event.pointerId);
-        if (!press) return;
+        // The root hears a release it can see in the path: nothing to look at after it then (only a closed root, or a release outside, needs the look).
+        if (!press || event.composedPath().includes(this.host.root)) return;
         this.afterDispatch(() => {
             if (this.presses.get(event.pointerId) !== press) return;
             this.presses.delete(event.pointerId);
@@ -509,7 +519,7 @@ export class CellInteractionController<T> {
 
     /** What the sessions draw over the grid (the range readout and fill handle); the element calls it after the table, inside the viewport. */
     renderOverlay(): TemplateResult | null {
-        const drawn = this.sessions.map((session) => (this.broken.has(session) ? undefined : session.renderOverlay?.()));
+        const drawn = this.sessions.map((session) => (this.broken.has(session) ? undefined : this.guarded(() => session.renderOverlay?.())));
         return drawn.some(Boolean) ? html`${drawn}` : null; // Lit draws nothing for an undefined or null entry
     }
 
@@ -539,15 +549,15 @@ export class CellInteractionController<T> {
         }
         const tree = root.getRootNode();
         const scope = tree instanceof ShadowRoot ? tree : root.ownerDocument;
-        let sawOwn = false;
         for (const el of scope.elementsFromPoint(event.clientX, event.clientY)) {
             if (!composedContains(root, el)) break; // something outside the table: on top of it (nothing of the table seen yet) or just below it (its ancestors)
             if (!ownsTarget(root, el)) return { own: false, cell: null }; // a nested table
-            if (el.closest(OVERLAYS)) continue;
-            sawOwn = true;
-            if (cellAddressOf(el)) return { own: true, cell: el };
+            if (el.closest(OVERLAYS)) continue; // looked through: the readout, the fill handle, a drop edge
+            // The FIRST element of the table that is not an overlay decides: a cell, or something that is not one (the sticky header or footer, a popover
+            // or menu of the table, the busy overlay). The cells scrolled under those are not what the pointer is on.
+            return { own: true, cell: cellAddressOf(el) ? el : null };
         }
-        return { own: sawOwn, cell: null };
+        return { own: false, cell: null };
     }
 
     /**
@@ -581,7 +591,7 @@ export class CellInteractionController<T> {
     }
 
     /** Tells the claimant its press ended without a pointerup on the table; a claimant that throws is reported and never stops the caller. */
-    private notifyCancel(press: { readonly anchor: CellAddress | null; readonly claimedBy: CellSession | null }, event: PointerEvent | null): void {
+    private notifyCancel(press: Press, event: PointerEvent | null): void {
         this.guarded(() => press.claimedBy?.onPointerCancel?.(event, { anchor: press.anchor }));
     }
 

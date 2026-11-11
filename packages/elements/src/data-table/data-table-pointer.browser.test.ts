@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { PointerPress } from './data-table-cell-session.js';
-import { cellAt, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
-import { frames, mouseDrag, parkMouse } from './data-table-input-fixtures.js';
+import { cellAt, makeRows, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
+import { frames, mouseDrag, parkMouse, scrollGrid } from './data-table-input-fixtures.js';
+import { KEY_PRIORITY } from './data-table-registry.js';
 import { EditSession } from './data-table-edit-session.js';
 import { RangeSession } from './data-table-range-session.js';
 import type { GeDataTable } from './data-table.js';
@@ -427,7 +428,7 @@ describe('sessions that throw', () => {
 });
 
 describe('a session that throws while attaching', () => {
-    it('is reported and left out: the table still mounts, the other session works, and the broken one is not detached', async () => {
+    it('is reported, detached at once and left out: the table still mounts, the other session works', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const attach = vi.spyOn(EditSession.prototype, 'attach').mockImplementation(() => {
             throw new Error('edit attach failed');
@@ -440,13 +441,119 @@ describe('a session that throws while attaching', () => {
             expect(rangeAttach).toHaveBeenCalledTimes(1); // the session after it attached, and so did every other controller
             expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull();
             expect(table.provider('footer')).toBeDefined();
+            expect(editDetach).toHaveBeenCalledTimes(1); // right away, to undo what it registered before it threw
             table.remove();
-            expect(editDetach).not.toHaveBeenCalled();
+            expect(editDetach).toHaveBeenCalledTimes(1); // and not again at the detach: it is left out
         } finally {
             attach.mockRestore();
             editDetach.mockRestore();
             rangeAttach.mockRestore();
             error.mockRestore();
+        }
+    });
+});
+
+describe('what a session registered before its attach threw', () => {
+    it('is removed again (its detach runs at once), so reconnecting the table does not accumulate it', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const handler = vi.fn(() => false);
+        let off: (() => void) | undefined;
+        const attach = vi.spyOn(EditSession.prototype, 'attach').mockImplementation(function (this: { context: { host: { addKeyHandler(priority: number, fn: () => boolean): () => void } } }) {
+            off = this.context.host.addKeyHandler(KEY_PRIORITY.reserved, handler); // registered, then the attach fails
+            throw new Error('edit attach failed');
+        });
+        const detach = vi.spyOn(EditSession.prototype, 'detach').mockImplementation(() => void off?.());
+        try {
+            const table = await mountTable();
+            table.focusCell(0, 'name');
+            await settle(table);
+            await userEvent.keyboard('x');
+            expect(handler).not.toHaveBeenCalled();
+            // reconnect twice: the handler is registered and removed each time, never left behind
+            for (let i = 0; i < 2; i++) {
+                table.remove();
+                document.body.append(table);
+                await settle(table);
+            }
+            table.focusCell(0, 'name');
+            await settle(table);
+            await userEvent.keyboard('x');
+            expect(handler).not.toHaveBeenCalled();
+            expect(detach).toHaveBeenCalledTimes(3); // one per attach that threw
+        } finally {
+            attach.mockRestore();
+            detach.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
+describe('sessions that throw in hostUpdate or renderOverlay', () => {
+    it('are reported and skipped for that call: the grid still renders and the other session still updates', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const rangeUpdate = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            throw new Error('range hostUpdate failed');
+        });
+        (RangeSession.prototype as unknown as { renderOverlay?: () => unknown }).renderOverlay = () => {
+            throw new Error('overlay failed');
+        };
+        try {
+            const table = await mountTable();
+            expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull();
+            expect(rangeUpdate).toHaveBeenCalled();
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(expect.arrayContaining(['range hostUpdate failed', 'overlay failed']));
+            table.requestUpdate();
+            await settle(table);
+            expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull();
+        } finally {
+            delete (RangeSession.prototype as unknown as { renderOverlay?: unknown }).renderOverlay;
+            rangeUpdate.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
+describe('a press outside the table', () => {
+    it('clears the focus guard at once: a pointerdown handler that changes the data does not pull the focus back into the grid', async () => {
+        const table = await mountTable();
+        const outside = document.createElement('div');
+        outside.style.cssText = 'position:fixed;right:0;bottom:0;width:80px;height:40px';
+        document.body.append(outside);
+        table.focusCell(1, 'name');
+        await settle(table);
+        const focusins: Element[] = [];
+        table.addEventListener('focusin', (event) => void focusins.push(event.target as Element));
+        // a consumer handler (registered after the table's own, on the same phase) that changes the table's data while the press is still going on
+        const handler = (): void => {
+            table.data = [...table.data].reverse();
+        };
+        document.addEventListener('pointerdown', handler, true);
+        try {
+            await mouseDrag(outside, outside, { steps: 1 });
+            await settle(table);
+            await frames(3);
+            expect(focusins).toEqual([]);
+        } finally {
+            document.removeEventListener('pointerdown', handler, true);
+            outside.remove();
+        }
+    });
+
+    it('schedules nothing: no timer for a press that is not inside the table, nothing recorded to close', async () => {
+        const table = await mountTable();
+        const outside = document.createElement('div');
+        outside.style.cssText = 'position:fixed;right:0;bottom:0;width:80px;height:40px';
+        document.body.append(outside);
+        const timeout = vi.spyOn(table.disposables, 'timeout');
+        try {
+            await mouseDrag(outside, outside, { steps: 1 }); // `within` is false (nothing focused in the table) and no press of the table is open
+            expect(timeout).not.toHaveBeenCalled();
+            // a press on the table's own cell: the root handles its release, the document needs no look either
+            await mouseDrag(cellAt(table, 1, 'name')!, cellAt(table, 1, 'name')!, { steps: 1 });
+            expect(timeout).not.toHaveBeenCalled();
+        } finally {
+            timeout.mockRestore();
+            outside.remove();
         }
     });
 });
@@ -550,7 +657,7 @@ describe('a touch tap on a cell covered by an overlay of the table', () => {
         readout.remove();
     });
 
-    it('looks through an element marked data-pointer-transparent too, and falls back to the pressed cell for an unclaimed tap when no cell is under the finger', async () => {
+    it('looks through an element marked data-pointer-transparent too', async () => {
         const table = await mountTable();
         const cell = cellAt(table, 1, 'name')!;
         const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
@@ -564,13 +671,35 @@ describe('a touch tap on a cell covered by an overlay of the table', () => {
         await settle(table);
         expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
         cover.remove();
-        // no cell under the finger (the point is over the empty header corner area): the pressed cell is focused
-        const other = cellAt(table, 2, 'age')!;
-        other.dispatchEvent(pointer('pointerdown', 193, { pointerType: 'touch' }));
-        const header = table.querySelector<HTMLElement>('[data-slot="table-head"]')!;
-        other.dispatchEvent(pointer('pointerup', 193, { pointerType: 'touch', over: header }));
+    });
+
+    it('stops at the first element of the table that is not an overlay: a tap on the sticky header with rows scrolled under it focuses no body cell, and a tap on a popover of the table keeps the focus in the popover', async () => {
+        const table = await mountTable({ data: makeRows(60), showPagination: false, showToolbar: false }, {}, { width: 600, height: 220 });
+        await scrollGrid(table, { top: 400 });
         await settle(table);
-        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'age' });
+        const header = table.querySelector<HTMLElement>('[data-slot="table-head"]')!;
+        const headRect = header.getBoundingClientRect();
+        // a body cell really is under the sticky header at that point (the rows scrolled under it)
+        const under = document.elementsFromPoint(headRect.left + 10, headRect.top + headRect.height / 2);
+        expect(under.some((el) => el.closest('[data-slot="table-cell"]') !== null)).toBe(true);
+        header.dispatchEvent(pointer('pointerdown', 201, { pointerType: 'touch', over: header }));
+        header.dispatchEvent(pointer('pointerup', 201, { pointerType: 'touch', over: header }));
+        await settle(table);
+        expect(table.focusedCell).toBeNull();
+        // an in-table popover over a body cell: the tap is the popover's, the focus stays in it
+        const target = table.querySelector<HTMLElement>('[data-slot="table-body"] [data-slot="table-cell"]')!;
+        const rect = target.getBoundingClientRect();
+        const popover = document.createElement('button');
+        popover.textContent = 'menu item';
+        popover.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;z-index:50`;
+        table.append(popover);
+        popover.focus();
+        popover.dispatchEvent(pointer('pointerdown', 202, { pointerType: 'touch', over: popover }));
+        popover.dispatchEvent(pointer('pointerup', 202, { pointerType: 'touch', over: popover }));
+        await settle(table);
+        expect(document.activeElement).toBe(popover);
+        expect(table.focusedCell).toBeNull();
+        popover.remove();
     });
 });
 

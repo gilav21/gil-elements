@@ -165,6 +165,14 @@ describe('stateView with the step-0 services', () => {
         expect(state.cellState(0, 'name', row)).toBe(NO_CELL_FLAGS);
     });
 
+    it('builds no flash-off key set at all while nothing flashes (flash off, or enable-cell-flash with nothing flashing)', () => {
+        const columns = [{ accessorKey: 'a' }, { accessorKey: 'b', enableCellFlash: false }];
+        const filter = vi.spyOn(columns, 'filter');
+        stateView(fakeHost({ config: { columns } })).cellState(0, 'a', row);
+        stateView(fakeHost({ config: { columns, enableCellFlash: true }, providers: { formatting: { flash: () => undefined, anyFlashing: () => false } } })).cellState(0, 'a', row);
+        expect(filter).not.toHaveBeenCalled();
+    });
+
     it('builds the flash-off key set once per columns array, not per render', () => {
         const columns = [{ accessorKey: 'a' }, { accessorKey: 'b', enableCellFlash: false }];
         const filter = vi.spyOn(columns, 'filter');
