@@ -55,8 +55,12 @@ export class CellInteractionController<T> {
     /** The one list: attach and the pointer go through it forwards, detach and `hostUpdate` backwards. */
     private readonly sessions: readonly CellSession[];
     private readonly service: CellInteractionService;
-    /** The roving cell at each pointerdown, by pointer id, until its pointerup or cancel: both ends of one press see the same anchor. */
-    private readonly anchors = new Map<number, CellAddress | null>();
+    /**
+     * The press in progress: the roving cell at its pointerdown, so both ends of one press see the same anchor. ONE slot (a later pointerdown
+     * replaces it), ended by the matching pointerup or cancel ANYWHERE on the page (a press released outside the table must not leave an anchor
+     * for a later press with the same pointer id).
+     */
+    private press: { readonly pointerId: number; readonly anchor: CellAddress | null } | null = null;
 
     constructor(private readonly host: DataTableCoreHost<T>) {
         const context: InteractionContext<T> = {
@@ -82,8 +86,8 @@ export class CellInteractionController<T> {
     }
 
     /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. */
-    get rangeService(): RangeService {
-        return this.range.rangeService;
+    get services(): { range: RangeService } {
+        return { range: this.range.rangeService };
     }
 
     attach(): void {
@@ -99,11 +103,11 @@ export class CellInteractionController<T> {
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event))),
             disposables.listen<PointerEvent>(root, 'pointerup', ownEvents(root, (event: PointerEvent) => this.onPointerUp(event))),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => !root.contains(event.target as Node) && (this.within = false), true),
+            // Bubble phase on the document: the table's own pointerup (above, on the root) has already used the press by the time these run.
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.endPress(event)),
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.endPress(event)),
             disposables.listen(root.ownerDocument.defaultView ?? window, 'blur', () => (this.within = false)),
-            disposables.listen<PointerEvent>(root, 'pointercancel', (event) => {
-                this.pointer = false;
-                this.anchors.delete(event.pointerId);
-            }),
+            disposables.listen<PointerEvent>(root, 'pointercancel', () => (this.pointer = false)),
             disposables.listen(root, 'keydown', () => (this.pointer = false), true),
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => this.onFocusIn(event))),
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
@@ -115,7 +119,7 @@ export class CellInteractionController<T> {
     detach(): void {
         // The reverse of attach: the sessions go first, while the services they read are still provided.
         this.eachBackwards((session) => session.detach());
-        this.anchors.clear();
+        this.press = null;
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
         this.observer?.disconnect();
@@ -392,7 +396,7 @@ export class CellInteractionController<T> {
      */
     private onPointerDown(event: PointerEvent): void {
         this.pointer = true;
-        this.anchors.set(event.pointerId, this.focused);
+        this.press = { pointerId: event.pointerId, anchor: this.focused };
         if (this.offer(event, (session) => session.onPointerDown, this.focused)) return;
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.button === 0 && event.pointerType !== 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(event.target as Element);
@@ -401,8 +405,8 @@ export class CellInteractionController<T> {
     private onPointerUp(event: PointerEvent): void {
         this.pointer = false;
         // The anchor of the press that is ending, not the roving cell now (an unclaimed pointerdown has already moved it).
-        const anchor = this.anchors.has(event.pointerId) ? (this.anchors.get(event.pointerId) ?? null) : this.focused;
-        this.anchors.delete(event.pointerId);
+        const anchor = this.press?.pointerId === event.pointerId ? this.press.anchor : this.focused;
+        this.press = null;
         if (this.offer(event, (session) => session.onPointerUp, anchor)) return;
         if (event.pointerType === 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(event.target as Element);
     }
@@ -416,8 +420,8 @@ export class CellInteractionController<T> {
 
     /** What the sessions draw over the grid (the range readout and fill handle); the element calls it after the table, inside the viewport. */
     renderOverlay(): TemplateResult | null {
-        const drawn = this.sessions.map((session) => session.renderOverlay?.()).filter((template): template is TemplateResult => !!template);
-        return drawn.length === 0 ? null : html`${drawn}`;
+        const drawn = this.sessions.map((session) => session.renderOverlay?.());
+        return drawn.some(Boolean) ? html`${drawn}` : null; // Lit draws nothing for an undefined or null entry
     }
 
     /** The press goes to the sessions in order (range, edit); the first that returns true claims it (and this returns true). */
@@ -425,6 +429,11 @@ export class CellInteractionController<T> {
         const at = cellAddressOf(event.target);
         const press: PointerPress = { anchor };
         return this.sessions.some((session) => handlerOf(session)?.call(session, event, at, press) === true);
+    }
+
+    /** The pointer of the press in progress was released (or cancelled) somewhere on the page: the press is over. */
+    private endPress(event: PointerEvent): void {
+        if (this.press?.pointerId === event.pointerId) this.press = null;
     }
 
     private eachBackwards(visit: (session: CellSession) => void): void {

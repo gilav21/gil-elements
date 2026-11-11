@@ -55,6 +55,41 @@ describe('the cellRange property', () => {
         expect(other.cellRange).toEqual(range);
     });
 
+    it('answers the same before the first connect as after it: held, reported only while range mode is on, malformed values refused', () => {
+        const warn = console.warn;
+        const warnings: unknown[][] = [];
+        console.warn = (...args: unknown[]) => void warnings.push(args);
+        try {
+            const table = document.createElement('ge-data-table') as GeDataTable;
+            table.cellRange = range;
+            expect(table.cellRange).toBeNull(); // range mode is off: held, not reported
+            table.enableCellRangeSelection = true;
+            expect(table.cellRange).toEqual(range); // and applied when the mode is on
+            table.cellRange = { startRow: 'x' } as never;
+            table.cellRange = 'A1' as never;
+            expect(table.cellRange).toEqual(range);
+            expect(warnings.filter((args) => String(args[0]).includes('cellRange'))).toHaveLength(1);
+            table.enableCellRangeSelection = false;
+            expect(table.cellRange).toBeNull();
+            table.cellRange = undefined as never;
+            table.enableCellRangeSelection = true;
+            expect(table.cellRange).toBeNull();
+        } finally {
+            console.warn = warn;
+        }
+    });
+
+    it('keeps a range assigned before the first connect (range mode on) through the connect', async () => {
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        table.enableCellRangeSelection = true;
+        table.cellRange = range;
+        Object.assign(table, { columns: [{ accessorKey: 'name', header: 'Name' }, { accessorKey: 'age', header: 'Age' }], data: [{ name: 'a', age: 1 }, { name: 'b', age: 2 }, { name: 'c', age: 3 }] });
+        document.body.append(table);
+        await settle(table);
+        expect(table.cellRange).toEqual(range);
+        table.remove();
+    });
+
     it('can be assigned to a detached table without throwing: the checked value waits and is clamped at the next attach', async () => {
         const table = await mountTable({ enableCellRangeSelection: true });
         const rows = table.data.length;

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { PointerPress } from './data-table-cell-session.js';
 import { cellAt, mountTable, settle } from './data-table-fixtures.js';
-import { frames, parkMouse } from './data-table-input-fixtures.js';
+import { frames, mouseDrag, parkMouse } from './data-table-input-fixtures.js';
 import { RangeSession } from './data-table-range-session.js';
 import type { GeDataTable } from './data-table.js';
 
@@ -61,6 +61,26 @@ describe('a press is offered to the sessions before the controller moves the foc
                 ['up', origin],
             ]);
             expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'age' });
+        } finally {
+            delete (proto as { onPointerUp?: Handler }).onPointerUp;
+        }
+    });
+
+    it('leaves no anchor behind when a press is released outside the table: a later press with the same pointer id sees the roving cell it started from', async () => {
+        const ups: unknown[] = [];
+        (proto as { onPointerUp?: Handler }).onPointerUp = (_event, _at, press) => void ups.push(press.anchor);
+        try {
+            const table = await mountTable();
+            table.focusCell(0, 'name');
+            await settle(table);
+            const outside = { x: window.innerWidth - 4, y: window.innerHeight - 4 };
+            // press on a cell, released outside the table: that press is over, its anchor ({0,name}) must not survive it
+            await mouseDrag(cellAt(table, 3, 'age')!, outside, { steps: 3 });
+            expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'age' });
+            expect(ups).toEqual([]);
+            // press outside, released on a cell: no pointerdown of this table started it, so the anchor is the roving cell NOW, not the old one
+            await mouseDrag(outside, cellAt(table, 1, 'name')!, { steps: 3 });
+            expect(ups).toEqual([{ rowIndex: 3, columnKey: 'age' }]);
         } finally {
             delete (proto as { onPointerUp?: Handler }).onPointerUp;
         }

@@ -1,5 +1,6 @@
 import type { TemplateResult } from 'lit';
 import type { DataTableCoreHost } from './data-table-host.js';
+import type { DataTableProviders } from './data-table-providers.js';
 import { type ControllerId, type ControllerSpec, DEFAULT_ORDER, validatePlan } from './data-table-registry.js';
 
 /** Plain class built as `new XController(host)`, never in the constructor of the element. */
@@ -8,6 +9,8 @@ export interface DataTableController {
     detach(): void;
     /** Runs before every render, so a controller can settle derived state the render reads. */
     hostUpdate?(): void;
+    /** Services this controller owns that must stay reachable while the table is detached or not yet connected (the provider entries are cleared at disconnect). */
+    readonly services?: Partial<DataTableProviders>;
 }
 
 /** A controller that also draws: the element calls these on every render. */
@@ -27,6 +30,8 @@ export interface AssembledControllers {
     readonly controllers: readonly DataTableRenderingController[];
     /** The same controllers by plan id: what the element reaches for state that must outlive a disconnect (the providers do not). */
     readonly byId: ReadonlyMap<ControllerId, DataTableRenderingController>;
+    /** A service a controller exposes through `services` (also while detached), or undefined. */
+    service<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined;
     /** Attaches in plan order. */
     attachAll(): void;
     /** Detaches in reverse order, each even if an earlier one threw; rethrows the first error. */
@@ -49,6 +54,10 @@ export function assembleControllers<T>(
     return {
         controllers,
         byId: new Map(built.map((s, i) => [s.id, controllers[i] as DataTableRenderingController])),
+        service<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined {
+            for (const c of controllers) if (c.services?.[key] !== undefined) return c.services[key];
+            return undefined;
+        },
         attachAll() {
             for (const c of controllers) c.attach();
         },

@@ -6,9 +6,8 @@ import '../skeleton/define.js';
 import { adoptSheet } from '../shared/adopt-sheet.js';
 import { THEME_ATTRIBUTE, type ThemeName } from '../shared/theme-presets.js';
 import { createCellWriter, type HistoryResult } from './data-table-cell-write.js';
-import { type AssembledControllers, assembleControllers, type DataTableRenderingController } from './data-table-controllers.js';
+import { type AssembledControllers, assembleControllers } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
-import type { CellInteractionController } from './data-table-cell-interaction-controller.js';
 import { createFactories } from './data-table-factories.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
@@ -215,8 +214,6 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         rejectionMessage: () => this.resolvedLocale.invalidValue,
         emit: (...event) => this.emit(event[0], event[1] as never),
     });
-    /** A `cellRange` assigned before the range service exists (before the first attach). */
-    private earlyRange: CellRange | null | undefined;
     private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
     private releaseStyles: (() => void) | null = null;
@@ -533,23 +530,27 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * value assigned before the table is attached waits for the range service.
      */
     get cellRange(): CellRange | null {
-        const service = this.rangeService();
-        return service ? service.range() : (this.earlyRange ?? null);
+        return this.rangeService()?.range() ?? null;
     }
 
     set cellRange(range: CellRange | null) {
-        const service = this.rangeService();
-        if (service) service.setRange(range); // the session asks for the render
-        else this.earlyRange = range;
+        this.rangeService()?.setRange(range); // the session checks the value and asks for the render
     }
 
     /**
-     * The range service, also while detached: the providers are cleared then, but the controllers are built once and the cell-interaction
-     * controller's range session keeps the value across reconnects. It is the one owner; only before the first attach does the element hold the
-     * value itself (`earlyRange`).
+     * The range service, before the first connect and while detached too: the providers are empty then, but the controllers are built once
+     * (on the first need) and kept, and the range session of the cell-interaction controller OWNS the value from the start. So the getter answers
+     * the same before and after the first attach (nothing while range mode is off, the checked value while it is on).
      */
     private rangeService(): DataTableProviders<T>['range'] | undefined {
-        return this.provider('range') ?? (this.built?.byId.get('cell-interaction') as CellInteractionController<T> | undefined)?.rangeService;
+        return this.provider('range') ?? this.ensureBuilt()?.service('range');
+    }
+
+    /** The controllers, built once and kept across reconnects (what a controller holds, runtime pins, the loading trigger, the range, survives). Not on the server. */
+    private ensureBuilt(): AssembledControllers | null {
+        if (isServer) return null;
+        this.built ??= assembleControllers(this, createFactories<T>());
+        return this.built;
     }
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
@@ -611,15 +612,10 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         if (isServer) return;
         const tree = this.getRootNode();
         this.releaseStyles = adoptSheet(tree instanceof ShadowRoot ? tree : this.ownerDocument, 'ge-data-table', css);
-        // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger) survives.
-        this.built ??= assembleControllers(this, createFactories<T>());
-        this.built.attachAll();
-        if (this.earlyRange !== undefined) {
-            this.provider('range')?.setRange(this.earlyRange);
-            this.earlyRange = undefined;
-        }
+        const built = this.ensureBuilt() as AssembledControllers;
+        built.attachAll();
         this.lastLocale = this.resolvedLocale;
-        this.assembled = this.built;
+        this.assembled = built;
         this.observer = new MutationObserver(() => {
             this.harvest();
             this.requestUpdate();
@@ -796,7 +792,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             <div data-slot="data-table-toolbar-start">
                 <div data-slot="data-table-filter"><ge-input placeholder=${locale.filterPlaceholder} aria-label=${locale.filterPlaceholder} .value=${this.store.get('globalFilter')}
                     @input=${(event: Event) => query.changeGlobalFilter((event.currentTarget as HTMLInputElement).value)}></ge-input></div>
-                ${this.fromControllers((c) => c.renderToolbar?.())}
+                ${this.assembled?.controllers.map((c) => c.renderToolbar?.())}
                 ${this.nodes('toolbar-start')}
             </div>
             <div data-slot="data-table-toolbar-end">
@@ -821,16 +817,6 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         </div>`;
     }
 
-    /** What the controllers draw in one of their slots (`renderToolbar`, `renderOverlay`), in plan order; the ones that draw nothing leave no trace. */
-    private fromControllers(draw: (controller: DataTableRenderingController) => TemplateResult | null | undefined): TemplateResult[] {
-        const out: TemplateResult[] = [];
-        for (const controller of this.assembled?.controllers ?? []) {
-            const drawn = draw(controller);
-            if (drawn) out.push(drawn);
-        }
-        return out;
-    }
-
     private renderOverlays(locale: DataTableLocale): unknown {
         const loading = this.provider('loading');
         const busy = this.provider('addons')?.busyLabel() ?? null;
@@ -849,7 +835,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return html`<output data-slot="data-table-announcer" aria-live="polite" aria-atomic="true">${this.announcement}</output>
             ${this.showToolbar ? this.renderToolbar(locale) : nothing}
             <div data-slot="data-table-viewport" tabindex=${grid.viewportTabbable ? '0' : '-1'} @keydown=${(event: KeyboardEvent) => ownsTarget(this, event.target) && void this.keyHandlers.run(event)}>
-                ${this.renderOverlays(locale)}${renderGrid(grid)}${this.fromControllers((c) => c.renderOverlay?.())}
+                ${this.renderOverlays(locale)}${renderGrid(grid)}${this.assembled?.controllers.map((c) => c.renderOverlay?.())}
             </div>
             ${this.slotted.has('footer') ? html`<div data-slot="data-table-footer-slot">${this.nodes('footer')}</div>` : nothing}
             ${this.showPagination

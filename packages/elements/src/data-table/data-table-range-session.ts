@@ -12,7 +12,7 @@
 import type { CellSession, InteractionContext } from './data-table-cell-session.js';
 import { lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
-import { sanitizeCellRange } from './data-table-range.js';
+import { clampToRows, sanitizeCellRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
@@ -42,7 +42,8 @@ export class RangeSession<T> implements CellSession {
         isInRange: () => false,
         isFillPreview: () => false,
         edgeOf: () => '',
-        active: () => this.lazy.part !== null,
+        // What the PART says (like `rowDrag.active()`): a loaded part that does not handle ranges yet is not active, so nothing of range mode is drawn.
+        active: () => this.lazy.part?.active() ?? false,
         setRange: (range) => {
             // The value is always HELD (a property order such as `cellRange = r; enableCellRangeSelection = true` must keep it); while range mode is off
             // it is only not reported, and it applies when the mode turns on. `undefined` is "no range"; anything that is not a range, or names a column
@@ -115,8 +116,10 @@ export class RangeSession<T> implements CellSession {
         const on = this.rangeOn();
         if (on) {
             this.held = this.live();
-            // The shell clamps what it holds when the rows and columns are known (a part, once loaded, does it for itself).
-            if (this.held && !this.lazy.part) this.held = sanitizeCellRange(this.held, this.context.rowCount(), this.context.focusableKeys()) ?? null;
+            // The shell trims the ROWS of what it holds once they are known (a part, once loaded, does it for itself). The columns are not checked
+            // here: one that is merely hidden at this moment must not drop the range for good (the part validates them when it applies it).
+            const rows = this.context.rowCount();
+            if (this.held && rows > 0 && !this.lazy.part) this.held = clampToRows(null, this.held, rows).range;
         } else if (this.wasOn) {
             // Turning range selection OFF ends range mode: the range goes with it (wave 6 A.2), so turning it on again starts empty.
             this.held = null;

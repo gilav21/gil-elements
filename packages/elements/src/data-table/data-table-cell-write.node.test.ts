@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { ColumnDef } from './data-table.types.js';
-import { DEFAULT_REJECTION_MESSAGE, createCellWriter } from './data-table-cell-write.js';
+import { createCellWriter } from './data-table-cell-write.js';
+import { DATA_TABLE_LOCALES, registerDataTableLocale } from './data-table.locales.js';
 
 interface Row {
     id: string;
@@ -84,9 +85,20 @@ describe('writeCell', () => {
         expect(events).toEqual([['edit-error', expect.objectContaining({ value: '', rowIndex: 1, message: 'Required' })]]);
     });
 
+    it('takes the default message from the English dictionary, not a copy of it: a registered English changes it', () => {
+        const original = DATA_TABLE_LOCALES.en.invalidValue;
+        registerDataTableLocale('en', { invalidValue: 'Nope' });
+        try {
+            const { writer } = setup({ validator: () => false });
+            expect(writer.writeCell({ rowIndex: 0, columnKey: 'name' }, 'x', { report: false })).toMatchObject({ message: 'Nope' });
+        } finally {
+            registerDataTableLocale('en', { invalidValue: original });
+        }
+    });
+
     it('uses the default message for a validator that says false, and stays quiet with report: false', () => {
         const { writer, events } = setup({ validator: () => false });
-        expect(writer.writeCell({ rowIndex: 0, columnKey: 'name' }, 'x', { report: false })).toMatchObject({ message: DEFAULT_REJECTION_MESSAGE });
+        expect(writer.writeCell({ rowIndex: 0, columnKey: 'name' }, 'x', { report: false })).toMatchObject({ message: DATA_TABLE_LOCALES.en.invalidValue });
         expect(events).toEqual([]);
     });
 

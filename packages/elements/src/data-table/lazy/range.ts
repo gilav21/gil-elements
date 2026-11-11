@@ -12,6 +12,14 @@ export class RangePart<T> {
 
     constructor(protected readonly context: InteractionContext<T>) {}
 
+    /**
+     * The part handles ranges (isInRange, edges, the readout, the gestures): the shell reports it as `rangeService.active()`, and
+     * `aria-selected` and the range flags are drawn only then. The step 0 part does nothing, so it says false; wave 6 A turns it on.
+     */
+    active(): boolean {
+        return false;
+    }
+
     getRange(): CellRange | null {
         return this.range;
     }

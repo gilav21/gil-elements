@@ -52,6 +52,19 @@ describe('lazy parts and the render', () => {
         expect(table.querySelector('[data-slot="table-cell"][data-special][aria-selected]')).toBeNull();
     });
 
+    it('draws nothing of range mode with the range flag on and the (empty) step 0 part loaded, and isCellSelected reports the focused cell', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true });
+        table.focusCell(1, 'name');
+        await settle(table);
+        await frames(3); // the part has loaded by now
+        expect(table.provider('range')?.active()).toBe(false);
+        expect(table.querySelector('[data-slot="table"]')?.hasAttribute('aria-multiselectable')).toBe(false);
+        expect(table.querySelector('[data-slot="table-cell"][aria-selected]')).toBeNull();
+        const interaction = table.provider('interaction')!;
+        expect(interaction.isCellSelected(1, 'name')).toBe(true);
+        expect(interaction.isCellSelected(0, 'name')).toBe(false);
+    });
+
     it('leaves aria-multiselectable off while range mode is not active', async () => {
         const table = await mountTable({ enableCellRangeSelection: true });
         await settle(table);

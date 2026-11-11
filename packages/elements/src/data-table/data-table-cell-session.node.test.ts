@@ -100,7 +100,10 @@ describe('the range held by the shell', () => {
         session.hostUpdate();
         await flush();
         expect(session.rangeService.range()).toEqual(range);
-        await vi.waitFor(() => expect(session.rangeService.active()).toBe(true));
+        const loaded = (): unknown => (session as unknown as { lazy: { part: unknown } }).lazy.part;
+        await vi.waitFor(() => expect(loaded()).not.toBeNull());
+        // the empty step 0 part is loaded and attached but handles no range: not active, so range mode is not drawn
+        expect(session.rangeService.active()).toBe(false);
     });
 
     it('applies a range set between attach and load to the part that is built', async () => {
@@ -217,6 +220,31 @@ describe('the range held by the shell', () => {
         session.hostUpdate();
         expect(session.rangeService.range()).toEqual({ ...range, endRow: 4 });
         expect(flags.enableCellRangeSelection).toBe(true);
+    });
+
+    it('reports the focused cell with the empty step 0 part LOADED too: it is not active, so isCellSelected has no range to answer from', async () => {
+        const { session } = make({ ...on }, { focused: { rowIndex: 4, columnKey: 'a' } });
+        session.rangeService.setRange(range);
+        session.hostUpdate();
+        const loaded = (): unknown => (session as unknown as { lazy: { part: unknown } }).lazy.part;
+        await vi.waitFor(() => expect(loaded()).not.toBeNull());
+        expect(session.rangeService.active()).toBe(false);
+        expect(session.service.isCellSelected(4, 'a')).toBe(true);
+        expect(session.service.isCellSelected(2, 'a')).toBe(false);
+    });
+
+    it('keeps a held range while a column is merely hidden, and trims only its rows on update (the part checks the columns)', () => {
+        const keys = ['a', 'b', 'c'];
+        const context = rangeContext({ ...on }, { rowCount: 5, keys }).context;
+        const session = new RangeSession(context);
+        session.attach();
+        session.rangeService.setRange({ ...range, endRow: 3 });
+        keys.splice(0, keys.length, 'c'); // the columns a and b are hidden at this update
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 3 });
+        keys.splice(0, keys.length, 'a', 'b', 'c'); // and shown again
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 3 });
     });
 
     it('reports the focused cell, not "nothing", while the range part is not active (loading, or a latched failure)', () => {

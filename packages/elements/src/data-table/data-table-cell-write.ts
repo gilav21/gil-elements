@@ -17,6 +17,7 @@
  * setter that returns a new object changes the id, so they could not; `validateConfig` warns about that setup and
  * `undo`/`redo` report the entries they could not apply in `stale` instead of doing nothing silently.
  */
+import { DATA_TABLE_LOCALES } from './data-table.locales.js';
 import type { CellEditErrorEvent, CellEditEvent, ColumnDef } from './data-table.types.js';
 
 export interface CellTarget {
@@ -79,7 +80,7 @@ export interface CellWritePorts<T> {
     rowAt(rowIndex: number): T | undefined;
     cellValue(row: T, column: ColumnDef<T>): unknown;
     historyEnabled(): boolean;
-    /** The message of a rejection whose validator gave none (the locale's `invalidValue`); absent = `DEFAULT_REJECTION_MESSAGE`. */
+    /** The message of a rejection whose validator gave none (the table's locale `invalidValue`); absent = the English dictionary's. */
     rejectionMessage?(): string;
     emit(
         ...event:
@@ -88,8 +89,6 @@ export interface CellWritePorts<T> {
             | [name: 'edit-undo' | 'edit-redo', detail: undefined]
     ): void;
 }
-
-export const DEFAULT_REJECTION_MESSAGE = 'Invalid value';
 
 export interface CellWriter<T> {
     /** Results are in request order. Every row is resolved before the first write; one `setData` for all. */
@@ -168,7 +167,7 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
             const oldValue = ports.cellValue(row, column);
             const verdict = column.editValidator?.(value, row) ?? true;
             if (verdict !== true) {
-                const message = typeof verdict === 'string' ? verdict : (ports.rejectionMessage?.() ?? DEFAULT_REJECTION_MESSAGE);
+                const message = typeof verdict === 'string' ? verdict : (ports.rejectionMessage?.() ?? DATA_TABLE_LOCALES.en.invalidValue);
                 if (options.report !== false) ports.emit('edit-error', { row, column, value, rowIndex: target.rowIndex, message });
                 results[at] = { status: 'rejected', message, row, column };
                 return;
