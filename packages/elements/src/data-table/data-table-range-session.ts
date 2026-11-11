@@ -9,7 +9,7 @@
  * or kept across a detach and attach (a DOM move disposes the part), is handed to the next part when it is built, and read back from the
  * part before it is disposed. The part keeps the live range while it is attached.
  */
-import type { CellSession, InteractionContext } from './data-table-cell-session.js';
+import type { CellSession, InteractionContext, SessionStandIn } from './data-table-cell-session.js';
 import { lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
@@ -118,10 +118,13 @@ export class RangeSession<T> implements CellSession {
         if (this.checked?.range === this.held && this.checked.columns === columns) return;
         const keys = rangeColumnKeys(columns);
         if (keys.length === 0) return;
-        this.checked = { range: this.held, columns };
-        if (sanitizeCellRange(this.held, 0, keys) !== undefined) return;
+        if (sanitizeCellRange(this.held, 0, keys) !== undefined) {
+            this.checked = { range: this.held, columns }; // remembered only once the range PASSED: an invalid one is dropped below, never skipped
+            return;
+        }
         warnBadRange(this.held);
         this.held = null;
+        this.checked = null;
         this.lazy.part?.setRange(null);
     }
 
@@ -169,5 +172,19 @@ export class RangeSession<T> implements CellSession {
         // A detach keeps the range (a DOM move): the next attach's part gets it back.
         this.held = this.live();
         this.lazy.dispose();
+    }
+
+    /** After a failure of this session (see `CellSession.inert`): an unattached shell that starts with the range held now (read after the detach) and keeps what is set while the session is out. */
+    inert(): SessionStandIn {
+        const shell = new RangeSession(this.context);
+        shell.held = this.held;
+        shell.heldInMode = this.heldInMode;
+        return { service: shell.service, rangeService: shell.rangeService, kept: () => shell.held };
+    }
+
+    /** The range the stand-in holds (`inert().kept()`) is the range now: a value set while the session was out survives its next attach. */
+    adopt(kept: unknown): void {
+        this.held = kept as CellRange | null;
+        this.heldInMode = this.rangeOn();
     }
 }

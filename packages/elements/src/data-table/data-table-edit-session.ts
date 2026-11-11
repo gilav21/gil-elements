@@ -3,7 +3,7 @@
  * service answers "nothing is being edited" and no key, pointer or render is touched. See `data-table-cell-session.ts` for the
  * contract and `KEY_PRIORITY` in `data-table-registry.ts` for the keys it will own (editor 5, history 20, editStart 60).
  */
-import type { CellSession, InteractionContext } from './data-table-cell-session.js';
+import type { CellSession, InteractionContext, SessionStandIn } from './data-table-cell-session.js';
 import type { CellInteractionService } from './data-table-providers.js';
 
 export class EditSession<T> implements CellSession {
@@ -25,4 +25,9 @@ export class EditSession<T> implements CellSession {
     attach(): void {}
 
     detach(): void {}
+
+    /** After a failure of this session (see `CellSession.inert`): the inert editing methods, nothing is open and nothing is kept. */
+    inert(): SessionStandIn {
+        return { service: new EditSession(this.context).service };
+    }
 }

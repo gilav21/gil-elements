@@ -35,6 +35,21 @@ describe('RangeSession column validation', () => {
     });
 });
 
+describe('RangeSession column validation of an invalid range', () => {
+    it('drops the same invalid object again when it is re-assigned (it is remembered only once valid)', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const { range } = session([{ accessorKey: 'a' }]);
+        const bad = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'zzz' };
+        range.rangeService.setRange(bad);
+        range.hostUpdate();
+        expect(range.rangeService.range()).toBeNull();
+        range.rangeService.setRange(bad);
+        range.hostUpdate();
+        expect(range.rangeService.range()).toBeNull();
+        warn.mockRestore();
+    });
+});
+
 describe('RangeSession.setRange', () => {
     it('does not trim against the rows of the moment of the assignment: the update trims, with the rows it knows', () => {
         let rows = 4;

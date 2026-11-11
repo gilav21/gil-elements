@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { PointerPress } from './data-table-cell-session.js';
-import { cellAt, makeRows, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
+import { cellAt, makeColumns, makeRows, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
 import { frames, mouseDrag, parkMouse, scrollGrid } from './data-table-input-fixtures.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { EditSession } from './data-table-edit-session.js';
@@ -478,6 +478,138 @@ describe('a range session whose attach threw', () => {
             attach.mockRestore();
             error.mockRestore();
         }
+    });
+});
+
+describe('a failed session is withdrawn through its own stand-in', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('ends the presses it claimed once, and never calls it again (release, blur, detach)', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        let fail = false;
+        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            if (fail) throw new Error('range hostUpdate failed');
+        });
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = () => void log.push('up');
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
+        try {
+            const table = await mountTable();
+            cellAt(table, 1, 'name')!.dispatchEvent(pointer('pointerdown', 241));
+            fail = true;
+            table.requestUpdate();
+            await settle(table);
+            expect(log).toEqual(['cancel:null']); // ended for the failed claimant, no event
+            cellAt(table, 1, 'name')!.dispatchEvent(pointer('pointerup', 241));
+            window.dispatchEvent(new Event('blur'));
+            table.remove();
+            expect(log).toEqual(['cancel:null']);
+        } finally {
+            update.mockRestore();
+            error.mockRestore();
+        }
+    });
+
+    it('keeps the range across a failure, and a value set while the session is out survives the reconnect', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        let fail = false;
+        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            if (fail) throw new Error('range hostUpdate failed');
+        });
+        try {
+            const table = await mountTable({ enableCellRangeSelection: true });
+            const first = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
+            const second = { startRow: 1, startCol: 'name', endRow: 2, endCol: 'age' };
+            table.cellRange = first;
+            fail = true;
+            table.requestUpdate();
+            await settle(table);
+            expect(table.provider('range')!.active()).toBe(false); // the stand-in
+            expect(table.cellRange).toEqual(first); // what the failed session held
+            table.cellRange = second; // set while it is out
+            expect(table.cellRange).toEqual(second);
+            update.mockRestore();
+            table.remove();
+            document.body.append(table);
+            await settle(table);
+            expect(table.cellRange).toEqual(second); // the real session adopted it
+        } finally {
+            update.mockRestore();
+            error.mockRestore();
+        }
+    });
+
+    it('uses what the session itself answers (`inert`, `kept`, `adopt`), not a branch on the session: any session is withdrawn the same way', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const attach = vi.spyOn(EditSession.prototype, 'attach').mockImplementation(() => {
+            throw new Error('edit attach failed');
+        });
+        const inert = vi.spyOn(EditSession.prototype, 'inert').mockImplementation(() => ({ service: { editingCell: () => ({ rowIndex: 9, columnKey: 'zz' }) }, kept: () => 'kept value' }));
+        const adopt = vi.fn();
+        (EditSession.prototype as unknown as { adopt?: unknown }).adopt = adopt;
+        try {
+            const table = await mountTable();
+            expect(table.provider('interaction')!.editingCell()).toEqual({ rowIndex: 9, columnKey: 'zz' });
+            attach.mockRestore();
+            table.remove();
+            document.body.append(table);
+            await settle(table);
+            expect(adopt).toHaveBeenCalledWith('kept value');
+            expect(table.provider('interaction')!.editingCell()).toBeNull(); // the real contribution is back
+        } finally {
+            delete (EditSession.prototype as unknown as { adopt?: unknown }).adopt;
+            attach.mockRestore();
+            inert.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
+describe('a touch tap acts on the element under the finger', () => {
+    it('on a group header row clears the roving focus, as a mouse press there does', async () => {
+        const table = await mountTable({ columns: makeColumns(3), data: makeRows(6, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 1000 }, showToolbar: false });
+        table.focusCell(0, 'c0');
+        await settle(table);
+        expect(table.focusedCell).not.toBeNull();
+        const group = table.querySelector<HTMLElement>('[data-kind="group"]')!;
+        group.dispatchEvent(pointer('pointerdown', 251, { pointerType: 'touch', over: group }));
+        group.dispatchEvent(pointer('pointerup', 251, { pointerType: 'touch', over: group }));
+        await settle(table);
+        expect(table.focusedCell).toBeNull();
+    });
+
+    describe('with an editor open in another cell', () => {
+        async function withEditor() {
+            const table = await mountTable();
+            table.focusCell(0, 'name');
+            await settle(table);
+            openEditorAt(table, 2, 'age');
+            const host = cellAt(table, 2, 'age')!;
+            host.style.position = 'relative';
+            const editor = document.createElement('div');
+            editor.style.cssText = 'position:absolute;inset:0';
+            host.append(editor);
+            return { table, editor, a: cellAt(table, 1, 'name')! };
+        }
+
+        it('does not move the focus off the editor when the finger is released over it (the guard reads the element under the finger)', async () => {
+            const { table, editor, a } = await withEditor();
+            a.dispatchEvent(pointer('pointerdown', 261, { pointerType: 'touch', over: a }));
+            a.dispatchEvent(pointer('pointerup', 261, { pointerType: 'touch', over: editor }));
+            await settle(table);
+            expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        });
+
+        it('focuses the cell under the finger when a press that started in the editor is released over it', async () => {
+            const { table, editor, a } = await withEditor();
+            editor.dispatchEvent(pointer('pointerdown', 262, { pointerType: 'touch', over: editor }));
+            editor.dispatchEvent(pointer('pointerup', 262, { pointerType: 'touch', over: a }));
+            await settle(table);
+            expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        });
     });
 });
 

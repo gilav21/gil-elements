@@ -266,7 +266,9 @@ async function renderJob(browser, theme, group, side) {
                 for (const target of document.querySelectorAll('ge-data-table[data-edit]')) {
                     if (target.dataset.props) Object.assign(target, JSON.parse(target.dataset.props));
                     await target.updateComplete;
-                    const [rowIndex, columnKey] = target.dataset.edit.split(',');
+                    const comma = target.dataset.edit.indexOf(','); // the row index has no comma, a column key may
+                    const rowIndex = target.dataset.edit.slice(0, comma);
+                    const columnKey = target.dataset.edit.slice(comma + 1);
                     const message = target.dataset.editError;
                     if (message !== undefined) {
                         target.columns = target.columns.map((c) => (String(c.accessorKey) === columnKey ? { ...c, editValidator: () => message } : c));

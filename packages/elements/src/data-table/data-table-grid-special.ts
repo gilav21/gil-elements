@@ -30,7 +30,7 @@ export function specialHead<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown
     if (key === '_actions') return html`<span data-slot="data-table-sr-only">${locale.actions}</span>`;
     if (key === v.treeHost) {
         const all = v.allSubRowsExpanded;
-        return html`<div data-slot="data-table-head-controls"><button type="button" data-slot="data-table-icon-button" data-toggle data-action="tree-all" aria-label=${all ? locale.collapseAllSubRows : locale.expandAllSubRows} aria-expanded=${all ? 'true' : 'false'}>${chromeIcon('chevrons-down', 'xs')}</button>${sortControl(v, c)}</div>`;
+        return html`<div data-slot="data-table-head-controls"><button type="button" data-slot="data-table-icon-button" data-toggle data-action="tree-all" aria-label=${all ? locale.collapseAllSubRows : locale.expandAllSubRows} aria-expanded=${all ? 'true' : 'false'}>${chromeIcon('chevrons-down', 'xs')}</button>${sortControl(v, c)}${v.filters.trigger(c)}</div>`;
     }
     return undefined;
 }

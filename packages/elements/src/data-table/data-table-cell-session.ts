@@ -81,4 +81,20 @@ export interface CellSession {
     readonly service?: Partial<CellInteractionService>;
     /** Provided under `range` (range session only). */
     readonly rangeService?: RangeService;
+    /**
+     * Called by the controller after it FAILED this session (its `attach()` or `hostUpdate()` threw) and detached it: answers the stand-in that takes
+     * over everything the session contributes (`service` with the SAME keys, `rangeService` when it has one) while it is out, and what it holds that
+     * must survive. The controller never checks which session it is: a session adds nothing the stand-in does not replace.
+     */
+    inert(): SessionStandIn;
+    /** At the next attach, before `attach()`: the session takes back what its stand-in kept (`SessionStandIn.kept`). */
+    adopt?(kept: unknown): void;
+}
+
+/** What replaces a failed session (see `CellSession.inert`): inert services that keep the session's state, nothing that touches the DOM. */
+export interface SessionStandIn {
+    readonly service?: Partial<CellInteractionService>;
+    readonly rangeService?: RangeService;
+    /** The state the stand-in holds now (values set while the session was out), handed to `CellSession.adopt` at the next attach. */
+    kept?(): unknown;
 }
