@@ -89,8 +89,8 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 - Node tests added by step 0: `data-table-lazy`, `data-table-grid-state`, `data-table-cell-session` (inert sessions, no literal key priority, sessions import no controller), the registry plan and `KEY_PRIORITY` cases, the locale keys.
 
 ### J8 Measured at the end of step 0
-- Typecheck `tsc -p packages/elements --noEmit`: clean. Node project: 83 files, 1576 tests, all green. Browser project (`packages/elements/src/data-table`): 13 files, 411 tests, all green. Parity `data-table data-table-rows data-table-integration`: 48 comparisons, 0 differing. Build: green.
-- Size (gzip, `node scripts/size.mjs`, `size-budget.json` untouched as instructed): after review round 18 `data-table/define.js` is 82 812 B and `data-table/index.js` 83 266 B, 112 and 116 B over the lead's budget lines 82 700 and 83 150 (the stand-in mechanism for failed sessions and the touch-tap rule are the growth; `size-budget.json` untouched) (before step 0: 76 921; the lead's budget lines are 80 500 and 80 950, all entries within budget); the five lazy entries are 20 to 160 B each. The +3.3 KB is the real static cost of the seams: the two sessions and the cell-state composition, three stub controllers and their lazy shells, about 20 element delegations, the 22 locale strings, the lazy helper. It comes out of the 7 KB the two waves estimated for their static code, so the integration PR measures the final figure rather than the estimates of wave 5 section 4 and wave 6 section G.
+- Typecheck `tsc -p packages/elements --noEmit`: clean. Node project: 83 files, 1577 tests, all green. Browser project (`packages/elements/src/data-table`): 13 files, 414 tests, all green. Parity `data-table data-table-rows data-table-integration`: 48 comparisons, 0 differing. Build: green.
+- Size (gzip, `node scripts/size.mjs`, `size-budget.json` untouched as instructed): after review round 19 all 343 entries are within the lead's budget lines (round 18 was 112 and 116 B over the previous lines, which the lead then raised; `size-budget.json` untouched) (before step 0: 76 921; the lead's budget lines are 80 500 and 80 950, all entries within budget); the five lazy entries are 20 to 160 B each. The +3.3 KB is the real static cost of the seams: the two sessions and the cell-state composition, three stub controllers and their lazy shells, about 20 element delegations, the 22 locale strings, the lazy helper. It comes out of the 7 KB the two waves estimated for their static code, so the integration PR measures the final figure rather than the estimates of wave 5 section 4 and wave 6 section G.
 - Known not covered here: `nativeDrag` and `fakeClipboard` are written but not yet exercised by a test (no wave 6 test exists); the `data-edit` parity hook is untested until editing lands.
 
 ### J9 Contract changes from review round 1 (they amend J1 to J8)
@@ -247,6 +247,14 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 - **A touch tap acts on the element under the finger:** an unclaimed tap runs the mouse press's `pointerFocus` on the hit element: it focuses a cell, clears the focus on the body outside any cell (a group header row), and does nothing on a header, a control or a popover. The open-editor guard reads the hit element (not the event's own path, which is where the finger went down under implicit capture).
 - **`parity/run.mjs` `data-edit`** splits on the first comma only (a column key may contain commas).
 - **`composedPath()` is taken once per press / release** and passed on; the `broken` set is declared with the other fields (it covers attach and `hostUpdate` failures).
+
+**Round 19 (amends the above):**
+- **A session whose `inert()` throws too** is withdrawn by the controller's own neutral stand-in (every method the session contributed, `rangeService` included, answers null; nothing is kept), so nothing calls the detached session.
+- **A new pointerdown that replaces a lost press** also forgets that pointer's capture.
+- **`data-bare` and `sortControl` both read `!!c.headerRenderer`** (a `null` renderer is an ordinary header).
+- **`parity/run.mjs`:** a `data-edit` without a comma throws, naming the case.
+- **`setRange` requests a render only while range mode is on** (a value held while it is off is not drawn).
+- **Providers:** `provider('range')` is always provided once `cell-interaction` is attached (the part is lazy, the service is not): ask `rangeService.active()`, do not check for `undefined`. Wave 6 text that said otherwise was corrected.
 
 ## 0. What the reading changed (read first)
 

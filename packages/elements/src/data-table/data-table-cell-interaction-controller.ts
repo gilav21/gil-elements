@@ -24,6 +24,12 @@ const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]
 /** Rows moved by one page key when nothing is drawn to measure. */
 const FALLBACK_PAGE = 10;
 
+/** The same methods as `service`, every one answering null (undefined when there is no service): the stand-in of a session that cannot make its own. */
+function neutral<S extends object>(service: S | undefined): S | undefined {
+    if (!service) return undefined;
+    return Object.fromEntries(Object.keys(service).map((key) => [key, () => null])) as unknown as S;
+}
+
 /** Whether `node` is `ancestor` or inside it, across shadow roots: Node.contains stops at a shadow boundary, this goes from a shadow root to its host. */
 function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
     if (!ancestor) return false;
@@ -188,8 +194,8 @@ export class CellInteractionController<T> {
         this.pointer = this.presses.size > 0;
         this.guarded(() => session.detach());
         this.broken.add(session);
-        const standIn = this.guarded(() => session.inert());
-        if (!standIn) return;
+        // A session whose `inert()` throws too is withdrawn by the controller's own neutral stand-in: every method it contributed answers null, nothing is kept.
+        const standIn = this.guarded(() => session.inert()) ?? { service: neutral(session.service), rangeService: neutral(session.rangeService) as RangeService | undefined };
         this.standIns.set(session, standIn);
         Object.assign(this.service, standIn.service);
         if (standIn.rangeService) {
@@ -512,6 +518,7 @@ export class CellInteractionController<T> {
         const lost = this.presses.get(event.pointerId);
         if (lost) {
             this.presses.delete(event.pointerId);
+            this.captured.delete(event.pointerId); // its capture ended with it
             this.notifyCancel(lost, null); // no event: the old press ended without one (like at detach and window blur), the new pointerdown is not its end
         }
         const path = event.composedPath(); // once per event: a path is built at every call

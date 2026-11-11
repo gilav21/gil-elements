@@ -18,6 +18,16 @@ describe('the header of the tree-host column', () => {
     });
 });
 
+describe('the header of a column with headerRenderer: null', () => {
+    it('is an ordinary header (the sort control), not a bare custom one', async () => {
+        filter.trigger = nothing;
+        const table = await mountTable({ columns: [{ accessorKey: 'name', header: 'Name', width: '200px', headerRenderer: null }], data: SAMPLE_ROWS });
+        const wrapper = headCell(table, 'name').querySelector('[data-slot="data-table-head-controls"]')!;
+        expect(wrapper.hasAttribute('data-bare')).toBe(false);
+        expect(wrapper.querySelector('ge-data-table-column-header')).not.toBeNull();
+    });
+});
+
 describe('the header of a column with a headerRenderer', () => {
     it('keeps the consumer header element when a filter trigger appears and goes away (one template: no remount)', async () => {
         filter.trigger = nothing;

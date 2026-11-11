@@ -267,6 +267,7 @@ async function renderJob(browser, theme, group, side) {
                     if (target.dataset.props) Object.assign(target, JSON.parse(target.dataset.props));
                     await target.updateComplete;
                     const comma = target.dataset.edit.indexOf(','); // the row index has no comma, a column key may
+                    if (comma === -1) throw new Error(`data-edit="${target.dataset.edit}" needs "rowIndex,columnKey" (case ${target.closest('[data-case]')?.dataset.case ?? 'unknown'})`);
                     const rowIndex = target.dataset.edit.slice(0, comma);
                     const columnKey = target.dataset.edit.slice(comma + 1);
                     const message = target.dataset.editError;

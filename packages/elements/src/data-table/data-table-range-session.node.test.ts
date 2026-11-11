@@ -50,6 +50,19 @@ describe('RangeSession column validation of an invalid range', () => {
     });
 });
 
+describe('RangeSession.setRange and renders', () => {
+    it('requests a render for a changed range only while range mode is on', () => {
+        const requestRender = vi.fn();
+        const config = { columns: [{ accessorKey: 'a' }], enableCellRangeSelection: false, enableFillHandle: false };
+        const range = new RangeSession({ host: { config, requestRender }, rowCount: () => 10 } as unknown as InteractionContext<unknown>);
+        range.rangeService.setRange({ startRow: 0, startCol: 'a', endRow: 1, endCol: 'a' });
+        expect(requestRender).not.toHaveBeenCalled(); // mode off: held, not drawn
+        config.enableCellRangeSelection = true;
+        range.rangeService.setRange({ startRow: 0, startCol: 'a', endRow: 2, endCol: 'a' });
+        expect(requestRender).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('RangeSession.setRange', () => {
     it('does not trim against the rows of the moment of the assignment: the update trims, with the rows it knows', () => {
         let rows = 4;

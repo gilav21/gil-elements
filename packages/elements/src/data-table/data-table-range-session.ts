@@ -65,7 +65,8 @@ export class RangeSession<T> implements CellSession {
             this.held = next;
             this.heldInMode = this.rangeOn(); // assigned while range mode was off, it is not part of the mode that a later turn-off ends
             this.lazy.part?.setRange(next);
-            if (changed) this.context.host.requestRender(); // `data-in-range`, `aria-selected` and the readout read the range at render; an equal value draws nothing new
+            // `data-in-range`, `aria-selected` and the readout read the range at render, and only in range mode: an equal value, or a value held while the mode is off, draws nothing new
+            if (changed && this.rangeOn()) this.context.host.requestRender();
         },
         extendTo: () => undefined,
         stats: () => null,

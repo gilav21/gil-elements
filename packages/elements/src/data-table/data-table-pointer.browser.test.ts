@@ -568,6 +568,52 @@ describe('a failed session is withdrawn through its own stand-in', () => {
     });
 });
 
+describe('a session whose inert() throws too', () => {
+    it('is still withdrawn: the controller answers with a neutral stand-in, nothing calls the detached session', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const attach = vi.spyOn(RangeSession.prototype, 'attach').mockImplementation(() => {
+            throw new Error('range attach failed');
+        });
+        const inert = vi.spyOn(RangeSession.prototype, 'inert').mockImplementation(() => {
+            throw new Error('inert failed');
+        });
+        try {
+            const table = await mountTable({ enableCellRangeSelection: true });
+            expect(error).toHaveBeenCalledTimes(2); // the attach and the inert
+            expect(table.provider('range')!.active()).toBeFalsy();
+            expect(table.provider('range')!.isInRange(0, 'name')).toBeFalsy();
+            expect(table.cellRange).toBeNull();
+            expect(() => (table.cellRange = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' })).not.toThrow();
+            expect(table.provider('interaction')!.isCellSelected(0, 'name')).toBeFalsy();
+        } finally {
+            attach.mockRestore();
+            inert.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
+describe('a new pointerdown for a pointer whose press was lost', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('also forgets that pointer\'s capture: the next release is located by its target', async () => {
+        const table = await mountTable();
+        const a = cellAt(table, 0, 'name')!;
+        const b = cellAt(table, 2, 'age')!;
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        a.dispatchEvent(pointer('pointerdown', 271));
+        a.dispatchEvent(new PointerEvent('gotpointercapture', { pointerId: 271, bubbles: true, composed: true }));
+        // the pointerup was lost: the same pointer goes down again, with no capture of its own
+        a.dispatchEvent(pointer('pointerdown', 271));
+        a.dispatchEvent(pointer('pointerup', 271, { over: b }));
+        expect(log).toEqual(['up:{"rowIndex":0,"columnKey":"name"}']);
+    });
+});
+
 describe('a touch tap acts on the element under the finger', () => {
     it('on a group header row clears the roving focus, as a mouse press there does', async () => {
         const table = await mountTable({ columns: makeColumns(3), data: makeRows(6, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 1000 }, showToolbar: false });
