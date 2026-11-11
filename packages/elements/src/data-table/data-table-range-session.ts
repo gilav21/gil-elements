@@ -115,7 +115,7 @@ export class RangeSession<T> implements CellSession {
     }
 
     /** The range and the `columns` array `validateColumns` last found valid. */
-    private checked: { range: CellRange; columns: unknown } | null = null;
+    private checked: { range: CellRange; columns: unknown } | null = null; // the range is a COPY of the four values: the held object is the consumer's own and may be mutated
 
     /**
      * ONE column rule: a data column of `config.columns` (visible or hidden: visibility only affects drawing), never a special column. Checked at the
@@ -126,11 +126,11 @@ export class RangeSession<T> implements CellSession {
         if (!this.held) return;
         const { columns } = this.context.host.config;
         // Checked once per (range, columns array): an update that changes neither has nothing new to find.
-        if (this.checked?.range === this.held && this.checked.columns === columns) return;
+        if (this.checked && this.checked.columns === columns && sameRange(this.checked.range, this.held)) return;
         const keys = rangeColumnKeys(columns);
         if (keys.length === 0) return;
         if (sanitizeCellRange(this.held, 0, keys) !== undefined) {
-            this.checked = { range: this.held, columns }; // remembered only once the range PASSED: an invalid one is dropped below, never skipped
+            this.checked = { range: { ...this.held }, columns }; // remembered only once the range PASSED (by VALUE: a later mutation of the consumer's object is seen)
             return;
         }
         warnBadRange(this.held);

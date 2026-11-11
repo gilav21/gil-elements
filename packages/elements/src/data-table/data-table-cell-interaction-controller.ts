@@ -9,13 +9,21 @@ import { KEY_PRIORITY } from './data-table-registry.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
 const BODY = '[data-slot="table-body"]';
-/** Every element of the table that sits over its cells marks itself with this attribute: a release is looked through it to the cell below. */
+/**
+ * Every element of the table that sits over its cells marks itself with this attribute. It means "look through me to find where a GESTURE is":
+ * the RELEASE of a press (claimed, or begun on a cell) is located on the cell below. It does NOT mean "a tap on me is a tap on the cell under me":
+ * an overlay may be interactive (the readout's buttons), so a press that BEGINS on one has no start cell, offers nothing to the sessions at its
+ * pointerup and focuses no cell, for a mouse and a touch alike.
+ */
 const OVERLAY = '[data-pointer-transparent]';
 
 /** What the controller keeps of a press: what the sessions are told (`PointerPress`) and the session that claimed it. */
 interface Press extends PointerPress {
     readonly claimedBy: CellSession | null;
 }
+
+/** Whether the point is in the box, or within `slop` px of it. */
+const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= box.left - slop && x <= box.right + slop && y >= box.top - slop && y <= box.bottom + slop;
 
 /** What a session is told of a press (the controller's own bookkeeping, `claimedBy`, stays out). */
 const pressOf = ({ anchor, pressed, startCell }: Press): PointerPress => ({ anchor, pressed, startCell });
@@ -187,13 +195,7 @@ export class CellInteractionController<T> {
     private fail(session: CellSession, error: unknown): void {
         this.report(error);
         // The presses it claimed end now, for it (a cancel, no event: like at detach); they are never routed to it again.
-        for (const [id, press] of [...this.presses]) {
-            if (press.claimedBy !== session) continue;
-            this.presses.delete(id);
-            this.captured.delete(id);
-            this.notifyCancel(press, null);
-        }
-        this.pointer = this.presses.size > 0;
+        for (const [id, press] of [...this.presses]) if (press.claimedBy === session) this.endPress(id, press, null);
         this.guarded(() => session.detach());
         this.broken.add(session);
         const neutral = this.neutrals.get(session);
@@ -512,24 +514,18 @@ export class CellInteractionController<T> {
      * for a press inside the open editor's cell, which never moves focus (an editor may be a custom element the tag list below does not know).
      */
     private onPointerDown(event: PointerEvent): void {
-        this.pointer = true;
         // The anchor is read BEFORE the offer: a claimant that moves the focus in its onPointerDown must not change the anchor of its own press.
         const anchor = this.focused;
         // The same pointer already has an open press (its pointerup was lost: a release over an iframe, alt-tab): that one ends first, its claimant is told.
+        // Released outside a moment ago (the deferred close has not run yet): with the REAL pointerup. Otherwise the old press ended without an event
+        // (like at detach and window blur); the new pointerdown is not its end.
         const lost = this.presses.get(event.pointerId);
-        if (lost) {
-            this.presses.delete(event.pointerId);
-            this.captured.delete(event.pointerId); // its capture ended with it
-            // Released outside a moment ago (the deferred close has not run yet): its claimant is told with the REAL pointerup. Otherwise the old press ended
-            // without an event (like at detach and window blur); the new pointerdown is not its end.
-            const ended = this.closing.get(event.pointerId) ?? null;
-            this.closing.delete(event.pointerId);
-            this.notifyCancel(lost, ended);
-        }
+        if (lost) this.endPress(event.pointerId, lost, this.closing.get(event.pointerId) ?? null);
+        this.pointer = true;
         const path = event.composedPath(); // once per event: a path is built at every call
         const target = this.targetOf(path);
-        const pressed = target?.closest(OVERLAY) ? this.hitTest(event.clientX, event.clientY).cell : target; // the finger is on what is UNDER an overlay
-        const info: PointerPress = { anchor, pressed, startCell: cellAddressOf(pressed) };
+        // A press that begins on an overlay is the overlay's (`pressed` = the overlay, no start cell): only the RELEASE of a gesture is looked through it.
+        const info: PointerPress = { anchor, pressed: target, startCell: cellAddressOf(target) };
         const claimedBy = this.offer(event, target, (session) => session.onPointerDown, info);
         this.presses.set(event.pointerId, { ...info, claimedBy: claimedBy ?? null });
         if (claimedBy) return; // the claimant owns the press: no focus from the controller
@@ -547,13 +543,12 @@ export class CellInteractionController<T> {
     private onRelease(event: PointerEvent): void {
         const press = this.presses.get(event.pointerId);
         if (!press) return;
-        this.presses.delete(event.pointerId);
-        this.pointer = this.presses.size > 0; // "a pointer is down" ends here (another finger may still be down)
         // The document's listener sees a target RETARGETED to the outermost host when this table sits in another component's shadow root: the target
-        // is read from the composed path (the first node inside this table), for ownership, the cell address and the tapped cell alike.
+        // is read from the composed path (the first node inside this table), for ownership, the cell address and the tapped cell alike. (Located BEFORE
+        // the press ends: the capture of the pointer is part of the answer.)
         const where = event.type === 'pointerup' ? this.locateRelease(event, event.composedPath()) : { own: false, cell: null };
-        this.captured.delete(event.pointerId); // the press is over, and so is its capture (its `lostpointercapture` may never reach us)
-        if (!where.own) return this.notifyCancel(press, event);
+        this.endPress(event.pointerId, press, event, !where.own); // a release elsewhere is a cancel for the claimant; on this table it is routed below
+        if (!where.own) return;
         const { claimedBy } = press;
         const info = pressOf(press);
         const cell = where.cell;
@@ -575,9 +570,7 @@ export class CellInteractionController<T> {
 
     private tapFocus(event: PointerEvent, pressed: Element | null): void {
         if (!pressed?.isConnected) return;
-        const box = (pressed.closest('[data-slot="table-cell"]') ?? pressed).getBoundingClientRect();
-        const { clientX: x, clientY: y } = event;
-        if (x < box.left - TAP_SLOP || x > box.right + TAP_SLOP || y < box.top - TAP_SLOP || y > box.bottom + TAP_SLOP) return;
+        if (!inside((pressed.closest('[data-slot="table-cell"]') ?? pressed).getBoundingClientRect(), event.clientX, event.clientY, TAP_SLOP)) return;
         if (!this.insideOpenEditor(null, pressed)) this.pointerFocus(pressed);
     }
 
@@ -597,12 +590,20 @@ export class CellInteractionController<T> {
         this.closing.set(event.pointerId, event); // marked NOW: the same pointer's next pointerdown may come before the deferred look below
         this.afterDispatch(() => {
             if (this.closing.get(event.pointerId) === event) this.closing.delete(event.pointerId);
-            if (this.presses.get(event.pointerId) !== press) return;
-            this.presses.delete(event.pointerId);
-            this.captured.delete(event.pointerId);
-            this.pointer = this.presses.size > 0;
-            this.notifyCancel(press, event);
+            if (this.presses.get(event.pointerId) === press) this.endPress(event.pointerId, press, event);
         });
+    }
+
+    /**
+     * The one place a press ends: it is forgotten with its capture and its pending close, "a pointer is down" is recomputed (another finger may still
+     * be down), and, with `notify`, its claimant is told it was cancelled (`event`: the pointerup / pointercancel that ended it, null when none did).
+     */
+    private endPress(pointerId: number, press: Press, event: PointerEvent | null, notify = true): void {
+        this.presses.delete(pointerId);
+        this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
+        this.closing.delete(pointerId);
+        this.pointer = this.presses.size > 0;
+        if (notify) this.notifyCancel(press, event);
     }
 
     /**
@@ -662,8 +663,7 @@ export class CellInteractionController<T> {
             // the point is not inside the cell's rect. (Mark it `data-pointer-transparent` to be looked through to the cell under it instead.)
             const host = el.closest('[data-slot="table-cell"]');
             if (host && el !== host) {
-                const box = host.getBoundingClientRect();
-                if (x < box.left || x > box.right || y < box.top || y > box.bottom) return { own: true, cell: null };
+                if (!inside(host.getBoundingClientRect(), x, y)) return { own: true, cell: null };
             }
             return { own: true, cell: el }; // the element the pointer is on (`cellAddressOf` says whether it is in a cell)
         }
@@ -709,11 +709,9 @@ export class CellInteractionController<T> {
 
     /** The table detaches (or the window loses focus) mid-press: every claimant is told (`event` null) before the sessions detach; one that throws does not abort the detach. */
     private cancelPresses(): void {
-        const open = [...this.presses.values()];
-        this.presses.clear();
+        for (const [id, press] of [...this.presses]) this.endPress(id, press, null);
         this.captured.clear();
         this.pointer = false;
-        for (const press of open) this.notifyCancel(press, null);
     }
 
     private eachBackwards(visit: (session: CellSession) => void): void {

@@ -455,7 +455,7 @@ describe('a session that throws while attaching', () => {
 });
 
 describe('a range session whose attach threw', () => {
-    it('is withdrawn: the range provider answers neutrally (not active), a cellRange assigned meanwhile is lost, nothing throws', async () => {
+    it('is withdrawn: the range provider answers neutrally (not active), a cellRange assigned meanwhile is held by the element, nothing throws', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const attach = vi.spyOn(RangeSession.prototype, 'attach').mockImplementation(() => {
             throw new Error('range attach failed');
@@ -466,7 +466,7 @@ describe('a range session whose attach threw', () => {
             const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
             table.cellRange = range;
             await settle(table);
-            expect(table.cellRange).toBeNull();
+            expect(table.cellRange).toEqual(range); // held by the element while there is no REAL range service, and handed over at a connect that has one
             expect(table.provider('range')!.isInRange(0, 'name')).toBe(false);
             expect(table.provider('interaction')!.isCellSelected(0, 'name')).toBe(false); // neutral: false, not the focused cell
             // and a reconnect tries the real session again: nothing throws
@@ -475,6 +475,7 @@ describe('a range session whose attach threw', () => {
             document.body.append(table);
             await settle(table);
             expect(table.provider('range')).toBeDefined();
+            expect(table.cellRange).toEqual(range); // the held value was handed to the REAL session at that connect
         } finally {
             attach.mockRestore();
             error.mockRestore();
@@ -531,8 +532,8 @@ describe('a failed session is withdrawn: its presses end, its neutral services t
             expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull(); // the table still renders
             expect(table.provider('range')).not.toBe(realService); // the neutral one
             expect(table.cellRange).toBeNull(); // the range held by the failed session is lost
-            table.cellRange = range; // stored nowhere
-            expect(table.cellRange).toBeNull();
+            table.cellRange = range; // the neutral service stores nothing: the element holds it
+            expect(table.cellRange).toEqual(range);
             update.mockRestore();
             table.remove();
             document.body.append(table);
@@ -1073,8 +1074,56 @@ describe('a mouse release over an overlay of the table', () => {
     });
 });
 
+describe('a press that begins on an overlay of the table', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    async function readoutButton(table: GeDataTable): Promise<HTMLButtonElement> {
+        const cell = cellAt(table, 1, 'name')!;
+        const rect = cell.getBoundingClientRect();
+        const button = document.createElement('button');
+        button.setAttribute('data-pointer-transparent', ''); // an interactive overlay (a readout button) over a cell
+        button.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;z-index:50`;
+        table.querySelector('[data-slot="data-table-viewport"]')!.append(button);
+        return button;
+    }
+
+    it('is the overlay\'s: a touch tap and a mouse click on it focus no cell and offer nothing to the sessions (no start cell)', async () => {
+        const table = await mountTable();
+        const offers: unknown[] = [];
+        hooks.onPointerUp = (_event, at) => void offers.push(at);
+        const downs: PointerPress[] = [];
+        hooks.onPointerDown = (_event, at, press) => void downs.push(press);
+        const button = await readoutButton(table);
+        for (const [id, pointerType] of [[281, 'touch'], [282, 'mouse']] as const) {
+            button.dispatchEvent(pointer('pointerdown', id, { pointerType, over: button }));
+            button.dispatchEvent(pointer('pointerup', id, { pointerType, over: button }));
+        }
+        await settle(table);
+        expect(table.focusedCell).toBeNull();
+        expect(offers).toEqual([]);
+        expect(downs.map((press) => press.startCell)).toEqual([null, null]);
+        expect(downs[0]!.pressed).toBe(button);
+        button.remove();
+    });
+
+    it('still lets a CLAIMED gesture that began on a cell be released over the transparent overlay: the cell under it', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        const button = await readoutButton(table);
+        const start = cellAt(table, 0, 'name')!;
+        start.dispatchEvent(pointer('pointerdown', 283, { pointerType: 'touch', over: start }));
+        start.dispatchEvent(pointer('pointerup', 283, { pointerType: 'touch', over: button }));
+        expect(log).toEqual(['up:{"rowIndex":1,"columnKey":"name"}']);
+        button.remove();
+    });
+});
+
 describe('a touch tap on a cell covered by an overlay of the table', () => {
-    it('focuses the cell below the overlay (the range readout and the fill handle are looked through): the last row under the sticky readout', async () => {
+    it('is the overlay\'s (the last row under a sticky readout is not focused by a tap on the readout)', async () => {
         const table = await mountTable();
         const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
         const last = cellAt(table, table.data.length - 1, 'name')!;
@@ -1088,11 +1137,11 @@ describe('a touch tap on a cell covered by an overlay of the table', () => {
         readout.dispatchEvent(pointer('pointerdown', 191, { pointerType: 'touch', over: readout }));
         readout.dispatchEvent(pointer('pointerup', 191, { pointerType: 'touch', over: readout }));
         await settle(table);
-        expect(table.focusedCell).toEqual({ rowIndex: table.data.length - 1, columnKey: 'name' });
+        expect(table.focusedCell).toBeNull();
         readout.remove();
     });
 
-    it('looks through an element marked data-pointer-transparent too', async () => {
+    it('any element marked data-pointer-transparent is the same', async () => {
         const table = await mountTable();
         const cell = cellAt(table, 1, 'name')!;
         const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
@@ -1104,7 +1153,7 @@ describe('a touch tap on a cell covered by an overlay of the table', () => {
         cover.dispatchEvent(pointer('pointerdown', 192, { pointerType: 'touch', over: cover }));
         cover.dispatchEvent(pointer('pointerup', 192, { pointerType: 'touch', over: cover }));
         await settle(table);
-        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        expect(table.focusedCell).toBeNull();
         cover.remove();
     });
 

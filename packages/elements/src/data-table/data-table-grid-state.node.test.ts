@@ -15,6 +15,8 @@ function fakeHost(options: { config?: Record<string, unknown>; providers?: Recor
     return { config, provider: (key: string) => options.providers?.[key] } as unknown as DataTableViewHost<unknown>;
 }
 
+/** Something can mark a cell or a row (what the renderer ORs: it keeps no `stateActive` of its own). */
+const anyActive = (state: { cellStateActive: boolean; rowStateActive: boolean }): boolean => state.cellStateActive || state.rowStateActive;
 const row: RowInfo = { id: 'r1', disabled: false };
 const info = (id: string, disabled = false): RowInfo => ({ id, disabled });
 const dragPart = (state: unknown = null) => ({ active: () => true, dragState: () => state });
@@ -22,30 +24,30 @@ const rangeService = (over: Record<string, unknown> = {}) => ({ active: () => tr
 
 describe('stateView with the step-0 services', () => {
     it('is not active for a plain grid, so the renderer calls neither cellState nor rowState; every feature that can mark a cell or a row makes it active', () => {
-        expect(stateView(fakeHost({})).stateActive).toBe(false);
+        expect(anyActive(stateView(fakeHost({})))).toBe(false);
         const range = rangeService();
         const noInteraction = { editingCell: () => null };
-        expect(stateView(fakeHost({ providers: { range, interaction: noInteraction } })).stateActive).toBe(false); // services alone, no flag
-        expect(stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range } })).stateActive).toBe(true);
-        expect(stateView(fakeHost({ config: { enableFillHandle: true }, providers: { range } })).stateActive).toBe(true);
-        expect(stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range: rangeService({ active: () => false }) } })).stateActive).toBe(false); // flag, part not active
+        expect(anyActive(stateView(fakeHost({ providers: { range, interaction: noInteraction } })))).toBe(false); // services alone, no flag
+        expect(anyActive(stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range } })))).toBe(true);
+        expect(anyActive(stateView(fakeHost({ config: { enableFillHandle: true }, providers: { range } })))).toBe(true);
+        expect(anyActive(stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range: rangeService({ active: () => false }) } })))).toBe(false); // flag, part not active
         // flash is a dynamic state only while something is flashing: the flag alone (nothing flashing) leaves the grid inactive, so no per-cell work
-        expect(stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash: () => undefined, anyFlashing: () => false } } })).stateActive).toBe(false);
-        expect(stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash: () => undefined, anyFlashing: () => true } } })).stateActive).toBe(true);
+        expect(anyActive(stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash: () => undefined, anyFlashing: () => false } } })))).toBe(false);
+        expect(anyActive(stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash: () => undefined, anyFlashing: () => true } } })))).toBe(true);
         // an editable column alone is not a dynamic state: the renderer writes data-editable from the column, so the grid stays inactive
-        expect(stateView(fakeHost({ config: { columns: [{ accessorKey: 'a', editable: true }] } })).stateActive).toBe(false);
-        expect(stateView(fakeHost({ providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'a' }) } } })).stateActive).toBe(true);
-        expect(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: dragPart() } })).stateActive).toBe(true);
-        expect(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: { active: () => false, dragState: () => null } } })).stateActive).toBe(false);
+        expect(anyActive(stateView(fakeHost({ config: { columns: [{ accessorKey: 'a', editable: true }] } })))).toBe(false);
+        expect(anyActive(stateView(fakeHost({ providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'a' }) } } })))).toBe(true);
+        expect(anyActive(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: dragPart() } })))).toBe(true);
+        expect(anyActive(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: { active: () => false, dragState: () => null } } })))).toBe(false);
     });
 
     it('splits the activity: draggable rows make the rows active but not the cells; range, flash and an open editor make the cells active but not the rows', () => {
         const drag = stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: dragPart() } }));
-        expect([drag.cellStateActive, drag.rowStateActive, drag.stateActive]).toEqual([false, true, true]);
+        expect([drag.cellStateActive, drag.rowStateActive, anyActive(drag)]).toEqual([false, true, true]);
         const range = stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range: rangeService() } }));
-        expect([range.cellStateActive, range.rowStateActive, range.stateActive]).toEqual([true, false, true]);
+        expect([range.cellStateActive, range.rowStateActive, anyActive(range)]).toEqual([true, false, true]);
         const plain = stateView(fakeHost({}));
-        expect([plain.cellStateActive, plain.rowStateActive, plain.stateActive]).toEqual([false, false, false]);
+        expect([plain.cellStateActive, plain.rowStateActive, anyActive(plain)]).toEqual([false, false, false]);
     });
 
     it('answers the shared frozen none object for every cell and row of a plain grid', () => {
@@ -58,7 +60,7 @@ describe('stateView with the step-0 services', () => {
 
     it('gives an editable column no flags of its own: the renderer writes data-editable from the column, and the grid is not active for it', () => {
         const state = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] } }));
-        expect(state.stateActive).toBe(false);
+        expect(anyActive(state)).toBe(false);
         expect(state.cellState(0, 'name', row)).toBe(NO_CELL_FLAGS);
         expect(state.cellState(0, 'name', info('r2', true))).toBe(NO_CELL_FLAGS);
     });
@@ -76,7 +78,7 @@ describe('stateView with the step-0 services', () => {
     it('marks the cell that holds the open editor', () => {
         const interaction = { editingCell: () => ({ rowIndex: 2, columnKey: 'name' }), isEditing: (rowIndex: number, columnKey: string) => rowIndex === 2 && columnKey === 'name' };
         const state = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction } }));
-        expect(state.stateActive).toBe(true); // an editor is open: a dynamic state
+        expect(anyActive(state)).toBe(true); // an editor is open: a dynamic state
         expect(state.cellState(2, 'name', row)).toMatchObject({ editing: true });
         expect(state.cellState(1, 'name', row)).toBe(NO_CELL_FLAGS);
     });
@@ -119,7 +121,7 @@ describe('stateView with the step-0 services', () => {
         it('draws the range with the fill handle alone (the fill source is visible) but claims no selection to assistive technology', () => {
             const range = rangeService({ isInRange: (r: number) => r === 0, edgeOf: () => 'top' });
             const state = stateView(fakeHost({ config: { enableCellRangeSelection: false, enableFillHandle: true }, providers: { range } }));
-            expect(state.stateActive).toBe(true);
+            expect(anyActive(state)).toBe(true);
             expect(state.rangeSelectable).toBe(false); // no aria-multiselectable
             const inside = state.cellState(0, 'a', row);
             expect(inside).toMatchObject({ inRange: true, rangeEdge: 'top' });
@@ -161,7 +163,7 @@ describe('stateView with the step-0 services', () => {
     it('makes no per-cell flash call while nothing is flashing, with enable-cell-flash on', () => {
         const flash = vi.fn();
         const state = stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash, anyFlashing: () => false } } }));
-        expect(state.stateActive).toBe(false);
+        expect(anyActive(state)).toBe(false);
         state.cellState(0, 'a', row);
         expect(flash).not.toHaveBeenCalled();
     });

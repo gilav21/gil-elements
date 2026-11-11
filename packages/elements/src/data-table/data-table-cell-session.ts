@@ -21,7 +21,7 @@
  *   window `blur` (every open press is cancelled). A press is recorded per POINTER ID (a finger and a mouse never touch each other's).
  *   At its pointerdown the sessions are OFFERED the press in the order range, edit, as `onPointerDown(event, at, press)`: `at` is the cell
  *   under the pointer (null outside any cell) and `press` is `{ anchor, pressed, startCell }` (`anchor`: the roving cell BEFORE the press
- *   moved it; `pressed`: the element of the table it began on, an overlay looked through to the cell under it; `startCell`: the body cell it began
+ *   moved it; `pressed`: the element of the table it began on (an overlay itself: a press that begins on one has no start cell); `startCell`: the body cell it began
  *   on, null when it began on a resize handle, a header, a popover or elsewhere), the same object content for every call of one press. The first
  *   session that returns true CLAIMS the press and moves the focus itself; if none does, the controller focuses the pressed cell (a mouse, at the
  *   pointerdown, except in the open editor's cell).
@@ -77,7 +77,7 @@ export interface InteractionContext<T> {
 /** What a session knows of the press besides the event: the roving cell BEFORE the press moved it (a shift+click extends from it). */
 export interface PointerPress {
     readonly anchor: CellAddress | null;
-    /** The element of this table the press began on (an overlay looked through to the cell under it), null when it began on none (outside any element of the table). */
+    /** The element of this table the press began on (an overlay is itself the element, not the cell under it), null when it began on none (outside any element of the table). */
     readonly pressed: Element | null;
     /** The body cell the press began on, null when it began elsewhere (a resize handle, a header, a popover, the body outside any cell). The same for every call of one press. */
     readonly startCell: CellAddress | null;

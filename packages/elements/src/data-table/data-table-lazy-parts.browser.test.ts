@@ -120,7 +120,7 @@ describe('a feature switching on in a plain grid', () => {
         const row = cell.closest('[data-slot="table-row"]')!;
         const other = cellAt(table, 0, 'age')!;
         expect(document.activeElement).toBe(cell);
-        // flash switches the state on (the formatting service exists): `stateActive` flips from false to true ...
+        // flash switches the state on (the formatting service exists): the state flips from false to true ...
         table.enableCellFlash = true;
         await settle(table);
         await frames(2);

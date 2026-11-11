@@ -10,6 +10,7 @@ import { type AssembledControllers, assembleControllers } from './data-table-con
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
 import { rangeModeOn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
+import { NEUTRAL_RANGE } from './data-table-range-session.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
@@ -540,16 +541,21 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             service.setRange(range); // the session checks the value and asks for the render
             return;
         }
-        // No controller exists before the first connect (nothing is assembled before it): the value waits here, checked by the same rules (rows
-        // are not known yet), and the range session adopts it right after the first attach.
+        // No REAL range service exists (before the first connect nothing is assembled; a custom plan may have no cell-interaction controller; the range
+        // session may have failed, which leaves a neutral one): the value waits here, checked by the same rules (rows are not known yet), and the
+        // range session adopts it at a connect where one exists. Without any range service it stays a held value only.
         const next = sanitizeCellRange(range, 0, []); // the columns are looked up by the session at its next update
         if (next === undefined) warnBadRange(range);
         else this.earlyRange = next;
     }
 
-    /** The range service once the controllers exist (the first connect built them; they are kept across reconnects, and the range session owns the value from then on). */
+    /**
+     * The REAL range service once the controllers exist (the first connect built them; they are kept across reconnects, and the range session owns the
+     * value from then on). Undefined without one: not built yet, no controller provides it, or the range session failed (its neutral service is not real).
+     */
     private rangeService(): DataTableProviders<T>['range'] | undefined {
-        return this.built?.service('range');
+        const service = this.built?.service('range');
+        return service === NEUTRAL_RANGE ? undefined : service;
     }
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
@@ -616,8 +622,10 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.built ??= assembleControllers(this, createFactories<T>());
         const built = this.built;
         built.attachAll();
-        if (this.earlyRange !== undefined) {
-            this.provider('range')?.setRange(this.earlyRange);
+        // Handed over only to a REAL range service; otherwise it is kept (and retried at the next connect).
+        const range = this.rangeService();
+        if (this.earlyRange !== undefined && range) {
+            range.setRange(this.earlyRange);
             this.earlyRange = undefined;
         }
         this.lastLocale = this.resolvedLocale;

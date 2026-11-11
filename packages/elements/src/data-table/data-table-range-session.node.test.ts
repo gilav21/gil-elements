@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InteractionContext } from './data-table-cell-session.js';
+import { resetBadRangeWarning } from './data-table-range.js';
 import { RangeSession } from './data-table-range-session.js';
 
 function session(columns: { accessorKey: string }[], rows = 10) {
@@ -46,6 +47,23 @@ describe('RangeSession column validation of an invalid range', () => {
         range.rangeService.setRange(bad);
         range.hostUpdate();
         expect(range.rangeService.range()).toBeNull();
+        warn.mockRestore();
+    });
+});
+
+describe('RangeSession column validation by value', () => {
+    it('sees a later mutation of the consumer\'s own range object: endCol changed to a missing column is dropped with the warning', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        resetBadRangeWarning();
+        const { range } = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]);
+        const mine = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' };
+        range.rangeService.setRange(mine);
+        range.hostUpdate();
+        expect(range.rangeService.range()).toBe(mine); // valid, kept, the very object
+        mine.endCol = 'zzz';
+        range.hostUpdate();
+        expect(range.rangeService.range()).toBeNull();
+        expect(warn).toHaveBeenCalled();
         warn.mockRestore();
     });
 });

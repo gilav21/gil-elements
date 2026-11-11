@@ -213,7 +213,7 @@ function dataRow<T>(v: GridView<T>, row: T, i: number, ordinal: number, node: Fl
     const disabled = v.isDisabled(row);
     const level = node ? treeRowAria(node) : null;
     const wide = v.renderFullWidth?.(row);
-    const info: RowInfo | undefined = v.stateActive ? { id: String(id), disabled } : undefined;
+    const info: RowInfo | undefined = v.cellStateActive || v.rowStateActive ? { id: String(id), disabled } : undefined;
     const drag = info && v.rowStateActive ? v.rowState(i, info) : NO_ROW_FLAGS;
     return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(ordinal)} aria-selected=${v.selectable ? String(selected) : nothing}
         draggable=${drag.draggable ? 'true' : nothing} ?data-draggable=${drag.draggable} ?data-dragging=${drag.dragging} ?data-drop-target=${drag.dropEdge !== undefined}

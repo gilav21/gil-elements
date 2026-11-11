@@ -45,11 +45,11 @@ export interface StateView {
     /** `enable-cell-range-selection` with the range part active: data cells carry `aria-selected` and the grid is `aria-multiselectable`. */
     rangeSelectable: boolean;
     /**
-     * Some wave 5 or 6 feature can mark a cell or a row now (range mode, flash, an open editor, draggable rows; an editable column alone does not count: the renderer writes `data-editable` itself). When false the
-     * renderer binds the shared frozen `NO_CELL_FLAGS` / `NO_ROW_FLAGS` in the one template and never calls `cellState` / `rowState`: a plain grid pays no function call per cell, and the template (so the DOM) never changes when this flips.
+     * `cellState` can say something now (range mode, flash, an open editor; an editable column alone does not count: the renderer writes `data-editable` itself).
+     * While neither this nor `rowStateActive` is true the renderer binds the shared frozen `NO_CELL_FLAGS` / `NO_ROW_FLAGS` in the one template and never calls
+     * `cellState` / `rowState`: a plain grid pays no function call per cell, and the template (so the DOM) never changes when they flip. Rows that are only
+     * draggable do not make the renderer ask every cell.
      */
-    stateActive: boolean;
-    /** `cellState` can say something now (range mode, flash, an open editor): rows that are only draggable do not make the renderer ask every cell. */
     cellStateActive: boolean;
     /** `rowState` can say something now (draggable rows). */
     rowStateActive: boolean;
@@ -97,7 +97,6 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     const editingOpen = interaction?.editingCell() != null;
     const cellStateActive = rangeMode || flashable || editingOpen;
     return {
-        stateActive: cellStateActive || dragOn,
         cellStateActive,
         rowStateActive: dragOn,
         rangeSelectable: selectionMode,

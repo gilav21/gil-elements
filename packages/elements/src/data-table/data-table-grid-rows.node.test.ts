@@ -36,7 +36,6 @@ function view(cellStateActive: boolean, rowStateActive = cellStateActive) {
         renderFullWidth: undefined,
         getRowId,
         isDisabled,
-        stateActive: cellStateActive || rowStateActive,
         cellStateActive,
         rowStateActive,
         cellState,
