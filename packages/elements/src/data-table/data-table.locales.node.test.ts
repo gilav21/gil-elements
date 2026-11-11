@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
     DATA_TABLE_LOCALES,
     dataTableLocaleVersion,
+    onDataTableLocaleChange,
     EN_FILTER_BUILDER_LABELS,
     filterBuilderLabels,
     interpolate,
@@ -133,6 +134,24 @@ describe('data-table locales', () => {
         expect(withEnglishFallback({ code: 'xx' } as DataTableLocale).noResultsLabel).toBe('Nothing here');
         // the overridden English is itself whole
         expect(resolveDataTableLocale('en').filterPlaceholder).toBe(en.filterPlaceholder);
+    });
+
+    it('keeps every entry of the exported registry whole, a later English included', () => {
+        registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+        expect(DATA_TABLE_LOCALES['de']!.noResultsLabel).toBe(en.noResultsLabel);
+        registerDataTableLocale('en', { noResultsLabel: 'Nothing here' });
+        expect(DATA_TABLE_LOCALES['de']!.noResultsLabel).toBe('Nothing here');
+        expect(DATA_TABLE_LOCALES['de']!.filterPlaceholder).toBe('Filtern...');
+    });
+
+    it('a listener that throws neither stops the others nor escapes the call', () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        let reached = 0;
+        const stops = [onDataTableLocaleChange(() => { throw new Error('boom'); }), onDataTableLocaleChange(() => reached++)];
+        expect(() => registerDataTableLocale('de', { filterPlaceholder: 'x' })).not.toThrow();
+        expect(reached).toBe(1);
+        expect(error).toHaveBeenCalledOnce();
+        stops.forEach((stop) => stop());
     });
 
     it('takes the page language it is given, the global document only by default', () => {

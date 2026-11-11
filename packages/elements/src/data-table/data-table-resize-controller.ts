@@ -26,8 +26,14 @@ interface Drag {
     readonly startY: number;
     readonly startWidth: number;
     readonly floor: number;
-    /** `resizeSign`: the direction of the pointer that widens the column. */
-    readonly sign: number;
+    readonly column: EnhancedColumnDef<unknown>;
+    readonly rtl: boolean;
+    stuck: boolean;
+    /** `resizeSign`: the direction of the pointer that widens the column; it can change mid-drag (the table starts to overflow). */
+    sign: number;
+    /** Where the width is measured from: the press, and again at the pointer whenever the sign changes, so the width never jumps. */
+    anchorX: number;
+    anchorWidth: number;
     readonly oldWidth: string;
     /** The inline value of the column's custom property before the drag, put back on cancel. */
     readonly original: string;
@@ -141,6 +147,7 @@ export class ResizeController<T> {
             this.host.disposables.listen(handle.ownerDocument.defaultView ?? window, 'blur', this.cancel),
         ];
         const startWidth = head.getBoundingClientRect().width;
+        const stuck = isStuck(column, this.viewport());
         this.drag = {
             key,
             n,
@@ -150,7 +157,12 @@ export class ResizeController<T> {
             startY: event.clientY,
             startWidth,
             floor: columnMinWidthPx(column, this.rootFontPx()),
-            sign: resizeSign(column, direction === 'rtl', isStuck(column, this.viewport())),
+            column: column as EnhancedColumnDef<unknown>,
+            rtl: direction === 'rtl',
+            stuck,
+            sign: resizeSign(column, direction === 'rtl', stuck),
+            anchorX: event.clientX,
+            anchorWidth: startWidth,
             oldWidth: this.declaredWidth(key, column),
             original: table.style.getPropertyValue(name),
             wasAuto: column._width === 'auto',
@@ -171,7 +183,12 @@ export class ResizeController<T> {
         if (!drag || event.pointerId !== drag.pointerId) return;
         const dx = event.clientX - drag.startX;
         drag.travel = Math.max(drag.travel, Math.hypot(dx, event.clientY - drag.startY));
-        const width = Math.max(drag.floor, Math.round(drag.startWidth + dx * drag.sign));
+        // A column pinned to the end gets stuck once the table overflows, which can happen as it grows: the handle then follows the other way.
+        // Once stuck it stays so for the drag: narrowing it back under the overflow must not flip the direction again at the threshold.
+        drag.stuck ||= isStuck(drag.column, this.viewport());
+        const sign = resizeSign(drag.column, drag.rtl, drag.stuck);
+        if (sign !== drag.sign) Object.assign(drag, { sign, anchorX: event.clientX, anchorWidth: drag.width });
+        const width = Math.max(drag.floor, Math.round(drag.anchorWidth + (event.clientX - drag.anchorX) * drag.sign));
         if (width === drag.width) return;
         drag.width = width;
         this.show(drag);

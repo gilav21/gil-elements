@@ -5,11 +5,10 @@ import '../../pagination/define.js';
 import '../../select/define.js';
 import { isRtl } from '../../shared/menu.js';
 import { type PageAction, pageSizeTarget, pageTarget, totalPages } from '../data-table-paging.js';
-import { DATA_TABLE_LOCALES } from '../data-table.locales.js';
+import { resolveDataTableLocale } from '../data-table.locales.js';
 import type { PaginationState } from '../data-table.types.js';
 import css from './data-table-pager.css?inline';
 
-const en = DATA_TABLE_LOCALES.en;
 const sizeList = { fromAttribute: (value: string | null) => (value ?? '').split(/[\s,]+/).map(Number).filter((n) => n > 0) };
 const defaultTrue = { fromAttribute: (value: string | null) => value !== 'false' };
 
@@ -53,6 +52,7 @@ export class GeDataTablePager extends UiElement {
 
     constructor() {
         super();
+        const en = resolveDataTableLocale('en'); // the English there is now: a registered override counts
         this.total = 0;
         this.state = { pageIndex: 0, pageSize: 10 };
         this.pageSizeOptions = [10, 20, 30, 40, 50];

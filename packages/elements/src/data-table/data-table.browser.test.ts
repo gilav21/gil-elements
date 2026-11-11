@@ -644,6 +644,46 @@ describe('ge-data-table styles and lifecycle', () => {
         }
     });
 
+    it('does not announce the locale on the first render (what attached before it already read it), only when it changes', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const original = DATA_TABLE_LOCALES.en;
+        try {
+            const table = document.createElement('ge-data-table') as GeDataTable<Row>;
+            Object.assign(table, { columns: COLUMNS, data: ROWS });
+            let announced = 0;
+            table.topics.on('locale', () => announced++);
+            document.body.append(trackTable(table));
+            await settle(table);
+            expect(announced).toBe(0);
+            registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' }); // nobody uses it: this table is English
+            await settle(table);
+            expect(announced).toBe(0);
+            registerDataTableLocale('en', { noResultsLabel: 'Nothing here' });
+            await settle(table);
+            expect(announced).toBe(1);
+        } finally {
+            delete DATA_TABLE_LOCALES['de'];
+            registerDataTableLocale('en', original);
+        }
+    });
+
+    it('the pager and the column header read the English there is when they are made, a registered override included', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const original = DATA_TABLE_LOCALES.en;
+        try {
+            registerDataTableLocale('en', { rowsPerPageLabel: 'Per page', sortStateNone: 'Sort {title}' });
+            const pager = trackTable(document.createElement('ge-data-table-pager'));
+            expect((pager as unknown as { rowsPerPageLabel: string }).rowsPerPageLabel).toBe('Per page');
+            const header = trackTable(document.createElement('ge-data-table-column-header')) as HTMLElement & { title: string; updateComplete: Promise<boolean> };
+            header.title = 'Name';
+            document.body.append(header);
+            await header.updateComplete;
+            expect(header.shadowRoot!.querySelector('ge-button')!.getAttribute('aria-label')).toBe('Sort Name');
+        } finally {
+            registerDataTableLocale('en', original);
+        }
+    });
+
     it.each(['light', 'dark'])('passes axe in %s mode', async (mode) => {
         useTheme(mode);
         const table = await mountTable({ columns: [{ ...COLUMNS[0]!, footer: 'Total' }, COLUMNS[1]!], enableRowSelection: true });

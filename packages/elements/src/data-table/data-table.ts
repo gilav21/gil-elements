@@ -581,7 +581,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         if (isServer) return;
         // The locale topic follows the resolved dictionary: a new `locale`, a dictionary registered later, a changed page language.
         const resolved = this.resolvedLocale;
-        if (changed.has('locale') || resolved !== this.lastLocale) this.topics.emit('locale');
+        // Not on the first update: what attached before it (addons, controllers) already read this locale, and rebuilding it would do the work twice.
+        if (this.hasUpdated && (changed.has('locale') || resolved !== this.lastLocale)) this.topics.emit('locale');
         this.lastLocale = resolved;
         if ([...changed.keys()].some((key) => Object.hasOwn(INPUTS, key as string))) this.topics.emit('config');
         for (const controller of this.assembled?.controllers ?? []) controller.hostUpdate?.();

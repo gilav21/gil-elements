@@ -235,6 +235,25 @@ describe('column resize by mouse', () => {
         });
     });
 
+    it('an end-pinned column of a table that starts to overflow during the drag follows the pointer on, without a jump', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 700, height: 300 });
+        expect(viewportOf(table).scrollWidth).toBeLessThanOrEqual(viewportOf(table).clientWidth);
+        const samples: number[] = [];
+        const timer = setInterval(() => samples.push(widthOf(headCell(table, 'c3'))), 4);
+        // right: it widens until the table (600px, in a 700px box) overflows, then it is held at the edge and the handle follows the other way
+        await mouseDrag(onHandle(table, 'c3'), { dx: 160, dy: 0 }, { steps: 40 });
+        clearInterval(timer);
+        await settle(table);
+        const peak = Math.max(...samples);
+        expect(peak).toBeGreaterThan(200);
+        expect(peak).toBeLessThan(260);
+        // a continuing pointer in the same direction now narrows it: of the 160px of travel, (peak - 150) widened, the rest narrows
+        expect(Math.abs(widthOf(headCell(table, 'c3')) - (peak - (160 - (peak - 150))))).toBeLessThan(6);
+        // no step of the drag (4px per move) moved the width by a jump
+        const jumps = samples.slice(1).map((w, i) => Math.abs(w - samples[i]!));
+        expect(Math.max(...jumps)).toBeLessThan(30);
+    });
+
     it('reads a rem minimum width against the real root font size, in aria-valuemin as in the resize floor', async () => {
         const root = document.documentElement;
         const before = root.style.fontSize;

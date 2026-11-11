@@ -227,6 +227,8 @@ const en: DataTableLocale = {
  */
 export const DATA_TABLE_LOCALES: Record<string, DataTableLocale | undefined> & { en: DataTableLocale } = { en };
 
+/** The dictionaries as they were registered, to fill again when English changes. */
+const given = new Map<string, DataTableLocale>();
 let registryVersion = 0;
 const registryListeners = new Set<() => void>();
 
@@ -241,7 +243,8 @@ export const dataTableLocaleVersion = (): number => registryVersion;
 
 /**
  * Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively, whole (`pt-br`) before its
- * shorter prefixes (`pt`). It is stored as given: English, as it is when the dictionary is resolved, fills what it omits.
+ * shorter prefixes (`pt`). What it omits is filled from the English there is, and filled again when English is registered later,
+ * so every entry of `DATA_TABLE_LOCALES` is whole.
  * `__proto__` is not an id (assigning it would replace the table's prototype): it is ignored, with a warning.
  */
 export function registerDataTableLocale(code: string, dict: Partial<DataTableLocale>): void {
@@ -251,10 +254,20 @@ export function registerDataTableLocale(code: string, dict: Partial<DataTableLoc
     }
     const id = code.toLowerCase().replaceAll('_', '-');
     const own = { ...dict, code: dict.code ?? code } as DataTableLocale;
+    given.set(id, own);
     // English is what the others are filled from, so it is always whole: its own gaps come from the built-in one.
-    DATA_TABLE_LOCALES[id] = id === 'en' ? withFallback(en, own) : own;
+    DATA_TABLE_LOCALES[id] = withFallback(id === 'en' ? en : DATA_TABLE_LOCALES.en, own);
+    // A new English moves the gaps of every dictionary registered before it; readers of the registry always see whole ones.
+    if (id === 'en') for (const [other, dictionary] of given) if (other !== 'en' && Object.hasOwn(DATA_TABLE_LOCALES, other)) DATA_TABLE_LOCALES[other] = withFallback(DATA_TABLE_LOCALES.en, dictionary);
     registryVersion++;
-    for (const listener of [...registryListeners]) listener();
+    // One table's failure to redraw must not stop the others, nor escape this call.
+    for (const listener of [...registryListeners]) {
+        try {
+            listener();
+        } catch (error) {
+            console.error('[ge-data-table] a table failed to take the registered locale:', error);
+        }
+    }
 }
 
 /**
