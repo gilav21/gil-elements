@@ -292,5 +292,6 @@ export function filterBuilderLabels(locale: DataTableLocale): FilterBuilderLabel
  * `undefined` in the range readout.
  */
 export function withEnglishFallback(locale: DataTableLocale): DataTableLocale {
-    return withFallback(DATA_TABLE_LOCALES.en, locale);
+    // Like `resolveDataTableLocale`: a dictionary without a `code` is unnamed (`''`), never taken for English.
+    return withFallback(DATA_TABLE_LOCALES.en, locale.code === undefined ? { ...locale, code: '' } : locale);
 }

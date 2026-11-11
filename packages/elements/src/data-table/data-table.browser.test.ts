@@ -697,6 +697,8 @@ describe('ge-data-table styles and lifecycle', () => {
             const ownPager = trackTable(document.createElement('ge-data-table-pager')) as HTMLElement & { updateComplete: Promise<boolean> };
             document.body.append(ownPager);
             await Promise.all([ownHeader.updateComplete, ownPager.updateComplete]);
+            // the label properties still read as strings: the English at construction
+            expect((ownPager as unknown as { pageLabel: string }).pageLabel).toBe(DATA_TABLE_LOCALES.en.pageLabel);
             const pagerText = (el: Element) => el.shadowRoot!.querySelector('.size-label')?.textContent;
             expect(pagerText(table.querySelector('ge-data-table-pager')!)).toBe(DATA_TABLE_LOCALES.en.rowsPerPageLabel);
             registerDataTableLocale('en', { rowsPerPageLabel: 'Per page', sortStateNone: 'Sort {title}' });

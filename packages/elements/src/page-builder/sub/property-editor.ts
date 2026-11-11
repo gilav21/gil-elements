@@ -33,7 +33,7 @@ const numberValue = (event: Event): number | null => {
  * @prop {PageDashboardItem | null} item - The widget being edited. `null` shows the empty state.
  * @prop {ComponentMeta | null} componentMeta - Which inputs to offer and with what control. Without it only the size fields show.
  * @attr {boolean} loading - Shows a placeholder while the widget's details are still being worked out. Visual only.
- * @attr {string} locale - Locale id or a dictionary object for the inspector's own words; defaults to the page's `lang`, then `en`. Input names and labels come from `componentMeta` and are not translated.
+ * @attr {string} locale - Locale id or a dictionary object for the inspector's own words; defaults to the page's `lang`, then `en`. Input names and labels come from `componentMeta` and are not translated. A dictionary object is remembered per object: replace it to change it, do not mutate it.
  */
 export class GePropertyEditor extends UiElement {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];

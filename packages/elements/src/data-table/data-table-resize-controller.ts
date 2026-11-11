@@ -16,6 +16,8 @@ const KEY_STEP_LARGE = 50;
 const FIT_SLACK = 2;
 const KEY_ANNOUNCE_MS = 300;
 const MIN_FIT_WIDTH = 50;
+/** Key presses further apart than this are not one run: the direction is read again. */
+const KEY_RUN_MS = 1000;
 
 interface Drag {
     readonly key: string;
@@ -57,13 +59,13 @@ export const resizeSign = (column: { _pin?: 'left' | 'right' | undefined }, rtl:
     (rtl ? -1 : 1) * (stuck && column._pin === 'right' ? -1 : 1);
 
 /**
- * A pinned column is stuck when the table overflows its scroller: the table ends beyond the scroller's edge, so the column's
- * natural place is past it and `position: sticky` holds it at the edge. Without overflow nothing holds it. (Reading its own
- * edge against the scroller's would say the same, but a scrollbar and the browser's scroll-into-view on a focused handle make
- * that read unreliable at key time.)
+ * Whether a column is held at the scroller's end edge by `position: sticky`. Only a column pinned to the end can be, and it is
+ * whenever the table overflows: each end-pinned column sticks at an offset of the columns pinned after it, so its natural place
+ * (the content's end less those columns) lies past that offset exactly when the content ends past the scroller's edge. That
+ * holds for the inner one of two as much as for the last. Without overflow nothing holds a column.
  */
 export function isStuck(column: { _pin?: 'left' | 'right' | undefined }, viewport: Element | null): boolean {
-    return !!column._pin && !!viewport && viewport.scrollWidth > viewport.clientWidth + 1;
+    return column._pin === 'right' && !!viewport && viewport.scrollWidth > viewport.clientWidth + 1;
 }
 
 /**
@@ -77,8 +79,12 @@ export class ResizeController<T> {
     private drag: Drag | null = null;
     private lastTap: { key: string; at: number } | null = null;
     private lastFit = 0;
-    /** What the key presses of the focused handle read of its column (stuck or not), kept until it loses focus: a key that repeats must not change direction at the overflow threshold. */
-    private keyed: { handle: HTMLElement; stuck: boolean } | null = null;
+    private ownWrite = false;
+    /**
+     * What the key presses of the focused handle read of its column (stuck or not): a key that repeats must not change direction at
+     * the overflow threshold. Read again after a pause, a drag, a resize of the window, a change of the columns, or when focus leaves.
+     */
+    private keyed: { handle: HTMLElement; stuck: boolean; at: number } | null = null;
     private cancelAnnounce: (() => void) | undefined;
     private unprovide: (() => void) | undefined;
     private removeKeys: (() => void) | undefined;
@@ -234,6 +240,7 @@ export class ResizeController<T> {
 
     private finish(drag: Drag): void {
         this.drag = null;
+        this.keyed = null;
         drag.stop();
         if (drag.handle.hasPointerCapture(drag.pointerId)) drag.handle.releasePointerCapture(drag.pointerId);
         drag.handle.toggleAttribute('data-resizing', false);
@@ -326,7 +333,10 @@ export class ResizeController<T> {
         const current = Math.round(handle.closest(HEAD)?.getBoundingClientRect().width ?? floor);
         let next: number;
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
-            if (this.keyed?.handle !== handle) this.keyed = { handle, stuck: isStuck(found.column, this.viewport()) };
+            // Read again when the run is over (a pause) or the geometry may have changed (see `keyed`'s resets).
+            const now = event.timeStamp;
+            if (this.keyed?.handle !== handle || now - this.keyed.at > KEY_RUN_MS) this.keyed = { handle, stuck: isStuck(found.column, this.viewport()), at: now };
+            this.keyed.at = now;
             next = current + (event.key === 'ArrowRight' ? 1 : -1) * resizeSign(found.column, rtl, this.keyed.stuck) * step;
         } else if (event.key === 'Home') next = floor;
         else if (event.key === 'Enter') {
@@ -340,6 +350,9 @@ export class ResizeController<T> {
         event.preventDefault();
         next = Math.max(Math.ceil(floor), next);
         if (next === current) return true;
+        // The `columns` this write makes is not a change of the geometry to read again: the run goes on.
+        this.ownWrite = true;
+        this.host.afterRender(() => (this.ownWrite = false));
         this.commit([{ key, oldWidth: this.declaredWidth(key, found.column), newWidth: px(next) }]);
         handle.setAttribute('aria-valuenow', String(next));
         this.announceWidth(found.column, next);
@@ -373,6 +386,8 @@ export class ResizeController<T> {
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => {
                 if (event.target === this.keyed?.handle) this.keyed = null;
             })),
+            disposables.listen(root.ownerDocument.defaultView ?? window, 'resize', () => (this.keyed = null)),
+            this.host.topics.on('columns', () => !this.ownWrite && (this.keyed = null)),
             // The separator's value is the measured width when it takes focus: a `rem`, `%` or `auto` width has no px string to render.
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => {
                 const handle = (event.target as Element).closest?.<HTMLElement>(HANDLE);

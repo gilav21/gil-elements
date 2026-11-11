@@ -267,6 +267,36 @@ describe('column resize by mouse', () => {
         expect(widths.slice(1).every((w, i) => w === widths[i]! + 10)).toBe(true);
     });
 
+    it('with two columns pinned to the end in an overflowing table, the inner one is held too: both grow toward the start', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 2 }), data: makeRows(3, { columns: 4 }) }, { width: 500, height: 300 });
+        expect(viewportOf(table).scrollWidth).toBeGreaterThan(viewportOf(table).clientWidth);
+        for (const key of ['c2', 'c3']) {
+            const head = () => headCell(table, key).getBoundingClientRect();
+            const [width, right] = [head().width, head().right];
+            await mouseDrag(onHandle(table, key), { dx: -30, dy: 0 });
+            await settle(table);
+            expect(head().width).toBe(width + 30);
+            expect(head().right).toBeCloseTo(right, 0);
+        }
+    });
+
+    it('reads the direction of the arrow keys again when the overflow changed while the handle kept focus', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 400, height: 300 });
+        expect(viewportOf(table).scrollWidth).toBeGreaterThan(viewportOf(table).clientWidth);
+        q(headCell(table, 'c3'), '[data-slot="data-table-resize-handle"]').focus();
+        await press('{ArrowLeft}'); // held at the edge: this widens it, and is what the run is latched on
+        await settle(table);
+        expect(Math.round(widthOf(headCell(table, 'c3')))).toBe(160);
+        // the other columns shrink so that nothing overflows any more; the focus stays on the handle
+        table.columnWidths = { c0: '40px', c1: '40px', c2: '40px' };
+        await settle(table);
+        expect(viewportOf(table).scrollWidth).toBeLessThanOrEqual(viewportOf(table).clientWidth);
+        const before = Math.round(widthOf(headCell(table, 'c3')));
+        await press('{ArrowRight}'); // no longer held: the end edge follows the key, so the column widens (a stale latch would narrow it)
+        await settle(table);
+        expect(Math.round(widthOf(headCell(table, 'c3')))).toBe(before + 10);
+    });
+
     it('reads a rem minimum width against the real root font size, in aria-valuemin as in the resize floor', async () => {
         const root = document.documentElement;
         const before = root.style.fontSize;

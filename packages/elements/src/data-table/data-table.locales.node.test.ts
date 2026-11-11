@@ -154,6 +154,13 @@ describe('data-table locales', () => {
         stops.forEach((stop) => stop());
     });
 
+    it('names a dictionary without a code the same way through both entry points: unnamed, not English', () => {
+        const partial = { filterPlaceholder: 'x' } as DataTableLocale;
+        expect(withEnglishFallback(partial).code).toBe('');
+        expect(resolveDataTableLocale(partial).code).toBe('');
+        expect(withEnglishFallback({ ...partial, code: 'xx' }).code).toBe('xx');
+    });
+
     it('takes the page language it is given, the global document only by default', () => {
         registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
         expect(resolveDataTableLocale('xx', 'de').filterPlaceholder).toBe('Filtern...');
