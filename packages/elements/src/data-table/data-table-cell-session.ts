@@ -51,14 +51,19 @@ export interface InteractionContext<T> {
     deepActive(): Element | null;
 }
 
+/** What a session knows of the press besides the event: the roving cell BEFORE the press moved it (a shift+click extends from it). */
+export interface PointerPress {
+    readonly anchor: CellAddress | null;
+}
+
 export interface CellSession {
     attach(): void;
     detach(): void;
     hostUpdate?(): void;
     /** Drawn over the grid inside the viewport, after the table (the range readout, the fill handle); the controller gathers the sessions' answers into its own `renderOverlay`. */
     renderOverlay?(): TemplateResult | null;
-    onPointerDown?(event: PointerEvent, at: CellAddress | null): boolean | void;
-    onPointerUp?(event: PointerEvent, at: CellAddress | null): boolean | void;
+    onPointerDown?(event: PointerEvent, at: CellAddress | null, press: PointerPress): boolean | void;
+    onPointerUp?(event: PointerEvent, at: CellAddress | null, press: PointerPress): boolean | void;
     /** Methods merged into the `interaction` service. */
     readonly service?: Partial<CellInteractionService>;
     /** Provided under `range` (range session only). */

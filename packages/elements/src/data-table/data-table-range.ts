@@ -46,6 +46,22 @@ export function rangeEdges(range: NormalizedRange, rowIndex: number, col: number
     return edges.join(' ');
 }
 
+/**
+ * A range a consumer assigns (`cellRange`), made safe: `undefined` and `null` are "no range"; anything that is not a range (integer rows
+ * from 0, string column keys), or that names a column not among `keys` (when `keys` is known), is refused with `undefined`; rows past the
+ * last of `rowCount` rows are trimmed (a range wholly past them is dropped), and an unknown row count (0) leaves the rows as they are.
+ * Only the four fields are kept.
+ */
+export function sanitizeCellRange(input: unknown, rowCount: number, keys: readonly string[]): CellRange | null | undefined {
+    if (input === null || input === undefined) return null;
+    const { startRow, startCol, endRow, endCol } = input as Partial<CellRange>;
+    const row = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0;
+    if (!row(startRow) || !row(endRow) || typeof startCol !== 'string' || typeof endCol !== 'string') return undefined;
+    if (keys.length > 0 && !(keys.includes(startCol) && keys.includes(endCol))) return undefined;
+    const range: CellRange = { startRow, startCol, endRow, endCol };
+    return rowCount > 0 ? clampToRows(null, range, rowCount).range : range;
+}
+
 /** The fill source: the selected range, or the focused cell as a 1x1 range. */
 export function fillSourceRange(
     range: NormalizedRange | null,

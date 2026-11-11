@@ -32,8 +32,7 @@ export interface ConfigCheckInput<T> {
     enableFillHandle?: boolean;
     enableClipboardPaste?: boolean;
     localReorder?: boolean;
-    sortState?: { column: string; direction: unknown } | null;
-    multiSortState?: readonly { column: string; direction: unknown }[] | null;
+    // wave 6 adds `sortState` / `multiSortState` here and in the diagnostics snapshot with the row-drag-with-sort check.
 }
 
 // ---- wave 5 (filters and editing) checks: package A and B add their warnings in this function, nowhere else ----------

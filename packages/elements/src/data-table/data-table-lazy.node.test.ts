@@ -64,10 +64,26 @@ describe('lazyElement', () => {
         expect(element.ready()).toBe(false);
     });
 
-    it('rejects when the import fails', async () => {
+    it('reports a failed import once and latches it: load() resolves false, never rejects, never imports again until reset', async () => {
         fakeRegistry();
-        const element = lazyElement('ge-x', () => Promise.reject(new Error('404')));
-        await expect(element.load()).rejects.toThrow('404');
+        const onError = vi.fn();
+        const importer = vi.fn(() => Promise.reject(new Error('404')));
+        const element = lazyElement('ge-x', importer, onError);
+        for (let hover = 0; hover < 5; hover++) await expect(element.load()).resolves.toBe(false);
+        expect(importer).toHaveBeenCalledTimes(1);
+        expect(onError).toHaveBeenCalledTimes(1);
+        element.reset();
+        await element.load();
+        expect(importer).toHaveBeenCalledTimes(2);
+        expect(onError).toHaveBeenCalledTimes(2);
+    });
+
+    it('logs a failed import through console.error by default', async () => {
+        fakeRegistry();
+        const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        await lazyElement('ge-x', () => Promise.reject(new Error('404'))).load();
+        expect(spy).toHaveBeenCalledTimes(1);
+        spy.mockRestore();
     });
 });
 

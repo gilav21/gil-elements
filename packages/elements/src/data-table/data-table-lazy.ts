@@ -32,23 +32,40 @@ export function lazyOnce<M>(importer: () => Promise<M>): () => Promise<M> {
 export interface LazyElement {
     /**
      * Starts (or joins) the load and resolves once the module has been evaluated: with true when `tag` is defined then, with false when
-     * the module did not define it (a module defines its tags while it is evaluated, so nothing is left to wait for). Rejects when the
-     * import fails. It never waits on a tag that nothing will define.
+     * the module did not define it (a module defines its tags while it is evaluated, so nothing is left to wait for). It never waits on a
+     * tag that nothing will define and it NEVER REJECTS: a failed import is reported once through `onError` (default `console.error`) and
+     * latched (every `load()` after it resolves false without importing again, so a trigger that is hovered a hundred times does not re-import
+     * and re-log) until `reset()`.
      */
     load(): Promise<boolean>;
     /** The tag is defined now (no load needed). */
     ready(): boolean;
+    /** Forgets a latched failure: the next `load()` imports again (call it on attach). */
+    reset(): void;
 }
 
 /** A custom element that a lazy module defines as a side effect. */
-export function lazyElement(tag: string, importer: () => Promise<unknown>): LazyElement {
+export function lazyElement(
+    tag: string,
+    importer: () => Promise<unknown>,
+    onError: (error: unknown) => void = (error) => console.error(`[ge-data-table] could not load <${tag}>:`, error),
+): LazyElement {
     const once = lazyOnce(importer);
+    let failed = false;
     return {
         load: async () => {
-            await once();
+            if (failed) return false;
+            try {
+                await once();
+            } catch (error) {
+                failed = true;
+                onError(error);
+                return false;
+            }
             return customElements.get(tag) !== undefined;
         },
         ready: () => customElements.get(tag) !== undefined,
+        reset: () => void (failed = false),
     };
 }
 

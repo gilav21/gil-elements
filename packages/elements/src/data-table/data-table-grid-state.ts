@@ -12,6 +12,7 @@
  */
 import type { DataTableViewHost } from './data-table-view.js';
 import type { CellFlashDirection } from './data-table.types.js';
+import { isSpecialColumnKey } from './data-table.utils.js';
 
 /** The edges of the range rectangle a cell sits on, as a space-separated list of `top`, `bottom`, `start`, `end`. */
 export type RangeEdges = string;
@@ -42,12 +43,20 @@ export const OUT_OF_RANGE_EDITABLE_FLAGS: CellFlags = cell('false', true);
 export const NO_ROW_FLAGS: RowFlags = Object.freeze({ draggable: false, dragging: false });
 export const DRAGGABLE_ROW_FLAGS: RowFlags = Object.freeze({ draggable: true, dragging: false });
 
-export interface StateView<T> {
+export interface StateView {
     /** `enable-cell-range-selection`: data cells carry `aria-selected` and the grid is `aria-multiselectable`. */
     rangeSelectable: boolean;
-    /** `row` is the row drawn at `rowIndex` (the caller has it; the lookup is not repeated per cell). */
-    cellState(rowIndex: number, columnKey: string, row: T): CellFlags;
-    rowState(rowIndex: number, rowId: string, row: T): RowFlags;
+    cellState(rowIndex: number, columnKey: string, row: RowInfo): CellFlags;
+    rowState(rowIndex: number, row: RowInfo): RowFlags;
+}
+
+/**
+ * What the renderer already knows of the drawn row (`dataRow` reads each once): its id as a string (`getRowId` may answer a number) and whether it is
+ * disabled. The state functions never ask for them again, so a row costs one `getRowId` and one `isDisabled`, however many cells it has.
+ */
+export interface RowInfo {
+    readonly id: string;
+    readonly disabled: boolean;
 }
 
 /** The keys of the editable columns and of the columns that opted out of flash, per `columns` array: a render with the same columns builds them once. */
@@ -61,38 +70,29 @@ function columnSets(columns: readonly { accessorKey: unknown; editable?: boolean
     return sets;
 }
 
-export function stateView<T>(host: DataTableViewHost<T>): StateView<T> {
+export function stateView<T>(host: DataTableViewHost<T>): StateView {
     const { config } = host;
     const range = host.provider('range');
     const interaction = host.provider('interaction');
     const formatting = host.provider('formatting');
     const rowDrag = host.provider('rowDrag');
-    const rangeMode = config.enableCellRangeSelection;
+    // Range mode is drawn (`aria-selected`, `aria-multiselectable`) only once the range part is loaded and handles ranges: not while it loads,
+    // and not after a load that failed (the same rule as `rowDrag.active()` for draggable rows).
+    const rangeMode = config.enableCellRangeSelection && (range?.active() ?? false);
     const { editable, flashOff } = columnSets(config.columns);
     const flashable = config.enableCellFlash && formatting !== undefined;
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;
-    // The cells of one row ask for the same id and disabled flag in a row: each is computed once per row.
-    let idRow: T | undefined;
-    let id = '';
-    let disabledRow: T | undefined;
-    let disabled = false;
-    const idOf = (row: T): string => {
-        if (row !== idRow) [idRow, id] = [row, String(config.getRowId(row))]; // ids are strings everywhere (`getRowId` may answer numbers)
-        return id;
-    };
-    const disabledOf = (row: T): boolean => {
-        if (row !== disabledRow) [disabledRow, disabled] = [row, host.isDisabled(row)];
-        return disabled;
-    };
     return {
         rangeSelectable: rangeMode,
         cellState(rowIndex, key, row) {
-            const canEdit = editable.has(key) && !disabledOf(row);
+            // The special columns (selection, expander, actions) are not cells of the range, of an editor or of a flash.
+            if (isSpecialColumnKey(key)) return NO_CELL_FLAGS;
+            const canEdit = editable.has(key) && !row.disabled;
             const inRange = rangeMode && (range?.isInRange(rowIndex, key) ?? false);
             const fill = config.enableFillHandle && (range?.isFillPreview(rowIndex, key) ?? false);
-            const flash = flashable && !flashOff.has(key) ? formatting.flash(idOf(row), key) : undefined;
+            const flash = flashable && !flashOff.has(key) ? formatting.flash(row.id, key) : undefined;
             const editing = interaction?.isEditing(rowIndex, key) ?? false;
             if (!inRange && !fill && flash === undefined && !editing) {
                 if (rangeMode) return canEdit ? OUT_OF_RANGE_EDITABLE_FLAGS : OUT_OF_RANGE_FLAGS;
@@ -108,10 +108,10 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView<T> {
                 editing,
             };
         },
-        rowState(rowIndex, rowId, row) {
+        rowState(rowIndex, row) {
             if (!dragOn) return NO_ROW_FLAGS;
-            const draggable = !disabledOf(row) && !config.loading;
-            const isDragged = dragging !== null && dragging.draggedId === String(rowId); // `getRowId` may answer a number
+            const draggable = !row.disabled && !config.loading;
+            const isDragged = dragging !== null && dragging.draggedId === row.id;
             const edge = dragging !== null && dragging.overIndex === rowIndex ? (dragging.edge ?? undefined) : undefined;
             if (!isDragged && edge === undefined) return draggable ? DRAGGABLE_ROW_FLAGS : NO_ROW_FLAGS;
             return { draggable, dragging: isDragged, dropEdge: edge };

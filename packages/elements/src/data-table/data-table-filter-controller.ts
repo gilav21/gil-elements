@@ -24,13 +24,15 @@ export class FilterUiController<T> {
         advancedCount: () => 0,
     };
 
-    /** Starts loading the lazy elements (a trigger was hovered or focused). */
+    /** Starts loading the lazy elements (a trigger was hovered or focused). A failed load is reported once and latched by `lazyElement`, not swallowed. */
     prefetch(): void {
-        void this.builder.load().catch(() => undefined);
-        void this.panels.load().catch(() => undefined);
+        void this.builder.load();
+        void this.panels.load();
     }
 
     attach(): void {
+        this.builder.reset();
+        this.panels.reset();
         this.unprovide = this.host.provide('filters', this.service);
     }
 

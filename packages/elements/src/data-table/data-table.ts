@@ -8,6 +8,7 @@ import { THEME_ATTRIBUTE, type ThemeName } from '../shared/theme-presets.js';
 import { createCellWriter, type HistoryResult } from './data-table-cell-write.js';
 import { type AssembledControllers, assembleControllers, type DataTableRenderingController } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
+import type { CellInteractionController } from './data-table-cell-interaction-controller.js';
 import { createFactories } from './data-table-factories.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
@@ -34,7 +35,16 @@ import './sub/data-table-column-header.js';
 import './sub/data-table-pager.js';
 import { css } from './data-table-styles.js';
 
-type Mutable<O> = { -readonly [K in keyof O]: O[K] };
+/** State the element reads out of its services and does not accept back (Angular: signals). */
+const READ_ONLY_STATE = ['editingCell', 'cellEditError'] as const;
+const warnedReadOnly = new Set<string>();
+function ignoreReadOnly(name: string): void {
+    if (warnedReadOnly.has(name)) return;
+    warnedReadOnly.add(name);
+    console.warn(`[ge-data-table] ${name} is read-only: the assignment was ignored.`);
+}
+
+type Mutable<O> ={ -readonly [K in keyof O]: O[K] };
 
 /** Inputs the table has besides the controllers' `DataTableConfig`. */
 interface DataTableExtraInputs<T> {
@@ -207,8 +217,6 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     });
     /** A `cellRange` assigned before the range service exists (before the first attach). */
     private earlyRange: CellRange | null | undefined;
-    /** The range service of the (once built) controllers: it outlives a disconnect, unlike the provider entry. */
-    private rangeRef: DataTableProviders<T>['range'] | undefined;
     private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
     private releaseStyles: (() => void) | null = null;
@@ -230,6 +238,13 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // The `cellRange` accessor is reclaimed the same way: a range assigned before the upgrade goes through the setter.
         const rangeBefore = Object.hasOwn(this, 'cellRange') ? { value: (this as Record<string, unknown>)['cellRange'] as CellRange | null } : undefined;
         if (rangeBefore) delete (this as Record<string, unknown>)['cellRange'];
+        // A read-only accessor assigned before the upgrade would shadow its getter as an own property for ever: drop it.
+        for (const name of READ_ONLY_STATE) {
+            if (Object.hasOwn(this, name)) {
+                delete (this as Record<string, unknown>)[name];
+                ignoreReadOnly(name);
+            }
+        }
         Object.assign(this, Object.fromEntries(Object.entries(INPUTS).map(([name, [, value]]) => [name, value])));
         this.store.onFlush(() => this.requestUpdate());
         for (const [key, value] of early) Object.assign(this, { [key]: value });
@@ -491,9 +506,19 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return this.provider('interaction')?.editingCell() ?? null;
     }
 
+    /** Read-only (Angular exposes it as a signal): a property binding or an assignment is ignored with a one-time warning, it does not throw. */
+    set editingCell(_value: EditingCell | null) {
+        ignoreReadOnly('editingCell');
+    }
+
     /** The validation error shown on the open editor, or null. */
     get cellEditError(): CellEditError | null {
         return this.provider('interaction')?.cellEditError() ?? null;
+    }
+
+    /** Read-only, like `editingCell`. */
+    set cellEditError(_value: CellEditError | null) {
+        ignoreReadOnly('cellEditError');
     }
 
     /** Clears the advanced filter tree (the column and global filters stay). */
@@ -514,17 +539,17 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     set cellRange(range: CellRange | null) {
         const service = this.rangeService();
-        if (service) service.setRange(range);
+        if (service) service.setRange(range); // the session asks for the render
         else this.earlyRange = range;
-        this.requestUpdate(); // `data-in-range`, `aria-selected` and the readout read the range at render
     }
 
     /**
-     * The range service, also while detached (the providers are cleared then, the session behind it keeps the range across reconnects: it is
-     * the one owner of the value). Only before the first attach does the element hold the value itself (`earlyRange`).
+     * The range service, also while detached: the providers are cleared then, but the controllers are built once and the cell-interaction
+     * controller's range session keeps the value across reconnects. It is the one owner; only before the first attach does the element hold the
+     * value itself (`earlyRange`).
      */
     private rangeService(): DataTableProviders<T>['range'] | undefined {
-        return this.provider('range') ?? this.rangeRef;
+        return this.provider('range') ?? (this.built?.byId.get('cell-interaction') as CellInteractionController<T> | undefined)?.rangeService;
     }
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
@@ -589,9 +614,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger) survives.
         this.built ??= assembleControllers(this, createFactories<T>());
         this.built.attachAll();
-        this.rangeRef = this.provider('range');
         if (this.earlyRange !== undefined) {
-            this.rangeRef?.setRange(this.earlyRange);
+            this.provider('range')?.setRange(this.earlyRange);
             this.earlyRange = undefined;
         }
         this.lastLocale = this.resolvedLocale;

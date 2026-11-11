@@ -12,6 +12,7 @@
 import type { CellSession, InteractionContext } from './data-table-cell-session.js';
 import { lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
+import { sanitizeCellRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
@@ -41,9 +42,16 @@ export class RangeSession<T> implements CellSession {
         isInRange: () => false,
         isFillPreview: () => false,
         edgeOf: () => '',
+        active: () => this.lazy.part !== null,
         setRange: (range) => {
-            this.held = range;
-            this.lazy.part?.setRange(range);
+            // With range selection off there is no range mode to hold one in (it would be reported for ever): nothing is kept.
+            if (!this.rangeOn()) return;
+            // `undefined` is "no range"; anything that is not a range, or names a column that does not exist, is refused (warned once) and the old value stays;
+            // rows past the last drawn one are trimmed when the rows are known (an empty list changes nothing). The part clamps again when the rows change.
+            const next = sanitizeCellRange(range, this.context.rowCount(), this.context.focusableKeys());
+            if (next === undefined) return this.warnOnce(range);
+            this.held = next;
+            this.lazy.part?.setRange(next);
             this.context.host.requestRender(); // `data-in-range`, `aria-selected` and the readout read the range at render
         },
         extendTo: () => undefined,
@@ -59,6 +67,7 @@ export class RangeSession<T> implements CellSession {
      * Derived from `rangeService`, so wave 6 implements one pair. `isCellSelected` is Angular's (cmp `isCellSelected`, which the context-menu
      * addon reads): with a range, whether the cell is in it; with none, whether it is the focused cell. Not gated on the range flag: the
      * focused cell is "selected" for the menu whatever the mode (the step 0 stub used to answer false always; the spec 0.3 #4 meaning wins).
+     * With the flags off no range is ever held, so the focused cell is always what is reported.
      */
     readonly service: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = {
         cellRange: () => this.rangeService.range(),
@@ -75,11 +84,23 @@ export class RangeSession<T> implements CellSession {
         return part ? part.getRange() : this.held;
     }
 
+    private rangeOn(): boolean {
+        const { config } = this.context.host;
+        return config.enableCellRangeSelection || config.enableFillHandle;
+    }
+
+    private warned = false;
+
+    private warnOnce(value: unknown): void {
+        if (this.warned) return;
+        this.warned = true;
+        console.warn('[ge-data-table] cellRange is not a range of this table (needs integer startRow / endRow and the keys of existing columns as startCol / endCol); it was ignored:', value);
+    }
+
     attach(): void {}
 
     hostUpdate(): void {
-        const { config } = this.context.host;
-        const on = config.enableCellRangeSelection || config.enableFillHandle;
+        const on = this.rangeOn();
         // Turning range selection off ends range mode: the range goes with it (wave 6 A.2), so turning it on again starts empty.
         if (!on && this.wasOn) this.held = null;
         else this.held = this.current();

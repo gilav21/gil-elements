@@ -57,9 +57,8 @@ export class DiagnosticsController<T> {
             enableFillHandle: config.enableFillHandle,
             enableClipboardPaste: config.enableClipboardPaste,
             localReorder: config.localReorder,
-            // Only the row-drag-with-sort check reads them: any other table would re-run the whole check (and the O(rows) id scan) on every sort.
-            sortState: config.enableRowDrag && config.localReorder ? model.get('sortState') : undefined,
-            multiSortState: config.enableRowDrag && config.localReorder ? model.get('multiSortState') : undefined,
+            // No sort state here: a sort would re-run the whole check (and the O(rows) id scan). The row-drag-with-sort check of wave 6 adds the
+            // sort fields to this snapshot (only while `enableRowDrag && localReorder`) together with the check.
         };
         if (!sameSnapshot(this.last, snapshot)) {
             this.last = snapshot;

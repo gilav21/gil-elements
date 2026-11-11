@@ -21,30 +21,45 @@ describe('lazy parts and the render', () => {
         expect(bodyRows(table).every((row) => row.getAttribute('data-draggable') === '')).toBe(true);
     });
 
-    it('draws a range assigned to an attached table at the next frame (data-in-range, aria-selected)', async () => {
+    it('asks for exactly one render when a range is assigned to an attached table (the session asks, the setter does not repeat it)', async () => {
         const table = await mountTable({ enableCellRangeSelection: true });
-        const range = { startRow: 0, startCol: 'name', endRow: 0, endCol: 'name' };
-        const hits = (): number => table.querySelectorAll('[data-in-range]').length;
-        table.provide('range', {
-            range: () => range,
-            normalized: () => null,
-            isInRange: (row: number, key: string) => row === 0 && key === 'name',
-            isFillPreview: () => false,
-            edgeOf: () => 'top bottom start end',
-            setRange: () => undefined,
-            extendTo: () => undefined,
-            stats: () => null,
-            chartPayload: () => null,
-            openChart: () => undefined,
-            fillDownTo: () => false,
-            fillHandleCell: () => null,
-            gestureActive: () => false,
-        });
-        expect(hits()).toBe(0);
-        table.cellRange = range;
+        await frames(2);
+        const render = vi.spyOn(table, 'requestRender');
+        const update = vi.spyOn(table, 'requestUpdate');
+        table.cellRange = { startRow: 0, startCol: 'name', endRow: 0, endCol: 'name' };
+        expect(render).toHaveBeenCalledTimes(1);
+        // requestRender is the element's own requestUpdate: one call for the render, none from the setter on top
+        expect(update).toHaveBeenCalledTimes(1);
+    });
+
+    it('draws range mode (aria-selected, aria-multiselectable) only while the range part is active, and not on the special columns', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true, enableRowSelection: true });
         await settle(table);
-        expect(hits()).toBe(1);
-        expect(table.querySelector('[data-in-range]')?.getAttribute('aria-selected')).toBe('true');
+        await frames(3);
+        const real = table.provider('range')!;
+        const grid = (): Element => table.querySelector('[data-slot="table"]')!;
+        // not loaded (or a load that failed): the flag alone draws nothing of range mode
+        table.provide('range', { ...real, active: () => false });
+        table.requestUpdate();
+        await settle(table);
+        expect(table.querySelector('[data-slot="table-cell"][aria-selected]')).toBeNull();
+        // row selection is on in this table, so the grid is multiselectable anyway: the cells are what show range mode
+        table.provide('range', { ...real, active: () => true });
+        table.requestUpdate();
+        await settle(table);
+        expect(grid().getAttribute('aria-multiselectable')).toBe('true');
+        expect(table.querySelector('[data-slot="table-cell"][data-column="name"]')?.getAttribute('aria-selected')).toBe('false');
+        expect(table.querySelector('[data-slot="table-cell"][data-special][aria-selected]')).toBeNull();
+    });
+
+    it('leaves aria-multiselectable off while range mode is not active', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true });
+        await settle(table);
+        const real = table.provider('range')!;
+        table.provide('range', { ...real, active: () => false });
+        table.requestUpdate();
+        await settle(table);
+        expect(table.querySelector('[data-slot="table"]')?.hasAttribute('aria-multiselectable')).toBe(false);
     });
 });
 

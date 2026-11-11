@@ -272,6 +272,8 @@ export interface CellInteractionService {
 
 /** Range selection, the fill handle and the readout (wave 6). Always provided by `cell-interaction`; inert until `enable-cell-range-selection` loads its lazy part. */
 export interface RangeService {
+    /** The range part is loaded and handles ranges: `aria-selected` and the range flags are drawn only then (the step 0 shell answers false until it loads). */
+    active(): boolean;
     /** As made (anchor .. end), absolute rendered row indexes and column keys. */
     range(): CellRange | null;
     normalized(): NormalizedRange | null;

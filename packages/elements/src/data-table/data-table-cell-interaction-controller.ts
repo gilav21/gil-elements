@@ -1,9 +1,9 @@
 import { html, type TemplateResult } from 'lit';
-import type { CellSession, InteractionContext } from './data-table-cell-session.js';
+import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
 import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, requireProvider } from './data-table-host.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
-import type { CellInteractionService } from './data-table-providers.js';
+import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { RangeSession } from './data-table-range-session.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 
@@ -53,6 +53,8 @@ export class CellInteractionController<T> {
     private readonly edit: CellSession & Pick<EditSession<T>, 'service'>;
     private readonly range: CellSession & Pick<RangeSession<T>, 'service' | 'rangeService'>;
     private readonly sessions: readonly CellSession[];
+    /** The same sessions backwards: detach runs this way, and `hostUpdate` too (edit, then range). */
+    private readonly reversed: readonly CellSession[];
     private readonly service: CellInteractionService;
 
     constructor(private readonly host: DataTableCoreHost<T>) {
@@ -70,12 +72,18 @@ export class CellInteractionController<T> {
         this.edit = new EditSession(context);
         this.range = new RangeSession(context);
         this.sessions = [this.range, this.edit];
+        this.reversed = [...this.sessions].reverse();
         this.service = {
             focusedCell: () => this.focused,
             focusCell: (rowIndex, columnKey) => this.focusCell(rowIndex, columnKey, true),
             ...this.range.service,
             ...this.edit.service,
         };
+    }
+
+    /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. */
+    get rangeService(): RangeService {
+        return this.range.rangeService;
     }
 
     attach(): void {
@@ -98,12 +106,12 @@ export class CellInteractionController<T> {
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
             disposables.add(() => this.observer?.disconnect()),
         ];
-        for (const session of [this.range, this.edit]) session.attach();
+        for (const session of this.sessions) session.attach();
     }
 
     detach(): void {
         // The reverse of attach: the sessions go first, while the services they read are still provided.
-        for (const session of [this.edit, this.range]) session.detach();
+        for (const session of this.reversed) session.detach();
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
         this.observer?.disconnect();
@@ -116,8 +124,7 @@ export class CellInteractionController<T> {
     /** Before every render: the focused cell follows its row (when a node or group moved it), the data (clamped to the rows that exist) and the layout. */
     hostUpdate(): void {
         this.reconcile();
-        this.edit.hostUpdate?.();
-        this.range.hostUpdate?.();
+        for (const session of this.reversed) session.hostUpdate?.();
     }
 
     private reconcile(): void {
@@ -374,17 +381,29 @@ export class CellInteractionController<T> {
 
     // ---- pointer ----------------------------------------------------------------------------------------------------
 
+    /**
+     * The press is offered to the sessions FIRST, with the roving cell as it was before the press (`press.anchor`: a shift+click builds its
+     * range from it). A session that claims it (returns true) moves the focus itself; otherwise the controller focuses the pressed cell, except
+     * for a press inside the open editor's cell, which never moves focus (an editor may be a custom element the tag list below does not know).
+     */
     private onPointerDown(event: PointerEvent): void {
         this.pointer = true;
+        if (this.offer(event, (session) => session.onPointerDown)) return;
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
-        if (event.button === 0 && event.pointerType !== 'touch') this.pointerFocus(event.target as Element);
-        this.offer(event, (session) => session.onPointerDown);
+        if (event.button === 0 && event.pointerType !== 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(event.target as Element);
     }
 
     private onPointerUp(event: PointerEvent): void {
         this.pointer = false;
-        if (event.pointerType === 'touch') this.pointerFocus(event.target as Element);
-        this.offer(event, (session) => session.onPointerUp);
+        if (this.offer(event, (session) => session.onPointerUp)) return;
+        if (event.pointerType === 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(event.target as Element);
+    }
+
+    /** The event's composed path runs through the cell that holds the open editor (also through a shadow root, where the target is retargeted to the host). */
+    private insideOpenEditor(event: Event): boolean {
+        const editing = this.service.editingCell();
+        const cell = editing ? this.host.cellAt(editing.rowIndex, editing.columnKey) : null;
+        return cell !== null && event.composedPath().includes(cell);
     }
 
     /** What the sessions draw over the grid (the range readout and fill handle); the element calls it after the table, inside the viewport. */
@@ -393,10 +412,11 @@ export class CellInteractionController<T> {
         return drawn.length === 0 ? null : html`${drawn}`;
     }
 
-    /** The press goes to the sessions in order (range, edit); the first that returns true claims it. */
-    private offer(event: PointerEvent, handlerOf: (session: CellSession) => CellSession['onPointerDown']): void {
+    /** The press goes to the sessions in order (range, edit); the first that returns true claims it (and this returns true). */
+    private offer(event: PointerEvent, handlerOf: (session: CellSession) => CellSession['onPointerDown']): boolean {
         const at = cellAddressOf(event.target);
-        for (const session of this.sessions) if (handlerOf(session)?.call(session, event, at) === true) return;
+        const press: PointerPress = { anchor: this.focused };
+        return this.sessions.some((session) => handlerOf(session)?.call(session, event, at, press) === true);
     }
 
     private pointerFocus(target: Element): void {

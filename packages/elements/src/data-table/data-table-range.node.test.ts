@@ -9,7 +9,9 @@ import {
     planPaste,
     rangeChartPayload,
     rangeStats,
+    rangeEdges,
     readRangeColumns,
+    sanitizeCellRange,
 } from './data-table-range.js';
 import type { CellRange, ColumnDef } from './data-table.types.js';
 
@@ -165,5 +167,57 @@ describe('paste coercion and planning', () => {
         ]);
         expect(planPaste([['x']], 0, 'nope', KEYS)).toEqual([]);
         expect(planPaste([], 0, 'q1', KEYS)).toEqual([]);
+    });
+});
+
+describe('rangeEdges', () => {
+    const range = { minRow: 1, maxRow: 3, minCol: 1, maxCol: 2 };
+
+    it('lists the edges a cell touches and nothing for an inner cell', () => {
+        expect(rangeEdges(range, 1, 1)).toBe('top start');
+        expect(rangeEdges(range, 3, 2)).toBe('bottom end');
+        expect(rangeEdges(range, 2, 1)).toBe('start');
+        expect(rangeEdges({ ...range, minCol: 1, maxCol: 3 }, 2, 2)).toBe('');
+    });
+
+    it('gives a one-cell range all four', () => {
+        expect(rangeEdges({ minRow: 2, maxRow: 2, minCol: 0, maxCol: 0 }, 2, 0)).toBe('top bottom start end');
+    });
+});
+
+describe('sanitizeCellRange', () => {
+    const range: CellRange = { startRow: 1, startCol: 'q1', endRow: 3, endCol: 'q2' };
+
+    it('turns undefined and null into "no range"', () => {
+        expect(sanitizeCellRange(undefined, 10, KEYS)).toBeNull();
+        expect(sanitizeCellRange(null, 10, KEYS)).toBeNull();
+    });
+
+    it('keeps a good range, copying only its four fields', () => {
+        const result = sanitizeCellRange({ ...range, extra: 1 }, 10, KEYS);
+        expect(result).toEqual(range);
+        expect(result).not.toBe(range);
+        expect(Object.keys(result as object)).toHaveLength(4);
+    });
+
+    it.each([
+        ['a string', 'q1'],
+        ['an empty object', {}],
+        ['a fractional row', { ...range, startRow: 1.5 }],
+        ['a negative row', { ...range, endRow: -1 }],
+        ['a numeric column key', { ...range, startCol: 1 }],
+        ['a column that does not exist', { ...range, endCol: 'nope' }],
+    ])('refuses %s', (_name, input) => {
+        expect(sanitizeCellRange(input, 10, KEYS)).toBeUndefined();
+    });
+
+    it('trims rows past the last drawn one, and drops a range wholly past them', () => {
+        expect(sanitizeCellRange({ ...range, endRow: 50 }, 5, KEYS)).toEqual({ ...range, endRow: 4 });
+        expect(sanitizeCellRange({ ...range, startRow: 20, endRow: 30 }, 5, KEYS)).toBeNull();
+    });
+
+    it('leaves rows and columns as they are while they are not known (no rows drawn yet, no column keys)', () => {
+        expect(sanitizeCellRange({ ...range, endRow: 50 }, 0, [])).toEqual({ ...range, endRow: 50 });
+        expect(sanitizeCellRange({ ...range, endCol: 'whatever' }, 10, [])).toEqual({ ...range, endCol: 'whatever' });
     });
 });
