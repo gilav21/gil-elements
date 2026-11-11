@@ -13,14 +13,17 @@
  * Contract, so the two waves never need to know each other:
  * - A session registers its OWN key handlers (`host.addKeyHandler(KEY_PRIORITY.x, ...)`) and its own listeners through
  *   `context.host.disposables`; the controller never routes keys to it.
- * - Pointer. The controller listens, all in the CAPTURE phase (a consumer's `stopPropagation` cannot hide an event):
- *   on the table's ROOT: `pointerdown` (records a press, own events only: a nested table records its own), `pointerup` and `pointercancel`
- *   (end it, whatever they landed on inside the root, a nested table and a closed shadow root included), `gotpointercapture` (records that the
- *   pointer is captured); on the DOCUMENT: `pointerdown` (a press outside the root clears the focus guard at once), `pointerup` /
- *   `pointercancel` (close what the root did not hear: a release OUTSIDE the table), `lostpointercapture` (forgets the capture), and on the
- *   window `blur` (every open press is cancelled). A press is recorded per POINTER ID (a finger and a mouse never touch each other's).
- *   Recording is bookkeeping only. What a press DOES at its pointerdown (the offer below, the focus move of a mouse or pen) runs in a BUBBLE-phase
- *   `pointerdown` listener on the root: a cell widget that stops `pointerdown` keeps its focus and is not offered (nor at its pointerup).
+ * - Pointer. The controller listens in TWO phases.
+ *   CAPTURE phase (bookkeeping, and the ends of a press: a consumer's `stopPropagation` cannot hide them): on the table's ROOT `pointerdown` (RECORDS
+ *   the press: own events only, a nested table records its own), `pointerup` and `pointercancel` (end it, whatever they landed on inside the root, a
+ *   nested table and a closed shadow root included), `gotpointercapture` (records that the pointer is captured); on the DOCUMENT `pointerdown` (a
+ *   press outside the root clears the focus guard at once), `pointerup` / `pointercancel` (close what the root did not hear: a release OUTSIDE the
+ *   table), `lostpointercapture` (forgets the capture); on the window `blur` (every open press is cancelled). A press is recorded per POINTER ID
+ *   (a finger and a mouse never touch each other's).
+ *   BUBBLE phase, on the root: `pointerdown` DECIDES what the press does: the offer to the sessions below and the focus move of a mouse or pen.
+ *   `stopPropagation()` on `pointerdown` inside a cell (or `data-table-keeps-focus` on a widget) means the grid LEAVES THAT PRESS ALONE, for any
+ *   pointer type: it is not offered to the sessions (`onPointerDown`, nor `onPointerUp` at its release), moves no focus, and a touch tap on it
+ *   focuses nothing. It is still recorded, so nothing is left open.
  *   At its pointerdown the sessions are OFFERED the press in the order range, edit, as `onPointerDown(event, at, press)`: `at` is the cell
  *   under the pointer (null outside any cell) and `press` is `{ anchor, pressed, startCell }` (`anchor`: the roving cell BEFORE the press
  *   moved it; `pressed`: the element of the table it began on (an overlay itself: a press that begins on one has no start cell); `startCell`: the body cell it began

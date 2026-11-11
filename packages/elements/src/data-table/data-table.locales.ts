@@ -150,8 +150,6 @@ export interface DataTableLocale extends LocaleMeta {
     rowMovedAnnouncement: string;
     /** `aria-description` of the grid while row drag is on: the keyboard alternative. */
     rowDragHint: string;
-    /** The accessible name of the drop indicator. */
-    rowDraggingLabel: string;
     rangeCount?: string;
     rangeSum?: string;
     rangeAvg?: string;
@@ -276,7 +274,6 @@ const en: DataTableLocale = {
     fillAnnouncement: '{count} rows filled',
     rowMovedAnnouncement: 'Row moved to position {position} of {total}',
     rowDragHint: 'Alt+Up or Alt+Down arrow moves the focused row',
-    rowDraggingLabel: 'Drop here',
     rangeCount: 'Count',
     rangeSum: 'Sum',
     rangeAvg: 'Avg',

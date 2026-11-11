@@ -1,7 +1,7 @@
 /**
  * Lazy part of `RangeSession` (wave 6, package A owns this file): range selection by pointer, key and touch, the fill handle, the
  * readout. A build entry (`data-table/lazy/range`), loaded by `lazyPart` when `enable-cell-range-selection` or `enable-fill-handle`
- * is on. Joint step 0: an inert part that only holds the range the shell hands it (`setRange` before `attach`, `getRange` before the
+ * is on. Joint step 0: an inert part that only holds the range the shell hands it (`setRange` right AFTER `attach`, `getRange` before the
  * shell disposes it); wave 6 keeps that contract and implements the rest. The fill handle and the range readout it draws over the cells
  * must each carry `data-pointer-transparent` (the controller looks a release through such an element; it keeps no list of slot names).
  */

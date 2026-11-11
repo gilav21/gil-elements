@@ -18,6 +18,23 @@ describe('lazy parts and the render', () => {
         expect(bodyRows(table).every((row) => row.getAttribute('data-draggable') === '')).toBe(true);
     });
 
+    it('forwards reorderData and moveRow to the controller\'s row-drag service (also after a disconnect), and only the neutral service copies', async () => {
+        const fresh = document.createElement('ge-data-table') as unknown as { reorderData(data: number[], event: unknown): number[]; moveRow(row: unknown, direction: string): boolean };
+        const data = [1, 2, 3];
+        const copy = fresh.reorderData(data, {});
+        expect(copy).toEqual(data); // before any controller exists: the neutral service's copy
+        expect(copy).not.toBe(data);
+        expect(fresh.moveRow(1, 'up')).toBe(false);
+        const table = await mountTable();
+        const service = table.provider('rowDrag') as unknown as { reorderData: (d: unknown[]) => unknown[]; moveRow: () => boolean };
+        service.reorderData = () => ['forwarded'];
+        service.moveRow = () => true;
+        expect(table.reorderData([], {} as never)).toEqual(['forwarded']);
+        expect(table.moveRow(table.data[0]!, 'down')).toBe(true);
+        table.remove(); // the provider entry is gone, the controller's service is not
+        expect(table.reorderData([], {} as never)).toEqual(['forwarded']);
+    });
+
     it('lets the copy methods resolve to the ClipboardResult, so a caller can tell what happened', async () => {
         const table = await mountTable();
         expect(await table.copyCellToClipboard()).toEqual({ status: 'unavailable' }); // the step 0 service

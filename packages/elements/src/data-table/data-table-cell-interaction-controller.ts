@@ -632,7 +632,8 @@ export class CellInteractionController<T> {
 
     private tapFocus(event: PointerEvent, press: Press): void {
         const { pressed } = press;
-        if (press.bypass || !pressed?.isConnected) return;
+        // Not a cell press (`bypass`), or one a cell widget stopped at its pointerdown (`!bubbled`): the widget's own, for a touch as for a mouse.
+        if (press.bypass || !press.bubbled || !pressed?.isConnected) return;
         // Still a tap: within the pressed DATA cell's box plus the slop (the shared touch slop). Anything else (the stretch / spacer cell, a full-width
         // or group cell, a header, the body outside any cell) is measured from where the press went down: such a box spans the row, and would make any
         // drag along it a tap.

@@ -65,7 +65,7 @@ describe('data-table locales', () => {
             'filterColumnActive', 'filtersClearedAnnouncement', 'filteredRowsAnnouncement', 'filteredRowOneAnnouncement', 'invalidValue', 'editCell',
             'undoAnnouncement', 'redoAnnouncement', 'historyStaleAnnouncement', 'copiedAnnouncement', 'copiedAnnouncementOne', 'copyFailedAnnouncement',
             'pasteResultAnnouncement', 'pasteResultAnnouncementOne', 'pasteRejectedAnnouncement', 'pasteFailedAnnouncement', 'rangeAnnouncement',
-            'rangeReadoutLabel', 'fillAnnouncement', 'rowMovedAnnouncement', 'rowDragHint', 'rowDraggingLabel',
+            'rangeReadoutLabel', 'fillAnnouncement', 'rowMovedAnnouncement', 'rowDragHint',
         ] as const satisfies readonly (keyof DataTableLocale)[];
         for (const key of keys) expect(en[key], key).toBeTruthy();
         expect(interpolate(en.filterColumnActive, { column: 'Age' })).toBe('Filter Age, filter applied');

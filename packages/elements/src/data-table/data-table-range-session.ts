@@ -52,12 +52,11 @@ export class RangeSession<T> implements CellSession {
     /** Loaded when a range flag is on at an update (not at the first gesture), detached when it turns off or the table detaches. */
     private readonly lazy = lazyPart<RangePart<T>>(() =>
         import('./lazy/range.js').then((m) => {
-            const part = new m.RangePart(this.context);
-            part.setRange(this.held);
-            return part;
+            return new m.RangePart(this.context);
         }),
-        // Right after the part attaches (it is `lazy.part` from the moment it attaches): the range held NOW goes to it (a `setRange` between the part's
-        // construction and its attach reached `held` only, and the next update would have read the part's stale value back), and the arrival is drawn.
+        // The ONE handover, right after the part attaches (it is `lazy.part` from the moment it attaches): the range held NOW goes to it (a `setRange` between
+        // the part's construction and its attach reached `held` only, and the next update would have read the part's stale value back), and the arrival is drawn.
+        // The part reads `context` / the shell for anything it needs in `attach()`; its own range is set after it.
         {
             changed: () => {
                 this.lazy.part?.setRange(this.held);

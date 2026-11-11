@@ -7,6 +7,17 @@ import type { RowDragPart } from './lazy/row-drag.js';
  * Row drag reorder and its keyboard alternative (wave 6, package C owns this file). Joint step 0: it provides an inert `rowDrag`
  * service; the drag part loads when `enable-row-drag` is on and does nothing yet.
  */
+/** The ONE neutral row-drag service: nothing is draggable, nothing moves, `reorderData` answers a copy. The controller's shell is built on it and the element uses it before the controllers exist. */
+export function neutralRowDrag<T>(): RowDragService<T> {
+    return {
+        active: () => false,
+        isDragging: () => false,
+        dragState: () => null,
+        moveRow: () => false,
+        reorderData: (data) => [...data],
+    };
+}
+
 export class RowDragController<T> {
     private unprovide: (() => void) | undefined;
     /** `changed`: `rowDrag.active()` comes from the part, so the render that makes rows draggable has to be asked for. */
@@ -15,12 +26,12 @@ export class RowDragController<T> {
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 
     private readonly service: RowDragService<T> = {
+        ...neutralRowDrag<T>(),
         active: () => this.drag.part?.active() ?? false, // what the PART says (like the range shell): wave 6 C's part answers true once it handles drags
-        isDragging: () => false,
-        dragState: () => null,
-        moveRow: () => false,
-        reorderData: (data) => [...data],
     };
+
+    /** The row-drag service outlives a disconnect (the controller is built once), unlike its provider entry: the element's `reorderData` / `moveRow` read it here. */
+    readonly services = { rowDrag: this.service };
 
     attach(): void {
         this.unprovide = this.host.provide('rowDrag', this.service);

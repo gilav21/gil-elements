@@ -11,9 +11,10 @@ import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
 import { rangeModeOn, rangeSelectionDrawn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
+import { neutralRowDrag } from './data-table-row-drag-controller.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
-import type { ClipboardResult, DataTableConfig, DataTableProviders } from './data-table-providers.js';
+import type { ClipboardResult, DataTableConfig, DataTableProviders, RowDragService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
 import { buildView, type DataTableViewHost } from './data-table-view.js';
@@ -600,12 +601,17 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** `data` with the dragged row moved as `event` says (flat or tree), without touching the table; a copy of `data` when row drag is not set up. */
     reorderData(data: readonly T[], event: RowReorderEvent<T>): T[] {
-        return this.provider('rowDrag')?.reorderData(data, event) ?? [...data];
+        return this.rowDrag().reorderData(data, event);
+    }
+
+    /** The row-drag service: the controller's, which outlives a disconnect; the neutral one (its only copy fallback) before the controllers exist. */
+    private rowDrag(): RowDragService<T> {
+        return (this.built?.service('rowDrag') as RowDragService<T> | undefined) ?? neutralRowDrag<T>();
     }
 
     /** Moves a row one step up or down (the keyboard and button alternative to dragging); false when nothing moved. */
     moveRow(row: T, direction: 'up' | 'down'): boolean {
-        return this.provider('rowDrag')?.moveRow(row, direction) ?? false;
+        return this.rowDrag().moveRow(row, direction);
     }
 
     // ---- lifecycle --------------------------------------------------------------------------------------------

@@ -69,6 +69,28 @@ describe('RangeSession column validation by value', () => {
     });
 });
 
+describe('RangeSession hands the held range to its part once, after the part attached', () => {
+    it('one setRange on the part, ordered after attach (not again before it)', async () => {
+        const setRange = vi.spyOn(RangePart.prototype, 'setRange');
+        const attach = vi.spyOn(RangePart.prototype, 'attach');
+        try {
+            const { range } = session([{ accessorKey: 'a' }]);
+            const mine = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'a' };
+            range.rangeService.setRange(mine); // held: no part yet
+            range.hostUpdate();
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            expect(attach).toHaveBeenCalledTimes(1);
+            expect(setRange).toHaveBeenCalledTimes(1);
+            expect(setRange.mock.invocationCallOrder[0]).toBeGreaterThan(attach.mock.invocationCallOrder[0]!);
+            expect(setRange).toHaveBeenCalledWith(mine);
+            range.detach();
+        } finally {
+            setRange.mockRestore();
+            attach.mockRestore();
+        }
+    });
+});
+
 describe('RangeSession with a part whose getRange throws', () => {
     it('still disposes the part at detach (the held range answers), and the next attach builds a fresh part', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);

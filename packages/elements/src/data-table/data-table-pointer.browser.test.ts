@@ -264,7 +264,7 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
         expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
     });
 
-    it('records a press an inner widget tried to hide: a touch tap on a cell whose content stops pointerdown still focuses it', async () => {
+    it('leaves a press alone that an inner widget stopped (round 30 supersedes round 10): a touch tap on a cell whose content stops pointerdown focuses nothing', async () => {
         const widget = document.createElement('span');
         widget.textContent = 'widget';
         widget.style.cssText = 'display:inline-block;width:100px;height:20px';
@@ -278,7 +278,7 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
         widget.dispatchEvent(pointer('pointerdown', 111, { pointerType: 'touch' }));
         widget.dispatchEvent(pointer('pointerup', 111, { pointerType: 'touch', over: widget }));
         await settle(table);
-        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        expect(table.focusedCell).toBeNull(); // the widget's own press: stopPropagation on pointerdown means the grid leaves it alone, any pointer type
     });
 
     it('ends a press that is still open when its pointer goes down again (a lost pointerup): the claimant is told first', async () => {
@@ -1304,14 +1304,19 @@ describe('a widget in a cell that stops pointerdown', () => {
         expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'age' });
     });
 
-    it('still lets a touch tap focus (the round-10 requirement): the tap focuses at its pointerup whatever stops the pointerdown', async () => {
+    it('is left alone for a touch too: a tap on a widget that stops pointerdown keeps the focus where it was (any pointer type)', async () => {
         const table = await mountTable();
-        const cell = cellAt(table, 2, 'name')!;
-        cell.addEventListener('pointerdown', (event) => event.stopPropagation());
-        cell.dispatchEvent(pointer('pointerdown', 403, { pointerType: 'touch', over: cell }));
-        cell.dispatchEvent(pointer('pointerup', 403, { pointerType: 'touch', over: cell }));
+        table.focusCell(0, 'name');
         await settle(table);
-        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'name' });
+        const cell = cellAt(table, 2, 'name')!;
+        const widget = document.createElement('div');
+        widget.textContent = 'widget';
+        widget.addEventListener('pointerdown', (event) => event.stopPropagation());
+        cell.append(widget);
+        widget.dispatchEvent(pointer('pointerdown', 403, { pointerType: 'touch', over: widget }));
+        widget.dispatchEvent(pointer('pointerup', 403, { pointerType: 'touch', over: widget }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
     });
 });
 
