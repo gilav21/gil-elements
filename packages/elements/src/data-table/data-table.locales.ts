@@ -246,6 +246,7 @@ export const dataTableLocaleVersion = (): number => registryVersion;
  * shorter prefixes (`pt`). What it omits is filled from the English there is, and filled again when English is registered later,
  * so every entry of `DATA_TABLE_LOCALES` is whole.
  * Registering an id again replaces it: pass the complete set of overrides.
+ * The id is stored lowercased with `_` as `-`: `pt_BR` is read back as `pt-br`.
  * Register through this function: a dictionary written straight into `DATA_TABLE_LOCALES` is filled from English when it is resolved,
  * but notifies no table (nothing redraws), is not filled in the registry itself when English changes, and can be replaced by the dictionary registered earlier when English is registered again.
  * `__proto__` is not an id (assigning it would replace the table's prototype): it is ignored, with a warning.

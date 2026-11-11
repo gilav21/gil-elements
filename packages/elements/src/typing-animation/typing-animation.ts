@@ -9,10 +9,6 @@ const defaultTrue = { fromAttribute: (value: string | null) => value !== 'false'
 /** The fixed gap between deleting one phrase and typing the next. */
 const GAP_MS = 300;
 
-/** `next` is `previous` with its last phrase extended (and nothing else changed). */
-const extendsLast = (previous: readonly string[] | undefined, next: readonly string[]): boolean =>
-    !!previous && previous.length === next.length && previous.every((phrase, i) => (i === previous.length - 1 ? (next[i] as string).startsWith(phrase) : phrase === next[i]));
-
 /**
  * Types phrases out one character at a time, holds each, deletes it and goes on to the next. The typing is decoration: it
  * is hidden from assistive technology, which is given every phrase at once instead (an animation that starts empty would
@@ -51,8 +47,6 @@ export class GeTypingAnimation extends UiElement {
     declare phase: TypingState;
 
     private started = false;
-    /** `complete` was fired in this run: a run says so once, also when its last phrase is extended and typed on (only a restart clears it). */
-    private completed = false;
     private stringIndex = 0;
     private charIndex = 0;
     private timer: ReturnType<typeof setTimeout> | null = null;
@@ -85,17 +79,11 @@ export class GeTypingAnimation extends UiElement {
         else if (this.stringIndex >= this.strings.length) {
             this.reset();
             this.begin();
-        } else {
-            // The same run, its last phrase grown, stays one run (`complete` is said once); any other list is a run of its own.
-            const previous = changed.get('strings') as string[] | undefined;
-            if (!extendsLast(previous, this.strings)) this.completed = false;
-            // A finished run (no timer) whose list grew phrases after the last one goes on: the held phrase is deleted, the new ones typed.
-            if (this.timer === null && this.isConnected && this.phase === 'typing' && previous && previous.length === this.stringIndex + 1 && this.strings.length > previous.length && previous.every((phrase, i) => phrase === this.strings[i])) {
-                this.completed = false;
-                this.phase = 'pausing';
-                this.tick();
-            } else this.refresh(this.strings[this.stringIndex] ?? '');
-        }
+        } else if (this.timer === null && this.isConnected) {
+            // A finished run (nothing pending) has nothing to carry on: a changed list is a new run, typed from its first phrase, and its own `complete`.
+            this.reset();
+            this.begin();
+        } else this.refresh(this.strings[this.stringIndex] ?? '');
     }
 
     override disconnectedCallback(): void {
@@ -122,7 +110,6 @@ export class GeTypingAnimation extends UiElement {
     private reset(): void {
         this.stop();
         this.started = false;
-        this.completed = false;
         this.stringIndex = 0;
         this.charIndex = 0;
         this.phase = 'typing';
@@ -134,8 +121,6 @@ export class GeTypingAnimation extends UiElement {
         // A phrase held whole is held whole in its new form; otherwise the place stays within the new phrase.
         this.charIndex = this.phase === 'pausing' ? current.length : Math.min(this.charIndex, current.length);
         this.shown = current.slice(0, this.charIndex);
-        // A finished run (no loop, nothing pending) has no timer: a longer phrase needs the typing picked up again.
-        if (this.timer === null && this.isConnected && this.phase === 'typing' && this.charIndex < current.length) this.tick();
     }
 
     private stop(): void {
@@ -180,8 +165,7 @@ export class GeTypingAnimation extends UiElement {
             return;
         }
         if (!this.loop && this.stringIndex === count - 1) {
-            if (!this.completed) this.dispatchEvent(new CustomEvent('complete', { bubbles: true, composed: true }));
-            this.completed = true;
+            this.dispatchEvent(new CustomEvent('complete', { bubbles: true, composed: true }));
             return;
         }
         this.phase = 'pausing';

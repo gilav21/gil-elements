@@ -159,47 +159,39 @@ describe('ge-typing-animation', () => {
         expect(shown(el)).toBe('q');
     });
 
-    it('a finished non-looping run types on when its last phrase is replaced by a longer one, and says `complete` once for the run', async () => {
-        const el = await typing('loop="false" type-speed="10" pause-duration="10"', ['ab']);
-        let completes = 0;
-        el.addEventListener('complete', () => completes++);
-        await advance(el, 500);
-        expect(shown(el)).toBe('ab');
-        expect(completes).toBe(1);
-        el.strings = ['abcde'];
-        await advance(el, 500);
-        expect(shown(el)).toBe('abcde');
-        // `complete` is once per run: the extended phrase is typed on quietly, so a one-shot handler never runs twice
-        expect(completes).toBe(1);
-        el.strings = ['vwxyz'];
-        await advance(el, 500);
-        expect(shown(el)).toBe('vwxyz');
-        expect(completes).toBe(1);
-    });
+    // After a finish, every list change is a new run: it is typed from its first phrase and fires `complete` when it ends, so each
+    // finished run says so exactly once, and a handler that is not one-shot is called once per run.
+    describe('a list change after a finished run', () => {
+        const finished = async (strings: string[]) => {
+            const el = await typing('loop="false" type-speed="10" delete-speed="10" pause-duration="10"', strings);
+            const seen = { completes: 0 };
+            el.addEventListener('complete', () => seen.completes++);
+            await advance(el, 2000);
+            expect(shown(el)).toBe(strings.at(-1));
+            expect(seen.completes).toBe(1);
+            return { el, seen };
+        };
 
-    it('a wholesale new list after a finished run is a run of its own, and says `complete` again', async () => {
-        const el = await typing('loop="false" type-speed="10" delete-speed="10" pause-duration="10"', ['x']);
-        let completes = 0;
-        el.addEventListener('complete', () => completes++);
-        await advance(el, 500);
-        expect(completes).toBe(1);
-        el.strings = ['hello', 'world'];
-        await advance(el, 3000);
-        expect(shown(el)).toBe('world');
-        expect(completes).toBe(2);
-    });
+        it.each([
+            ['extends the last phrase', ['ab'], ['abcde']],
+            ['appends a phrase', ['A', 'B'], ['A', 'B', 'C']],
+            ['replaces every phrase, same length', ['a', 'b'], ['x', 'y']],
+            ['replaces only the last, same length', ['a', 'b'], ['a', 'z']],
+            ['is wholesale new', ['x'], ['hello', 'world']],
+        ])('which %s types the new list to its end and completes again (twice overall)', async (_name, before, after) => {
+            const { el, seen } = await finished(before);
+            el.strings = after;
+            await advance(el, 4000);
+            expect(shown(el)).toBe(after.at(-1));
+            expect(seen.completes).toBe(2);
+        });
 
-    it('a finished run whose list grows phrases after the last goes on to type them, and says `complete` again at the end', async () => {
-        const el = await typing('loop="false" type-speed="10" delete-speed="10" pause-duration="10"', ['A', 'B']);
-        let completes = 0;
-        el.addEventListener('complete', () => completes++);
-        await advance(el, 1000);
-        expect(shown(el)).toBe('B');
-        expect(completes).toBe(1);
-        el.strings = ['A', 'B', 'C'];
-        await advance(el, 1000);
-        expect(shown(el)).toBe('C');
-        expect(completes).toBe(2);
+        it('starts exactly one run for one change, however it is typed', async () => {
+            const { el, seen } = await finished(['a', 'b']);
+            el.strings = ['x', 'y'];
+            await advance(el, 10000);
+            expect(seen.completes).toBe(2);
+        });
     });
 
     it('starts again when the list is replaced by one shorter than the phrase being typed', async () => {
