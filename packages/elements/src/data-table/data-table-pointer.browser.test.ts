@@ -1253,6 +1253,110 @@ describe('a press inside its cell\'s box', () => {
     });
 });
 
+describe('a widget in a cell that stops pointerdown', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('keeps its focus and is not offered (the offer and the focus move run in the bubble phase), at the pointerdown and at the release', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const offers: string[] = [];
+        hooks.onPointerDown = () => void offers.push('down');
+        hooks.onPointerUp = () => void offers.push('up');
+        const cell = cellAt(table, 1, 'age')!;
+        const widget = document.createElement('div');
+        widget.textContent = 'widget';
+        widget.addEventListener('pointerdown', (event) => event.stopPropagation());
+        cell.append(widget);
+        widget.dispatchEvent(pointer('pointerdown', 401, { over: widget }));
+        widget.dispatchEvent(pointer('pointerup', 401, { over: widget }));
+        await settle(table);
+        expect(offers).toEqual([]);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        // a normal press on the cell itself is still offered and focuses
+        cell.dispatchEvent(pointer('pointerdown', 402, { over: cell }));
+        cell.dispatchEvent(pointer('pointerup', 402, { over: cell }));
+        await settle(table);
+        expect(offers).toEqual(['down', 'up']);
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'age' });
+    });
+
+    it('still lets a touch tap focus (the round-10 requirement): the tap focuses at its pointerup whatever stops the pointerdown', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 2, 'name')!;
+        cell.addEventListener('pointerdown', (event) => event.stopPropagation());
+        cell.dispatchEvent(pointer('pointerdown', 403, { pointerType: 'touch', over: cell }));
+        cell.dispatchEvent(pointer('pointerup', 403, { pointerType: 'touch', over: cell }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'name' });
+    });
+});
+
+describe('a touch drag along a cell that spans the row', () => {
+    it('in the stretch (spacer) cell is no tap: 200 px along it keeps the focus', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const filler = table.querySelector<HTMLElement>('[data-kind="data"] > [data-slot="table-cell"][role="presentation"]');
+        expect(filler).not.toBeNull();
+        const box = filler!.getBoundingClientRect();
+        const y = box.top + box.height / 2;
+        filler!.dispatchEvent(pointer('pointerdown', 411, { pointerType: 'touch', clientX: box.left + 20, clientY: y }));
+        filler!.dispatchEvent(pointer('pointerup', 411, { pointerType: 'touch', clientX: Math.min(box.right - 1, box.left + 220), clientY: y }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+    });
+});
+
+describe('a table inside a data-pointer-transparent wrapper', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is not an overlay itself: its cells take presses and a claimed press is released as an up (the look-through is bounded to the table)', async () => {
+        const table = await mountTable();
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('data-pointer-transparent', '');
+        document.body.append(wrapper);
+        wrapper.append(table);
+        await settle(table);
+        const log: string[] = [];
+        hooks.onPointerDown = () => (log.push('down'), true);
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        const a = cellAt(table, 1, 'name')!;
+        a.dispatchEvent(pointer('pointerdown', 421, { over: a }));
+        a.dispatchEvent(pointer('pointerup', 421, { over: a }));
+        expect(log).toEqual(['down', 'up:{"rowIndex":1,"columnKey":"name"}']);
+        a.dispatchEvent(pointer('pointerdown', 422, { pointerType: 'touch', over: a }));
+        a.dispatchEvent(pointer('pointerup', 422, { pointerType: 'touch', over: a })); // a touch is located by the hit test
+        expect(log.slice(2)).toEqual(['down', 'up:{"rowIndex":1,"columnKey":"name"}']);
+        wrapper.remove();
+    });
+});
+
+describe('InteractionContext.hasOpenEditor', () => {
+    it('is false for a missing editingCell answer (undefined), true only for a cell: `!= null`, like the state view', async () => {
+        let context: { hasOpenEditor(): boolean } | undefined;
+        const attach = vi.spyOn(EditSession.prototype, 'attach').mockImplementation(function (this: { context: { hasOpenEditor(): boolean } }) {
+            context = this.context;
+        });
+        try {
+            const table = await mountTable();
+            const service = table.provider('interaction') as unknown as { editingCell: () => unknown };
+            service.editingCell = () => undefined;
+            expect(context!.hasOpenEditor()).toBe(false);
+            service.editingCell = () => null;
+            expect(context!.hasOpenEditor()).toBe(false);
+            service.editingCell = () => ({ rowIndex: 0, columnKey: 'name' });
+            expect(context!.hasOpenEditor()).toBe(true);
+        } finally {
+            attach.mockRestore();
+        }
+    });
+});
+
 describe('an unpositioned child that overflows its cell', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

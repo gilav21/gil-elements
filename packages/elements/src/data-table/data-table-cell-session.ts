@@ -19,6 +19,8 @@
  *   pointer is captured); on the DOCUMENT: `pointerdown` (a press outside the root clears the focus guard at once), `pointerup` /
  *   `pointercancel` (close what the root did not hear: a release OUTSIDE the table), `lostpointercapture` (forgets the capture), and on the
  *   window `blur` (every open press is cancelled). A press is recorded per POINTER ID (a finger and a mouse never touch each other's).
+ *   Recording is bookkeeping only. What a press DOES at its pointerdown (the offer below, the focus move of a mouse or pen) runs in a BUBBLE-phase
+ *   `pointerdown` listener on the root: a cell widget that stops `pointerdown` keeps its focus and is not offered (nor at its pointerup).
  *   At its pointerdown the sessions are OFFERED the press in the order range, edit, as `onPointerDown(event, at, press)`: `at` is the cell
  *   under the pointer (null outside any cell) and `press` is `{ anchor, pressed, startCell }` (`anchor`: the roving cell BEFORE the press
  *   moved it; `pressed`: the element of the table it began on (an overlay itself: a press that begins on one has no start cell); `startCell`: the body cell it began

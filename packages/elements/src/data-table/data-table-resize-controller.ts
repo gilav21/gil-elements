@@ -10,7 +10,7 @@ import type { EnhancedColumnDef } from './data-table.types.js';
 const HANDLE = '[data-slot="data-table-resize-handle"]';
 /** Two touch taps closer than this are a double tap; a tap that travelled more than `HANDLE_TAP_TRAVEL_PX` was a drag. */
 const DOUBLE_TAP_MS = 300;
-/** How far (px) a touch on a resize handle may travel and still be a tap (a double tap resets the width). NOT the grid's `CELL_TAP_SLOP_PX` (10, how far a tap on a cell may drift before it is a drag): this one is the handle's own, tighter threshold. */
+/** How far (px) a touch on a resize handle may travel and still be a tap (a double tap resets the width). NOT the shared `TOUCH_SLOP_PX` (10, how far a tap on a cell may drift before it is a drag): this one is the handle's own, tighter threshold. */
 const HANDLE_TAP_TRAVEL_PX = 4;
 const KEY_STEP = 10;
 const KEY_STEP_LARGE = 50;

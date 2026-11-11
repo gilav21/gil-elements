@@ -325,9 +325,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     }
 
     /**
-     * Adds a handler to the grid's `keydown` chain; lower priorities run first and the first handler that returns true consumes the event. PUBLIC API:
-     * these numbers are fixed, so a consumer's handler keeps its place. The grid's own: editor 5, clipboard 10, column resize 20, history 25,
-     * column drag 30, range 35, row move 40, selection and expansion 50, edit start 60, (70 free), navigation 100. Returns the function that removes it.
+     * Adds a handler to the grid's `keydown` chain; lower priorities run first and the first handler that returns true consumes the event. The grid's own
+     * priorities are the exported `KEY_PRIORITY` table (PUBLIC API: its numbers are fixed, so a consumer's handler keeps its place; place yours relative
+     * to it, e.g. `KEY_PRIORITY.range - 1`). Returns the function that removes it.
      */
     addKeyHandler(priority: number, fn: (event: KeyboardEvent) => boolean): () => void {
         return this.keyHandlers.add(priority, fn);
