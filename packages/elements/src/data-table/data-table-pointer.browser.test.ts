@@ -1198,6 +1198,22 @@ describe('the merged interaction service delegates to the sessions', () => {
     });
 });
 
+describe('the merged interaction service is a plain object', () => {
+    it('has only the keys the sessions declare: not thenable (`then` is absent, a Promise of it settles), unknown keys are undefined, and each method keeps its identity across reads', async () => {
+        const table = await mountTable();
+        const service = table.provider('interaction') as unknown as Record<string, unknown>;
+        expect('then' in service).toBe(false);
+        expect(service['then']).toBeUndefined();
+        expect(service['toJSON']).toBeUndefined();
+        expect(service['notAMethod']).toBeUndefined();
+        expect(service['asymmetricMatch']).toBeUndefined();
+        await expect(Promise.resolve(service)).resolves.toBe(service); // it settles: it is not a thenable
+        expect(service['editingCell']).toBe(service['editingCell']); // one stable function per method
+        expect(Object.keys(service)).toEqual(expect.arrayContaining(['focusedCell', 'focusCell', 'cellRange', 'isCellSelected', 'editingCell', 'startEditing']));
+        expect({ ...service }['startEditing']).toBe(service['startEditing']);
+    });
+});
+
 describe('a primary-button rule', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
@@ -1214,6 +1230,26 @@ describe('a primary-button rule', () => {
             cell.dispatchEvent(pointer('pointerup', id, { button, over: cell }));
         }
         expect(log).toEqual(['down:0', 'up:0']);
+    });
+});
+
+describe('a press inside its cell\'s box', () => {
+    it('reads no computed style: the point in the box is the common case, only a point outside it asks whether the element is positioned', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const child = document.createElement('span');
+        child.textContent = 'text';
+        cell.append(child);
+        const style = vi.spyOn(window, 'getComputedStyle');
+        try {
+            child.dispatchEvent(pointer('pointerdown', 395, { over: child }));
+            child.dispatchEvent(pointer('pointerup', 395, { over: child }));
+            expect(style).not.toHaveBeenCalled();
+            child.dispatchEvent(pointer('pointerdown', 396, { clientX: 5, clientY: 5 })); // outside the box: now it asks
+            expect(style).toHaveBeenCalled();
+        } finally {
+            style.mockRestore();
+        }
     });
 });
 

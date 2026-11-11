@@ -37,7 +37,7 @@
  *   of it (further away it was a drag). A pointerup or cancel with no press of this table behind it does nothing.
  * - `hostUpdate()` runs before every render, after the controller's own reconcile, in the order edit, range.
  * - `service` holds the methods the session adds to the one `CellInteractionService` object; `rangeService` is provided under `range`. The merged
- *   object DELEGATES: it reads the session's `service[key]` at call time, so a session may assign or replace a method on its own `service` at any
+ *   object is a plain object of ONE stable delegating function per declared key (on `service` or `neutral.service`): it reads the session's `service[key]` at call time, so a session may assign or replace a method on its own `service` at any
  *   time (in `attach()`, when its lazy part loads) and the next call reaches it. Nothing is snapshotted.
  * - Only the PRIMARY button makes a cell press: a right or middle press (`event.button !== 0`) is not offered to the sessions, has no start cell
  *   and moves no focus (the context menu addon handles `contextmenu` itself); a touch or pen contact has button 0.

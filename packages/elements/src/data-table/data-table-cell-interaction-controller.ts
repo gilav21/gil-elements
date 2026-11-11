@@ -33,9 +33,10 @@ const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= b
 /** An element drawn inside a cell but floating outside its box (a popover or menu of the cell, positioned over other cells) is not that cell: the point is not in the cell's rect. */
 function floatsOut(el: Element, x: number, y: number): boolean {
     const host = el.closest(CELL);
-    // Cheap checks first: only an element that is, or sits in, a positioned box (absolute / fixed, or a `popover`) inside the cell can float out of it.
-    if (!host || el === host || !isPositioned(el, host)) return false;
-    return !inside(host.getBoundingClientRect(), x, y);
+    if (!host || el === host) return false;
+    // The point in the cell's box is the common case: not floating, and no style is read. Only a point OUTSIDE the box asks whether the element is (or sits
+    // in) a positioned box (absolute / fixed, or a `popover`), the only kind that can float out of the cell.
+    return !inside(host.getBoundingClientRect(), x, y) && isPositioned(el, host);
 }
 
 function isPositioned(el: Element, host: Element): boolean {
@@ -51,7 +52,7 @@ function isPositioned(el: Element, host: Element): boolean {
 const pressOf = ({ anchor, pressed, startCell }: Press): PointerPress => ({ anchor, pressed, startCell });
 
 /** A touch tap may drift this far (px) from the pressed cell and still be a tap; further away it was a drag, which focuses nothing (as a scroll does not). */
-const TAP_SLOP = 10;
+const CELL_TAP_SLOP_PX = 10;
 
 /** A press on one of these belongs to the control: it keeps its own focus and click. */
 const CONTROLS = 'input, textarea, select, button, a[href], [role="checkbox"], ge-checkbox, ge-input, [contenteditable], [data-table-keeps-focus]';
@@ -142,32 +143,25 @@ export class CellInteractionController<T> {
         this.range = new RangeSession(context);
         this.sessions = [this.range, this.edit];
         this.services = { range: this.range.rangeService };
-        // The merged `interaction` service DELEGATES: a method that is not the controller's own is read from the sessions' `service` objects AT CALL TIME
-        // (a failed session's neutral one while it is broken), so a session that replaces a method later (in `attach()`, when its lazy part loads) is
-        // heard, and nothing is a snapshot. An assignment on the merged object (a test, a consumer) still wins, as it did on the old plain object.
-        const own = {
+        // The merged `interaction` service is a PLAIN object built once: for every key a session declares (on its `service` or its `neutral.service`) ONE
+        // stable function that, at call time, calls that key on the owning session's `service` (its `neutral.service` while it is broken). So there is
+        // no snapshot (a session that replaces a method on its own `service` later, in `attach()` or when its lazy part loads, is heard), the functions
+        // keep their identity, spread / `in` / `Object.keys` work, and a key nobody declares is simply absent. An assignment on it still wins.
+        const service: Record<string, unknown> = {
             focusedCell: () => this.focused,
             focusCell: (rowIndex: number, columnKey: string) => this.focusCell(rowIndex, columnKey, true),
-        } as unknown as CellInteractionService;
-        const sourceOf = (session: CellSession): Record<PropertyKey, unknown> | undefined =>
-            (this.broken.has(session) ? session.neutral.service : session.service) as Record<PropertyKey, unknown> | undefined;
-        const sessionKeys = (): string[] => this.sessions.flatMap((session) => Object.keys(sourceOf(session) ?? {}));
-        const delegate = (key: PropertyKey) => (...args: unknown[]): unknown => {
-            for (const session of this.sessions) {
-                const source = sourceOf(session);
-                const method = source?.[key];
-                if (typeof method === 'function') return method.apply(source, args);
-            }
-            return undefined;
         };
-        this.service = new Proxy(own, {
-            get: (target, key, receiver) => (Reflect.has(target, key) ? Reflect.get(target, key, receiver) : delegate(key)),
-            // the merged object still looks like a plain object of methods (`in`, spread, `Object.keys`)
-            has: (target, key) => Reflect.has(target, key) || (typeof key === 'string' && sessionKeys().includes(key)),
-            ownKeys: (target) => [...new Set([...Reflect.ownKeys(target), ...sessionKeys()])],
-            getOwnPropertyDescriptor: (target, key) =>
-                Reflect.getOwnPropertyDescriptor(target, key) ?? (typeof key === 'string' && sessionKeys().includes(key) ? { configurable: true, enumerable: true, writable: true, value: delegate(key) } : undefined),
-        });
+        for (const session of this.sessions) {
+            for (const key of new Set([...Object.keys(session.service ?? {}), ...Object.keys(session.neutral.service ?? {})])) {
+                if (key in service) continue; // the first session that declares a key owns it
+                service[key] = (...args: unknown[]): unknown => {
+                    const source = (this.broken.has(session) ? session.neutral.service : session.service) as Record<string, unknown> | undefined;
+                    const method = source?.[key];
+                    return typeof method === 'function' ? method.apply(source, args) : undefined;
+                };
+            }
+        }
+        this.service = service as unknown as CellInteractionService;
     }
 
 
@@ -574,7 +568,7 @@ export class CellInteractionController<T> {
         this.presses.set(event.pointerId, { ...info, claimedBy: claimedBy ?? null, x: event.clientX, y: event.clientY, bypass });
         if (claimedBy || bypass) return; // the claimant owns the press, or it is not a cell press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
-        if (event.button === 0 && event.pointerType !== 'touch' && target && !this.insideOpenEditor(path)) this.pointerFocus(target);
+        if (event.pointerType !== 'touch' && target && !this.insideOpenEditor(path)) this.pointerFocus(target);
     }
 
     /**
@@ -625,7 +619,7 @@ export class CellInteractionController<T> {
         // Still a tap: within the pressed CELL's box plus the slop; a press in no cell is measured from where it went down (an element's own box, such as a
         // body-wide stretch row, would make any drag over it a tap).
         const cell = pressed.closest(CELL);
-        const near = cell ? inside(cell.getBoundingClientRect(), event.clientX, event.clientY, TAP_SLOP) : Math.hypot(event.clientX - press.x, event.clientY - press.y) <= TAP_SLOP;
+        const near = cell ? inside(cell.getBoundingClientRect(), event.clientX, event.clientY, CELL_TAP_SLOP_PX) : Math.hypot(event.clientX - press.x, event.clientY - press.y) <= CELL_TAP_SLOP_PX;
         if (near && !this.insideOpenEditor(null, pressed)) this.pointerFocus(pressed);
     }
 

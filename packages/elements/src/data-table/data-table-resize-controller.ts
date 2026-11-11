@@ -8,9 +8,10 @@ import { interpolate } from './data-table.locales.js';
 import type { EnhancedColumnDef } from './data-table.types.js';
 
 const HANDLE = '[data-slot="data-table-resize-handle"]';
-/** Two touch taps closer than this are a double tap; a tap that moved more than `TAP_SLOP` was a drag. */
+/** Two touch taps closer than this are a double tap; a tap that travelled more than `HANDLE_TAP_TRAVEL_PX` was a drag. */
 const DOUBLE_TAP_MS = 300;
-const TAP_SLOP = 4;
+/** How far (px) a touch on a resize handle may travel and still be a tap (a double tap resets the width). NOT the grid's `CELL_TAP_SLOP_PX` (10, how far a tap on a cell may drift before it is a drag): this one is the handle's own, tighter threshold. */
+const HANDLE_TAP_TRAVEL_PX = 4;
 const KEY_STEP = 10;
 const KEY_STEP_LARGE = 50;
 /** Added to the widest content: `max-content` of a border-box cell already holds its padding, this covers the border and rounding. */
@@ -223,7 +224,7 @@ export class ResizeController<T> {
             this.commit([{ key: drag.key, oldWidth: drag.oldWidth, newWidth: px(width) }]);
         } else {
             this.restore(drag);
-            if (event.pointerType === 'touch' && drag.travel <= TAP_SLOP) this.tap(drag.key, event.timeStamp);
+            if (event.pointerType === 'touch' && drag.travel <= HANDLE_TAP_TRAVEL_PX) this.tap(drag.key, event.timeStamp);
         }
     };
 
