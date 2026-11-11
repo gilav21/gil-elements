@@ -83,8 +83,11 @@ export class CellInteractionController<T> {
         this.rowAtExpansion = null;
         if (!at) return;
         const rows = this.rowCount();
-        // An empty list (a server page loading) changes nothing: the focus waits for rows, and so does the row it was following.
         if (rows === 0) {
+            // No data rows because the row's group (the last open one) is collapsed: the focus has nowhere to stay, and the group header is what is drawn.
+            const group = moved ? this.collapsedGroupOf(moved.id) : undefined;
+            if (moved && group !== undefined) return this.dropFocus(moved.cell, group);
+            // No rows because they are loading changes nothing: the focus waits for rows, and so does the row it was following.
             this.rowAtExpansion = moved;
             return;
         }
@@ -92,25 +95,34 @@ export class CellInteractionController<T> {
         if (row === -1) {
             // Gone with a collapsed group, the roving cell has nowhere to stay; gone for any other reason (a page, a filter) it is clamped like any cell.
             const group = moved ? this.collapsedGroupOf(moved.id) : undefined;
-            if (moved && group !== undefined) return this.dropFocus(at, moved.cell, group);
+            if (moved && group !== undefined) return this.dropFocus(moved.cell, group, at);
             row = at.rowIndex;
         }
-        const keys = requireProvider(this.host, 'columns').focusableKeys();
-        const col = nearestColumn(keys, at.columnKey, this.lastColumn);
-        if (col === -1) return this.clear();
-        const next = { rowIndex: Math.min(row, rows - 1), columnKey: keys[col] as string };
-        this.lastColumn = col;
+        const next = this.landOn(row, at.columnKey);
+        if (!next) return this.clear();
         if (next.rowIndex !== at.rowIndex || next.columnKey !== at.columnKey) this.set(next);
+    }
+
+    /** The cell nearest to `rowIndex` and `columnKey` that exists (rows clamped, a hidden column left for its neighbour); null when there is none. */
+    private landOn(rowIndex: number, columnKey: string): CellAddress | null {
+        const rows = this.rowCount();
+        const keys = requireProvider(this.host, 'columns').focusableKeys();
+        const col = nearestColumn(keys, columnKey, this.lastColumn);
+        if (rows === 0 || col === -1) return null;
+        this.lastColumn = col;
+        return { rowIndex: Math.min(rowIndex, rows - 1), columnKey: keys[col] as string };
     }
 
     /** A node or group opened or closed while a row held the focus: remember which row (from the drawn DOM, still the old one) and whether DOM focus sat in its cell. */
     private noteFocusedRow(): void {
         const at = this.focused;
         const id = at ? this.host.rowAt(at.rowIndex)?.dataset['rowId'] : undefined;
-        if (!at || id === undefined) {
+        if (!at) {
             this.rowAtExpansion = null;
             return;
         }
+        // No row drawn at the focused index (the list is empty): a note kept waiting for rows stays, it is not replaced by nothing.
+        if (id === undefined) return;
         const cell = this.host.cellAt(at.rowIndex, at.columnKey);
         const active = this.rootNode().activeElement;
         this.rowAtExpansion = { at, id, cell: cell?.contains(active) ? cell : null };
@@ -155,20 +167,26 @@ export class CellInteractionController<T> {
      * scrolling: the keyboard stays where the user was. If DOM focus was anywhere else (a toolbar button that collapsed the group, a widget
      * in a detail row) it stays there.
      */
-    private dropFocus(at: CellAddress, cell: HTMLElement | null, group: string): void {
+    private dropFocus(cell: HTMLElement | null, group: string, at?: CellAddress): void {
         this.clear();
         if (!cell) return;
         this.host.afterRender(() => {
             const active = this.rootNode().activeElement;
             // Still nowhere: the cell is gone with its row (focus fell to the page) or is the viewport; something else has it by now otherwise.
             if (active && active !== this.host.root.ownerDocument.body && active !== cell && active !== this.host.root.querySelector(VIEWPORT)) return;
-            const toggle = ownElements(this.host.root, this.host.root.querySelectorAll<HTMLElement>(`[data-kind="group"][data-group-key="${CSS.escape(group)}"] [data-toggle]`))[0];
+            const toggle = this.groupToggle(group);
             if (toggle) return toggle.focus();
-            const rows = this.rowCount();
-            const keys = requireProvider(this.host, 'columns').focusableKeys();
-            const col = nearestColumn(keys, at.columnKey, this.lastColumn);
-            if (rows > 0 && col !== -1) this.focusCell(Math.min(at.rowIndex, rows - 1), keys[col] as string, false);
+            const next = at && this.landOn(at.rowIndex, at.columnKey);
+            // The header is on another page: a row that is left takes the focus; with no rows at all (every group closed) any group header does.
+            if (next) this.focusCell(next.rowIndex, next.columnKey, false);
+            else this.groupToggle()?.focus();
         });
+    }
+
+    /** The toggle of the header of group `key` that this table draws, or the first group toggle it draws when no key is asked for. */
+    private groupToggle(key?: string): HTMLElement | undefined {
+        const toggles = ownElements(this.host.root, this.host.root.querySelectorAll<HTMLElement>('[data-kind="group"] [data-toggle]'));
+        return key === undefined ? toggles[0] : toggles.find((toggle) => toggle.closest('[data-kind="group"]')?.getAttribute('data-group-key') === key);
     }
 
     // ---- state ------------------------------------------------------------------------------------------------------

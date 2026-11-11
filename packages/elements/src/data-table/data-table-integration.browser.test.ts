@@ -464,6 +464,76 @@ describe('focus follows its row: the edges', () => {
     });
 });
 
+describe('focus follows its row: round 4', () => {
+    const mountGroups = (groups: number, extra: Record<string, unknown> = {}): Promise<Table> =>
+        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(6, { columns: 3, groups }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false, ...extra }, {}, { width: 600, height: 500 });
+
+    it('collapsing the only open group leaves no data rows, not a loading table: the focus goes to that group\'s toggle', async () => {
+        const table = await mountGroups(1);
+        table.focusCell(1, 'c1');
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g0');
+        await settle(table);
+        await frames(3);
+        expect(bodyRows(table)).toHaveLength(0);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
+        // and the table is not left waiting on a note: opening the group again and focusing a cell works as ever
+        table.provider('expansion')!.toggleGroup('g0');
+        await settle(table);
+        table.focusCell(2, 'c0');
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'c0' });
+    });
+
+    it('collapsing every group at once lands the focus on a group toggle, not on the page', async () => {
+        const table = await mountGroups(3);
+        table.focusCell(3, 'c0');
+        await settle(table);
+        table.provider('expansion')!.collapseAllGroups();
+        await settle(table);
+        await frames(3);
+        expect(bodyRows(table)).toHaveLength(0);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).not.toBe(document.body);
+        expect((document.activeElement as HTMLElement).matches('[data-kind="group"] [data-toggle]')).toBe(true);
+        expect((document.activeElement as HTMLElement).closest('ge-data-table')).toBe(table);
+    });
+
+    it('no data at all (a loading table) after a toggle is not that: the focus waits for rows', async () => {
+        const table = await mountGroups(3);
+        const rows = table.data;
+        table.focusCell(1, 'c0');
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g1'); // a group the focused row is not in
+        table.data = [];
+        await settle(table);
+        expect(table.focusedCell).not.toBeNull();
+        table.data = rows;
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'c0' });
+        expect(document.activeElement).toBe(cellAt(table, 1, 'c0'));
+    });
+
+    it('a second toggle while the list is empty does not discard the row the first one noted', async () => {
+        const table = await mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
+        const rows = table.data;
+        table.focusCell(2, 'c0'); // r0 r0-c0 r0-c1: a child of the first node
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[0]!); // notes the row of (2, c0)
+        table.data = [];
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[1]!); // a second toggle with nothing drawn: no row to note, the first note stays
+        await settle(table);
+        table.data = rows;
+        await settle(table);
+        await frames(2);
+        // the row followed by its id: its node r0 is what is left of it
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c0' });
+    });
+});
+
 describe('focus follows its row: round 2', () => {
     it('a row noted before a detach is not followed after the attach (the table keeps no pending move across it)', async () => {
         const table = await mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
