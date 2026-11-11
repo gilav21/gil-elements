@@ -24,6 +24,10 @@ describe('resolveAddonLocale', () => {
         // case and region are ignored as in the table that hosts the addon
         expect(resolveAddonLocale(table, { resolvedLocale: { code: 'de-DE' } }).hello).toBe('Hallo');
         expect(resolveAddonLocale(table, { resolvedLocale: { code: 'en' } }, 'DE').hello).toBe('Hallo');
+        // a record keyed with a mixed-case id is found by that id
+        const regional = { en: { hello: 'Hello' }, 'pt-BR': { hello: 'Oi' }, pt: { hello: 'Ola' } };
+        expect(resolveAddonLocale(regional, { resolvedLocale: { code: 'pt-BR' } }).hello).toBe('Oi');
+        expect(resolveAddonLocale(regional, { resolvedLocale: { code: 'pt-PT' } }).hello).toBe('Ola');
     });
 });
 

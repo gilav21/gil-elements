@@ -667,18 +667,48 @@ describe('ge-data-table styles and lifecycle', () => {
         }
     });
 
-    it('the pager and the column header read the English there is when they are made, a registered override included', async () => {
+    it('announces a locale set after the attach but before the first render (a framework wrapper), once', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        try {
+            registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+            const table = document.createElement('ge-data-table') as GeDataTable<Row>;
+            Object.assign(table, { columns: COLUMNS, data: ROWS });
+            let announced = 0;
+            table.topics.on('locale', () => announced++);
+            document.body.append(trackTable(table));
+            table.locale = 'de'; // same task: the attach has read English, the first render has not happened
+            await settle(table);
+            expect(announced).toBe(1);
+            expect(q(table, '[data-slot="data-table-filter"] ge-input').getAttribute('placeholder')).toBe('Filtern...');
+        } finally {
+            delete DATA_TABLE_LOCALES['de'];
+        }
+    });
+
+    it('the column header and the pager follow a registered English with no other trigger, on a table and on their own', async () => {
         const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
         const original = DATA_TABLE_LOCALES.en;
+        const headerLabel = (el: Element) => el.shadowRoot!.querySelector('ge-button')!.getAttribute('aria-label');
         try {
+            const table = await mountTable({ data: ROWS });
+            const ownHeader = trackTable(document.createElement('ge-data-table-column-header')) as HTMLElement & { title: string; updateComplete: Promise<boolean> };
+            ownHeader.title = 'Name';
+            document.body.append(ownHeader);
+            const ownPager = trackTable(document.createElement('ge-data-table-pager')) as HTMLElement & { updateComplete: Promise<boolean> };
+            document.body.append(ownPager);
+            await Promise.all([ownHeader.updateComplete, ownPager.updateComplete]);
+            const pagerText = (el: Element) => el.shadowRoot!.querySelector('.size-label')?.textContent;
+            expect(pagerText(table.querySelector('ge-data-table-pager')!)).toBe(DATA_TABLE_LOCALES.en.rowsPerPageLabel);
             registerDataTableLocale('en', { rowsPerPageLabel: 'Per page', sortStateNone: 'Sort {title}' });
-            const pager = trackTable(document.createElement('ge-data-table-pager'));
-            expect((pager as unknown as { rowsPerPageLabel: string }).rowsPerPageLabel).toBe('Per page');
-            const header = trackTable(document.createElement('ge-data-table-column-header')) as HTMLElement & { title: string; updateComplete: Promise<boolean> };
-            header.title = 'Name';
-            document.body.append(header);
-            await header.updateComplete;
-            expect(header.shadowRoot!.querySelector('ge-button')!.getAttribute('aria-label')).toBe('Sort Name');
+            await settle(table);
+            expect(pagerText(table.querySelector('ge-data-table-pager')!)).toBe('Per page');
+            expect(headerLabel(q(table, '[data-column-id="name"] ge-data-table-column-header'))).toBe('Sort Name');
+            // on their own they resolve it when they draw
+            ownHeader.requestUpdate();
+            ownPager.requestUpdate();
+            await Promise.all([ownHeader.updateComplete, ownPager.updateComplete]);
+            expect(headerLabel(ownHeader)).toBe('Sort Name');
+            expect(pagerText(ownPager)).toBe('Per page');
         } finally {
             registerDataTableLocale('en', original);
         }

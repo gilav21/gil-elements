@@ -245,6 +245,7 @@ export const dataTableLocaleVersion = (): number => registryVersion;
  * Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively, whole (`pt-br`) before its
  * shorter prefixes (`pt`). What it omits is filled from the English there is, and filled again when English is registered later,
  * so every entry of `DATA_TABLE_LOCALES` is whole.
+ * Register through this function: a dictionary written straight into `DATA_TABLE_LOCALES` is used as it is, and is not filled again when English changes.
  * `__proto__` is not an id (assigning it would replace the table's prototype): it is ignored, with a warning.
  */
 export function registerDataTableLocale(code: string, dict: Partial<DataTableLocale>): void {

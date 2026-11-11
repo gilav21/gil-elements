@@ -11,5 +11,6 @@ export function resolveAddonLocale<T extends object>(
 ): T {
     if (typeof override === 'object' && override !== null) return override;
     const code = typeof override === 'string' ? override : host.resolvedLocale.code;
-    return lookupLocale(table, code) ?? table.en;
+    // The id as written first (a record keyed `pt-BR` is found), then the lowercased id and its prefixes.
+    return (Object.hasOwn(table, code) ? table[code] : undefined) ?? lookupLocale(table, code) ?? table.en;
 }

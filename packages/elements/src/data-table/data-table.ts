@@ -453,6 +453,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger) survives.
         this.built ??= assembleControllers(this, createFactories<T>());
         this.built.attachAll();
+        this.lastLocale = this.resolvedLocale;
         this.assembled = this.built;
         this.observer = new MutationObserver(() => {
             this.harvest();
@@ -581,8 +582,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         if (isServer) return;
         // The locale topic follows the resolved dictionary: a new `locale`, a dictionary registered later, a changed page language.
         const resolved = this.resolvedLocale;
-        // Not on the first update: what attached before it (addons, controllers) already read this locale, and rebuilding it would do the work twice.
-        if (this.hasUpdated && (changed.has('locale') || resolved !== this.lastLocale)) this.topics.emit('locale');
+        // `lastLocale` is what the controllers read when they attached (or last heard): on a plain first render nothing differs and nothing
+        // is announced, so an addon is not built twice; a `locale` set after the attach but before the first render does differ.
+        if ((this.hasUpdated && changed.has('locale')) || resolved !== this.lastLocale) this.topics.emit('locale');
         this.lastLocale = resolved;
         if ([...changed.keys()].some((key) => Object.hasOwn(INPUTS, key as string))) this.topics.emit('config');
         for (const controller of this.assembled?.controllers ?? []) controller.hostUpdate?.();

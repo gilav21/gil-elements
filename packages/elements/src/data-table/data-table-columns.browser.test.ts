@@ -254,6 +254,19 @@ describe('column resize by mouse', () => {
         expect(Math.max(...jumps)).toBeLessThan(30);
     });
 
+    it('a held arrow key on an end-pinned column keeps one direction past the point where the table starts to overflow', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 700, height: 300 });
+        q(headCell(table, 'c3'), '[data-slot="data-table-resize-handle"]').focus();
+        const widths = [Math.round(widthOf(headCell(table, 'c3')))];
+        for (let i = 0; i < 16; i++) {
+            await press('{ArrowRight}');
+            await settle(table);
+            widths.push(Math.round(widthOf(headCell(table, 'c3'))));
+        }
+        expect(viewportOf(table).scrollWidth).toBeGreaterThan(viewportOf(table).clientWidth);
+        expect(widths.slice(1).every((w, i) => w === widths[i]! + 10)).toBe(true);
+    });
+
     it('reads a rem minimum width against the real root font size, in aria-valuemin as in the resize floor', async () => {
         const root = document.documentElement;
         const before = root.style.fontSize;

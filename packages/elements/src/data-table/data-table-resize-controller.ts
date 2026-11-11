@@ -77,6 +77,8 @@ export class ResizeController<T> {
     private drag: Drag | null = null;
     private lastTap: { key: string; at: number } | null = null;
     private lastFit = 0;
+    /** What the key presses of the focused handle read of its column (stuck or not), kept until it loses focus: a key that repeats must not change direction at the overflow threshold. */
+    private keyed: { handle: HTMLElement; stuck: boolean } | null = null;
     private cancelAnnounce: (() => void) | undefined;
     private unprovide: (() => void) | undefined;
     private removeKeys: (() => void) | undefined;
@@ -185,6 +187,7 @@ export class ResizeController<T> {
         drag.travel = Math.max(drag.travel, Math.hypot(dx, event.clientY - drag.startY));
         // A column pinned to the end gets stuck once the table overflows, which can happen as it grows: the handle then follows the other way.
         // Once stuck it stays so for the drag: narrowing it back under the overflow must not flip the direction again at the threshold.
+        // The trade-off: if the table stops overflowing later in the same drag, the handle drifts from the pointer; the alternative flipped back and forth at the threshold.
         drag.stuck ||= isStuck(drag.column, this.viewport());
         const sign = resizeSign(drag.column, drag.rtl, drag.stuck);
         if (sign !== drag.sign) Object.assign(drag, { sign, anchorX: event.clientX, anchorWidth: drag.width });
@@ -322,8 +325,10 @@ export class ResizeController<T> {
         const floor = columnMinWidthPx(found.column, this.rootFontPx());
         const current = Math.round(handle.closest(HEAD)?.getBoundingClientRect().width ?? floor);
         let next: number;
-        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = current + (event.key === 'ArrowRight' ? 1 : -1) * resizeSign(found.column, rtl, isStuck(found.column, this.viewport())) * step;
-        else if (event.key === 'Home') next = floor;
+        if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+            if (this.keyed?.handle !== handle) this.keyed = { handle, stuck: isStuck(found.column, this.viewport()) };
+            next = current + (event.key === 'ArrowRight' ? 1 : -1) * resizeSign(found.column, rtl, this.keyed.stuck) * step;
+        } else if (event.key === 'Home') next = floor;
         else if (event.key === 'Enter') {
             event.preventDefault();
             this.autoSizeColumn(key);
@@ -364,6 +369,9 @@ export class ResizeController<T> {
                 event.preventDefault();
                 // A double tap already fitted the column; the browser's own `dblclick` for it must not fit it twice.
                 if (performance.now() - this.lastFit > 600) this.autoSizeColumn(key);
+            })),
+            disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => {
+                if (event.target === this.keyed?.handle) this.keyed = null;
             })),
             // The separator's value is the measured width when it takes focus: a `rem`, `%` or `auto` width has no px string to render.
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => {

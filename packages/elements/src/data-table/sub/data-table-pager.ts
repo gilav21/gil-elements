@@ -42,28 +42,20 @@ export class GeDataTablePager extends UiElement {
     declare state: PaginationState;
     declare pageSizeOptions: number[];
     declare showPageSizeSelector: boolean;
-    declare rowsPerPageLabel: string;
-    declare pageLabel: string;
-    declare ofLabel: string;
-    declare firstLabel: string;
-    declare previousLabel: string;
-    declare nextLabel: string;
-    declare lastLabel: string;
+    declare rowsPerPageLabel: string | undefined;
+    declare pageLabel: string | undefined;
+    declare ofLabel: string | undefined;
+    declare firstLabel: string | undefined;
+    declare previousLabel: string | undefined;
+    declare nextLabel: string | undefined;
+    declare lastLabel: string | undefined;
 
     constructor() {
         super();
-        const en = resolveDataTableLocale('en'); // the English there is now: a registered override counts
         this.total = 0;
         this.state = { pageIndex: 0, pageSize: 10 };
         this.pageSizeOptions = [10, 20, 30, 40, 50];
         this.showPageSizeSelector = true;
-        this.rowsPerPageLabel = en.rowsPerPageLabel;
-        this.pageLabel = en.pageLabel;
-        this.ofLabel = en.ofLabel;
-        this.firstLabel = en.goToFirstPage;
-        this.previousLabel = en.goToPreviousPage;
-        this.nextLabel = en.goToNextPage;
-        this.lastLabel = en.goToLastPage;
     }
 
     private emit(state: PaginationState): void {
@@ -82,6 +74,9 @@ export class GeDataTablePager extends UiElement {
 
     protected override render() {
         const { state, total } = this;
+        // A label not given is English's, as it is now: a registered override counts, the table has no part in it.
+        const en = resolveDataTableLocale('en');
+        const rowsPerPage = this.rowsPerPageLabel ?? en.rowsPerPageLabel;
         const pages = totalPages(total, state.pageSize);
         const canPrevious = state.pageIndex > 0;
         const canNext = state.pageIndex < pages - 1;
@@ -92,20 +87,20 @@ export class GeDataTablePager extends UiElement {
             <div class="controls">
                 ${this.showPageSizeSelector
                     ? html`<div class="size">
-                          <p class="size-label">${this.rowsPerPageLabel}</p>
+                          <p class="size-label">${rowsPerPage}</p>
                           <ge-select value=${String(state.pageSize)} @value-change=${this.onSize}>
-                              <ge-select-trigger class="size-trigger" aria-label=${this.rowsPerPageLabel}><ge-select-value placeholder=${String(state.pageSize)}></ge-select-value></ge-select-trigger>
+                              <ge-select-trigger class="size-trigger" aria-label=${rowsPerPage}><ge-select-value placeholder=${String(state.pageSize)}></ge-select-value></ge-select-trigger>
                               <ge-select-content side="top">${this.pageSizeOptions.map((size) => html`<ge-select-item value=${String(size)}>${size}</ge-select-item>`)}</ge-select-content>
                           </ge-select>
                       </div>`
                     : null}
                 <ge-pagination>
                     <ge-pagination-content>
-                        ${this.link('first', this.firstLabel, backEnd as ChromeIconName, !canPrevious, true)}
-                        ${this.link('previous', this.previousLabel, back as ChromeIconName, !canPrevious)}
-                        <ge-pagination-item><div class="indicator">${this.pageLabel} ${state.pageIndex + 1} ${this.ofLabel} ${pages}</div></ge-pagination-item>
-                        ${this.link('next', this.nextLabel, forward as ChromeIconName, !canNext)}
-                        ${this.link('last', this.lastLabel, forwardEnd as ChromeIconName, !canNext, true)}
+                        ${this.link('first', this.firstLabel ?? en.goToFirstPage, backEnd as ChromeIconName, !canPrevious, true)}
+                        ${this.link('previous', this.previousLabel ?? en.goToPreviousPage, back as ChromeIconName, !canPrevious)}
+                        <ge-pagination-item><div class="indicator">${this.pageLabel ?? en.pageLabel} ${state.pageIndex + 1} ${this.ofLabel ?? en.ofLabel} ${pages}</div></ge-pagination-item>
+                        ${this.link('next', this.nextLabel ?? en.goToNextPage, forward as ChromeIconName, !canNext)}
+                        ${this.link('last', this.lastLabel ?? en.goToLastPage, forwardEnd as ChromeIconName, !canNext, true)}
                     </ge-pagination-content>
                 </ge-pagination>
             </div>
