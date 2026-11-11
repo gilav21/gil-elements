@@ -169,7 +169,11 @@ export function lazyPart<P extends LazyPartInstance>(
                         fail(error);
                         return;
                     }
-                    changed?.();
+                    try {
+                        changed?.();
+                    } catch (error) {
+                        onError(error); // the part attached fine: it stays attached and is not latched as failed; a callback that throws is reported, never an unhandled rejection
+                    }
                 },
                 (error: unknown) => {
                     if (mine === generation) fail(error);

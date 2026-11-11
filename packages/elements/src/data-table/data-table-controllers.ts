@@ -49,14 +49,13 @@ export function assembleControllers<T>(
     const problems = validatePlan(built, { strict: false });
     if (problems.length > 0) throw new Error(`[ge-data-table] invalid controller plan:\n${problems.join('\n')}`);
     const controllers = built.map((s) => (factories[s.id] as DataTableControllerFactory<T>)(host));
+    // Which controller owns which `services` key, resolved once (the keys are declared when a controller is built; the VALUES may change, e.g. a withdrawn one).
+    const ownerOf = new Map<string, DataTableRenderingController>();
+    for (const c of controllers) for (const key of Object.keys(c.services ?? {})) if (!ownerOf.has(key)) ownerOf.set(key, c);
     return {
         controllers,
         service<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined {
-            for (const c of controllers) {
-                const found = c.services?.[key];
-                if (found !== undefined) return found;
-            }
-            return undefined;
+            return ownerOf.get(key)?.services?.[key];
         },
         attachAll() {
             for (const c of controllers) c.attach();

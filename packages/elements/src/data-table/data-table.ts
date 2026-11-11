@@ -720,8 +720,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /**
      * A `cellRange` held here (assigned before the first connect, or while the range session was failed) goes to the range service as soon as there is
-     * one: at a connect (the controller attaches its sessions and restores the real service), and at every update after, so it is never stranded.
-     * While there is none it stays a held value.
+     * one, and a real one comes back only when the controllers attach: so it is handed over right after `attachAll()` at a connect (never from an update:
+     * that would request a render while rendering). While there is none it stays a held value.
      */
     private handOverEarlyRange(): void {
         const range = this.rangeService();
@@ -734,7 +734,6 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     private rendering = false;
 
     protected override update(changed: PropertyValues): void {
-        this.handOverEarlyRange();
         this.rendering = true;
         try {
             super.update(changed);

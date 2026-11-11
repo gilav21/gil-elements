@@ -9,7 +9,7 @@ import type { PastePart } from './lazy/clipboard.js';
  */
 export class ClipboardController<T> {
     private unprovide: (() => void) | undefined;
-    private readonly paste = lazyPart<PastePart<T>>(() => import('./lazy/clipboard.js').then((m) => new m.PastePart(this.host)), { changed: () => this.host.requestRender() });
+    private readonly paste = lazyPart<PastePart<T>>(() => import('./lazy/clipboard.js').then((m) => new m.PastePart(this.host)));
 
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 

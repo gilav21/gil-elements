@@ -247,6 +247,24 @@ describe('lazyPart', () => {
         expect(lazy.part).toBe(instance);
     });
 
+    it('reports a `changed` callback that throws (no unhandled rejection) and leaves the part attached, not latched as failed', async () => {
+        const onError = vi.fn();
+        const instance = part();
+        const lazy = lazyPart(() => Promise.resolve(instance), {
+            changed: () => {
+                throw new Error('render failed');
+            },
+            onError,
+        });
+        lazy.sync(true);
+        await flush();
+        expect(onError).toHaveBeenCalledTimes(1);
+        expect(lazy.part).toBe(instance);
+        lazy.sync(true); // not latched: nothing loads again, and nothing more is reported
+        await flush();
+        expect(onError).toHaveBeenCalledTimes(1);
+    });
+
     it('asks the host to render once the part is attached (the load finishes outside any update), and not when it leaves: sync(false) and dispose run inside an update or a detach', async () => {
         const changed = vi.fn();
         const instance = part();

@@ -1177,6 +1177,84 @@ describe('a press on a control inside a cell', () => {
     });
 });
 
+describe('the merged interaction service delegates to the sessions', () => {
+    it('hears a method a session replaces after attach (no snapshot), and a failed session is answered by its neutral service, then restored', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const attach = vi.spyOn(EditSession.prototype, 'attach').mockImplementation(function (this: { service: { editingCell: () => unknown } }) {
+            this.service.editingCell = () => ({ rowIndex: 7, columnKey: 'q' }); // replaced when the session attaches (or when its lazy part loads)
+        });
+        try {
+            const table = await mountTable();
+            expect(table.provider('interaction')!.editingCell()).toEqual({ rowIndex: 7, columnKey: 'q' });
+            // a reconnect (the controller attaches again) does not put a stale snapshot back
+            table.remove();
+            document.body.append(table);
+            await settle(table);
+            expect(table.provider('interaction')!.editingCell()).toEqual({ rowIndex: 7, columnKey: 'q' });
+        } finally {
+            attach.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
+describe('a primary-button rule', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('a right or middle press is not offered to the sessions (and so is not offered at its release); the left one is', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = (event) => void log.push(`down:${event.button}`);
+        hooks.onPointerUp = (event) => void log.push(`up:${event.button}`);
+        const cell = cellAt(table, 1, 'name')!;
+        for (const [id, button] of [[371, 2], [372, 1], [373, 0]] as const) {
+            cell.dispatchEvent(pointer('pointerdown', id, { button, over: cell }));
+            cell.dispatchEvent(pointer('pointerup', id, { button, over: cell }));
+        }
+        expect(log).toEqual(['down:0', 'up:0']);
+    });
+});
+
+describe('an unpositioned child that overflows its cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is still the cell\'s content: only a positioned element (absolute, fixed, popover) can float out of it', async () => {
+        const table = await mountTable();
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const cell = cellAt(table, 1, 'name')!;
+        const child = document.createElement('span');
+        child.textContent = 'text';
+        cell.append(child);
+        child.dispatchEvent(pointer('pointerdown', 381, { clientX: 5, clientY: 5 })); // a point far outside the cell's box, but nothing positioned
+        child.dispatchEvent(pointer('pointerup', 381, { clientX: 5, clientY: 5 }));
+        expect(downs).toEqual(['down']);
+    });
+});
+
+describe('a touch tap on a popover that floats out of its cell', () => {
+    it('focuses no cell (not the one that holds it) and leaves the popover focused', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const host = cellAt(table, 1, 'name')!;
+        const under = cellAt(table, 3, 'age')!.getBoundingClientRect();
+        const popover = document.createElement('div');
+        popover.tabIndex = -1; // focusable by script, not a control by the rules
+        popover.style.cssText = `position:fixed;left:${under.left}px;top:${under.top}px;width:${under.width}px;height:${under.height}px;z-index:50`;
+        host.append(popover);
+        popover.dispatchEvent(pointer('pointerdown', 391, { pointerType: 'touch', over: popover }));
+        popover.dispatchEvent(pointer('pointerup', 391, { pointerType: 'touch', over: popover }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' }); // neither the cell that holds the popover nor the one under it
+        popover.remove();
+    });
+});
+
 describe('an anchor used as a button inside a cell', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
@@ -1194,6 +1272,24 @@ describe('an anchor used as a button inside a cell', () => {
         cell.append(anchor);
         anchor.dispatchEvent(pointer('pointerdown', 351, { over: anchor }));
         anchor.dispatchEvent(pointer('pointerup', 351, { over: anchor }));
+        expect(downs).toEqual([]);
+    });
+
+    it('and so is any anchor inside a cell, with or without href', async () => {
+        const table = await mountTable();
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const cell = cellAt(table, 1, 'name')!;
+        const bare = document.createElement('a'); // no href, no role, no tabindex
+        bare.textContent = 'bare';
+        const link = document.createElement('a');
+        link.href = '#x';
+        link.textContent = 'link';
+        cell.append(bare, link);
+        for (const [id, el] of [[352, bare], [353, link]] as const) {
+            el.dispatchEvent(pointer('pointerdown', id, { over: el }));
+            el.dispatchEvent(pointer('pointerup', id, { over: el }));
+        }
         expect(downs).toEqual([]);
     });
 });

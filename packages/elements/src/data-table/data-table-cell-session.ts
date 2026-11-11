@@ -36,7 +36,11 @@
  *   cell (`press.startCell`) and was released on this table; a touch tap then focuses the pressed cell if the finger is within a small slop
  *   of it (further away it was a drag). A pointerup or cancel with no press of this table behind it does nothing.
  * - `hostUpdate()` runs before every render, after the controller's own reconcile, in the order edit, range.
- * - `service` holds the methods the session adds to the one `CellInteractionService` object; `rangeService` is provided under `range`.
+ * - `service` holds the methods the session adds to the one `CellInteractionService` object; `rangeService` is provided under `range`. The merged
+ *   object DELEGATES: it reads the session's `service[key]` at call time, so a session may assign or replace a method on its own `service` at any
+ *   time (in `attach()`, when its lazy part loads) and the next call reaches it. Nothing is snapshotted.
+ * - Only the PRIMARY button makes a cell press: a right or middle press (`event.button !== 0`) is not offered to the sessions, has no start cell
+ *   and moves no focus (the context menu addon handles `contextmenu` itself); a touch or pen contact has button 0.
  * - A session that throws in `attach()` or `hostUpdate()` has a bug: the error is reported once, it is marked broken FIRST (it is never called
  *   again, not even for the presses it claimed, which just end), detached, and left out of everything until the next attach. Its `neutral`
  *   services (`NEUTRAL_RANGE`, `NEUTRAL_RANGE_CELL`, `NEUTRAL_EDIT`: one definition per session, in its file, exposed as `session.neutral`)

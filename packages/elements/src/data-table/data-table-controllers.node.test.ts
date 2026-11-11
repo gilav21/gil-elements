@@ -73,7 +73,7 @@ describe('assembleControllers', () => {
 });
 
 describe('AssembledControllers.service', () => {
-    it('answers a service a controller exposes through `services`, reading each controller services field once, and undefined when none has it', () => {
+    it('answers a service a controller exposes through `services`, resolving the owner of each key once at assembly (one read of each services field), and undefined when none has it', () => {
         let reads = 0;
         const range = { range: () => null } as never;
         const withServices = (): DataTableControllerFactory => () => ({
@@ -91,7 +91,7 @@ describe('AssembledControllers.service', () => {
             { id: 'query', provides: [], needs: [], uses: [], reads: [], writes: [] },
         ] as ControllerSpec[]);
         expect(set.service('range')).toBe(range);
-        expect(reads).toBe(1);
+        expect(reads).toBe(2); // once at assembly (the key owners), once for the lookup
         expect(set.service('clipboard')).toBeUndefined();
         expect(assembleControllers(host, {}).service('range')).toBeUndefined();
     });
