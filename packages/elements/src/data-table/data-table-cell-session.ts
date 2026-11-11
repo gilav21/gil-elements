@@ -42,8 +42,11 @@ export interface InteractionContext<T> {
     pageSize(): number;
     /** `host.afterRender` that is skipped when the table was detached (or attached anew) by the time the task runs. */
     afterRender(task: () => void): void;
-    /** The edit session has an open editor (lets range and clipboard stand down without reading each other). */
-    isEditing(): boolean;
+    /**
+     * An editor is open somewhere (lets range and clipboard stand down without reading each other). Not `CellInteractionService.isEditing(row, key)`,
+     * which asks about ONE cell.
+     */
+    hasOpenEditor(): boolean;
     /** The element that has DOM focus, through open and closed shadow roots. */
     deepActive(): Element | null;
 }

@@ -50,6 +50,17 @@ export interface StateView<T> {
     rowState(rowIndex: number, rowId: string, row: T): RowFlags;
 }
 
+/** The keys of the editable columns and of the columns that opted out of flash, per `columns` array: a render with the same columns builds them once. */
+const columnSetCache = new WeakMap<readonly object[], { editable: ReadonlySet<string>; flashOff: ReadonlySet<string> }>();
+function columnSets(columns: readonly { accessorKey: unknown; editable?: boolean; enableCellFlash?: boolean }[]) {
+    let sets = columnSetCache.get(columns);
+    if (!sets) {
+        const keys = (pick: (c: (typeof columns)[number]) => boolean): Set<string> => new Set(columns.filter(pick).map((c) => String(c.accessorKey)));
+        columnSetCache.set(columns, (sets = { editable: keys((c) => c.editable === true), flashOff: keys((c) => c.enableCellFlash === false) }));
+    }
+    return sets;
+}
+
 export function stateView<T>(host: DataTableViewHost<T>): StateView<T> {
     const { config } = host;
     const range = host.provider('range');
@@ -57,10 +68,8 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView<T> {
     const formatting = host.provider('formatting');
     const rowDrag = host.provider('rowDrag');
     const rangeMode = config.enableCellRangeSelection;
-    const editingAt = interaction?.editingCell() ?? null;
-    const editable = new Set(config.columns.filter((c) => c.editable).map((c) => String(c.accessorKey)));
+    const { editable, flashOff } = columnSets(config.columns);
     const flashable = config.enableCellFlash && formatting !== undefined;
-    const flashOff = new Set(config.columns.filter((c) => c.enableCellFlash === false).map((c) => String(c.accessorKey)));
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;
@@ -70,7 +79,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView<T> {
     let disabledRow: T | undefined;
     let disabled = false;
     const idOf = (row: T): string => {
-        if (row !== idRow) [idRow, id] = [row, config.getRowId(row)];
+        if (row !== idRow) [idRow, id] = [row, String(config.getRowId(row))]; // ids are strings everywhere (`getRowId` may answer numbers)
         return id;
     };
     const disabledOf = (row: T): boolean => {
@@ -84,7 +93,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView<T> {
             const inRange = rangeMode && (range?.isInRange(rowIndex, key) ?? false);
             const fill = config.enableFillHandle && (range?.isFillPreview(rowIndex, key) ?? false);
             const flash = flashable && !flashOff.has(key) ? formatting.flash(idOf(row), key) : undefined;
-            const editing = editingAt !== null && editingAt.rowIndex === rowIndex && editingAt.columnKey === key;
+            const editing = interaction?.isEditing(rowIndex, key) ?? false;
             if (!inRange && !fill && flash === undefined && !editing) {
                 if (rangeMode) return canEdit ? OUT_OF_RANGE_EDITABLE_FLAGS : OUT_OF_RANGE_FLAGS;
                 return canEdit ? EDITABLE_CELL_FLAGS : NO_CELL_FLAGS;

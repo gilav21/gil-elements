@@ -165,7 +165,7 @@ describe('lazyPart', () => {
     it('latches a failed load: one import and one error across many syncs (one per render), while the flag stays on', async () => {
         const onError = vi.fn();
         const create = vi.fn().mockRejectedValue(new Error('chunk 404'));
-        const lazy = lazyPart<LazyPartInstance>(create, onError);
+        const lazy = lazyPart<LazyPartInstance>(create, { onError });
         for (let render = 0; render < 5; render++) {
             lazy.sync(true);
             await flush();
@@ -178,7 +178,7 @@ describe('lazyPart', () => {
     it('tries a failed load again after the flag turned off and on', async () => {
         const instance = part();
         const create = vi.fn().mockRejectedValueOnce(new Error('chunk 404')).mockResolvedValueOnce(instance);
-        const lazy = lazyPart<LazyPartInstance>(create, vi.fn());
+        const lazy = lazyPart<LazyPartInstance>(create, { onError: vi.fn() });
         lazy.sync(true);
         await flush();
         lazy.sync(false);
@@ -191,12 +191,75 @@ describe('lazyPart', () => {
     it('tries a failed load again after dispose (the next attach)', async () => {
         const instance = part();
         const create = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(instance);
-        const lazy = lazyPart<LazyPartInstance>(create, vi.fn());
+        const lazy = lazyPart<LazyPartInstance>(create, { onError: vi.fn() });
         lazy.sync(true);
         await flush();
         lazy.dispose();
         lazy.sync(true);
         await flush();
         expect(lazy.part).toBe(instance);
+    });
+
+    it('asks the host to render once the part is attached, and again when an attached part is detached', async () => {
+        const changed = vi.fn();
+        const instance = part();
+        const lazy = lazyPart(() => Promise.resolve(instance), { changed });
+        lazy.sync(true);
+        expect(changed).not.toHaveBeenCalled();
+        await flush();
+        expect(changed).toHaveBeenCalledTimes(1);
+        // what a render reads from the part is already true when the host is asked
+        expect(instance.attach).toHaveBeenCalledTimes(1);
+        lazy.sync(false);
+        expect(changed).toHaveBeenCalledTimes(2);
+        lazy.dispose();
+        expect(changed).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not ask for a render for a load that failed, was dropped, or never had a part', async () => {
+        const changed = vi.fn();
+        const lazy = lazyPart(() => Promise.reject(new Error('404')), { changed, onError: vi.fn() });
+        lazy.sync(true);
+        await flush();
+        lazy.dispose();
+        expect(changed).not.toHaveBeenCalled();
+    });
+
+    it('does not leave a part half attached when attach throws: it is detached, forgotten, reported once and latched', async () => {
+        const onError = vi.fn();
+        const changed = vi.fn();
+        const broken = part();
+        broken.attach.mockImplementation(() => {
+            throw new Error('attach failed');
+        });
+        const create = vi.fn(() => Promise.resolve(broken));
+        const unhandled = vi.fn();
+        process.on('unhandledRejection', unhandled);
+        const lazy = lazyPart(create, { onError, changed });
+        for (let render = 0; render < 4; render++) {
+            lazy.sync(true);
+            await flush();
+        }
+        process.off('unhandledRejection', unhandled);
+        expect(unhandled).not.toHaveBeenCalled();
+        expect(lazy.part).toBeNull();
+        expect(broken.detach).toHaveBeenCalledTimes(1);
+        expect(onError).toHaveBeenCalledTimes(1);
+        expect(create).toHaveBeenCalledTimes(1);
+        expect(changed).not.toHaveBeenCalled();
+        lazy.sync(false);
+        lazy.sync(true);
+        await flush();
+        expect(create).toHaveBeenCalledTimes(2);
+    });
+
+    it('lets a part that reads the shell during attach see itself', async () => {
+        let lazy!: ReturnType<typeof lazyPart<LazyPartInstance>>;
+        let seen: unknown;
+        const instance = { attach: () => void (seen = lazy.part), detach: vi.fn() };
+        lazy = lazyPart<LazyPartInstance>(() => Promise.resolve(instance));
+        lazy.sync(true);
+        await flush();
+        expect(seen).toBe(instance);
     });
 });

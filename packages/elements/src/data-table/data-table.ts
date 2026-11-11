@@ -207,6 +207,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     });
     /** A `cellRange` assigned before the range service exists (before the first attach). */
     private earlyRange: CellRange | null | undefined;
+    /** The range service of the (once built) controllers: it outlives a disconnect, unlike the provider entry. */
+    private rangeRef: DataTableProviders<T>['range'] | undefined;
     private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
     private releaseStyles: (() => void) | null = null;
@@ -506,14 +508,23 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * value assigned before the table is attached waits for the range service.
      */
     get cellRange(): CellRange | null {
-        const service = this.provider('range');
+        const service = this.rangeService();
         return service ? service.range() : (this.earlyRange ?? null);
     }
 
     set cellRange(range: CellRange | null) {
-        const service = this.provider('range');
+        const service = this.rangeService();
         if (service) service.setRange(range);
         else this.earlyRange = range;
+        this.requestUpdate(); // `data-in-range`, `aria-selected` and the readout read the range at render
+    }
+
+    /**
+     * The range service, also while detached (the providers are cleared then, the session behind it keeps the range across reconnects: it is
+     * the one owner of the value). Only before the first attach does the element hold the value itself (`earlyRange`).
+     */
+    private rangeService(): DataTableProviders<T>['range'] | undefined {
+        return this.provider('range') ?? this.rangeRef;
     }
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
@@ -578,8 +589,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger) survives.
         this.built ??= assembleControllers(this, createFactories<T>());
         this.built.attachAll();
+        this.rangeRef = this.provider('range');
         if (this.earlyRange !== undefined) {
-            this.provider('range')?.setRange(this.earlyRange);
+            this.rangeRef?.setRange(this.earlyRange);
             this.earlyRange = undefined;
         }
         this.lastLocale = this.resolvedLocale;
@@ -603,9 +615,6 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         super.disconnectedCallback();
         this.observer?.disconnect();
         this.observer = null;
-        // The services go with the controllers: a range read while detached comes from here, and is given back at the next connect.
-        const range = this.provider('range');
-        if (range) this.earlyRange = range.range();
         try {
             this.assembled?.detachAll();
         } finally {

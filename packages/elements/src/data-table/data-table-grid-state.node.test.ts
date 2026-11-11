@@ -61,7 +61,7 @@ describe('stateView with the step-0 services', () => {
     });
 
     it('marks the cell that holds the open editor', () => {
-        const interaction = { editingCell: () => ({ rowIndex: 2, columnKey: 'name' }) };
+        const interaction = { isEditing: (rowIndex: number, columnKey: string) => rowIndex === 2 && columnKey === 'name' };
         const state = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction } }));
         expect(state.cellState(2, 'name', row)).toMatchObject({ editing: true, editable: true });
         expect(state.cellState(1, 'name', row)).toBe(EDITABLE_CELL_FLAGS);
@@ -95,6 +95,24 @@ describe('stateView with the step-0 services', () => {
         const state = stateView(fakeHost({ config: { enableCellFlash: true, columns }, providers: { formatting } }));
         expect(state.cellState(0, 'price', row)).toMatchObject({ flash: 'up' });
         expect(state.cellState(0, 'name', row)).toBe(NO_CELL_FLAGS);
+    });
+
+    it('passes the row id to the flash service as a string, whatever getRowId answers', () => {
+        const flash = vi.fn((id: string, key: string) => (id === '7' && key === 'price' ? ('down' as const) : undefined));
+        const state = stateView(fakeHost({ config: { enableCellFlash: true, columns: [{ accessorKey: 'price' }], getRowId: () => 7 }, providers: { formatting: { flash } } }));
+        expect(state.cellState(0, 'price', row)).toMatchObject({ flash: 'down' });
+        expect(flash).toHaveBeenCalledWith('7', 'price');
+    });
+
+    it('builds the editable and flash-off key sets once per columns array, not per render', () => {
+        const columns = [{ accessorKey: 'a', editable: true }, { accessorKey: 'b', enableCellFlash: false }];
+        const filter = vi.spyOn(columns, 'filter');
+        const host = fakeHost({ config: { columns, enableCellFlash: true }, providers: { formatting: { flash: () => undefined } } });
+        for (let render = 0; render < 5; render++) stateView(host).cellState(0, 'a', row);
+        expect(filter).toHaveBeenCalledTimes(2);
+        const replaced = [...columns];
+        stateView(fakeHost({ config: { columns: replaced } })).cellState(0, 'a', row);
+        expect(stateView(fakeHost({ config: { columns: replaced } })).cellState(0, 'a', row)).toBe(EDITABLE_CELL_FLAGS);
     });
 
     it('asks for the id and the disabled flag of a row once, however many cells and the row state ask', () => {

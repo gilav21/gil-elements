@@ -71,9 +71,19 @@ export interface LazyPart<P extends LazyPartInstance> {
  * `create` imports the module and builds the part (`() => import('./lazy/x.js').then((m) => new m.XPart(context))`); the part is
  * attached here, after the flag is checked again, never inside `create`.
  */
+export interface LazyPartOptions {
+    /** A load or an attach failed (default: `console.error`); it is latched, see `lazyPart`. */
+    onError?: (error: unknown) => void;
+    /**
+     * The part was attached or detached, so what the render reads from it changed (`rowDrag.active()`, the range overlay, the fill handle):
+     * pass the host's `requestRender`, or nothing draws the change until an unrelated update.
+     */
+    changed?: () => void;
+}
+
 export function lazyPart<P extends LazyPartInstance>(
     create: () => Promise<P>,
-    onError: (error: unknown) => void = (error) => console.error('[ge-data-table] a lazy part failed to load:', error),
+    { onError = (error) => console.error('[ge-data-table] a lazy part failed to load:', error), changed }: LazyPartOptions = {},
 ): LazyPart<P> {
     let current: P | null = null;
     let wanted = false;
@@ -85,7 +95,9 @@ export function lazyPart<P extends LazyPartInstance>(
         generation++;
         const part = current;
         current = null;
-        part?.detach();
+        if (!part) return;
+        part.detach();
+        changed?.();
     };
     return {
         get part() {
@@ -101,17 +113,32 @@ export function lazyPart<P extends LazyPartInstance>(
             if (wanted || failed) return;
             wanted = true;
             const mine = ++generation;
+            const fail = (error: unknown): void => {
+                wanted = false;
+                failed = true;
+                onError(error);
+            };
             create().then(
                 (part) => {
                     if (mine !== generation) return;
-                    current = part;
-                    part.attach();
+                    current = part; // visible while it attaches: its own setup may call back into the shell that reads it
+                    try {
+                        part.attach();
+                    } catch (error) {
+                        // A part that threw while attaching is not left half attached: it is detached (best effort) and the failure latches like a failed load.
+                        try {
+                            part.detach();
+                        } catch {
+                            // the attach error is the one worth reporting
+                        }
+                        current = null;
+                        fail(error);
+                        return;
+                    }
+                    changed?.();
                 },
                 (error: unknown) => {
-                    if (mine !== generation) return;
-                    wanted = false;
-                    failed = true;
-                    onError(error);
+                    if (mine === generation) fail(error);
                 },
             );
         },

@@ -64,7 +64,7 @@ export class CellInteractionController<T> {
             focusableKeys: () => requireProvider(host, 'columns').focusableKeys(),
             pageSize: () => this.pageSize(),
             afterRender: (task) => this.afterRender(task),
-            isEditing: () => this.service.editingCell() !== null,
+            hasOpenEditor: () => this.service.editingCell() !== null,
             deepActive: () => this.deepActive(),
         };
         this.edit = new EditSession(context);
@@ -82,7 +82,7 @@ export class CellInteractionController<T> {
         this.attachment++;
         const { host } = this;
         const { root, disposables } = host;
-        for (const session of [this.edit, this.range]) session.attach();
+        // The services are provided first and the sessions attach after them (range, then edit): a session may read any provider in `attach()`.
         this.teardown = [
             host.provide('interaction', this.service),
             host.provide('range', this.range.rangeService),
@@ -98,12 +98,14 @@ export class CellInteractionController<T> {
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
             disposables.add(() => this.observer?.disconnect()),
         ];
+        for (const session of [this.range, this.edit]) session.attach();
     }
 
     detach(): void {
+        // The reverse of attach: the sessions go first, while the services they read are still provided.
+        for (const session of [this.edit, this.range]) session.detach();
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
-        for (const session of [this.range, this.edit]) session.detach();
         this.observer?.disconnect();
         this.observer = this.watched = null;
         this.within = this.pointer = false;

@@ -9,7 +9,8 @@ import type { RowDragPart } from './lazy/row-drag.js';
  */
 export class RowDragController<T> {
     private unprovide: (() => void) | undefined;
-    private readonly drag = lazyPart<RowDragPart<T>>(() => import('./lazy/row-drag.js').then((m) => new m.RowDragPart(this.host)));
+    /** `changed`: `rowDrag.active()` comes from the part, so the render that makes rows draggable has to be asked for. */
+    private readonly drag = lazyPart<RowDragPart<T>>(() => import('./lazy/row-drag.js').then((m) => new m.RowDragPart(this.host)), { changed: () => this.host.requestRender() });
 
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 

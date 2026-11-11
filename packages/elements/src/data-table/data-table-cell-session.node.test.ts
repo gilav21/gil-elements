@@ -7,7 +7,7 @@ import { RangeSession } from './data-table-range-session.js';
 const DIRECTORY = new URL('.', import.meta.url);
 const SOURCES = readdirSync(DIRECTORY).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
 const read = (name: string): string => readFileSync(new URL(name, DIRECTORY), 'utf8');
-const context = { focused: () => null } as unknown as InteractionContext<unknown>;
+const context = { focused: () => null, host: { requestRender: () => undefined } } as unknown as InteractionContext<unknown>;
 
 describe('the joint step 0 sessions', () => {
     it('answers "nothing is being edited" and no editor can open', () => {
@@ -22,15 +22,34 @@ describe('the joint step 0 sessions', () => {
 
     it('derives cellRange and isCellSelected from the range service, so one pair is implemented', () => {
         const focused = { rowIndex: 1, columnKey: 'a' };
-        const session = new RangeSession({ focused: () => focused } as unknown as InteractionContext<unknown>);
-        expect(session.service.isCellSelected(1, 'a')).toBe(true);
-        expect(session.service.isCellSelected(2, 'a')).toBe(false);
-        const isInRange = vi.spyOn(session.rangeService, 'isInRange').mockImplementation((r) => r === 2);
-        expect(session.service.isCellSelected(2, 'a')).toBe(true);
-        expect(isInRange).toHaveBeenCalled();
+        const session = new RangeSession({ focused: () => focused, host: { requestRender: vi.fn() } } as unknown as InteractionContext<unknown>);
         const range = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' };
         session.rangeService.setRange(range);
         expect(session.service.cellRange()).toBe(range);
+        const isInRange = vi.spyOn(session.rangeService, 'isInRange').mockImplementation((r) => r === 2);
+        expect(session.service.isCellSelected(2, 'a')).toBe(true);
+        expect(isInRange).toHaveBeenCalled();
+    });
+
+    it('answers isCellSelected as Angular does, in or out of range mode: with a range, only its cells; with none, the focused cell', () => {
+        const focused = { rowIndex: 1, columnKey: 'a' };
+        const host = { config: { enableCellRangeSelection: false, enableFillHandle: false }, requestRender: vi.fn() };
+        const session = new RangeSession({ host, focused: () => focused } as unknown as InteractionContext<unknown>);
+        expect(session.service.isCellSelected(1, 'a')).toBe(true);
+        expect(session.service.isCellSelected(2, 'a')).toBe(false);
+        host.config.enableCellRangeSelection = true;
+        expect(session.service.isCellSelected(1, 'a')).toBe(true);
+        session.rangeService.setRange({ startRow: 3, startCol: 'a', endRow: 4, endCol: 'a' });
+        vi.spyOn(session.rangeService, 'isInRange').mockImplementation((r) => r >= 3 && r <= 4);
+        expect(session.service.isCellSelected(1, 'a')).toBe(false); // the focused cell is not selected once a range exists elsewhere
+        expect(session.service.isCellSelected(3, 'a')).toBe(true);
+    });
+
+    it('asks the host to render when a range is set', () => {
+        const requestRender = vi.fn();
+        const session = new RangeSession({ host: { requestRender }, focused: () => null } as unknown as InteractionContext<unknown>);
+        session.rangeService.setRange({ startRow: 0, startCol: 'a', endRow: 0, endCol: 'a' });
+        expect(requestRender).toHaveBeenCalledTimes(1);
     });
 
     it('answers "no range" and no gesture, and fills nothing', () => {
@@ -54,7 +73,7 @@ describe('the range held by the shell', () => {
     const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
     const range = { startRow: 1, startCol: 'a', endRow: 3, endCol: 'b' };
     const make = (flags = { enableCellRangeSelection: true, enableFillHandle: false }): { session: RangeSession<unknown>; flags: typeof flags } => ({
-        session: new RangeSession({ host: { config: flags }, focused: () => null } as unknown as InteractionContext<unknown>),
+        session: new RangeSession({ host: { config: flags, requestRender: () => undefined }, focused: () => null } as unknown as InteractionContext<unknown>),
         flags,
     });
 

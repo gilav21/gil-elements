@@ -28,6 +28,8 @@ export class RangeSession<T> implements CellSession {
             part.setRange(this.held);
             return part;
         }),
+        // The overlay, the cell flags and the fill handle come from the part: its arrival and departure are drawn.
+        { changed: () => this.context.host.requestRender() },
     );
 
     constructor(protected readonly context: InteractionContext<T>) {}
@@ -42,6 +44,7 @@ export class RangeSession<T> implements CellSession {
         setRange: (range) => {
             this.held = range;
             this.lazy.part?.setRange(range);
+            this.context.host.requestRender(); // `data-in-range`, `aria-selected` and the readout read the range at render
         },
         extendTo: () => undefined,
         stats: () => null,
@@ -52,12 +55,17 @@ export class RangeSession<T> implements CellSession {
         gestureActive: () => false,
     };
 
-    /** Derived from `rangeService`, so wave 6 implements one pair: `isCellSelected` is in the range, else the focused cell. */
+    /**
+     * Derived from `rangeService`, so wave 6 implements one pair. `isCellSelected` is Angular's (cmp `isCellSelected`, which the context-menu
+     * addon reads): with a range, whether the cell is in it; with none, whether it is the focused cell. Not gated on the range flag: the
+     * focused cell is "selected" for the menu whatever the mode (the step 0 stub used to answer false always; the spec 0.3 #4 meaning wins).
+     */
     readonly service: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = {
         cellRange: () => this.rangeService.range(),
         isCellSelected: (rowIndex, columnKey) => {
+            if (this.rangeService.range()) return this.rangeService.isInRange(rowIndex, columnKey);
             const focused = this.context.focused();
-            return this.rangeService.isInRange(rowIndex, columnKey) || (focused?.rowIndex === rowIndex && focused.columnKey === columnKey);
+            return focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
         },
     };
 

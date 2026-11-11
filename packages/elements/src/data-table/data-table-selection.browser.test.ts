@@ -217,7 +217,7 @@ describe('selection by keyboard', () => {
 
     it('takes the in-cell checkboxes (not the header ones) out of the tab order when a roving cell model exists (a stub here, the real controller in the full table)', async () => {
         const table = await mountSelectable();
-        table.provide('interaction', { focusedCell: () => null, cellRange: () => null, editingCell: () => null, cellEditError: () => null, focusCell() {}, isCellSelected: () => false });
+        table.provide('interaction', { focusedCell: () => null, cellRange: () => null, editingCell: () => null, cellEditError: () => null, focusCell() {}, isCellSelected: () => false, isEditing: () => false });
         table.requestRender();
         await settle(table);
         expect(rowCheckbox(table, 'r1').getAttribute('tabindex')).toBe('-1');
