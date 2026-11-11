@@ -87,8 +87,14 @@ export class GeTypingAnimation extends UiElement {
             this.begin();
         } else {
             // The same run, its last phrase grown, stays one run (`complete` is said once); any other list is a run of its own.
-            if (!extendsLast(changed.get('strings') as string[] | undefined, this.strings)) this.completed = false;
-            this.refresh(this.strings[this.stringIndex] ?? '');
+            const previous = changed.get('strings') as string[] | undefined;
+            if (!extendsLast(previous, this.strings)) this.completed = false;
+            // A finished run (no timer) whose list grew phrases after the last one goes on: the held phrase is deleted, the new ones typed.
+            if (this.timer === null && this.isConnected && this.phase === 'typing' && previous && previous.length === this.stringIndex + 1 && this.strings.length > previous.length && previous.every((phrase, i) => phrase === this.strings[i])) {
+                this.completed = false;
+                this.phase = 'pausing';
+                this.tick();
+            } else this.refresh(this.strings[this.stringIndex] ?? '');
         }
     }
 

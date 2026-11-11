@@ -404,6 +404,7 @@ export class ResizeController<T> {
 
     detach(): void {
         this.cancel();
+        this.keyed = null; // the handle it names and what it read belong to the attach that is ending
         this.cancelAnnounce?.();
         this.removeKeys?.();
         this.unprovide?.();

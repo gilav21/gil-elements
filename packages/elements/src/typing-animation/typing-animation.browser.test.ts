@@ -189,6 +189,19 @@ describe('ge-typing-animation', () => {
         expect(completes).toBe(2);
     });
 
+    it('a finished run whose list grows phrases after the last goes on to type them, and says `complete` again at the end', async () => {
+        const el = await typing('loop="false" type-speed="10" delete-speed="10" pause-duration="10"', ['A', 'B']);
+        let completes = 0;
+        el.addEventListener('complete', () => completes++);
+        await advance(el, 1000);
+        expect(shown(el)).toBe('B');
+        expect(completes).toBe(1);
+        el.strings = ['A', 'B', 'C'];
+        await advance(el, 1000);
+        expect(shown(el)).toBe('C');
+        expect(completes).toBe(2);
+    });
+
     it('starts again when the list is replaced by one shorter than the phrase being typed', async () => {
         const el = await typing('type-speed="10" delete-speed="10" pause-duration="10"', ['a', 'b', 'c']);
         for (let i = 0; i < 400 && shown(el) !== 'c'; i++) await advance(el, 10);
