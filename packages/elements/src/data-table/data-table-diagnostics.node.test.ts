@@ -44,6 +44,16 @@ describe('the diagnostics snapshot', () => {
         expect(validateConfig).toHaveBeenCalledTimes(1);
     });
 
+    it.each(['enableFillHandle', 'enableClipboardPaste', 'localReorder'])('does not re-run the config check when %s changes: no check reads it yet', (flag) => {
+        const table = setup({ [flag]: false });
+        table.run();
+        table.config[flag] = true;
+        table.run();
+        table.config[flag] = false;
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(1);
+    });
+
     it('still re-runs it when a setting a check reads changes', () => {
         const table = setup({ enableRowDrag: false });
         table.run();

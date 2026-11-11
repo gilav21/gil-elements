@@ -33,13 +33,42 @@ describe('the cellRange property', () => {
         table.remove();
     });
 
-    it('is ignored while range selection and fill are off: nothing is held, the getter says null', async () => {
+    it('is held while range selection and fill are off (the getter says null) and applies when the mode is switched on: either property order', async () => {
         const table = await mountTable();
         table.cellRange = range;
         expect(table.cellRange).toBeNull();
         table.enableCellRangeSelection = true;
         await settle(table);
+        expect(table.cellRange).toEqual(range);
+        // and switched off again: the range goes with the mode
+        table.enableCellRangeSelection = false;
+        await settle(table);
         expect(table.cellRange).toBeNull();
+        table.enableCellRangeSelection = true;
+        await settle(table);
+        expect(table.cellRange).toBeNull();
+
+        const other = await mountTable();
+        other.enableCellRangeSelection = true;
+        other.cellRange = range;
+        await settle(other);
+        expect(other.cellRange).toEqual(range);
+    });
+
+    it('can be assigned to a detached table without throwing: the checked value waits and is clamped at the next attach', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true });
+        const rows = table.data.length;
+        table.remove();
+        expect(() => {
+            table.cellRange = { startRow: 0, startCol: 'name', endRow: rows + 40, endCol: 'age' };
+        }).not.toThrow();
+        expect(table.cellRange).toEqual({ startRow: 0, startCol: 'name', endRow: rows + 40, endCol: 'age' });
+        expect(() => {
+            table.cellRange = 'junk' as never;
+        }).not.toThrow();
+        document.body.append(table);
+        await settle(table);
+        expect(table.cellRange).toEqual({ startRow: 0, startCol: 'name', endRow: rows - 1, endCol: 'age' });
     });
 
     it('refuses a value that is not a range of this table (warned once) and keeps the old one', async () => {

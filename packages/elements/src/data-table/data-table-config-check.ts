@@ -28,11 +28,8 @@ export interface ConfigCheckInput<T> {
     enableRowDrag?: boolean;
     /** Undo/redo of edits; they find a row again by its id. */
     enableEditHistory?: boolean;
-    // Inputs of the wave 6 checks (the wave 5 checks read what is above).
-    enableFillHandle?: boolean;
-    enableClipboardPaste?: boolean;
-    localReorder?: boolean;
-    // wave 6 adds `sortState` / `multiSortState` here and in the diagnostics snapshot with the row-drag-with-sort check.
+    // The waves add the inputs of their checks here and in the diagnostics snapshot together with the check (`enableFillHandle`,
+    // `enableClipboardPaste`, `localReorder`, `sortState`, `multiSortState`): nothing reads them yet.
 }
 
 // ---- wave 5 (filters and editing) checks: package A and B add their warnings in this function, nowhere else ----------

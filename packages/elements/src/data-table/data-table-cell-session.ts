@@ -13,9 +13,11 @@
  * Contract, so the two waves never need to know each other:
  * - A session registers its OWN key handlers (`host.addKeyHandler(KEY_PRIORITY.x, ...)`) and its own listeners through
  *   `context.host.disposables`; the controller never routes keys to it.
- * - Pointer: the controller's ONE delegated `pointerdown` / `pointerup` listener does the focus first, then calls the sessions in
- *   the order range, edit. The first one that returns true claims the press and the rest are skipped. `at` is the cell under the
- *   pointer, null outside any cell.
+ * - Pointer: the controller's ONE delegated `pointerdown` / `pointerup` listener OFFERS the press to the sessions first, in the order
+ *   range, edit, as `onPointerDown / onPointerUp(event, at, press)`. The first one that returns true claims the press (and moves the focus
+ *   itself) and the rest are skipped; if none claims it the controller then focuses the pressed cell, except inside the open editor's cell.
+ *   `at` is the cell under the pointer, null outside any cell; `press.anchor` is the roving cell BEFORE the press moved it, the same one
+ *   for the pointerdown and the pointerup of one press.
  * - `hostUpdate()` runs before every render, after the controller's own reconcile, in the order edit, range.
  * - `service` holds the methods the session adds to the one `CellInteractionService` object; `rangeService` is provided under `range`.
  * - Cross-wave reads go through providers only: the range session reads `interaction.editingCell()`, the edit session reads

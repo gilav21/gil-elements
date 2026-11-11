@@ -269,6 +269,29 @@ describe('lazyPart', () => {
         expect(create).toHaveBeenCalledTimes(2);
     });
 
+    it('survives a part whose detach throws: sync(false) and dispose() do not throw, the failure is reported and the host is still told', async () => {
+        const onError = vi.fn();
+        const changed = vi.fn();
+        const sturdy = part();
+        sturdy.detach.mockImplementation(() => {
+            throw new Error('detach failed');
+        });
+        const lazy = lazyPart(() => Promise.resolve(sturdy), { onError, changed });
+        lazy.sync(true);
+        await flush();
+        expect(changed).toHaveBeenCalledTimes(1);
+        expect(() => lazy.sync(false)).not.toThrow();
+        expect(lazy.part).toBeNull();
+        expect(onError).toHaveBeenCalledTimes(1);
+        expect(changed).toHaveBeenCalledTimes(2);
+        lazy.sync(true);
+        await flush();
+        expect(() => lazy.dispose()).not.toThrow();
+        expect(lazy.part).toBeNull();
+        expect(onError).toHaveBeenCalledTimes(2);
+        expect(changed).toHaveBeenCalledTimes(4);
+    });
+
     it('lets a part that reads the shell during attach see itself', async () => {
         let lazy!: ReturnType<typeof lazyPart<LazyPartInstance>>;
         let seen: unknown;

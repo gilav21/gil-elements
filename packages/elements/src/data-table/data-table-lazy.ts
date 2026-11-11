@@ -113,7 +113,13 @@ export function lazyPart<P extends LazyPartInstance>(
         const part = current;
         current = null;
         if (!part) return;
-        part.detach();
+        try {
+            part.detach();
+        } catch (error) {
+            // `sync(false)` and `dispose()` run inside the host's update and detach: a part that throws while leaving must not abort them.
+            // It is gone either way (`current` is already cleared), the failure is reported, and the host is told.
+            onError(error);
+        }
         changed?.();
     };
     return {

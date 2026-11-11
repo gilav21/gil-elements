@@ -45,6 +45,27 @@ describe('a press is offered to the sessions before the controller moves the foc
         expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'age' });
     });
 
+    it('gives the pointerup of a press the SAME anchor as its pointerdown, although the unclaimed pointerdown already moved the focus', async () => {
+        const events: [string, unknown][] = [];
+        proto.onPointerDown = (_event, _at, press) => void events.push(['down', press.anchor]);
+        (proto as { onPointerUp?: Handler }).onPointerUp = (_event, _at, press) => void events.push(['up', press.anchor]);
+        try {
+            const table = await mountTable();
+            table.focusCell(0, 'name');
+            await settle(table);
+            await userEvent.click(cellAt(table, 3, 'age')!);
+            await settle(table);
+            const origin = { rowIndex: 0, columnKey: 'name' };
+            expect(events).toEqual([
+                ['down', origin],
+                ['up', origin],
+            ]);
+            expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'age' });
+        } finally {
+            delete (proto as { onPointerUp?: Handler }).onPointerUp;
+        }
+    });
+
     it('does not move the focus when a session claims the press: the session moves it', async () => {
         proto.onPointerDown = () => true;
         const table = await mountTable();

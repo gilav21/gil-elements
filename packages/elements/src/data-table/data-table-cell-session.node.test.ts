@@ -41,6 +41,7 @@ describe('the joint step 0 sessions', () => {
         const session = new RangeSession(rangeContext({ ...on }, { focused: { rowIndex: 1, columnKey: 'a' } }).context);
         session.rangeService.setRange(range);
         expect(session.service.cellRange()).toEqual(range);
+        vi.spyOn(session.rangeService, 'active').mockReturnValue(true); // the range branch needs a loaded part
         const isInRange = vi.spyOn(session.rangeService, 'isInRange').mockImplementation((r) => r === 2);
         expect(session.service.isCellSelected(2, 'a')).toBe(true);
         expect(isInRange).toHaveBeenCalled();
@@ -54,6 +55,7 @@ describe('the joint step 0 sessions', () => {
         flags.enableCellRangeSelection = true;
         expect(session.service.isCellSelected(1, 'a')).toBe(true);
         session.rangeService.setRange({ startRow: 3, startCol: 'a', endRow: 4, endCol: 'a' });
+        vi.spyOn(session.rangeService, 'active').mockReturnValue(true);
         vi.spyOn(session.rangeService, 'isInRange').mockImplementation((r) => r >= 3 && r <= 4);
         expect(session.service.isCellSelected(1, 'a')).toBe(false); // the focused cell is not selected once a range exists elsewhere
         expect(session.service.isCellSelected(3, 'a')).toBe(true);
@@ -84,7 +86,12 @@ describe('the joint step 0 sessions', () => {
 });
 
 describe('the range held by the shell', () => {
-    const make = (flags: Flags = { ...on }, options?: Parameters<typeof rangeContext>[1]) => ({ session: new RangeSession(rangeContext(flags, options).context), flags });
+    /** An ATTACHED session (the controller attaches it before anything is assigned). */
+    const make = (flags: Flags = { ...on }, options?: Parameters<typeof rangeContext>[1]) => {
+        const session = new RangeSession(rangeContext(flags, options).context);
+        session.attach();
+        return { session, flags };
+    };
 
     it('keeps a range set before the part is loaded, and hands it to the part when it attaches', async () => {
         const { session } = make();
@@ -147,16 +154,77 @@ describe('the range held by the shell', () => {
         expect(session.rangeService.range()).toBeNull();
     });
 
-    it('ignores a range assigned while range selection and fill are both off: nothing is held and the getter says null', () => {
+    it('holds a range assigned while range selection and fill are both off, reports nothing, and applies it when the mode turns on (either property order)', () => {
         const { session, flags } = make({ ...off });
+        session.hostUpdate();
         session.rangeService.setRange(range);
         session.hostUpdate();
         expect(session.rangeService.range()).toBeNull();
         expect(session.service.cellRange()).toBeNull();
-        // with the fill handle alone the flags are on, so a range is accepted
-        flags.enableFillHandle = true;
+        flags.enableCellRangeSelection = true; // `el.cellRange = r; el.enableCellRangeSelection = true`
+        expect(session.rangeService.range()).toEqual(range);
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual(range);
+    });
+
+    it('keeps the range when the mode is switched on first and the range assigned after (the other order)', () => {
+        const { session, flags } = make({ ...off });
+        flags.enableFillHandle = true; // the fill handle alone is a range flag
+        session.hostUpdate();
         session.rangeService.setRange(range);
         expect(session.rangeService.range()).toEqual(range);
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual(range);
+    });
+
+    it('clears the held range only on the ON to OFF transition: a value held while off survives updates, one held while on goes', () => {
+        const { session, flags } = make({ ...off });
+        session.rangeService.setRange(range);
+        for (let update = 0; update < 3; update++) session.hostUpdate();
+        flags.enableCellRangeSelection = true;
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual(range);
+        flags.enableCellRangeSelection = false;
+        session.hostUpdate();
+        expect(session.rangeService.range()).toBeNull();
+        flags.enableCellRangeSelection = true;
+        session.hostUpdate();
+        expect(session.rangeService.range()).toBeNull();
+    });
+
+    it('keeps a range held while off through a detach', () => {
+        const { session, flags } = make({ ...off });
+        session.rangeService.setRange(range);
+        session.detach();
+        flags.enableCellRangeSelection = true;
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual(range);
+    });
+
+    it('stores the checked value while detached without asking the services (they are gone), and clamps it at the next update', () => {
+        const { context, flags } = rangeContext({ ...on }, { rowCount: 5 });
+        const guard = { rowCount: () => { throw new Error('services are cleared'); }, focusableKeys: () => { throw new Error('services are cleared'); } };
+        const session = new RangeSession(context);
+        session.attach();
+        session.detach();
+        Object.assign(context, guard);
+        expect(() => session.rangeService.setRange({ ...range, endRow: 50 })).not.toThrow();
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 50 });
+        expect(() => session.rangeService.setRange('nonsense' as never)).not.toThrow();
+        // attached again, with the services back: the next update clamps what is held
+        Object.assign(context, { rowCount: () => 5, focusableKeys: () => ['a', 'b', 'c'] });
+        session.attach();
+        session.hostUpdate();
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 4 });
+        expect(flags.enableCellRangeSelection).toBe(true);
+    });
+
+    it('reports the focused cell, not "nothing", while the range part is not active (loading, or a latched failure)', () => {
+        const { session } = make({ ...on }, { focused: { rowIndex: 4, columnKey: 'a' } });
+        session.rangeService.setRange(range); // held; the part is not loaded, so `isInRange` has no answer
+        expect(session.rangeService.active()).toBe(false);
+        expect(session.service.isCellSelected(4, 'a')).toBe(true);
+        expect(session.service.isCellSelected(2, 'a')).toBe(false);
     });
 
     it('reports the focused cell as selected with the flags off, whatever was assigned', () => {

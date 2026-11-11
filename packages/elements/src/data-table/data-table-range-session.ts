@@ -44,11 +44,12 @@ export class RangeSession<T> implements CellSession {
         edgeOf: () => '',
         active: () => this.lazy.part !== null,
         setRange: (range) => {
-            // With range selection off there is no range mode to hold one in (it would be reported for ever): nothing is kept.
-            if (!this.rangeOn()) return;
-            // `undefined` is "no range"; anything that is not a range, or names a column that does not exist, is refused (warned once) and the old value stays;
-            // rows past the last drawn one are trimmed when the rows are known (an empty list changes nothing). The part clamps again when the rows change.
-            const next = sanitizeCellRange(range, this.context.rowCount(), this.context.focusableKeys());
+            // The value is always HELD (a property order such as `cellRange = r; enableCellRangeSelection = true` must keep it); while range mode is off
+            // it is only not reported, and it applies when the mode turns on. `undefined` is "no range"; anything that is not a range, or names a column
+            // that does not exist, is refused (warned once) and the old value stays; rows past the last drawn one are trimmed when the rows are known
+            // (an empty list changes nothing). While detached the services are gone: only the shape is checked, the clamp waits for the next update.
+            const known = this.attached;
+            const next = sanitizeCellRange(range, known ? this.context.rowCount() : 0, known ? this.context.focusableKeys() : []);
             if (next === undefined) return this.warnOnce(range);
             this.held = next;
             this.lazy.part?.setRange(next);
@@ -67,22 +68,31 @@ export class RangeSession<T> implements CellSession {
      * Derived from `rangeService`, so wave 6 implements one pair. `isCellSelected` is Angular's (cmp `isCellSelected`, which the context-menu
      * addon reads): with a range, whether the cell is in it; with none, whether it is the focused cell. Not gated on the range flag: the
      * focused cell is "selected" for the menu whatever the mode (the step 0 stub used to answer false always; the spec 0.3 #4 meaning wins).
-     * With the flags off no range is ever held, so the focused cell is always what is reported.
+     * With the flags off no range is reported, so the focused cell is what is reported. The range branch needs the range service ACTIVE (part
+     * loaded): while it loads, or after a latched load failure, `isInRange` has no answer, so the focused cell is reported instead.
      */
     readonly service: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = {
         cellRange: () => this.rangeService.range(),
         isCellSelected: (rowIndex, columnKey) => {
-            if (this.rangeService.range()) return this.rangeService.isInRange(rowIndex, columnKey);
+            if (this.rangeService.active() && this.rangeService.range()) return this.rangeService.isInRange(rowIndex, columnKey);
             const focused = this.context.focused();
             return focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
         },
     };
 
-    /** The attached part's range when there is a part (it may have cleared it: null is an answer), else the held one. */
-    private current(): CellRange | null {
+    /** The attached part's range when there is a part (it may have cleared it: null is an answer), else the held one; whatever the range mode. */
+    private live(): CellRange | null {
         const { part } = this.lazy;
         return part ? part.getRange() : this.held;
     }
+
+    /** What is reported: the range while range mode is on, nothing while it is off. */
+    private current(): CellRange | null {
+        return this.rangeOn() ? this.live() : null;
+    }
+
+    /** Between `attach()` and `detach()`: the services (rows, columns) can be asked. */
+    private attached = false;
 
     private rangeOn(): boolean {
         const { config } = this.context.host;
@@ -97,20 +107,29 @@ export class RangeSession<T> implements CellSession {
         console.warn('[ge-data-table] cellRange is not a range of this table (needs integer startRow / endRow and the keys of existing columns as startCol / endCol); it was ignored:', value);
     }
 
-    attach(): void {}
+    attach(): void {
+        this.attached = true;
+    }
 
     hostUpdate(): void {
         const on = this.rangeOn();
-        // Turning range selection off ends range mode: the range goes with it (wave 6 A.2), so turning it on again starts empty.
-        if (!on && this.wasOn) this.held = null;
-        else this.held = this.current();
+        if (on) {
+            this.held = this.live();
+            // The shell clamps what it holds when the rows and columns are known (a part, once loaded, does it for itself).
+            if (this.held && !this.lazy.part) this.held = sanitizeCellRange(this.held, this.context.rowCount(), this.context.focusableKeys()) ?? null;
+        } else if (this.wasOn) {
+            // Turning range selection OFF ends range mode: the range goes with it (wave 6 A.2), so turning it on again starts empty.
+            this.held = null;
+        }
+        // (off and never on: a value assigned before the mode was switched on waits in `held`)
         this.wasOn = on;
         this.lazy.sync(on);
     }
 
     detach(): void {
+        this.attached = false;
         // A detach keeps the range (a DOM move): the next attach's part gets it back.
-        this.held = this.current();
+        this.held = this.live();
         this.lazy.dispose();
     }
 }

@@ -44,7 +44,7 @@ function ignoreReadOnly(name: string): void {
     console.warn(`[ge-data-table] ${name} is read-only: the assignment was ignored.`);
 }
 
-type Mutable<O> ={ -readonly [K in keyof O]: O[K] };
+type Mutable<O> = { -readonly [K in keyof O]: O[K] };
 
 /** Inputs the table has besides the controllers' `DataTableConfig`. */
 interface DataTableExtraInputs<T> {
