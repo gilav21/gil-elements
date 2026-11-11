@@ -654,9 +654,7 @@ export class CellInteractionController<T> {
             // A renderer replaced the DOM between the down and the up: the press's start cell (an address) is still the cell that was tapped, if the finger
             // is where it went down.
             const start = press.startCell;
-            const editing = this.service.editingCell();
-            const inEditor = editing?.rowIndex === start?.rowIndex && editing?.columnKey === start?.columnKey; // the same guard as below, by address
-            if (start && !inEditor && withinTouchSlop(event.clientX - press.x, event.clientY - press.y)) this.focusCell(start.rowIndex, start.columnKey, false);
+            if (start && !this.isEditorCell(start) && withinTouchSlop(event.clientX - press.x, event.clientY - press.y)) this.focusCell(start.rowIndex, start.columnKey, false);
             return;
         }
         // Still a tap: within the pressed DATA cell's box plus the slop (the shared touch slop). Anything else (the stretch / spacer cell, a full-width
@@ -708,9 +706,13 @@ export class CellInteractionController<T> {
 
     /** The element (the pressed one, as recorded; or the one a hit test found) is in the cell that holds the open editor, across shadow hosts. */
     private insideOpenEditor(el: Element): boolean {
+        return this.isEditorCell(cellAddressOf(el));
+    }
+
+    /** `address` is the cell that holds the open editor (the one question both the element-based guard and the replaced-DOM tap ask, by address). */
+    private isEditorCell(address: CellAddress | null): boolean {
         const editing = this.service.editingCell();
-        const cell = editing ? this.host.cellAt(editing.rowIndex, editing.columnKey) : null;
-        return cell !== null && composedContains(cell, el);
+        return address !== null && editing != null && editing.rowIndex === address.rowIndex && editing.columnKey === address.columnKey;
     }
 
     /** What the sessions draw over the grid (the range readout and fill handle); the element calls it after the table, inside the viewport. */

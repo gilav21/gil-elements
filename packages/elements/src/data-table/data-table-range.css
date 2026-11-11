@@ -16,6 +16,14 @@
         outline: 1px dashed color-mix(in oklab, var(--primary) 40%, transparent);
         outline-offset: -1px;
     }
+    /* This region is spliced AFTER data-table-window.css, so its (0,2,1) outline would now beat the forced-colours focus ring of equal specificity there
+       (on main the focus rule came later and won). The focus ring wins again, whatever the region order: one more attribute. */
+    @media (forced-colors: active) {
+        ge-data-table [data-slot="table-cell"][data-fill-preview][data-focused] {
+            outline: 2px solid Highlight;
+            outline-offset: -2px;
+        }
+    }
     ge-data-table [data-slot="fill-handle"] {
         position: absolute;
         z-index: 20;

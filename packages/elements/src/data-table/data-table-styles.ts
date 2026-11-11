@@ -12,6 +12,9 @@ import windowCss from './data-table-window.css?inline';
  * just before its closing brace, so the adopted sheet keeps one rule and packages never edit the same file.
  * Wave 4: rows, window, columns. Wave 5: filters (package A), edit (package B). Wave 6: range (A), drag and flash (C).
  */
+// CASCADE ORDER: a rule that moved from data-table.css into a region file now comes AFTER the other region files' rules (rows, window, columns, ...),
+// so a moved rule of equal specificity beats one it used to precede. Audited in round 33 (focus ring vs fill preview was the one inversion, fixed in
+// data-table-range.css); a new region rule that sets a property the focus ring, the retained row or a header already sets must win or lose on purpose.
 const layer = base.trimEnd();
 // Empty where styles are not loaded (the node test project, server rendering); anything else must be a closed @layer.
 if (layer !== '' && !layer.endsWith('}')) throw new Error('data-table.css must end with the closing brace of its @layer: the package region files are spliced in before it');
