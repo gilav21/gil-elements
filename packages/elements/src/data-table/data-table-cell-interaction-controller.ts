@@ -12,6 +12,13 @@ const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]
 /** Rows moved by one page key when nothing is drawn to measure. */
 const FALLBACK_PAGE = 10;
 
+/** Whether `node` is `ancestor` or inside it, across shadow roots: Node.contains stops at a shadow boundary, this goes from a shadow root to its host. */
+function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
+    if (!ancestor) return false;
+    for (let at = node; at; at = at.parentNode ?? (at as ShadowRoot).host ?? null) if (at === ancestor) return true;
+    return false;
+}
+
 /**
  * Focus, and later editing and range, of the grid's cells: one owner because reconciling them after a render writes
  * them together. Wave 4 is focus: the roving tabindex (exactly one cell, the focused one, is a tab stop; the viewport
@@ -27,7 +34,14 @@ export class CellInteractionController<T> {
     /** A pointer is down: the focus it causes on the viewport is not a Tab arrival. */
     private pointer = false;
     private observer: MutationObserver | null = null;
+    /** The row that held the focus when a node or group was opened or closed: the render that follows follows it. */
+    private rowAtExpansion: { at: CellAddress; id: string; hadFocus: boolean } | null = null;
     private watched: Element | null = null;
+    /**
+     * Bumped by every attach and every detach, so it is odd while attached. The host keeps its queued tasks across a disconnect (other controllers
+     * wait on theirs), so a deferred task of this controller checks that it is still running in the attach that queued it.
+     */
+    private attachment = 0;
     private teardown: (() => void)[] = [];
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
@@ -42,11 +56,13 @@ export class CellInteractionController<T> {
     };
 
     attach(): void {
+        this.attachment++;
         const { host } = this;
         const { root, disposables } = host;
         this.teardown = [
             host.provide('interaction', this.service),
             host.addKeyHandler(100, (event) => this.onKey(event)),
+            host.topics.on('expansion', () => this.noteFocusedRow()),
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event))),
             disposables.listen<PointerEvent>(root, 'pointerup', ownEvents(root, (event: PointerEvent) => this.onPointerUp(event))),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => !root.contains(event.target as Node) && (this.within = false), true),
@@ -67,22 +83,131 @@ export class CellInteractionController<T> {
         this.observer?.disconnect();
         this.observer = this.watched = null;
         this.within = this.pointer = false;
+        this.attachment++;
+        this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
     }
 
-    /** Before every render: the focused cell follows the data (clamped to the rows that exist) and the layout. */
+    /** Before every render: the focused cell follows its row (when a node or group moved it), the data (clamped to the rows that exist) and the layout. */
     hostUpdate(): void {
         this.watchDom();
+        // Consumed once, whatever the rest of this update does: it belongs to the render that follows its `expansion`, not to a later one.
+        // And only for the cell it was taken for: a focus set since then is another cell's.
         const at = this.focused;
+        const moved = this.rowAtExpansion?.at === at ? this.rowAtExpansion : null;
+        this.rowAtExpansion = null;
         if (!at) return;
         const rows = this.rowCount();
-        // An empty list (a server page loading) changes nothing: the focus waits for rows.
-        if (rows === 0) return;
-        const keys = requireProvider(this.host, 'columns').focusableKeys();
-        const col = nearestColumn(keys, at.columnKey, this.lastColumn);
-        if (col === -1) return this.clear();
-        const next = { rowIndex: Math.min(at.rowIndex, rows - 1), columnKey: keys[col] as string };
-        this.lastColumn = col;
+        if (rows === 0) {
+            // No data rows because the row's group (the last open one) is collapsed: the focus has nowhere to stay, and the group header is what is drawn.
+            if (this.dropIfCollapsed(moved)) return;
+            // No rows because they are loading changes nothing: the focus waits for rows, and so does the row it was following. DOM focus does not:
+            // the cell is gone, and where the user put it meanwhile is theirs, so a later drop must not take it for the cell's.
+            this.rowAtExpansion = moved && { ...moved, hadFocus: false };
+            return;
+        }
+        let row = moved ? this.followRow(at, moved.id) : at.rowIndex;
+        if (row === -1) {
+            // Gone with a collapsed group, the roving cell has nowhere to stay; gone for any other reason (a page, a filter) it is clamped like any cell.
+            if (this.dropIfCollapsed(moved, at)) return;
+            row = at.rowIndex;
+        }
+        const next = this.landOn(row, at.columnKey);
+        if (!next) return this.clear();
+        this.lastColumn = requireProvider(this.host, 'columns').focusableKeys().indexOf(next.columnKey); // remembered by the one that takes the cell, as `focusCell` does
         if (next.rowIndex !== at.rowIndex || next.columnKey !== at.columnKey) this.set(next);
+    }
+
+    /** The cell nearest to `rowIndex` and `columnKey` that exists (rows clamped, a hidden column left for its neighbour); null when there is none. It changes nothing. */
+    private landOn(rowIndex: number, columnKey: string): CellAddress | null {
+        const rows = this.rowCount();
+        const keys = requireProvider(this.host, 'columns').focusableKeys();
+        const col = nearestColumn(keys, columnKey, this.lastColumn);
+        if (rows === 0 || col === -1) return null;
+        return { rowIndex: Math.min(rowIndex, rows - 1), columnKey: keys[col] as string };
+    }
+
+    /** A node or group opened or closed while a row held the focus: remember which row (from the drawn DOM, still the old one) and whether DOM focus sat in its cell. */
+    private noteFocusedRow(): void {
+        const at = this.focused;
+        if (!at) {
+            this.rowAtExpansion = null;
+            return;
+        }
+        const id = this.host.rowAt(at.rowIndex)?.dataset['rowId'];
+        // The one rule for an empty list: with no row drawn at the focused index, a note already waiting for rows stays, it is not replaced by nothing.
+        if (id === undefined) return;
+        this.rowAtExpansion = { at, id, hadFocus: composedContains(this.host.cellAt(at.rowIndex, at.columnKey), this.deepActive()) };
+    }
+
+    /**
+     * Where the row that held the focus is now: its own index, or its nearest ancestor's when a tree node closed over it, and -1 when
+     * it is not drawn. A row still at the index the focus is at costs one id read, which is every detail toggle; otherwise the ids
+     * are read once, in one pass, and the ancestors are looked up in that.
+     */
+    private followRow(at: CellAddress, id: string): number {
+        const { config } = this.host;
+        const query = requireProvider(this.host, 'query');
+        // Ids are compared as strings: the one in the DOM is one, and a consumer's `getRowId` may answer with a number.
+        const idOf = (row: unknown): string => String(config.getRowId(row as never));
+        const here = query.renderedRowAt(at.rowIndex);
+        if (here !== undefined && idOf(here) === id) return at.rowIndex;
+        const indexes = new Map<string, number>();
+        query.renderedRows().forEach((row, i) => {
+            const key = idOf(row);
+            if (!indexes.has(key)) indexes.set(key, i);
+        });
+        let index = indexes.get(id) ?? -1;
+        if (index === -1 && config.enableSubRows) {
+            // The tree index is keyed by the ids as `getRowId` answers them: read through their strings, like everything here.
+            const parents = new Map([...query.treeIndex().parent].map(([child, parent]) => [String(child), String(parent)] as const));
+            for (let parent = parents.get(id); parent !== undefined && index === -1; parent = parents.get(parent)) index = indexes.get(parent) ?? -1;
+        }
+        return index;
+    }
+
+    /** The row's group is collapsed now, so it left with it: the roving cell has nowhere to stay. Drops the focus and says so. */
+    private dropIfCollapsed(moved: { id: string; hadFocus: boolean } | null, at?: CellAddress): boolean {
+        const group = moved ? this.collapsedGroupOf(moved.id) : undefined;
+        if (!moved || group === undefined) return false;
+        this.dropFocus(moved.hadFocus, group, at);
+        return true;
+    }
+
+    /** The key of the collapsed group a row belongs to, from the query's grouping: only the collapsed groups are searched, not every row. */
+    private collapsedGroupOf(id: string): string | undefined {
+        const { config } = this.host;
+        const expansion = requireProvider(this.host, 'expansion');
+        return requireProvider(this.host, 'query')
+            .groupRows()
+            .find((group) => expansion.isGroupCollapsed(group.groupKey) && group.rows.some((row) => String(config.getRowId(row)) === id))?.groupKey;
+    }
+
+    /**
+     * The focused row left with its collapsed group: the roving cell has nowhere to stay. If DOM focus was on that cell the toggle of its
+     * group header takes it; failing that (the header is on another page) the nearest row that is left does, in the same column, without
+     * scrolling: the keyboard stays where the user was. If DOM focus was anywhere else (a toolbar button that collapsed the group, a widget
+     * in a detail row) it stays there.
+     */
+    private dropFocus(hadFocus: boolean, group: string, at?: CellAddress): void {
+        this.clear();
+        if (!hadFocus) return;
+        this.afterRender(() => {
+            // Still nowhere: focus fell to the page with the cell, or is on the viewport; something else has it by now otherwise. Unlike the
+            // observer below, focus on another part of the page is not nowhere: it is the user's, and is left alone.
+            if (!this.onPage() && this.deepActive() !== this.host.root.querySelector(VIEWPORT)) return;
+            const toggle = this.groupToggle(group);
+            if (toggle) return toggle.focus({ preventScroll: true });
+            const next = at && this.landOn(at.rowIndex, at.columnKey);
+            // The header is on another page: a row that is left takes the focus; with no rows at all (every group closed) any group header does.
+            if (next) this.focusCell(next.rowIndex, next.columnKey, false);
+            else this.groupToggle()?.focus({ preventScroll: true });
+        });
+    }
+
+    /** The toggle of the header of group `key` that this table draws, or the first group toggle it draws when no key is asked for. */
+    private groupToggle(key?: string): HTMLElement | undefined {
+        const toggles = ownElements(this.host.root, this.host.root.querySelectorAll<HTMLElement>('[data-kind="group"] [data-toggle]'));
+        return key === undefined ? toggles[0] : toggles.find((toggle) => toggle.closest('[data-kind="group"]')?.getAttribute('data-group-key') === key);
     }
 
     // ---- state ------------------------------------------------------------------------------------------------------
@@ -115,7 +240,7 @@ export class CellInteractionController<T> {
         if (reveal) requireProvider(this.host, 'virtual').reveal(rowIndex, columnKey);
         this.focusDom();
         // The cell may not exist yet (its row is entering the window): the render that draws it runs first.
-        if (!this.hasFocus()) this.host.afterRender(() => this.focusDom());
+        if (!this.hasFocus()) this.afterRender(() => this.focusDom());
     }
 
     // ---- DOM focus --------------------------------------------------------------------------------------------------
@@ -126,7 +251,13 @@ export class CellInteractionController<T> {
 
     private hasFocus(): boolean {
         const cell = this.focused ? this.host.cellAt(this.focused.rowIndex, this.focused.columnKey) : null;
-        return cell !== null && this.rootNode().activeElement === cell;
+        return cell !== null && this.deepActive() === cell;
+    }
+
+    /** Queues `task` for after the render, unless the table is detached (or attached anew) by the time the host runs it. */
+    private afterRender(task: () => void): void {
+        const attachment = this.attachment;
+        this.host.afterRender(() => attachment === this.attachment && task());
     }
 
     /** The focused cell's element takes DOM focus (no scrolling: `reveal` already placed it). */
@@ -139,6 +270,25 @@ export class CellInteractionController<T> {
         cell.focus({ preventScroll: true });
     }
 
+    /**
+     * The element that has DOM focus, wherever it is. A table in a shadow root asks that root first: it answers for a closed one too, where
+     * `document.activeElement` is only the host. Elsewhere (the table's own root has none: focus is outside it) the document's answer is
+     * followed down through the open shadow roots.
+     */
+    private deepActive(): Element | null {
+        const node = this.rootNode();
+        let active = (node instanceof ShadowRoot ? node.activeElement : null) ?? this.host.root.ownerDocument.activeElement;
+        while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+        return active;
+    }
+
+    /** Nothing has DOM focus, or only the page (`<body>`, `<html>`) does: what is left when the focused element is removed. */
+    private onPage(): boolean {
+        const active = this.deepActive();
+        return !active || active === active.ownerDocument.body || active === active.ownerDocument.documentElement;
+    }
+
+
     /** A render can remove or move the focused element (a sort, a row leaving the window): DOM focus then falls to the page. */
     private watchDom(): void {
         const viewport = this.host.root.querySelector(VIEWPORT);
@@ -147,8 +297,8 @@ export class CellInteractionController<T> {
         this.observer?.disconnect();
         this.watched = viewport;
         this.observer = new MutationObserver(() => {
-            const active = this.rootNode().activeElement;
-            if (this.within && this.focused && (!active || !this.host.root.contains(active) || active === this.host.root.ownerDocument.body)) this.focusDom();
+            // Lost: nothing has the focus, the page has, or something outside the table has (a removed row's focus can fall anywhere).
+            if (this.within && this.focused && !composedContains(this.host.root, this.deepActive())) this.focusDom();
         });
         this.observer.observe(viewport, { childList: true, subtree: true });
     }

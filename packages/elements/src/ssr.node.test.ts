@@ -47,4 +47,35 @@ describe('elements on the server', () => {
         expect(out).toContain('<ge-data-table');
         expect(out).not.toContain('data-slot="table"');
     });
+
+    // On the server `connectedCallback` and `willUpdate` return early and `render()` answers `nothing`: nothing is assembled, so the grid,
+    // its windows and its controllers are the client's. With real columns and rows and every wave 4 feature on, a renderer or controller
+    // that ran on the server would throw or leave grid markup behind; neither may happen.
+    it('ge-data-table given real columns and rows with every wave 4 feature on renders the host only, without a DOM', async () => {
+        const columns = [{ accessorKey: 'name', header: 'Name' }, { accessorKey: 'group', header: 'Group', aggregateFn: 'count' }];
+        const data = Array.from({ length: 20 }, (_, i) => ({ id: `r${i}`, name: `n${i}`, group: `g${i % 3}`, children: [{ id: `r${i}-c`, name: `c${i}`, group: 'g0' }] }));
+        const out = await collectResult(
+            render(
+                html`<ge-data-table
+                    .columns=${columns}
+                    .data=${data}
+                    .expandedRows=${{ r1: true }}
+                    .rowSelection=${{ r2: true }}
+                    .renderDetail=${(row: { name: string }) => html`<span>${row.name}</span>`}
+                    enable-virtual-scroll="true"
+                    enable-sub-rows
+                    enable-row-selection
+                    enable-row-expansion
+                    enable-column-resize
+                    enable-column-reorder
+                    group-by="group"
+                    locale="de"
+                ></ge-data-table>`,
+            ),
+        );
+
+        expect(out).toContain('<ge-data-table');
+        expect(out).not.toContain('data-slot="table"');
+        expect(out).not.toContain('data-slot="table-row"');
+    });
 });

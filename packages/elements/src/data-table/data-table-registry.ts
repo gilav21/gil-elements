@@ -72,7 +72,7 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
         needs: ['query', 'columns', 'virtual'],
         // Selection and expansion are asked for when a key or a collapse runs, never at attach (their handlers register at priority 50).
         uses: ['selection', 'expansion'],
-        reads: ['rows', 'columns', 'viewport', 'selection'],
+        reads: ['rows', 'columns', 'viewport', 'selection', 'expansion'],
         writes: ['cell'],
     }),
     spec('clipboard', { needs: ['query', 'columns', 'interaction'], uses: ['virtual'], reads: ['cell'] }),
