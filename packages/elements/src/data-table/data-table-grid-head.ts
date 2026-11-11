@@ -74,8 +74,9 @@ function headContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
     if (special !== undefined) return special;
     const control = sortControl(v, c);
     const trigger = v.filters.trigger(c);
-    // A custom header renderer is drawn bare, unless a filter trigger has to sit beside it (wave 5).
-    return c.headerRenderer && isEmptyContent(trigger) ? control : html`<div data-slot="data-table-head-controls">${control}${trigger}</div>`;
+    // ONE template always: a header renderer is drawn bare (`data-bare`: the wrapper has no box of its own) until a filter trigger sits beside it. A
+    // different template when the trigger appears would rebuild the consumer's header element (a remount).
+    return html`<div data-slot="data-table-head-controls" ?data-bare=${c.headerRenderer !== undefined && isEmptyContent(trigger)}>${control}${trigger}</div>`;
 }
 
 /** A separator's `aria-valuemax` defaults to 100 and clamps the value; a column has no real maximum. */

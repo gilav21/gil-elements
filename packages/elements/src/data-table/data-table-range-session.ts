@@ -57,9 +57,9 @@ export class RangeSession<T> implements CellSession {
             // it is only not reported, and it applies when the mode turns on. `undefined` is "no range"; anything that is not a range, or names a column
             // that is not a range of integer rows and string columns is refused (warned once) and the old value stays. The COLUMNS are not looked up here:
             // `cellRange = r; columns = [...]` in one tick (an Angular binding order) must keep `r`, so they are validated at the next update against the
-            // columns of that moment (`validateColumns`). Rows past the last drawn one are trimmed when the rows are known (an empty list changes
-            // nothing); while detached the services are gone, so the row clamp waits for the next update too.
-            const next = sanitizeCellRange(range, this.attached ? this.context.rowCount() : 0, []);
+            // columns of that moment (`validateColumns`). The ROWS are not looked up here either (`cellRange = r; data = newData` in one tick must not
+            // trim `r` against the old data): `hostUpdate` trims them once the rows of that update are known.
+            const next = sanitizeCellRange(range, 0, []);
             if (next === undefined) return warnBadRange(range);
             const changed = !sameRange(this.live(), next);
             this.held = next;
@@ -103,8 +103,8 @@ export class RangeSession<T> implements CellSession {
         return this.rangeOn() ? this.live() : null;
     }
 
-    /** Between `attach()` and `detach()`: the services (rows, columns) can be asked. */
-    private attached = false;
+    /** The range and the `columns` array `validateColumns` last found valid. */
+    private checked: { range: CellRange; columns: unknown } | null = null;
 
     /**
      * ONE column rule: a data column of `config.columns` (visible or hidden: visibility only affects drawing), never a special column. Checked at the
@@ -113,8 +113,12 @@ export class RangeSession<T> implements CellSession {
      */
     private validateColumns(): void {
         if (!this.held) return;
-        const keys = rangeColumnKeys(this.context.host.config.columns);
+        const { columns } = this.context.host.config;
+        // Checked once per (range, columns array): an update that changes neither has nothing new to find.
+        if (this.checked?.range === this.held && this.checked.columns === columns) return;
+        const keys = rangeColumnKeys(columns);
         if (keys.length === 0) return;
+        this.checked = { range: this.held, columns };
         if (sanitizeCellRange(this.held, 0, keys) !== undefined) return;
         warnBadRange(this.held);
         this.held = null;
@@ -126,9 +130,7 @@ export class RangeSession<T> implements CellSession {
     }
 
 
-    attach(): void {
-        this.attached = true;
-    }
+    attach(): void {}
 
     hostUpdate(): void {
         const on = this.rangeOn();
@@ -164,7 +166,6 @@ export class RangeSession<T> implements CellSession {
     }
 
     detach(): void {
-        this.attached = false;
         // A detach keeps the range (a DOM move): the next attach's part gets it back.
         this.held = this.live();
         this.lazy.dispose();

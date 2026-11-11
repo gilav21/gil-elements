@@ -529,6 +529,9 @@
         align-items: center;
         gap: 0.5rem;
     }
+    ge-data-table [data-slot="data-table-head-controls"][data-bare] {
+        display: contents;
+    }
     ge-data-table ge-data-table-column-header {
         display: block;
         min-width: 0;

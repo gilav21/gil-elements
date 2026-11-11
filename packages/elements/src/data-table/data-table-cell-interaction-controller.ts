@@ -64,7 +64,12 @@ export class CellInteractionController<T> {
     private readonly sessions: readonly CellSession[];
     private readonly service: CellInteractionService;
     /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. */
-    readonly services: { readonly range: RangeService };
+    readonly services: { range: RangeService };
+    /** The contributions of the sessions to `service` as built: put back at every attach (a failed session withdraws its own, see `withdraw`). */
+    private readonly baseService: CellInteractionService;
+    private readonly context: InteractionContext<T>;
+    /** The sessions whose `renderOverlay` failure was already reported: it runs at every render and reports its first failure only (cleared at detach). */
+    private readonly reported = new Set<CellSession>();
     /**
      * The presses in progress, one per pointer id (several fingers are several presses; a pointerdown never overwrites another pointer's):
      * the roving cell at its pointerdown, so both ends of one press see the same anchor, and the session that claimed it, which alone gets its
@@ -92,6 +97,7 @@ export class CellInteractionController<T> {
             hasOpenEditor: () => this.service.editingCell() !== null,
             deepActive: () => this.deepActive(),
         };
+        this.context = context;
         this.edit = new EditSession(context);
         this.range = new RangeSession(context);
         this.sessions = [this.range, this.edit];
@@ -102,6 +108,7 @@ export class CellInteractionController<T> {
             ...this.range.service,
             ...this.edit.service,
         };
+        this.baseService = { ...this.service };
     }
 
 
@@ -109,6 +116,9 @@ export class CellInteractionController<T> {
         this.attachment++;
         const { host } = this;
         const { root, disposables } = host;
+        // What a failed session withdrew in an earlier attach is the session's again: it is tried afresh.
+        Object.assign(this.service, this.baseService);
+        this.services.range = this.range.rangeService;
         // The services are provided first and the sessions attach after them (range, then edit): a session may read any provider in `attach()`.
         this.teardown = [
             host.provide('interaction', this.service),
@@ -126,7 +136,8 @@ export class CellInteractionController<T> {
             // Pointer capture is tracked from its own (composed) events: an element inside a consumer component's closed shadow root that captures
             // cannot be asked (the path shows its host). `lostpointercapture` comes after the pointerup, so a release still sees its capture.
             disposables.listen<PointerEvent>(root, 'gotpointercapture', (event) => this.captured.add(event.pointerId), true),
-            disposables.listen<PointerEvent>(root, 'lostpointercapture', (event) => this.captured.delete(event.pointerId), true),
+            // The LOSS is heard on the document: when the capturing element is removed mid-gesture, the event goes to the document, not to the root.
+            disposables.listen<PointerEvent>(root.ownerDocument, 'lostpointercapture', (event) => this.captured.delete(event.pointerId), true),
             // The document hears a press FIRST (before the root's capture listener): one whose composed path does not include the root is outside, as far as
             // it can tell, and clears `within` NOW (the focus guard must not pull the focus back into the grid while that press's own handlers change the
             // data); a press the root then hears (a table in a CLOSED shadow root, invisible to the document's path) restores it, in the same dispatch.
@@ -149,12 +160,27 @@ export class CellInteractionController<T> {
             } catch (error) {
                 // A session that fails to attach is reported and left out of everything after (pointer, hostUpdate, overlay, detach): the controller and
                 // the other controllers still attach.
-                // What it registered before it threw (a key handler, a listener) is removed by its detach, which runs now: the session is then left out.
-                this.report(error);
-                this.guarded(() => session.detach());
-                this.broken.add(session);
+                this.fail(session, error);
             }
         }
+    }
+
+    /**
+     * A session failed (its `attach()` or a `hostUpdate()` threw): it is reported once, detached NOW (that removes what it registered, a key handler or a
+     * listener), left out of everything after (pointer, hostUpdate, overlay, detach), and its contributions are WITHDRAWN: the merged `interaction`
+     * service, and for the range session the `range` provider and `services`, answer with a fresh unattached session (the inert shell), so nothing
+     * keeps calling a half-attached one.
+     */
+    private fail(session: CellSession, error: unknown): void {
+        this.report(error);
+        this.guarded(() => session.detach());
+        this.broken.add(session);
+        if (session === this.range) {
+            const inert = new RangeSession(this.context);
+            Object.assign(this.service, inert.service);
+            this.services.range = inert.rangeService;
+            this.teardown.push(this.host.provide('range', inert.rangeService));
+        } else if (session === this.edit) Object.assign(this.service, new EditSession(this.context).service);
     }
 
     detach(): void {
@@ -171,6 +197,7 @@ export class CellInteractionController<T> {
         this.within = this.pointer = false;
         this.clearedAt = null;
         this.captured.clear();
+        this.reported.clear();
         this.attachment++;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
     }
@@ -178,8 +205,15 @@ export class CellInteractionController<T> {
     /** Before every render: the focused cell follows its row (when a node or group moved it), the data (clamped to the rows that exist) and the layout. */
     hostUpdate(): void {
         this.reconcile();
-        // A session that throws is reported and skipped for this call: the others, and the rest of the update, still run.
-        this.eachBackwards((session) => void this.guarded(() => session.hostUpdate?.()));
+        // A session whose `hostUpdate` throws is failed like one whose attach threw (reported once, left out from now on, withdrawn): it would throw at every
+        // render. The others, and the rest of the update, still run.
+        this.eachBackwards((session) => {
+            try {
+                session.hostUpdate?.();
+            } catch (error) {
+                this.fail(session, error);
+            }
+        });
     }
 
     private reconcile(): void {
@@ -436,11 +470,7 @@ export class CellInteractionController<T> {
 
     // ---- pointer ----------------------------------------------------------------------------------------------------
 
-    /**
-     * The press is offered to the sessions FIRST, with the roving cell as it was before the press (`press.anchor`: a shift+click builds its
-     * range from it). A session that claims it (returns true) moves the focus itself; otherwise the controller focuses the pressed cell, except
-     * for a press inside the open editor's cell, which never moves focus (an editor may be a custom element the tag list below does not know).
-     */
+    /** The document hears every press first: one whose composed path does not include the root clears `within` now (the root restores it for a press it hears). */
     private onDocumentDown(event: PointerEvent): void {
         this.clearedAt = null;
         if (!this.within || event.composedPath().includes(this.host.root)) return; // nothing to clear
@@ -454,6 +484,11 @@ export class CellInteractionController<T> {
         if (ownsTarget(this.host.root, event.target)) this.onPointerDown(event); // a nested table records its own presses
     }
 
+    /**
+     * The press is offered to the sessions FIRST, with the roving cell as it was before the press (`press.anchor`: a shift+click builds its
+     * range from it). A session that claims it (returns true) moves the focus itself; otherwise the controller focuses the pressed cell, except
+     * for a press inside the open editor's cell, which never moves focus (an editor may be a custom element the tag list below does not know).
+     */
     private onPointerDown(event: PointerEvent): void {
         this.pointer = true;
         // The anchor is read BEFORE the offer: a claimant that moves the focus in its onPointerDown must not change the anchor of its own press.
@@ -487,6 +522,7 @@ export class CellInteractionController<T> {
         // The document's listener sees a target RETARGETED to the outermost host when this table sits in another component's shadow root: the target
         // is read from the composed path (the first node inside this table), for ownership, the cell address and the tapped cell alike.
         const where = event.type === 'pointerup' ? this.locateRelease(event) : { own: false, cell: null };
+        this.captured.delete(event.pointerId); // the press is over, and so is its capture (its `lostpointercapture` may never reach us)
         if (!where.own) return this.notifyCancel(press, event);
         const { anchor, claimedBy } = press;
         const cell = where.cell;
@@ -517,6 +553,7 @@ export class CellInteractionController<T> {
         this.afterDispatch(() => {
             if (this.presses.get(event.pointerId) !== press) return;
             this.presses.delete(event.pointerId);
+            this.captured.delete(event.pointerId);
             this.pointer = this.presses.size > 0;
             this.notifyCancel(press, event);
         });
@@ -531,7 +568,7 @@ export class CellInteractionController<T> {
 
     /** What the sessions draw over the grid (the range readout and fill handle); the element calls it after the table, inside the viewport. */
     renderOverlay(): TemplateResult | null {
-        const drawn = this.sessions.map((session) => (this.broken.has(session) ? undefined : this.guarded(() => session.renderOverlay?.())));
+        const drawn = this.sessions.map((session) => (this.broken.has(session) ? undefined : this.guarded(() => session.renderOverlay?.(), session)));
         return drawn.some(Boolean) ? html`${drawn}` : null; // Lit draws nothing for an undefined or null entry
     }
 
@@ -566,6 +603,13 @@ export class CellInteractionController<T> {
             if (el.closest(OVERLAY)) continue; // looked through: every overlay marks itself (the readout, the fill handle, a drop edge)
             // The FIRST element of the table that is not an overlay decides: a cell, or something that is not one (the sticky header or footer, a popover
             // or menu of the table, the busy overlay). The cells scrolled under those are not what the pointer is on.
+            // An element drawn inside a cell but floating outside its box (a popover or menu of the cell, positioned over other cells) is not that cell:
+            // the point is not inside the cell's rect. (Mark it `data-pointer-transparent` to be looked through to the cell under it instead.)
+            const host = el.closest('[data-slot="table-cell"]');
+            if (host && el !== host) {
+                const box = host.getBoundingClientRect();
+                if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) return { own: true, cell: null };
+            }
             return { own: true, cell: cellAddressOf(el) ? el : null };
         }
         return { own: false, cell: null };
@@ -591,12 +635,16 @@ export class CellInteractionController<T> {
         console.error('[ge-data-table] a session threw:', error);
     }
 
-    /** Runs a session callback (a pointer handler, a cancel, a detach); one that throws is reported and answers nothing, so no press is ever broken by it. */
-    private guarded<R>(call: () => R): R | undefined {
+    /**
+     * Runs a session callback (a pointer handler, a cancel, a detach); one that throws is reported and answers nothing, so no press is ever broken by it.
+     * A callback that runs at every render (`renderOverlay`) passes its session and reports its FIRST failure only.
+     */
+    private guarded<R>(call: () => R, every?: CellSession): R | undefined {
         try {
             return call();
         } catch (error) {
-            this.report(error);
+            if (!every || !this.reported.has(every)) this.report(error);
+            if (every) this.reported.add(every);
             return undefined;
         }
     }
@@ -610,6 +658,7 @@ export class CellInteractionController<T> {
     private cancelPresses(): void {
         const open = [...this.presses.values()];
         this.presses.clear();
+        this.captured.clear();
         this.pointer = false;
         for (const press of open) this.notifyCancel(press, null);
     }

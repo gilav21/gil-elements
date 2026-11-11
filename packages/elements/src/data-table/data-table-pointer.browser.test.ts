@@ -453,6 +453,34 @@ describe('a session that throws while attaching', () => {
     });
 });
 
+describe('a range session whose attach threw', () => {
+    it('is withdrawn: the range provider answers inertly (not active), cellRange still stores, nothing throws', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const attach = vi.spyOn(RangeSession.prototype, 'attach').mockImplementation(() => {
+            throw new Error('range attach failed');
+        });
+        try {
+            const table = await mountTable({ enableCellRangeSelection: true });
+            expect(table.provider('range')!.active()).toBe(false);
+            const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
+            table.cellRange = range;
+            await settle(table);
+            expect(table.cellRange).toEqual(range);
+            expect(table.provider('range')!.isInRange(0, 'name')).toBe(false);
+            expect(table.provider('interaction')!.isCellSelected(0, 'name')).toBe(false); // the inert shell answers with the focused cell
+            // and a reconnect tries the real session again: nothing throws
+            attach.mockRestore();
+            table.remove();
+            document.body.append(table);
+            await settle(table);
+            expect(table.provider('range')).toBeDefined();
+        } finally {
+            attach.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
 describe('what a session registered before its attach threw', () => {
     it('is removed again (its detach runs at once), so reconnecting the table does not accumulate it', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -501,13 +529,41 @@ describe('sessions that throw in hostUpdate or renderOverlay', () => {
             const table = await mountTable();
             expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull();
             expect(rangeUpdate).toHaveBeenCalled();
-            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(expect.arrayContaining(['range hostUpdate failed', 'overlay failed']));
+            // the range session failed in its first hostUpdate and is left out from then on: its overlay is not asked afterwards
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(['range hostUpdate failed']);
             table.requestUpdate();
             await settle(table);
             expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull();
         } finally {
             delete (RangeSession.prototype as unknown as { renderOverlay?: unknown }).renderOverlay;
             rangeUpdate.mockRestore();
+            error.mockRestore();
+        }
+    });
+
+    it('are reported ONCE across many renders, and a session whose hostUpdate threw is left out from then on', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            throw new Error('range hostUpdate failed');
+        });
+        const overlay = vi.fn(() => {
+            throw new Error('overlay failed');
+        });
+        (EditSession.prototype as unknown as { renderOverlay?: () => unknown }).renderOverlay = overlay;
+        try {
+            const table = await mountTable();
+            for (let i = 0; i < 6; i++) {
+                table.requestUpdate();
+                await settle(table);
+            }
+            const messages = error.mock.calls.map((call) => String((call[1] as Error).message));
+            expect(messages.filter((m) => m === 'range hostUpdate failed')).toHaveLength(1);
+            expect(messages.filter((m) => m === 'overlay failed')).toHaveLength(1);
+            expect(update).toHaveBeenCalledTimes(1); // skipped after its first failure
+            expect(overlay.mock.calls.length).toBeGreaterThan(1); // the overlay is still asked: it may recover
+        } finally {
+            delete (EditSession.prototype as unknown as { renderOverlay?: unknown }).renderOverlay;
+            update.mockRestore();
             error.mockRestore();
         }
     });
@@ -667,6 +723,73 @@ describe('a captured pointer inside a consumer component with a CLOSED shadow ro
         start.append(grabber);
         await mouseDrag(start, cellAt(table, 2, 'age')!, { steps: 4 });
         expect(log).toEqual(['up:{"rowIndex":2,"columnKey":"age"}']);
+    });
+});
+
+describe('the capture of a pointer is forgotten', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    /** A mouse pointer pressed on `a`, released with its coordinates over `b`: the plain path reports `a`, the hit-test path of a captured pointer `b`. */
+    async function releaseAt(table: GeDataTable, id: number, a: Element, b: Element, between?: () => void): Promise<string[]> {
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        a.dispatchEvent(pointer('pointerdown', id));
+        between?.();
+        a.dispatchEvent(pointer('pointerup', id, { over: b }));
+        await frames(1);
+        return log;
+    }
+
+    it('when the capture is lost to the DOCUMENT (the capturing element was removed mid-gesture): the next release takes the plain path', async () => {
+        const table = await mountTable();
+        const a = cellAt(table, 0, 'name')!;
+        const b = cellAt(table, 2, 'age')!;
+        const log = await releaseAt(table, 221, a, b, () => {
+            a.dispatchEvent(new PointerEvent('gotpointercapture', { pointerId: 221, bubbles: true, composed: true }));
+            document.dispatchEvent(new PointerEvent('lostpointercapture', { pointerId: 221 })); // removed element: the event goes to the document
+        });
+        expect(log).toEqual(['up:{"rowIndex":0,"columnKey":"name"}']);
+    });
+
+    it('when its press ends: a later press of the same pointer id is not captured', async () => {
+        const table = await mountTable();
+        const a = cellAt(table, 0, 'name')!;
+        const b = cellAt(table, 2, 'age')!;
+        const first = await releaseAt(table, 222, a, b, () => a.dispatchEvent(new PointerEvent('gotpointercapture', { pointerId: 222, bubbles: true, composed: true })));
+        expect(first).toEqual(['up:{"rowIndex":2,"columnKey":"age"}']); // captured: located by where it is
+        const second = await releaseAt(table, 222, a, b); // no lostpointercapture ever came, but the press ended
+        expect(second).toEqual(['up:{"rowIndex":0,"columnKey":"name"}']);
+    });
+});
+
+describe('a release over something that floats out of its cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is not the cell that holds it: a popover inside cell (0, name) drawn over another cell gives no cell, and a transparent one gives the cell under it', async () => {
+        const table = await mountTable();
+        const host = cellAt(table, 0, 'name')!;
+        const under = cellAt(table, 2, 'age')!;
+        const rect = under.getBoundingClientRect();
+        const popover = document.createElement('div');
+        popover.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;z-index:50`;
+        host.append(popover);
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        const tap = (id: number): void => {
+            popover.dispatchEvent(pointer('pointerdown', id, { pointerType: 'touch', over: popover }));
+            popover.dispatchEvent(pointer('pointerup', id, { pointerType: 'touch', over: popover }));
+        };
+        tap(231);
+        popover.setAttribute('data-pointer-transparent', '');
+        tap(232);
+        expect(log).toEqual(['up:null', 'up:{"rowIndex":2,"columnKey":"age"}']);
+        popover.remove();
     });
 });
 

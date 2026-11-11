@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GeDataTable } from './data-table.js';
-import { mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
+import { makeRows, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
 import { resetBadRangeWarning } from './data-table-range.js';
 import { registerDataTableLocale } from './data-table.locales.js';
 
@@ -77,6 +77,26 @@ describe('the cellRange property', () => {
         table.cellRange = { ...mine, endRow: 2 }; // a different range does render
         expect(renders).toBeGreaterThan(0);
         table.requestUpdate = requestUpdate;
+    });
+
+    it('is trimmed against the rows of the update, not those at the assignment: `cellRange = r; data = more` and the reverse order keep r, a shrink trims it', async () => {
+        const big = { startRow: 0, startCol: 'name', endRow: 8, endCol: 'age' };
+        const more = makeRows(12);
+        for (const order of ['range first', 'data first']) {
+            const table = await mountTable({ enableCellRangeSelection: true, showPagination: false });
+            if (order === 'range first') {
+                table.cellRange = big;
+                table.data = more;
+            } else {
+                table.data = more;
+                table.cellRange = big;
+            }
+            await settle(table);
+            expect(table.cellRange, order).toEqual(big);
+            table.data = more.slice(0, 3);
+            await settle(table);
+            expect(table.cellRange, order).toEqual({ ...big, endRow: 2 });
+        }
     });
 
     it('answers the same before the first connect as after it: held, reported only while range mode is on, malformed values refused', () => {

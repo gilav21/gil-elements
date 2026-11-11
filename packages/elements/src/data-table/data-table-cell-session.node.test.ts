@@ -414,8 +414,11 @@ describe('the range held by the shell', () => {
         it('trims rows past the last drawn one, and drops a range wholly past them', () => {
             const { session } = make({ ...on }, { rowCount: 5 });
             session.rangeService.setRange({ ...range, endRow: 50 });
+            expect(session.rangeService.range()).toEqual({ ...range, endRow: 50 }); // the setter does not trim: the rows of its tick are not known
+            session.hostUpdate();
             expect(session.rangeService.range()).toEqual({ ...range, endRow: 4 });
             session.rangeService.setRange({ ...range, startRow: 20, endRow: 30 });
+            session.hostUpdate();
             expect(session.rangeService.range()).toBeNull();
         });
 
