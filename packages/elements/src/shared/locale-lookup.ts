@@ -28,6 +28,14 @@ export function withFallback<T extends object>(base: T, partial: T): T {
     return filled ? (merged as T) : partial;
 }
 
+/**
+ * `dictionary` with what it omits taken from `base`. It keeps its own `code`: one without is unnamed, `''`, never taken for the
+ * base's (English's). One place for the rule, used by `pickLocale` and by the table's public `withEnglishFallback`.
+ */
+export function fillLocale<T extends { code: string }>(base: T, dictionary: T): T {
+    return withFallback(base, dictionary.code === undefined ? { ...dictionary, code: '' } : dictionary);
+}
+
 /** What a dictionary was filled into, per dictionary: the same object in gives the same object out while the base is the same. */
 const completed = new WeakMap<object, { base: object; result: object }>();
 
@@ -45,7 +53,7 @@ export function pickLocale<T extends { code: string }>(
     const picked = input && typeof input === 'object' ? input : (lookupLocale(table, typeof input === 'string' ? input : '') ?? lookupLocale(table, pageLang) ?? table.en);
     const known = completed.get(picked);
     if (known?.base === table.en) return known.result as T;
-    const result = withFallback(table.en, picked.code === undefined ? { ...picked, code: '' } : picked);
+    const result = fillLocale(table.en, picked);
     completed.set(picked, { base: table.en, result });
     return result;
 }

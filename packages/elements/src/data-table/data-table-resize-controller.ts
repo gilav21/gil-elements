@@ -79,12 +79,11 @@ export class ResizeController<T> {
     private drag: Drag | null = null;
     private lastTap: { key: string; at: number } | null = null;
     private lastFit = 0;
-    private ownWrite = false;
     /**
      * What the key presses of the focused handle read of its column (stuck or not): a key that repeats must not change direction at
      * the overflow threshold. Read again after a pause, a drag, a resize of the window, a change of the columns, or when focus leaves.
      */
-    private keyed: { handle: HTMLElement; stuck: boolean; at: number } | null = null;
+    private keyed: { handle: HTMLElement; key: string; layout: string; stuck: boolean; at: number } | null = null;
     private cancelAnnounce: (() => void) | undefined;
     private unprovide: (() => void) | undefined;
     private removeKeys: (() => void) | undefined;
@@ -122,6 +121,14 @@ export class ResizeController<T> {
     }
 
     /** One model write and one `column-resize` event for a width the user chose. */
+    /** The columns as the direction depends on them: which, in which order, pinned how, and how wide, except `key`'s own width (the run itself changes that). */
+    private layoutOf(key: string): string {
+        return this.columns()
+            .enhancedColumns()
+            .map((c) => `${String(c.accessorKey)}:${c._pin ?? ''}:${String(c.accessorKey) === key ? '' : c._width}`)
+            .join('|');
+    }
+
     private commit(changes: readonly { key: string; oldWidth: string; newWidth: string }[]): void {
         if (changes.length === 0) return;
         const widths = this.host.model.get('columnWidths');
@@ -335,7 +342,7 @@ export class ResizeController<T> {
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
             // Read again when the run is over (a pause) or the geometry may have changed (see `keyed`'s resets).
             const now = event.timeStamp;
-            if (this.keyed?.handle !== handle || now - this.keyed.at > KEY_RUN_MS) this.keyed = { handle, stuck: isStuck(found.column, this.viewport()), at: now };
+            if (this.keyed?.handle !== handle || now - this.keyed.at > KEY_RUN_MS) this.keyed = { handle, key, layout: this.layoutOf(key), stuck: isStuck(found.column, this.viewport()), at: now };
             this.keyed.at = now;
             next = current + (event.key === 'ArrowRight' ? 1 : -1) * resizeSign(found.column, rtl, this.keyed.stuck) * step;
         } else if (event.key === 'Home') next = floor;
@@ -350,9 +357,6 @@ export class ResizeController<T> {
         event.preventDefault();
         next = Math.max(Math.ceil(floor), next);
         if (next === current) return true;
-        // The `columns` this write makes is not a change of the geometry to read again: the run goes on.
-        this.ownWrite = true;
-        this.host.afterRender(() => (this.ownWrite = false));
         this.commit([{ key, oldWidth: this.declaredWidth(key, found.column), newWidth: px(next) }]);
         handle.setAttribute('aria-valuenow', String(next));
         this.announceWidth(found.column, next);
@@ -387,7 +391,8 @@ export class ResizeController<T> {
                 if (event.target === this.keyed?.handle) this.keyed = null;
             })),
             disposables.listen(root.ownerDocument.defaultView ?? window, 'resize', () => (this.keyed = null)),
-            this.host.topics.on('columns', () => !this.ownWrite && (this.keyed = null)),
+            // The run's own width writes make a `columns` too: only a change of the rest (columns shown, hidden, moved, pinned, resized by someone else) is a new geometry.
+            this.host.topics.on('columns', () => this.keyed && this.layoutOf(this.keyed.key) !== this.keyed.layout && (this.keyed = null)),
             // The separator's value is the measured width when it takes focus: a `rem`, `%` or `auto` width has no px string to render.
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => {
                 const handle = (event.target as Element).closest?.<HTMLElement>(HANDLE);

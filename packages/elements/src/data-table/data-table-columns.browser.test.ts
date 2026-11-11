@@ -297,6 +297,19 @@ describe('column resize by mouse', () => {
         expect(Math.round(widthOf(headCell(table, 'c3')))).toBe(before + 10);
     });
 
+    it('reads the direction again when the consumer changes the columns in the same frame as a key press of the run', async () => {
+        const table = await mountResizable({ columns: makeColumns(4, { width: '150px', pinRight: 1 }), data: makeRows(3, { columns: 4 }) }, { width: 400, height: 300 });
+        q(headCell(table, 'c3'), '[data-slot="data-table-resize-handle"]').focus();
+        await press('{ArrowLeft}'); // latches "held at the edge" and writes c3's width
+        table.columnWidths = { c0: '40px', c1: '40px', c2: '40px', c3: table.columnWidths['c3']! }; // no frame in between
+        await settle(table);
+        expect(viewportOf(table).scrollWidth).toBeLessThanOrEqual(viewportOf(table).clientWidth);
+        const before = Math.round(widthOf(headCell(table, 'c3')));
+        await press('{ArrowRight}');
+        await settle(table);
+        expect(Math.round(widthOf(headCell(table, 'c3')))).toBe(before + 10);
+    });
+
     it('reads a rem minimum width against the real root font size, in aria-valuemin as in the resize floor', async () => {
         const root = document.documentElement;
         const before = root.style.fontSize;

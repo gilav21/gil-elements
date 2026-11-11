@@ -1,5 +1,5 @@
 import type { LocaleMeta } from '../shared/calendar-locales.js';
-import { pickLocale, withFallback } from '../shared/locale-lookup.js';
+import { fillLocale, pickLocale, withFallback } from '../shared/locale-lookup.js';
 
 export { interpolate } from '../shared/interpolate.js';
 
@@ -245,7 +245,9 @@ export const dataTableLocaleVersion = (): number => registryVersion;
  * Registers (or replaces) the dictionary for a language id; the id is matched case-insensitively, whole (`pt-br`) before its
  * shorter prefixes (`pt`). What it omits is filled from the English there is, and filled again when English is registered later,
  * so every entry of `DATA_TABLE_LOCALES` is whole.
- * Register through this function: a dictionary written straight into `DATA_TABLE_LOCALES` is used as it is, and is not filled again when English changes.
+ * Registering an id again replaces it: pass the complete set of overrides.
+ * Register through this function: a dictionary written straight into `DATA_TABLE_LOCALES` is filled from English when it is resolved,
+ * but notifies no table (nothing redraws) and is not filled in the registry itself when English changes.
  * `__proto__` is not an id (assigning it would replace the table's prototype): it is ignored, with a warning.
  */
 export function registerDataTableLocale(code: string, dict: Partial<DataTableLocale>): void {
@@ -272,7 +274,7 @@ export function registerDataTableLocale(code: string, dict: Partial<DataTableLoc
 }
 
 /**
- * An object is used as it is, an id is looked up (the whole id before its prefixes), anything else follows the page's `lang`
+ * An object is used (English fills what it omits), an id is looked up (the whole id before its prefixes), anything else follows the page's `lang`
  * (`pageLang`: the table's own document's), then English. The registry's current English fills what the dictionary omits.
  */
 export function resolveDataTableLocale(input?: string | DataTableLocale | null, pageLang?: string): DataTableLocale {
@@ -292,6 +294,5 @@ export function filterBuilderLabels(locale: DataTableLocale): FilterBuilderLabel
  * `undefined` in the range readout.
  */
 export function withEnglishFallback(locale: DataTableLocale): DataTableLocale {
-    // Like `resolveDataTableLocale`: a dictionary without a `code` is unnamed (`''`), never taken for English.
-    return withFallback(DATA_TABLE_LOCALES.en, locale.code === undefined ? { ...locale, code: '' } : locale);
+    return fillLocale(DATA_TABLE_LOCALES.en, locale);
 }

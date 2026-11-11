@@ -16,6 +16,8 @@ const defaultTrue = { fromAttribute: (value: string | null) => value !== 'false'
  * The data table's pager: a rows-per-page select, "Page X of Y" and four chevron buttons, built on `ge-pagination`
  * (custom mode) and `ge-select`. It is controlled: it never keeps a page, it asks for one and the table feeds the state back.
  *
+ * Standalone (outside a table), it takes a re-registered English at its next render; inside a table, the table re-renders it.
+ *
  * @fires pagination-change - With the clamped `{ pageIndex, pageSize }`; a new page size goes back to page 0.
  * @attr {number} total - Rows across all pages. 0 is one page.
  * @attr {string} page-size-options - Comma list of sizes. Defaults to `10,20,30,40,50`. A size outside it still shows.
@@ -31,13 +33,13 @@ export class GeDataTablePager extends UiElement {
         state: { attribute: false },
         pageSizeOptions: { attribute: 'page-size-options', converter: sizeList },
         showPageSizeSelector: { attribute: 'show-page-size-selector', converter: defaultTrue },
-        rowsPerPageLabel: { attribute: 'rows-per-page-label' },
-        pageLabel: { attribute: 'page-label' },
-        ofLabel: { attribute: 'of-label' },
-        firstLabel: { attribute: 'first-label' },
-        previousLabel: { attribute: 'previous-label' },
-        nextLabel: { attribute: 'next-label' },
-        lastLabel: { attribute: 'last-label' },
+        rowsPerPageLabel: { attribute: 'rows-per-page-label', noAccessor: true },
+        pageLabel: { attribute: 'page-label', noAccessor: true },
+        ofLabel: { attribute: 'of-label', noAccessor: true },
+        firstLabel: { attribute: 'first-label', noAccessor: true },
+        previousLabel: { attribute: 'previous-label', noAccessor: true },
+        nextLabel: { attribute: 'next-label', noAccessor: true },
+        lastLabel: { attribute: 'last-label', noAccessor: true },
     };
 
     declare total: number;
@@ -52,24 +54,16 @@ export class GeDataTablePager extends UiElement {
     declare nextLabel: string;
     declare lastLabel: string;
 
-    private readonly defaults: Record<LabelName, string>;
+    /** The labels that were set, by assignment or attribute: only those are the pager's own; the rest are English as it is when read. */
+    /** @internal */
+    readonly explicit = new Map<LabelName, string>();
 
     constructor() {
         super();
-        const en = resolveDataTableLocale('en');
         this.total = 0;
         this.state = { pageIndex: 0, pageSize: 10 };
         this.pageSizeOptions = [10, 20, 30, 40, 50];
         this.showPageSizeSelector = true;
-        this.rowsPerPageLabel = en.rowsPerPageLabel;
-        this.pageLabel = en.pageLabel;
-        this.ofLabel = en.ofLabel;
-        this.firstLabel = en.goToFirstPage;
-        this.previousLabel = en.goToPreviousPage;
-        this.nextLabel = en.goToNextPage;
-        this.lastLabel = en.goToLastPage;
-        // What was set here is the default: while a label still holds it, drawing uses the English there is then (see `label`).
-        this.defaults = { rowsPerPageLabel: this.rowsPerPageLabel, pageLabel: this.pageLabel, ofLabel: this.ofLabel, firstLabel: this.firstLabel, previousLabel: this.previousLabel, nextLabel: this.nextLabel, lastLabel: this.lastLabel };
     }
 
     private emit(state: PaginationState): void {
@@ -86,16 +80,9 @@ export class GeDataTablePager extends UiElement {
         </ge-pagination-item>`;
     }
 
-    /** A label that was set is used; one still at its constructor default follows the English there is now (a registered override counts). */
-    private label(name: LabelName, current: string): string {
-        return this[name] === this.defaults[name] ? current : this[name];
-    }
-
     protected override render() {
         const { state, total } = this;
-        // A label not given is English's, as it is now: a registered override counts, the table has no part in it.
-        const en = resolveDataTableLocale('en');
-        const rowsPerPage = this.label('rowsPerPageLabel', en.rowsPerPageLabel);
+        const rowsPerPage = this.rowsPerPageLabel;
         const pages = totalPages(total, state.pageSize);
         const canPrevious = state.pageIndex > 0;
         const canNext = state.pageIndex < pages - 1;
@@ -115,14 +102,42 @@ export class GeDataTablePager extends UiElement {
                     : null}
                 <ge-pagination>
                     <ge-pagination-content>
-                        ${this.link('first', this.label('firstLabel', en.goToFirstPage), backEnd as ChromeIconName, !canPrevious, true)}
-                        ${this.link('previous', this.label('previousLabel', en.goToPreviousPage), back as ChromeIconName, !canPrevious)}
-                        <ge-pagination-item><div class="indicator">${this.label('pageLabel', en.pageLabel)} ${state.pageIndex + 1} ${this.label('ofLabel', en.ofLabel)} ${pages}</div></ge-pagination-item>
-                        ${this.link('next', this.label('nextLabel', en.goToNextPage), forward as ChromeIconName, !canNext)}
-                        ${this.link('last', this.label('lastLabel', en.goToLastPage), forwardEnd as ChromeIconName, !canNext, true)}
+                        ${this.link('first', this.firstLabel, backEnd as ChromeIconName, !canPrevious, true)}
+                        ${this.link('previous', this.previousLabel, back as ChromeIconName, !canPrevious)}
+                        <ge-pagination-item><div class="indicator">${this.pageLabel} ${state.pageIndex + 1} ${this.ofLabel} ${pages}</div></ge-pagination-item>
+                        ${this.link('next', this.nextLabel, forward as ChromeIconName, !canNext)}
+                        ${this.link('last', this.lastLabel, forwardEnd as ChromeIconName, !canNext, true)}
                     </ge-pagination-content>
                 </ge-pagination>
             </div>
         </div>`;
     }
+}
+
+// The label properties are accessors: reading one gives what was set, or else the English there is at that moment (a registered
+// override counts), and only an assignment (or an attribute) marks a label as set, whatever its text, so a dictionary whose
+// word equals the English one is still its own. A standalone pager draws the new English at its next render; inside a table the
+// table re-renders it with its own labels.
+const ENGLISH_OF: Record<LabelName, 'rowsPerPageLabel' | 'pageLabel' | 'ofLabel' | 'goToFirstPage' | 'goToPreviousPage' | 'goToNextPage' | 'goToLastPage'> = {
+    rowsPerPageLabel: 'rowsPerPageLabel',
+    pageLabel: 'pageLabel',
+    ofLabel: 'ofLabel',
+    firstLabel: 'goToFirstPage',
+    previousLabel: 'goToPreviousPage',
+    nextLabel: 'goToNextPage',
+    lastLabel: 'goToLastPage',
+};
+for (const name of Object.keys(ENGLISH_OF) as LabelName[]) {
+    Object.defineProperty(GeDataTablePager.prototype, name, {
+        configurable: true,
+        get(this: GeDataTablePager): string {
+            return this.explicit.get(name) ?? resolveDataTableLocale('en')[ENGLISH_OF[name]];
+        },
+        set(this: GeDataTablePager, value: string | null | undefined) {
+            const before = this[name];
+            if (value === null || value === undefined) this.explicit.delete(name);
+            else this.explicit.set(name, value);
+            this.requestUpdate(name, before);
+        },
+    });
 }

@@ -685,6 +685,29 @@ describe('ge-data-table styles and lifecycle', () => {
         }
     });
 
+    it('a pager label that was set stays its own even when its text equals the English one; an unset one follows English', async () => {
+        const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
+        const original = DATA_TABLE_LOCALES.en;
+        try {
+            const pager = trackTable(document.createElement('ge-data-table-pager')) as HTMLElement & { pageLabel: string; ofLabel: string; updateComplete: Promise<boolean> };
+            pager.pageLabel = DATA_TABLE_LOCALES.en.pageLabel; // a dictionary whose word happens to be English's
+            document.body.append(pager);
+            await pager.updateComplete;
+            registerDataTableLocale('en', { pageLabel: 'Pg', ofLabel: 'von' });
+            pager.requestUpdate();
+            await pager.updateComplete;
+            expect(pager.pageLabel).toBe(original.pageLabel);
+            expect(pager.ofLabel).toBe('von');
+            expect(pager.shadowRoot!.querySelector('.indicator')!.textContent).toContain(`${original.pageLabel} 1 von`);
+            pager.setAttribute('of-label', 'sur'); // an attribute sets it too
+            expect(pager.ofLabel).toBe('sur');
+            pager.removeAttribute('of-label');
+            expect(pager.ofLabel).toBe('von');
+        } finally {
+            registerDataTableLocale('en', original);
+        }
+    });
+
     it('the column header and the pager follow a registered English with no other trigger, on a table and on their own', async () => {
         const { DATA_TABLE_LOCALES, registerDataTableLocale } = await import('./data-table.locales.js');
         const original = DATA_TABLE_LOCALES.en;
