@@ -139,3 +139,6 @@ export const items = [
 ];
 
 export default { name: 'data-table-rows', isolated: true, width: 700, items };
+
+// The pieces the integration cases (data-table-integration.mjs) build on.
+export { agg, BTN, CELL, COLS, dataRows, GROUP_ROWS, groupRow, icon, ROW_CLASS, shade, shell, sub, TREE, treeCell, visible };

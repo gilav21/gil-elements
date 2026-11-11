@@ -27,6 +27,8 @@ export class CellInteractionController<T> {
     /** A pointer is down: the focus it causes on the viewport is not a Tab arrival. */
     private pointer = false;
     private observer: MutationObserver | null = null;
+    /** The row that held the focus, and the group header above it, when a node or group was opened or closed: the render that follows follows it. */
+    private rowAtExpansion: { id: string | undefined; group: string | undefined } | null = null;
     private watched: Element | null = null;
     private teardown: (() => void)[] = [];
 
@@ -47,6 +49,7 @@ export class CellInteractionController<T> {
         this.teardown = [
             host.provide('interaction', this.service),
             host.addKeyHandler(100, (event) => this.onKey(event)),
+            host.topics.on('expansion', () => this.noteFocusedRow()),
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event))),
             disposables.listen<PointerEvent>(root, 'pointerup', ownEvents(root, (event: PointerEvent) => this.onPointerUp(event))),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => !root.contains(event.target as Node) && (this.within = false), true),
@@ -74,6 +77,7 @@ export class CellInteractionController<T> {
         this.watchDom();
         const at = this.focused;
         if (!at) return;
+        if (this.rowAtExpansion) return this.followRow(at, this.rowAtExpansion);
         const rows = this.rowCount();
         // An empty list (a server page loading) changes nothing: the focus waits for rows.
         if (rows === 0) return;
@@ -83,6 +87,40 @@ export class CellInteractionController<T> {
         const next = { rowIndex: Math.min(at.rowIndex, rows - 1), columnKey: keys[col] as string };
         this.lastColumn = col;
         if (next.rowIndex !== at.rowIndex || next.columnKey !== at.columnKey) this.set(next);
+    }
+
+    /** A node or group opened or closed: remember the focused row (from the drawn DOM, which is still the old one) and its group header. */
+    private noteFocusedRow(): void {
+        const row = this.focused ? this.host.rowAt(this.focused.rowIndex) : null;
+        let header: Element | null = row;
+        while (header && header.getAttribute('data-kind') !== 'group') header = header.previousElementSibling;
+        this.rowAtExpansion = row ? { id: row.dataset['rowId'], group: header?.getAttribute('data-group-key') ?? undefined } : null;
+    }
+
+    /**
+     * Focus follows the row, not the position: a row that is still there keeps it at its new place, a tree row that left (its node
+     * closed) hands it to its nearest ancestor that is drawn, and a row of a closed group hands it to the group's header toggle.
+     */
+    private followRow(at: CellAddress, was: { id: string | undefined; group: string | undefined }): void {
+        this.rowAtExpansion = null;
+        const { config } = this.host;
+        const query = requireProvider(this.host, 'query');
+        const rows = query.renderedRows();
+        const indexOf = (id: string): number => rows.findIndex((row) => config.getRowId(row) === id);
+        let index = was.id === undefined ? -1 : indexOf(was.id);
+        if (index === -1 && was.id !== undefined && config.enableSubRows) {
+            const parents = query.treeIndex().parent;
+            for (let parent = parents.get(was.id); parent !== undefined && index === -1; parent = parents.get(parent)) index = indexOf(parent);
+        }
+        if (index !== -1) {
+            if (index !== at.rowIndex) this.set({ rowIndex: index, columnKey: at.columnKey });
+            return;
+        }
+        // The row is gone with its group: the roving cell has nowhere to stay, the group's toggle is the nearest thing that is drawn.
+        const hadFocus = this.within;
+        this.clear();
+        const group = was.group;
+        if (hadFocus && group !== undefined) this.host.afterRender(() => this.host.root.querySelector<HTMLElement>(`[data-kind="group"][data-group-key="${CSS.escape(group)}"] [data-toggle]`)?.focus());
     }
 
     // ---- state ------------------------------------------------------------------------------------------------------

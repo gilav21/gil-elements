@@ -47,4 +47,13 @@ describe('elements on the server', () => {
         expect(out).toContain('<ge-data-table');
         expect(out).not.toContain('data-slot="table"');
     });
+
+    it('ge-data-table with every wave 4 feature switched on still renders without a DOM', async () => {
+        const out = await collectResult(
+            render(html`<ge-data-table enable-virtual-scroll="true" enable-sub-rows enable-row-selection enable-row-expansion enable-column-resize enable-column-reorder group-by="group" locale="de"></ge-data-table>`),
+        );
+
+        expect(out).toContain('<ge-data-table');
+        expect(out).not.toContain('data-slot="table"');
+    });
 });
