@@ -212,6 +212,35 @@ describe('ge-typing-animation', () => {
             expect(seen.completes).toBe(2);
         });
 
+        it('sees a list the consumer changed in place before assigning it again: emptied clears, an added phrase after a finish is a new run', async () => {
+            const phrases = ['a', 'b'];
+            const { el, seen } = await finished(phrases);
+            phrases.push('z');
+            el.strings = [...phrases];
+            await advance(el, 5000);
+            expect(shown(el)).toBe('z');
+            expect(seen.completes).toBe(2);
+            phrases.length = 0;
+            el.strings = [];
+            await advance(el, 100);
+            expect(shown(el)).toBe('');
+        });
+
+        it('waits detached with a new list, and runs it when it is attached again', async () => {
+            const { el, seen } = await finished(['a']);
+            const parent = el.parentElement!;
+            el.remove();
+            el.strings = ['x', 'y'];
+            await el.updateComplete;
+            await advance(el, 3000);
+            expect(shown(el)).toBe('');
+            expect(seen.completes).toBe(1);
+            parent.append(el);
+            await advance(el, 4000);
+            expect(shown(el)).toBe('y');
+            expect(seen.completes).toBe(2);
+        });
+
         it('starts exactly one run for one change, however it is typed', async () => {
             const { el, seen } = await finished(['a', 'b']);
             el.strings = ['x', 'y'];

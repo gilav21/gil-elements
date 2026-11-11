@@ -47,6 +47,8 @@ export class GeTypingAnimation extends UiElement {
     declare phase: TypingState;
 
     private started = false;
+    /** The phrases as they were when the list was last taken. */
+    private seen: string[] = [];
     /** The run reached the end of its last phrase (no loop) and has nothing left to do; a begin or a reset starts the next. */
     private finished = false;
     private stringIndex = 0;
@@ -73,8 +75,10 @@ export class GeTypingAnimation extends UiElement {
     protected override updated(changed: PropertyValues<this>): void {
         if (!changed.has('strings')) return;
         // A fresh array with the same phrases (a template that re-renders) is no change: nothing restarts, nothing completes again.
-        const previous = changed.get('strings') as string[] | undefined;
-        if (previous && previous.length === this.strings.length && previous.every((phrase, i) => phrase === this.strings[i])) return;
+        // Compared with a copy taken when the list was last seen: the consumer may have changed the old array in place.
+        const same = this.seen.length === this.strings.length && this.seen.every((phrase, i) => phrase === this.strings[i]);
+        this.seen = [...this.strings];
+        if (same) return;
         // Emptied: stop and clear, so a list that fills again starts over from the first phrase.
         if (this.strings.length === 0) this.reset();
         else if (!this.started) this.begin();
@@ -86,8 +90,9 @@ export class GeTypingAnimation extends UiElement {
             this.begin();
         } else if (this.finished) {
             // A finished run (nothing pending) has nothing to carry on: a changed list is a new run, typed from its first phrase, and its own `complete`.
+            // Detached, it only waits: arming timers on an element nothing will stop would run on; `connectedCallback` starts it.
             this.reset();
-            this.begin();
+            if (this.isConnected) this.begin();
         } else this.refresh(this.strings[this.stringIndex] ?? '');
     }
 
@@ -100,6 +105,7 @@ export class GeTypingAnimation extends UiElement {
         super.connectedCallback();
         // Re-attached after the run was stopped by a disconnect: pick it up where it was (a finished run stays finished).
         if (this.hasUpdated && this.started && !this.finished && !prefersReducedMotion()) this.tick();
+        else if (this.hasUpdated && !this.started) this.begin(); // a list that arrived while detached starts its run now
     }
 
     private begin(): void {

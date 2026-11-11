@@ -1,7 +1,5 @@
 import { lookupLocale } from './locale-id.js';
 
-export { lookupLocale };
-
 const isPlain = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
