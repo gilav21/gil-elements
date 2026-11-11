@@ -5,8 +5,8 @@ import '../popover/define.js';
 import '../skeleton/define.js';
 import { adoptSheet } from '../shared/adopt-sheet.js';
 import { THEME_ATTRIBUTE, type ThemeName } from '../shared/theme-presets.js';
-import { createCellWriter } from './data-table-cell-write.js';
-import { type AssembledControllers, assembleControllers } from './data-table-controllers.js';
+import { createCellWriter, type HistoryResult } from './data-table-cell-write.js';
+import { type AssembledControllers, assembleControllers, type DataTableRenderingController } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
@@ -17,7 +17,18 @@ import { memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
 import { buildView, type DataTableViewHost } from './data-table-view.js';
 import { type DataTableLocale, dataTableLocaleVersion, interpolate, onDataTableLocaleChange, resolveDataTableLocale } from './data-table.locales.js';
-import type { ColumnDef, DataTableColumnState, DataTableLoadingTrigger, DataTableQuery, DataTableViewState, PaginationState } from './data-table.types.js';
+import type {
+    CellEditError,
+    CellRange,
+    ColumnDef,
+    DataTableColumnState,
+    DataTableLoadingTrigger,
+    DataTableQuery,
+    DataTableViewState,
+    EditingCell,
+    PaginationState,
+    RowReorderEvent,
+} from './data-table.types.js';
 import { defaultGetRowId } from './data-table.utils.js';
 import './sub/data-table-column-header.js';
 import './sub/data-table-pager.js';
@@ -55,6 +66,7 @@ const INPUTS: Readonly<Record<string, readonly [Kind, unknown]>> = {
     columns: ['prop', []],
     getRowId: ['prop', defaultGetRowId],
     globalFilterFn: ['prop', undefined],
+    rowDragAllowDrop: ['prop', undefined],
     getChildren: ['prop', (row: unknown) => (row as { children?: unknown[] } | null)?.children],
     setChildren: ['prop', (row: unknown, children: unknown[]) => ({ ...(row as object), children })],
     aiProvider: ['prop', undefined],
@@ -190,8 +202,11 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         rowAt: (index) => this.provider('query')?.renderedRowAt(index),
         cellValue: (row, column) => this.provider('query')?.cellValue(row, column.accessorKey, column),
         historyEnabled: () => this.enableEditHistory,
+        rejectionMessage: () => this.resolvedLocale.invalidValue,
         emit: (...event) => this.emit(event[0], event[1] as never),
     });
+    /** A `cellRange` assigned before the range service exists (before the first attach). */
+    private earlyRange: CellRange | null | undefined;
     private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
     private releaseStyles: (() => void) | null = null;
@@ -435,6 +450,107 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.provider('columns')?.applyState(states);
     }
 
+    // ---- editing and history (wave 5) -------------------------------------------------------------------------
+
+    /** Opens an editor on the cell of `row` and column `columnKey`; false when none opened (not editable, a disabled row, no such row). */
+    startEditing(row: T, columnKey: string): boolean {
+        return this.provider('interaction')?.startEditing(row, columnKey) ?? false;
+    }
+
+    /** Commits the open editor's draft; does nothing with none open. */
+    commitEdit(): void {
+        this.provider('interaction')?.commitEdit();
+    }
+
+    /** Drops the open editor's draft without an event. */
+    cancelEdit(): void {
+        this.provider('interaction')?.cancelEdit();
+    }
+
+    /** Undoes the last edit step (needs `enable-edit-history`); `stale` lists the entries whose row or column is gone. */
+    undoEdit(): HistoryResult {
+        return this.undo();
+    }
+
+    redoEdit(): HistoryResult {
+        return this.redo();
+    }
+
+    isEditingCell(): boolean {
+        return this.provider('interaction')?.editingCell() != null;
+    }
+
+    /** The cell whose editor is open, or null. */
+    get editingCell(): EditingCell | null {
+        return this.provider('interaction')?.editingCell() ?? null;
+    }
+
+    /** The validation error shown on the open editor, or null. */
+    get cellEditError(): CellEditError | null {
+        return this.provider('interaction')?.cellEditError() ?? null;
+    }
+
+    /** Clears the advanced filter tree (the column and global filters stay). */
+    clearAdvancedFilter(): void {
+        this.provider('query')?.changeAdvancedFilter(null);
+    }
+
+    // ---- range, fill, clipboard and row drag (wave 6) ---------------------------------------------------------
+
+    /**
+     * The selected cell range (rendered row index, column key), or null. Assigning it selects programmatically and fires no event. A
+     * value assigned before the table is attached waits for the range service.
+     */
+    get cellRange(): CellRange | null {
+        return this.provider('range')?.range() ?? this.earlyRange ?? null;
+    }
+
+    set cellRange(range: CellRange | null) {
+        const service = this.provider('range');
+        if (service) service.setRange(range);
+        else this.earlyRange = range;
+    }
+
+    /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
+    fillDownTo(targetEndRow: number): boolean {
+        return this.provider('range')?.fillDownTo(targetEndRow) ?? false;
+    }
+
+    /** Fires `range-chart-open` with the selected range as a chart payload, when there is one. */
+    openRangeChart(): void {
+        this.provider('range')?.openChart();
+    }
+
+    async copyCellToClipboard(): Promise<void> {
+        await this.provider('clipboard')?.copy('cell');
+    }
+
+    async copyRowToClipboard(row: T): Promise<void> {
+        await this.provider('clipboard')?.copy('row', row);
+    }
+
+    async copySelectedToClipboard(): Promise<void> {
+        await this.provider('clipboard')?.copy('selected');
+    }
+
+    async copyCellRangeToClipboard(): Promise<void> {
+        await this.provider('clipboard')?.copy('range');
+    }
+
+    async copyAllToClipboard(): Promise<void> {
+        await this.provider('clipboard')?.copy('all');
+    }
+
+    /** `data` with the dragged row moved as `event` says (flat or tree), without touching the table; a copy of `data` when row drag is not set up. */
+    reorderData(data: readonly T[], event: RowReorderEvent<T>): T[] {
+        return this.provider('rowDrag')?.reorderData(data, event) ?? [...data];
+    }
+
+    /** Moves a row one step up or down (the keyboard and button alternative to dragging); false when nothing moved. */
+    moveRow(row: T, direction: 'up' | 'down'): boolean {
+        return this.provider('rowDrag')?.moveRow(row, direction) ?? false;
+    }
+
     // ---- lifecycle --------------------------------------------------------------------------------------------
 
     protected override createRenderRoot(): HTMLElement {
@@ -453,6 +569,10 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger) survives.
         this.built ??= assembleControllers(this, createFactories<T>());
         this.built.attachAll();
+        if (this.earlyRange !== undefined) {
+            this.provider('range')?.setRange(this.earlyRange);
+            this.earlyRange = undefined;
+        }
         this.lastLocale = this.resolvedLocale;
         this.assembled = this.built;
         this.observer = new MutationObserver(() => {
@@ -631,6 +751,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             <div data-slot="data-table-toolbar-start">
                 <div data-slot="data-table-filter"><ge-input placeholder=${locale.filterPlaceholder} aria-label=${locale.filterPlaceholder} .value=${this.store.get('globalFilter')}
                     @input=${(event: Event) => query.changeGlobalFilter((event.currentTarget as HTMLInputElement).value)}></ge-input></div>
+                ${this.fromControllers((c) => c.renderToolbar?.())}
                 ${this.nodes('toolbar-start')}
             </div>
             <div data-slot="data-table-toolbar-end">
@@ -655,6 +776,16 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         </div>`;
     }
 
+    /** What the controllers draw in one of their slots (`renderToolbar`, `renderOverlay`), in plan order; the ones that draw nothing leave no trace. */
+    private fromControllers(draw: (controller: DataTableRenderingController) => TemplateResult | null | undefined): TemplateResult[] {
+        const out: TemplateResult[] = [];
+        for (const controller of this.assembled?.controllers ?? []) {
+            const drawn = draw(controller);
+            if (drawn) out.push(drawn);
+        }
+        return out;
+    }
+
     private renderOverlays(locale: DataTableLocale): unknown {
         const loading = this.provider('loading');
         const busy = this.provider('addons')?.busyLabel() ?? null;
@@ -673,7 +804,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return html`<output data-slot="data-table-announcer" aria-live="polite" aria-atomic="true">${this.announcement}</output>
             ${this.showToolbar ? this.renderToolbar(locale) : nothing}
             <div data-slot="data-table-viewport" tabindex=${grid.viewportTabbable ? '0' : '-1'} @keydown=${(event: KeyboardEvent) => ownsTarget(this, event.target) && void this.keyHandlers.run(event)}>
-                ${this.renderOverlays(locale)}${renderGrid(grid)}
+                ${this.renderOverlays(locale)}${renderGrid(grid)}${this.fromControllers((c) => c.renderOverlay?.())}
             </div>
             ${this.slotted.has('footer') ? html`<div data-slot="data-table-footer-slot">${this.nodes('footer')}</div>` : nothing}
             ${this.showPagination

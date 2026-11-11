@@ -70,7 +70,9 @@ function headContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
     const special = specialHead(v, c);
     if (special !== undefined) return special;
     const control = sortControl(v, c);
-    return c.headerRenderer ? control : html`<div data-slot="data-table-head-controls">${control}</div>`;
+    const trigger = v.filters.trigger(c);
+    // A custom header renderer is drawn bare, unless a filter trigger has to sit beside it (wave 5).
+    return c.headerRenderer && trigger === nothing ? control : html`<div data-slot="data-table-head-controls">${control}${trigger}</div>`;
 }
 
 /** A separator's `aria-valuemax` defaults to 100 and clamps the value; a column has no real maximum. */

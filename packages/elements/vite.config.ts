@@ -344,6 +344,12 @@ export default defineConfig({
                 'page-renderer/define': 'src/page-renderer/define.ts',
                 'data-table/index': 'src/data-table/index.ts',
                 'data-table/define': 'src/data-table/define.ts',
+                // Lazy parts of the data table: loaded by `import('./lazy/x.js')` behind a flag, never by `define`. Entries so scripts/size.mjs budgets them.
+                'data-table/lazy/range': 'src/data-table/lazy/range.ts',
+                'data-table/lazy/clipboard': 'src/data-table/lazy/clipboard.ts',
+                'data-table/lazy/row-drag': 'src/data-table/lazy/row-drag.ts',
+                'data-table/lazy/filter-panels': 'src/data-table/lazy/filter-panels.ts',
+                'data-table/lazy/filter-builder': 'src/data-table/lazy/filter-builder.ts',
             },
             formats: ['es'],
         },

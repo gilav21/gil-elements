@@ -1,0 +1,16 @@
+/*
+ * Wave 5, package A (filters): the floating filter row, and later the header trigger, panels and builder. Bare rules, scoped under
+ * `ge-data-table [data-slot=...]`: they are appended inside the closing brace of the `ge-data-table` layer of data-table.css
+ * (see data-table-styles.ts), so do not wrap them in `@layer` and keep the comment style below.
+ * The toolbar's advanced-filter trigger shares one rule with the columns trigger in data-table.css (lead only): override it here.
+ */
+    /* Floating filter row (758-811). The row is inside the sticky header group, so these cells never need their own offset. */
+    ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] {
+        padding: 0.25rem;
+        background-color: color-mix(in oklab, var(--muted) 50%, var(--background));
+    }
+    ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] > ge-input {
+        display: block;
+        height: 1.75rem;
+        font-size: 0.75rem;
+    }

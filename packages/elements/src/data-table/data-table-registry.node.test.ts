@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_ORDER, type ControllerSpec, createAddonsService, createDataTableSlots, validatePlan } from './data-table-registry.js';
+import { DEFAULT_ORDER, type ControllerSpec, KEY_PRIORITY, createAddonsService, createDataTableSlots, validatePlan } from './data-table-registry.js';
 import { TopicBus } from '../shared/registry.js';
 import type { DataTableTopic } from './data-table-host.js';
 
@@ -30,6 +30,62 @@ describe('DEFAULT_ORDER', () => {
     it('starts with columns then query, and ends with the addon host', () => {
         expect(DEFAULT_ORDER.slice(0, 2).map((s) => s.id)).toEqual(['columns', 'query']);
         expect(DEFAULT_ORDER.at(-1)?.id).toBe('addon-host');
+    });
+});
+
+describe('the plan after the joint step 0 of waves 5 and 6', () => {
+    const plan = new Map(DEFAULT_ORDER.map((s) => [s.id, s]));
+
+    it('gives every new service one provider: range with cell-interaction, the rest with their own controller', () => {
+        expect(plan.get('cell-interaction')?.provides).toEqual(['interaction', 'range']);
+        expect(plan.get('clipboard')?.provides).toEqual(['clipboard']);
+        expect(plan.get('row-drag')?.provides).toEqual(['rowDrag']);
+        expect(plan.get('filter-ui')?.provides).toEqual(['filters']);
+        const providers = DEFAULT_ORDER.flatMap((s) => s.provides);
+        expect(new Set(providers).size).toBe(providers.length);
+    });
+
+    it('reaches range, selection and virtual lazily from clipboard and row-drag, and the cell topic from the flash', () => {
+        expect(plan.get('clipboard')?.needs).toEqual(['query', 'columns', 'interaction']);
+        expect(plan.get('clipboard')?.uses).toEqual(expect.arrayContaining(['range', 'selection']));
+        expect(plan.get('row-drag')?.uses).toEqual(expect.arrayContaining(['selection', 'expansion', 'virtual']));
+        expect(plan.get('formatting')?.writes).toContain('cell');
+    });
+
+    it('stays valid as a whole, and flags a lazy use of a service nobody provides', () => {
+        expect(validatePlan(DEFAULT_ORDER)).toEqual([]);
+        const withoutRange = DEFAULT_ORDER.map((s) => (s.id === 'cell-interaction' ? { ...s, provides: ['interaction' as const] } : s));
+        expect(validatePlan(withoutRange)).toEqual(["'clipboard' uses 'range', but no controller provides it"]);
+        const withoutFilters = DEFAULT_ORDER.map((s) => (s.id === 'filter-ui' ? { ...s, provides: [] } : s));
+        expect(validatePlan(withoutFilters)).toEqual([]);
+    });
+});
+
+describe('KEY_PRIORITY', () => {
+    it('is the one table, in the documented order, with distinct priorities', () => {
+        const order = Object.entries(KEY_PRIORITY)
+            .sort(([, a], [, b]) => a - b)
+            .map(([owner]) => owner);
+        expect(order).toEqual(['editor', 'clipboard', 'columnResize', 'history', 'columnDrag', 'range', 'rowMove', 'rowControls', 'editStart', 'reserved', 'navigation']);
+        const values = Object.values(KEY_PRIORITY);
+        expect(new Set(values).size).toBe(values.length);
+    });
+
+    it('puts the open editor before every other handler and plain navigation after them all', () => {
+        const { editor, navigation, ...others } = KEY_PRIORITY;
+        for (const priority of Object.values(others)) {
+            expect(priority).toBeGreaterThan(editor);
+            expect(priority).toBeLessThan(navigation);
+        }
+    });
+
+    it('lets clipboard, history and range run before the row controls, and Enter / F2 after them but before navigation', () => {
+        expect(KEY_PRIORITY.clipboard).toBeLessThan(KEY_PRIORITY.history);
+        expect(KEY_PRIORITY.history).toBeLessThan(KEY_PRIORITY.range);
+        expect(KEY_PRIORITY.range).toBeLessThan(KEY_PRIORITY.rowMove);
+        expect(KEY_PRIORITY.rowMove).toBeLessThan(KEY_PRIORITY.rowControls);
+        expect(KEY_PRIORITY.rowControls).toBeLessThan(KEY_PRIORITY.editStart);
+        expect(KEY_PRIORITY.editStart).toBeLessThan(KEY_PRIORITY.navigation);
     });
 });
 

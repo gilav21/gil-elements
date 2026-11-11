@@ -8,8 +8,11 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { type GridAria } from './data-table-aria.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
+import type { EditView } from './data-table-grid-edit.js';
+import type { FiltersView } from './data-table-grid-filters.js';
 import { columnParts, columnSpacer } from './data-table-grid-window.js';
 import { renderHeadCells, type ColumnsView } from './data-table-grid-head.js';
+import type { StateView } from './data-table-grid-state.js';
 import { renderRows, type RowsView } from './data-table-grid-rows.js';
 import type { WindowView } from './data-table-grid-window.js';
 import type { DataTableLocale } from './data-table.locales.js';
@@ -23,10 +26,14 @@ export interface BodyView<T> {
     window: BodyWindow;
 }
 
-export interface GridView<T> extends ColumnsView<T>, Omit<RowsView<T>, 'source' | 'totalRows'>, Omit<WindowView, 'window'> {
+export interface GridView<T> extends ColumnsView<T>, Omit<RowsView<T>, 'source' | 'totalRows'>, Omit<WindowView, 'window'>, StateView<T> {
     locale: DataTableLocale;
     aria: GridAria;
     body: BodyView<T>;
+    /** Wave 5 (filters, package A): the header trigger and the floating filter row. */
+    filters: FiltersView<T>;
+    /** Wave 5 (editing, package B): the cell editor. */
+    edit: EditView<T>;
     footer: { visible: boolean; values: ReadonlyMap<string, string>; rows: readonly T[] };
 }
 
@@ -60,10 +67,10 @@ export function renderGrid<T>(v: GridView<T>): TemplateResult {
     const { window } = v.body;
     const tableStyle = `${v.vars}${padding('--ge-dt-pad-start', window.colPadStart)}${padding('--ge-dt-pad-end', window.colPadEnd)}`;
     const bodyStyle = `${padding('--ge-dt-pad-top', window.padStart)}${padding('--ge-dt-pad-bottom', window.padEnd)}`;
-    return html`<div data-slot="table" role=${v.aria.role} aria-rowcount=${v.aria.rowCount} aria-colcount=${v.aria.colCount} aria-multiselectable=${v.selectable ? 'true' : nothing} style=${tableStyle}>
+    return html`<div data-slot="table" role=${v.aria.role} aria-rowcount=${v.aria.rowCount} aria-colcount=${v.aria.colCount} aria-multiselectable=${v.selectable || v.rangeSelectable ? 'true' : nothing} style=${tableStyle}>
         <div data-slot="table-header" role="rowgroup"><div data-slot="table-row" role="row" aria-rowindex=${v.aria.headerRowIndex(0)}>
             ${renderHeadCells(v)}
-        </div></div>
+        </div>${v.filters.row()}</div>
         <div data-slot="table-body" role="rowgroup" style=${bodyStyle || nothing}>
             ${renderRows(v)}
         </div>

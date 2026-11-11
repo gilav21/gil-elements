@@ -3,6 +3,7 @@ import { onLongPress, onPointerDrag } from '../shared/touch.js';
 import { baseColumnOrder, dropSide, moveByOffset, moveColumnKey, type DropSide } from './data-table-column-order.js';
 import { columnCells, HEAD_SELECTOR as HEAD, pinGroupOf } from './data-table-columns.js';
 import { type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
+import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
 
 /** A header is a drag only after the pointer moved this far, so a click on its sort button stays a click. */
@@ -223,7 +224,7 @@ export class ColumnDragController<T> {
         const { root, disposables } = this.host;
         this.teardown.push(
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, this.onDown)),
-            this.host.addKeyHandler(30, (event) => this.handleKey(event)),
+            this.host.addKeyHandler(KEY_PRIORITY.columnDrag, (event) => this.handleKey(event)),
             disposables.add(onLongPress(root, this.onLongPress)),
         );
     }

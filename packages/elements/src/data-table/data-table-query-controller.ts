@@ -282,6 +282,10 @@ export class QueryController<T> {
             if (debounce > 0) this.cancelFilter = this.host.disposables.timeout(() => this.applyGlobalFilter(value), debounce);
             else this.applyGlobalFilter(value);
         },
+        // wave 5, package A (filters) implements these three; joint step 0 leaves them inert. They are the only part of this file wave 5 edits.
+        changeColumnFilter: () => undefined,
+        changeAdvancedFilter: () => undefined,
+        filteredCount: () => undefined,
     };
 
     private visibleDataColumns(): ColumnDef<T>[] {

@@ -2,6 +2,7 @@ import { isSecondaryTouch } from '../shared/touch.js';
 import { columnCells, HEAD_SELECTOR as HEAD } from './data-table-columns.js';
 import { type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
 import type { ResizeService } from './data-table-providers.js';
+import { KEY_PRIORITY } from './data-table-registry.js';
 import { columnMinWidthPx, rootFontPx } from './data-table-virtual.js';
 import { interpolate } from './data-table.locales.js';
 import type { EnhancedColumnDef } from './data-table.types.js';
@@ -376,7 +377,7 @@ export class ResizeController<T> {
     attach(): void {
         const { root, disposables } = this.host;
         this.unprovide = this.host.provide('resize', this.service);
-        this.removeKeys = this.host.addKeyHandler(20, (event) => this.handleKey(event));
+        this.removeKeys = this.host.addKeyHandler(KEY_PRIORITY.columnResize, (event) => this.handleKey(event));
         this.teardown.push(
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, this.onDown)),
             disposables.listen<MouseEvent>(root, 'dblclick', ownEvents(root, (event: MouseEvent) => {

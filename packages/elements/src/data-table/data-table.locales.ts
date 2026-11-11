@@ -18,6 +18,11 @@ export interface FilterBuilderLabels {
     filterButton: string;
     /** "Clear all filters" link below the builder. */
     clearFilters: string;
+    /** Accessible names of the builder's controls (wave 5; Angular's builder has none). */
+    columnLabel?: string;
+    operatorLabel?: string;
+    valueLabel?: string;
+    groupLabel?: string;
     operators: {
         contains: string;
         notContains: string;
@@ -112,6 +117,41 @@ export interface DataTableLocale extends LocaleMeta {
     filterResultsAnnouncement: string;
     /** The singular form, for a count of one. */
     filterResultAnnouncement: string;
+    /** Wave 5 (filters and editing). `filterColumnActive` and `editCell` interpolate `{column}`; `filteredRowsAnnouncement` `{count}`; `historyStaleAnnouncement` `{count}`. */
+    filterColumnActive: string;
+    filtersClearedAnnouncement: string;
+    filteredRowsAnnouncement: string;
+    /** The singular form, for a count of one. */
+    filteredRowOneAnnouncement: string;
+    /** The default message of a rejected edit. */
+    invalidValue: string;
+    /** The accessible name of a cell editor. */
+    editCell: string;
+    undoAnnouncement: string;
+    redoAnnouncement: string;
+    historyStaleAnnouncement: string;
+    /**
+     * Wave 6 (range, clipboard and row drag). `copiedAnnouncement`, `pasteResultAnnouncement` and `fillAnnouncement` interpolate `{count}`;
+     * `pasteRejectedAnnouncement` `{count}` and `{rejected}`; `rangeAnnouncement` `{rows}` and `{columns}`; `rowMovedAnnouncement` `{position}` and `{total}`.
+     */
+    copiedAnnouncement: string;
+    /** The singular form, for a count of one. */
+    copiedAnnouncementOne: string;
+    copyFailedAnnouncement: string;
+    pasteResultAnnouncement: string;
+    /** The singular form, for a count of one. */
+    pasteResultAnnouncementOne: string;
+    pasteRejectedAnnouncement: string;
+    pasteFailedAnnouncement: string;
+    rangeAnnouncement: string;
+    /** The accessible name of the range readout group. */
+    rangeReadoutLabel: string;
+    fillAnnouncement: string;
+    rowMovedAnnouncement: string;
+    /** `aria-description` of the grid while row drag is on: the keyboard alternative. */
+    rowDragHint: string;
+    /** The accessible name of the drop indicator. */
+    rowDraggingLabel: string;
     rangeCount?: string;
     rangeSum?: string;
     rangeAvg?: string;
@@ -136,6 +176,10 @@ export const EN_FILTER_BUILDER_LABELS: FilterBuilderLabels = {
     valuePlaceholder: 'value',
     filterButton: 'Filter',
     clearFilters: 'Clear all filters',
+    columnLabel: 'Column',
+    operatorLabel: 'Operator',
+    valueLabel: 'Value',
+    groupLabel: 'Group',
     operators: {
         contains: 'contains',
         notContains: 'does not contain',
@@ -211,6 +255,28 @@ const en: DataTableLocale = {
     filterClearedAnnouncement: 'Filter cleared, showing all rows',
     filterResultsAnnouncement: '{count} results found for "{value}"',
     filterResultAnnouncement: '{count} result found for "{value}"',
+    filterColumnActive: 'Filter {column}, filter applied',
+    filtersClearedAnnouncement: 'All filters cleared, showing all rows',
+    filteredRowsAnnouncement: '{count} rows match the filters',
+    filteredRowOneAnnouncement: '1 row matches the filters',
+    invalidValue: 'Invalid value',
+    editCell: 'Edit {column}',
+    undoAnnouncement: 'Edit undone',
+    redoAnnouncement: 'Edit redone',
+    historyStaleAnnouncement: '{count} changes skipped: their rows or columns no longer exist',
+    copiedAnnouncement: '{count} cells copied',
+    copiedAnnouncementOne: '1 cell copied',
+    copyFailedAnnouncement: 'Could not copy to the clipboard',
+    pasteResultAnnouncement: '{count} cells pasted',
+    pasteResultAnnouncementOne: '1 cell pasted',
+    pasteRejectedAnnouncement: '{count} cells pasted, {rejected} rejected',
+    pasteFailedAnnouncement: 'Could not read the clipboard',
+    rangeAnnouncement: '{rows} rows by {columns} columns selected',
+    rangeReadoutLabel: 'Selection summary',
+    fillAnnouncement: '{count} rows filled',
+    rowMovedAnnouncement: 'Row moved to position {position} of {total}',
+    rowDragHint: 'Alt+Up or Alt+Down arrow moves the focused row',
+    rowDraggingLabel: 'Drop here',
     rangeCount: 'Count',
     rangeSum: 'Sum',
     rangeAvg: 'Avg',

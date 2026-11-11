@@ -79,6 +79,8 @@ export interface CellWritePorts<T> {
     rowAt(rowIndex: number): T | undefined;
     cellValue(row: T, column: ColumnDef<T>): unknown;
     historyEnabled(): boolean;
+    /** The message of a rejection whose validator gave none (the locale's `invalidValue`); absent = `DEFAULT_REJECTION_MESSAGE`. */
+    rejectionMessage?(): string;
     emit(
         ...event:
             | [name: 'cell-edit', detail: CellEditEvent<T>]
@@ -166,7 +168,7 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
             const oldValue = ports.cellValue(row, column);
             const verdict = column.editValidator?.(value, row) ?? true;
             if (verdict !== true) {
-                const message = typeof verdict === 'string' ? verdict : DEFAULT_REJECTION_MESSAGE;
+                const message = typeof verdict === 'string' ? verdict : (ports.rejectionMessage?.() ?? DEFAULT_REJECTION_MESSAGE);
                 if (options.report !== false) ports.emit('edit-error', { row, column, value, rowIndex: target.rowIndex, message });
                 results[at] = { status: 'rejected', message, row, column };
                 return;

@@ -53,6 +53,12 @@ export class DiagnosticsController<T> {
             enableRowSelection: config.enableRowSelection,
             enableRowDrag: config.enableRowDrag,
             enableEditHistory: config.enableEditHistory,
+            // The inputs of the wave 5 and wave 6 checks (data-table-config-check.ts).
+            enableFillHandle: config.enableFillHandle,
+            enableClipboardPaste: config.enableClipboardPaste,
+            localReorder: config.localReorder,
+            sortState: model.get('sortState'),
+            multiSortState: model.get('multiSortState'),
         };
         if (!sameSnapshot(this.last, snapshot)) {
             this.last = snapshot;

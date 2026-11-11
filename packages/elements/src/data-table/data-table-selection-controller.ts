@@ -2,6 +2,7 @@ import { createListedRows } from './data-table-expansion.js';
 import { cellAddressOf, type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
 import type { SelectionService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
+import { KEY_PRIORITY } from './data-table-registry.js';
 import {
     cascadeSelection,
     createIndeterminateIds,
@@ -149,6 +150,7 @@ export class SelectionController<T> {
     private readonly onKey = (event: KeyboardEvent): boolean => {
         if (!this.host.config.enableRowSelection || event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return false;
         if (event.key !== ' ' && event.key !== 'Enter') return false;
+        if (this.host.provider('interaction')?.editingCell()) return false; // an open editor owns its keys (KEY_PRIORITY.editor)
         const cell = event.target;
         if (!(cell instanceof Element) || !cell.matches('[data-slot="table-cell"]')) return false;
         const address = cellAddressOf(cell);
@@ -169,7 +171,7 @@ export class SelectionController<T> {
             host.model.subscribe('rowSelection', () => host.topics.emit('selection')),
             host.disposables.listen<MouseEvent>(host.root, 'click', ownEvents(host.root, this.onClick), true),
             host.disposables.listen(host.root, 'change', ownEvents(host.root, this.onChange)),
-            host.addKeyHandler(50, this.onKey),
+            host.addKeyHandler(KEY_PRIORITY.rowControls, this.onKey),
         ];
     }
 

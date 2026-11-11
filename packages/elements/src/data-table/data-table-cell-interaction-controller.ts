@@ -1,7 +1,11 @@
+import { html, type TemplateResult } from 'lit';
+import type { CellSession, InteractionContext } from './data-table-cell-session.js';
+import { EditSession } from './data-table-edit-session.js';
 import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, requireProvider } from './data-table-host.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService } from './data-table-providers.js';
-import type { CellEditError, CellRange, EditingCell } from './data-table.types.js';
+import { RangeSession } from './data-table-range-session.js';
+import { KEY_PRIORITY } from './data-table-registry.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
 const BODY = '[data-slot="table-body"]';
@@ -20,10 +24,11 @@ function composedContains(ancestor: Node | null | undefined, node: Node | null):
 }
 
 /**
- * Focus, and later editing and range, of the grid's cells: one owner because reconciling them after a render writes
- * them together. Wave 4 is focus: the roving tabindex (exactly one cell, the focused one, is a tab stop; the viewport
+ * Focus, editing and range of the grid's cells: one owner because reconciling them after a render writes them together.
+ * This controller is the focus (wave 4): the roving tabindex (exactly one cell, the focused one, is a tab stop; the viewport
  * only while no drawn cell is), arrow-key navigation over the drawn order, and keeping the focused cell on screen.
- * Tab is never handled, so it can always leave the grid.
+ * Tab is never handled here, so it can always leave the grid. Editing (wave 5) and range / fill (wave 6) are the two session
+ * files it creates and calls (`data-table-cell-session.ts`); after the joint step 0 a wave edits its session, not this file.
  */
 export class CellInteractionController<T> {
     private focused: CellAddress | null = null;
@@ -44,24 +49,44 @@ export class CellInteractionController<T> {
     private attachment = 0;
     private teardown: (() => void)[] = [];
 
-    constructor(private readonly host: DataTableCoreHost<T>) {}
+    /** The wave sessions, in the order the pointer reaches them (range, then edit); `hostUpdate` runs them edit, then range. */
+    private readonly edit: CellSession & Pick<EditSession<T>, 'service'>;
+    private readonly range: CellSession & Pick<RangeSession<T>, 'service' | 'rangeService'>;
+    private readonly sessions: readonly CellSession[];
+    private readonly service: CellInteractionService;
 
-    private readonly service: CellInteractionService = {
-        focusedCell: () => this.focused,
-        cellRange: (): CellRange | null => null, // wave 6
-        editingCell: (): EditingCell | null => null, // wave 5
-        cellEditError: (): CellEditError | null => null, // wave 5
-        focusCell: (rowIndex, columnKey) => this.focusCell(rowIndex, columnKey, true),
-        isCellSelected: () => false, // wave 6
-    };
+    constructor(private readonly host: DataTableCoreHost<T>) {
+        const context: InteractionContext<T> = {
+            host,
+            focused: () => this.focused,
+            setFocus: (rowIndex, columnKey, reveal = false) => this.focusCell(rowIndex, columnKey, reveal),
+            rowCount: () => this.rowCount(),
+            focusableKeys: () => requireProvider(host, 'columns').focusableKeys(),
+            pageSize: () => this.pageSize(),
+            afterRender: (task) => this.afterRender(task),
+            isEditing: () => this.service.editingCell() !== null,
+            deepActive: () => this.deepActive(),
+        };
+        this.edit = new EditSession(context);
+        this.range = new RangeSession(context);
+        this.sessions = [this.range, this.edit];
+        this.service = {
+            focusedCell: () => this.focused,
+            focusCell: (rowIndex, columnKey) => this.focusCell(rowIndex, columnKey, true),
+            ...this.range.service,
+            ...this.edit.service,
+        };
+    }
 
     attach(): void {
         this.attachment++;
         const { host } = this;
         const { root, disposables } = host;
+        for (const session of [this.edit, this.range]) session.attach();
         this.teardown = [
             host.provide('interaction', this.service),
-            host.addKeyHandler(100, (event) => this.onKey(event)),
+            host.provide('range', this.range.rangeService),
+            host.addKeyHandler(KEY_PRIORITY.navigation, (event) => this.onKey(event)),
             host.topics.on('expansion', () => this.noteFocusedRow()),
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event))),
             disposables.listen<PointerEvent>(root, 'pointerup', ownEvents(root, (event: PointerEvent) => this.onPointerUp(event))),
@@ -73,13 +98,12 @@ export class CellInteractionController<T> {
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
             disposables.add(() => this.observer?.disconnect()),
         ];
-        // wave 5: the editor's own listeners and the commit / cancel keys join the ones above.
-        // wave 6: pointer range selection, Shift+arrow extension and the long-press gesture join them too.
     }
 
     detach(): void {
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
+        for (const session of [this.range, this.edit]) session.detach();
         this.observer?.disconnect();
         this.observer = this.watched = null;
         this.within = this.pointer = false;
@@ -89,6 +113,12 @@ export class CellInteractionController<T> {
 
     /** Before every render: the focused cell follows its row (when a node or group moved it), the data (clamped to the rows that exist) and the layout. */
     hostUpdate(): void {
+        this.reconcile();
+        this.edit.hostUpdate?.();
+        this.range.hostUpdate?.();
+    }
+
+    private reconcile(): void {
         this.watchDom();
         // Consumed once, whatever the rest of this update does: it belongs to the render that follows its `expansion`, not to a later one.
         // And only for the cell it was taken for: a focus set since then is another cell's.
@@ -346,11 +376,25 @@ export class CellInteractionController<T> {
         this.pointer = true;
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.button === 0 && event.pointerType !== 'touch') this.pointerFocus(event.target as Element);
+        this.offer(event, (session) => session.onPointerDown);
     }
 
     private onPointerUp(event: PointerEvent): void {
         this.pointer = false;
         if (event.pointerType === 'touch') this.pointerFocus(event.target as Element);
+        this.offer(event, (session) => session.onPointerUp);
+    }
+
+    /** What the sessions draw over the grid (the range readout and fill handle); the element calls it after the table, inside the viewport. */
+    renderOverlay(): TemplateResult | null {
+        const drawn = this.sessions.map((session) => session.renderOverlay?.()).filter((template): template is TemplateResult => !!template);
+        return drawn.length === 0 ? null : html`${drawn}`;
+    }
+
+    /** The press goes to the sessions in order (range, edit); the first that returns true claims it. */
+    private offer(event: PointerEvent, handlerOf: (session: CellSession) => CellSession['onPointerDown']): void {
+        const at = cellAddressOf(event.target);
+        for (const session of this.sessions) if (handlerOf(session)?.call(session, event, at) === true) return;
     }
 
     private pointerFocus(target: Element): void {

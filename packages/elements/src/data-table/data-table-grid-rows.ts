@@ -168,19 +168,24 @@ function plainContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInd
     }
 }
 
-function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined): unknown {
+function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined, editing: boolean): unknown {
     const special = specialCell(v, c, row);
     if (special !== undefined) return special;
-    const content = plainContent(v, c, row, rowIndex);
+    // The open editor (wave 5) takes the place of the plain content; the tree-host wrapper stays around it.
+    const content = (editing ? v.edit.cell(c, row, rowIndex) : undefined) ?? plainContent(v, c, row, rowIndex);
     return node && String(c.accessorKey) === v.treeHost ? treeHostCell(v, node, content) : content;
 }
 
 function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined): TemplateResult {
     const key = String(c.accessorKey);
     const focused = v.focusedCell?.rowIndex === rowIndex && v.focusedCell.columnKey === key;
+    // Range, fill, flash and editor state of waves 5 and 6: one shared object per cell (data-table-grid-state.ts).
+    const state = v.cellState(rowIndex, key, row);
     return html`<div data-slot="table-cell" role="gridcell" aria-colindex=${v.aria.colIndex(n)} data-column=${key} data-row-index=${rowIndex}
         data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(key) ? specialSlotOf(c) : nothing}
-        data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, row, rowIndex, node)}</div>`;
+        aria-selected=${state.selected ?? nothing} ?data-in-range=${state.inRange} data-range-edge=${state.rangeEdge || nothing} ?data-fill-preview=${state.fillPreview}
+        data-flash=${state.flash ?? nothing} ?data-editable=${state.editable} ?data-editing=${state.editing}
+        data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, row, rowIndex, node, state.editing)}</div>`;
 }
 
 const filler = html`<div data-slot="table-cell" role="presentation" aria-hidden="true" data-border></div>`;
@@ -203,11 +208,13 @@ function dataRow<T>(v: GridView<T>, row: T, i: number, ordinal: number, node: Fl
     const disabled = v.isDisabled(row);
     const level = node ? treeRowAria(node) : null;
     const wide = v.renderFullWidth?.(row);
+    const drag = v.rowState(i, id, row);
     return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(ordinal)} aria-selected=${v.selectable ? String(selected) : nothing}
+        draggable=${drag.draggable ? 'true' : nothing} ?data-draggable=${drag.draggable} ?data-dragging=${drag.dragging}
         aria-level=${level?.level ?? nothing} aria-expanded=${level?.expanded == null ? nothing : String(level.expanded)} aria-setsize=${node?.setSize ?? nothing} aria-posinset=${node?.posInSet ?? nothing}
         data-kind="data" data-row-index=${i} data-row-id=${id} data-depth=${node?.depth ?? nothing} style=${rowStyle(node, retainedTop)} ?data-retained=${retainedTop !== undefined}
         data-state=${selected ? 'selected' : nothing} ?data-disabled=${disabled} aria-disabled=${disabled ? 'true' : nothing}>
-        ${claims(wide) ? wideCell(v, wide) : html`${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : bodyCell(v, p.column, p.n, row, i, node)))}${v.hasFlexible ? nothing : filler}`}
+        ${claims(wide) ? wideCell(v, wide) : html`${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : bodyCell(v, p.column, p.n, row, i, node)))}${v.hasFlexible ? nothing : filler}`}${drag.dropEdge ? html`<div data-slot="data-table-drop-edge" data-edge=${drag.dropEdge} aria-hidden="true"></div>` : nothing}
     </div>`;
 }
 

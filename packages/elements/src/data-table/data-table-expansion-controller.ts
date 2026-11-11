@@ -1,3 +1,4 @@
+import { KEY_PRIORITY } from './data-table-registry.js';
 import {
     allFlagged,
     allNodesExpanded,
@@ -138,7 +139,7 @@ export class ExpansionController<T> {
             host.model.subscribe('subRowExpandedRows', announce),
             host.model.subscribe('collapsedGroups', announce),
             host.disposables.listen<MouseEvent>(host.root, 'click', ownEvents(host.root, this.onClick)),
-            host.addKeyHandler(50, this.onKey),
+            host.addKeyHandler(KEY_PRIORITY.rowControls, this.onKey),
         ];
     }
 

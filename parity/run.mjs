@@ -274,6 +274,25 @@ async function renderJob(browser, theme, group, side) {
                 }
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
                 for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
+                // `data-edit` is `rowIndex,columnKey` of a ge-data-table: that cell's editor is opened, as a double click would (wave 5; inert until the editing package lands).
+                // `data-edit-error` is a message: the column then refuses every value with it and the edited draft is committed, so the editor shows its error state.
+                for (const target of document.querySelectorAll('ge-data-table[data-edit]')) {
+                    await target.updateComplete;
+                    const [rowIndex, columnKey] = target.dataset.edit.split(',');
+                    const message = target.dataset.editError;
+                    if (message !== undefined) {
+                        target.columns = target.columns.map((c) => (String(c.accessorKey) === columnKey ? { ...c, editValidator: () => message } : c));
+                        await target.updateComplete;
+                    }
+                    const row = target.provider('query').renderedRowAt(Number(rowIndex));
+                    if (row === undefined || !target.startEditing(row, columnKey)) continue;
+                    await target.updateComplete;
+                    if (message !== undefined) {
+                        target.provider('interaction').setEditValue('​');
+                        target.commitEdit();
+                        await target.updateComplete;
+                    }
+                }
                 // `data-file` is JSON `{name, base64}`: a file-viewer is given that file and the run waits for it to load or fail.
                 for (const target of document.querySelectorAll('ge-file-viewer[data-file]')) {
                     const { name, base64 } = JSON.parse(target.dataset.file);

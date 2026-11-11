@@ -39,6 +39,24 @@ export interface CellContext<T> {
     rowIndex: number;
 }
 
+/**
+ * What `editRenderer` receives (wave 5). `value` is the DRAFT, not the stored value: it starts as the cell value and follows `setValue`.
+ * `commit` and `cancel` act on the open editor like Enter and Escape.
+ */
+export interface EditContext<T> extends CellContext<T> {
+    setValue(value: unknown): void;
+    commit(): void;
+    cancel(): void;
+    /** The message of the rejected commit, or null. */
+    error: string | null;
+}
+
+/** The value of a date-range filter (wave 5): a half range (one end null) is kept in the panel and not reported. */
+export interface DataTableDateRange {
+    start: Date | null;
+    end: Date | null;
+}
+
 export interface HeaderContext<T> {
     column: ColumnDef<T>;
 }
@@ -82,8 +100,13 @@ export interface CellRendering<T> {
 }
 
 /**
- * An editor element (`editComponent`) must expose a `value` property and report changes with a `change` or
- * `value-change` event. The full contract is defined with the editing controller, from Angular's edit specs.
+ * Component contracts (decided in wave 5, D4 and D21; implemented by the filter and edit packages):
+ * - A filter panel (`filterComponent`, `floatingFilterComponent`) gets the properties `column` and `value` (the column's current filter,
+ *   re-supplied on every render) plus `filterComponentInputs`, and reports a new filter with the event `filter-change` whose `detail` is
+ *   the new value (`null` = no filter). The table stops that event's propagation.
+ * - An editor element (`editComponent`) gets the properties `value` (the draft), `row`, `column`, `rowIndex` and `error`, and reports with
+ *   `value-change` (`detail` = the value) or `change` (reads `target.value`), and may fire `commit` and `cancel`. It takes focus through
+ *   `focus()` or an inner `[data-edit-input]`.
  */
 export interface ColumnDef<T> extends CellRendering<T> {
     accessorKey: keyof T | string;
@@ -114,7 +137,7 @@ export interface ColumnDef<T> extends CellRendering<T> {
     editable?: boolean;
     /** Custom-element tag name of the editor (contract: see the note on {@link ColumnDef}). */
     editComponent?: string;
-    editRenderer?: (ctx: CellContext<T>) => CellRenderResult;
+    editRenderer?: (ctx: EditContext<T>) => CellRenderResult;
     /**
      * Which editor an inline edit opens. `date` uses the library's date picker and writes back in whatever shape the
      * cell already held: an ISO string stays an ISO string.

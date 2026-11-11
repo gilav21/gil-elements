@@ -6,9 +6,11 @@
 import type { AiProvider } from '../shared/ai.js';
 import type { SlotRegistry } from '../shared/registry.js';
 import type { DataTableLocale } from './data-table.locales.js';
+import type { NormalizedRange } from './data-table-range.js';
 import type {
     BodyWindow,
     CellEditError,
+    CellFlashDirection,
     CellRange,
     ColumnDef,
     DataTableColumnState,
@@ -21,10 +23,15 @@ import type {
     DataTableQuery,
     EditingCell,
     EnhancedColumnDef,
+    FilterGroup,
     FlattenedTreeRow,
     PaginationState,
+    RangeAggregateStats,
+    RangeChartPayload,
     ResolvedCellFormatting,
     RowActionContext,
+    RowDragPosition,
+    RowReorderEvent,
     SortDirection,
     SubRowFilterMode,
     SubRowSelectionMode,
@@ -70,6 +77,8 @@ export interface DataTableConfig<T> {
     readonly enableRowDrag: boolean;
     readonly localReorder: boolean;
     readonly rowDragMode: 'flat' | 'tree';
+    /** A veto on a drop: false refuses the target (no indicator, no drop). Undefined allows every drop. */
+    readonly rowDragAllowDrop: ((dragRow: T, targetRow: T, position: RowDragPosition) => boolean) | undefined;
     readonly enableFloatingFilters: boolean;
     readonly enableNlFilter: boolean;
     readonly enableAdvancedFilter: boolean;
@@ -125,6 +134,15 @@ export interface QueryService<T> {
     changePage(state: PaginationState): void;
     /** The global filter input: waits out `filterDebounce`, resets to page 0, fires `filter-change`, announces the count. */
     changeGlobalFilter(value: string): void;
+    /**
+     * Wave 5 (filters, package A implements): sets `columnFilters[key]` to `value` as given (`null` stays a key), resets to page 0 and
+     * marks the `filtering` trigger, in one model batch; fires only the model event `column-filters-change`.
+     */
+    changeColumnFilter(columnKey: string | keyof T, value: unknown): void;
+    /** Wave 5: replaces the advanced filter tree (`null` clears it) and returns to page 0, in one model batch; fires `advanced-filter-change`. */
+    changeAdvancedFilter(group: FilterGroup | null): void;
+    /** Wave 5: the number of rows the filters let through, read when an announcement fires; undefined for server filtering without `total`. */
+    filteredCount(): number | undefined;
 }
 
 /** Which user action the busy overlay stands for; `loadingVisibility` can silence it per trigger. */
@@ -138,6 +156,19 @@ export interface LoadingService {
 /** Value-aware conditional formatting of one cell; `null` when its column declares none. */
 export interface FormattingService<T> {
     cell(column: ColumnDef<T>, row: T): ResolvedCellFormatting | null;
+    /** Wave 6 (flash, package C implements): the direction a cell is flashing now, or undefined. */
+    flash(rowId: string, columnKey: string): CellFlashDirection | undefined;
+}
+
+/** The filter UI's read-outs (wave 5, provided by the `filter-ui` controller under `filters`). */
+export interface FilterService<T> {
+    /** The column's filter is set: `!isFilterValueEmpty(value)`. */
+    isActive(columnKey: string): boolean;
+    /** The column draws a control in the floating filter row. */
+    hasFloating(column: ColumnDef<T>): boolean;
+    hasAnyFloating(): boolean;
+    /** The number of conditions in the advanced filter (the toolbar badge). */
+    advancedCount(): number;
 }
 
 export interface FooterService {
@@ -214,7 +245,11 @@ export interface ResizeService {
     fitColumnsToViewport(): void;
 }
 
-/** Focus, range and editor state: one owner, because reconciling them after a render writes all of them together. */
+/**
+ * Focus, range and editor state: one owner, because reconciling them after a render writes all of them together. The edit and
+ * range halves live in session files (`data-table-edit-session.ts`, `data-table-range-session.ts`) whose methods are merged
+ * into this one object (see `data-table-cell-session.ts`).
+ */
 export interface CellInteractionService {
     focusedCell(): { rowIndex: number; columnKey: string } | null;
     cellRange(): CellRange | null;
@@ -222,6 +257,70 @@ export interface CellInteractionService {
     cellEditError(): CellEditError | null;
     focusCell(rowIndex: number, columnKey: string): void;
     isCellSelected(rowIndex: number, columnKey: string): boolean;
+    /** Wave 5 (edit session): opens an editor on the cell of a data row; false when none opened (not editable, disabled row, no such row). */
+    startEditing(row: unknown, columnKey: string): boolean;
+    /** Wave 5: commits the open editor's draft (validation, write, close); no-op with nothing open. */
+    commitEdit(): void;
+    /** Wave 5: drops the open editor's draft without an event. */
+    cancelEdit(): void;
+    /** Wave 5: the cell at this drawn index and column holds the open editor. */
+    isEditing(rowIndex: number, columnKey: string): boolean;
+    /** Wave 5: the open editor's draft (undefined with none open). */
+    editValue(): unknown;
+    setEditValue(value: unknown): void;
+}
+
+/** Range selection, the fill handle and the readout (wave 6). Always provided by `cell-interaction`; inert until `enable-cell-range-selection` loads its lazy part. */
+export interface RangeService {
+    /** As made (anchor .. end), absolute rendered row indexes and column keys. */
+    range(): CellRange | null;
+    normalized(): NormalizedRange | null;
+    isInRange(rowIndex: number, columnKey: string): boolean;
+    isFillPreview(rowIndex: number, columnKey: string): boolean;
+    /** Programmatic: no event, clamped like any range. */
+    setRange(range: CellRange | null): void;
+    extendTo(rowIndex: number, columnKey: string): void;
+    /** Null unless `enable-range-actions` and at least two cells. */
+    stats(): RangeAggregateStats | null;
+    chartPayload(): RangeChartPayload | null;
+    /** Fires `range-chart-open` when there is a payload. */
+    openChart(): void;
+    /** False = nothing written. */
+    fillDownTo(targetEndRow: number): boolean;
+    /** Bottom-right of the range, else the focused cell; null while an editor is open. */
+    fillHandleCell(): { rowIndex: number; columnKey: string } | null;
+    /** A pointer or touch range / fill drag is running: the edit session's touch tap ignores a `touchend` while true. */
+    gestureActive(): boolean;
+}
+
+export type ClipboardResult = { status: 'done' | 'empty' | 'denied' | 'unavailable' | 'ignored'; cells?: number; rejected?: number };
+
+/** Copy and paste (wave 6, provided by the `clipboard` controller). */
+export interface ClipboardService<T> {
+    copy(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<ClipboardResult>;
+    /** Reads the async clipboard and pastes at the focused cell. */
+    paste(): Promise<ClipboardResult>;
+    /** Synchronous, no clipboard access (a native paste event, tests). */
+    pasteText(text: string, at?: { rowIndex: number; columnKey: string }): ClipboardResult;
+}
+
+export interface RowDragState {
+    /** The id of the row being dragged. */
+    draggedId: string;
+    /** The drawn index of the row under the pointer, or -1. */
+    overIndex: number;
+    /** The indicator on the target: a line on its top or bottom edge, or a frame for `on` (tree mode); null for none (a refused target). */
+    edge: 'top' | 'bottom' | 'on' | null;
+}
+
+/** Row drag reorder and its keyboard alternative (wave 6, provided by the `row-drag` controller). */
+export interface RowDragService<T> {
+    isDragging(): boolean;
+    /** What the renderer draws of a drag in progress: the dragged row and the edge indicator on the target; null when no drag runs. */
+    dragState(): RowDragState | null;
+    /** Moves a row one step among the drawn rows (flat) or its siblings (tree); false when nothing moved. */
+    moveRow(row: T, direction: 'up' | 'down'): boolean;
+    reorderData(data: readonly T[], event: RowReorderEvent<T>): T[];
 }
 
 export interface VirtualService {
@@ -270,6 +369,10 @@ export interface DataTableProviders<T = unknown> {
     query: QueryService<T>;
     columns: ColumnsService<T>;
     interaction: CellInteractionService;
+    range: RangeService;
+    clipboard: ClipboardService<T>;
+    rowDrag: RowDragService<T>;
+    filters: FilterService<T>;
     virtual: VirtualService;
     selection: SelectionService<T>;
     expansion: ExpansionService<T>;
