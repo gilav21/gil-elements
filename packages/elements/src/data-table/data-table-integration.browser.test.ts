@@ -8,6 +8,7 @@ import { html } from 'lit';
 import { afterEach, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { GeDataTable } from './data-table.js';
+import type { ColumnDef } from './data-table.types.js';
 import { bodyRows, cellAt, headCell, makeColumns, makeRows, mountTable, q, qa, roving, type SampleRow, settle } from './data-table-fixtures.js';
 import { frames, mouseDrag, parkMouse, press, scrollGrid, withRtl, withTheme } from './data-table-input-fixtures.js';
 
@@ -460,6 +461,46 @@ describe('focus follows its row: the edges', () => {
         // Calibrated the same way: the current code adds 1 read over an unfocused toggle (measured 15002 against 15001), a search for the
         // focused row from the top (row 2500) adds about 2500. The bound, a tenth of the rows (300), is clear of both whatever the call pattern.
         expect(focused - unfocused).toBeLessThan(0.1 * 3000);
+    });
+});
+
+describe('focus follows its row: round 7', () => {
+    // A JS consumer's `getRowId` may answer with numbers; the DOM carries them as strings.
+    interface Numbered { id: number; name: string; group?: string; children?: Numbered[] }
+    const columns: ColumnDef<Numbered>[] = [{ accessorKey: 'name', header: 'Name', width: '200px' }];
+
+    it('numeric row ids: opening a node above the focused row keeps the roving cell on its row, and a closed node hands it to the node', async () => {
+        const data: Numbered[] = Array.from({ length: 4 }, (_, i) => ({ id: i * 10, name: `n${i}`, children: [{ id: i * 10 + 1, name: `c${i}a` }, { id: i * 10 + 2, name: `c${i}b` }] }));
+        const table = await mountTable<Numbered>({ columns, data, getRowId: (row: Numbered) => row.id, enableSubRows: true, showToolbar: false, showPagination: false }, {}, { width: 600, height: 500 });
+        table.focusCell(1, 'name'); // 0, 10, 20, 30: the second root
+        await settle(table);
+        expect(cellAt(table as never, 1, 'name')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id')).toBe('10');
+        table.provider('expansion')!.expandSubRow(data[0]!); // two rows slide in above it
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'name' });
+        // a child of an open node, then its node closed: the node (found through the tree index) holds the focus
+        table.provider('expansion')!.expandSubRow(data[1]!);
+        await settle(table);
+        table.focusCell(5, 'name'); // 0, 1, 2, 10, 11, 12: the second child of the second root
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(data[1]!);
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'name' });
+        expect(cellAt(table as never, 3, 'name')!.closest('[data-slot="table-row"]')!.getAttribute('data-row-id')).toBe('10');
+    });
+
+    it('numeric row ids: collapsing the group of the focused row still hands the focus to its toggle', async () => {
+        const data: Numbered[] = Array.from({ length: 6 }, (_, i) => ({ id: i + 100, name: `n${i}`, group: `g${i % 2}` }));
+        const table = await mountTable<Numbered>({ columns, data, getRowId: (row: Numbered) => row.id, groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false }, {}, { width: 600, height: 500 });
+        table.focusCell(1, 'name');
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g0');
+        await settle(table);
+        await frames(3);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).toBe(q(table, '[data-group-key="g0"] [data-toggle]'));
     });
 });
 

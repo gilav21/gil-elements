@@ -29,9 +29,8 @@ export class CellInteractionController<T> {
     private observer: MutationObserver | null = null;
     /** The row that held the focus when a node or group was opened or closed: the render that follows follows it. */
     private rowAtExpansion: { at: CellAddress; id: string; hadFocus: boolean } | null = null;
-    /** Counts attaches: a task queued in one (the host runs it a frame later) is not run in another, nor after a detach. */
-    private epoch = 0;
-    private attached = false;
+    /** Bumped by every attach and every detach, so it is odd while attached: a task queued in one state (the host runs it a frame later) is not run in another. */
+    private attachment = 0;
     private watched: Element | null = null;
     private teardown: (() => void)[] = [];
 
@@ -47,8 +46,7 @@ export class CellInteractionController<T> {
     };
 
     attach(): void {
-        this.attached = true;
-        this.epoch++;
+        this.attachment++;
         const { host } = this;
         const { root, disposables } = host;
         this.teardown = [
@@ -75,7 +73,7 @@ export class CellInteractionController<T> {
         this.observer?.disconnect();
         this.observer = this.watched = null;
         this.within = this.pointer = false;
-        this.attached = false;
+        this.attachment++;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
     }
 
@@ -140,7 +138,8 @@ export class CellInteractionController<T> {
     private followRow(at: CellAddress, id: string): number {
         const { config } = this.host;
         const query = requireProvider(this.host, 'query');
-        const idOf = (row: unknown): string => config.getRowId(row as never);
+        // Ids are compared as strings: the one in the DOM is one, and a consumer's `getRowId` may answer with a number.
+        const idOf = (row: unknown): string => String(config.getRowId(row as never));
         const here = query.renderedRowAt(at.rowIndex);
         if (here !== undefined && idOf(here) === id) return at.rowIndex;
         const indexes = new Map<string, number>();
@@ -150,7 +149,8 @@ export class CellInteractionController<T> {
         });
         let index = indexes.get(id) ?? -1;
         if (index === -1 && config.enableSubRows) {
-            const parents = query.treeIndex().parent;
+            // The tree index is keyed by the ids as `getRowId` answers them: read through their strings, like everything here.
+            const parents = new Map([...query.treeIndex().parent].map(([child, parent]) => [String(child), String(parent)] as const));
             for (let parent = parents.get(id); parent !== undefined && index === -1; parent = parents.get(parent)) index = indexes.get(parent) ?? -1;
         }
         return index;
@@ -170,7 +170,7 @@ export class CellInteractionController<T> {
         const expansion = requireProvider(this.host, 'expansion');
         return requireProvider(this.host, 'query')
             .groupRows()
-            .find((group) => expansion.isGroupCollapsed(group.groupKey) && group.rows.some((row) => config.getRowId(row) === id))?.groupKey;
+            .find((group) => expansion.isGroupCollapsed(group.groupKey) && group.rows.some((row) => String(config.getRowId(row)) === id))?.groupKey;
     }
 
     /**
@@ -182,13 +182,13 @@ export class CellInteractionController<T> {
     private dropFocus(hadFocus: boolean, group: string, at?: CellAddress): void {
         this.clear();
         if (!hadFocus) return;
-        const epoch = this.epoch;
+        const attachment = this.attachment;
         this.host.afterRender(() => {
             // The host runs this a frame later: by then the table may have been detached (the providers are gone), or attached again.
-            if (!this.attached || epoch !== this.epoch) return;
-            const active = this.rootNode().activeElement;
-            // Still nowhere: the cell is gone with its row (focus fell to the page) or is the viewport; something else has it by now otherwise.
-            if (active && active !== this.host.root.ownerDocument.body && active !== this.host.root.querySelector(VIEWPORT)) return;
+            if (attachment !== this.attachment) return;
+            // Still nowhere: focus fell to the page with the cell, or is on the viewport; something else has it by now otherwise. Unlike the
+            // observer below, focus on another part of the page is not nowhere: it is the user's, and is left alone.
+            if (!this.onPage() && this.rootNode().activeElement !== this.host.root.querySelector(VIEWPORT)) return;
             const toggle = this.groupToggle(group);
             if (toggle) return toggle.focus({ preventScroll: true });
             const next = at && this.landOn(at.rowIndex, at.columnKey);
@@ -259,6 +259,12 @@ export class CellInteractionController<T> {
     }
 
     /** A render can remove or move the focused element (a sort, a row leaving the window): DOM focus then falls to the page. */
+    /** Nothing has DOM focus, or only the page (`<body>`) does: what is left when the focused element is removed. */
+    private onPage(): boolean {
+        const active = this.rootNode().activeElement;
+        return !active || active === this.host.root.ownerDocument.body;
+    }
+
     private watchDom(): void {
         const viewport = this.host.root.querySelector(VIEWPORT);
         // A new viewport element (the skeleton gives way to the grid) is a new subtree to watch.
@@ -266,8 +272,9 @@ export class CellInteractionController<T> {
         this.observer?.disconnect();
         this.watched = viewport;
         this.observer = new MutationObserver(() => {
+            // Lost: nothing has the focus, the page has, or something outside the table has (a removed row's focus can fall anywhere).
             const active = this.rootNode().activeElement;
-            if (this.within && this.focused && (!active || !this.host.root.contains(active) || active === this.host.root.ownerDocument.body)) this.focusDom();
+            if (this.within && this.focused && (this.onPage() || !this.host.root.contains(active))) this.focusDom();
         });
         this.observer.observe(viewport, { childList: true, subtree: true });
     }
