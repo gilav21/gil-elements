@@ -20,10 +20,19 @@ const OVERLAY = '[data-pointer-transparent]';
 /** What the controller keeps of a press: what the sessions are told (`PointerPress`) and the session that claimed it. */
 interface Press extends PointerPress {
     readonly claimedBy: CellSession | null;
+    /** Where the pointer went down: a tap on something that is not in a cell is measured from here. */
+    readonly x: number;
+    readonly y: number;
 }
 
 /** Whether the point is in the box, or within `slop` px of it. */
 const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= box.left - slop && x <= box.right + slop && y >= box.top - slop && y <= box.bottom + slop;
+
+/** An element drawn inside a cell but floating outside its box (a popover or menu of the cell, positioned over other cells) is not that cell: the point is not in the cell's rect. */
+function floatsOut(el: Element, x: number, y: number): boolean {
+    const host = el.closest(CELL);
+    return host !== null && el !== host && !inside(host.getBoundingClientRect(), x, y);
+}
 
 /** What a session is told of a press (the controller's own bookkeeping, `claimedBy`, stays out). */
 const pressOf = ({ anchor, pressed, startCell }: Press): PointerPress => ({ anchor, pressed, startCell });
@@ -32,9 +41,9 @@ const pressOf = ({ anchor, pressed, startCell }: Press): PointerPress => ({ anch
 const TAP_SLOP = 10;
 
 /** A press on one of these belongs to the control: it keeps its own focus and click. */
-const CONTROLS = 'input, textarea, select, button, a, [role="checkbox"], ge-checkbox, ge-input, [contenteditable], [data-table-keeps-focus]';
-/** The explicit opt-out for a widget in a cell that manages its own focus (a combobox, a menu button, a custom editor): treated like a control. */
-const KEEPS_FOCUS = '[data-table-keeps-focus]';
+const CONTROLS = 'input, textarea, select, button, a[href], [role="checkbox"], ge-checkbox, ge-input, [contenteditable], [data-table-keeps-focus]';
+/** `data-table-keeps-focus` is the explicit opt-out for a widget in a cell that manages its own focus (a combobox, a menu button, a custom editor): treated like a control. */
+const CELL = '[data-slot="table-cell"]';
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
 /** Rows moved by one page key when nothing is drawn to measure. */
@@ -79,8 +88,8 @@ export class CellInteractionController<T> {
     /** The one list: attach and the pointer go through it forwards, detach and `hostUpdate` backwards. */
     private readonly sessions: readonly CellSession[];
     private readonly service: CellInteractionService;
-    /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. */
-    readonly services: { range: RangeService };
+    /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. Undefined while the range session is failed. */
+    readonly services: { range: RangeService | undefined };
     /** The contributions of the sessions to `service` as built: put back at every attach (a failed session's are replaced by its stand-in, see `fail`). */
     private readonly baseService: CellInteractionService;
     /** Sessions that FAILED (their `attach()` or a `hostUpdate()` threw): detached at once and skipped by everything after, until the next attach. */
@@ -199,7 +208,7 @@ export class CellInteractionController<T> {
         const { neutral } = session;
         Object.assign(this.service, neutral.service);
         if (neutral.rangeService) {
-            this.services.range = neutral.rangeService;
+            this.services.range = undefined; // withdrawn: the element holds a cellRange itself while there is no range service (the neutral one is only the `range` PROVIDER)
             this.teardown.push(this.host.provide('range', neutral.rangeService));
         }
     }
@@ -523,11 +532,11 @@ export class CellInteractionController<T> {
         const path = event.composedPath(); // once per event: a path is built at every call
         const target = this.targetOf(path);
         // A press that begins on an overlay is the overlay's (`pressed` = the overlay, no start cell): only the RELEASE of a gesture is looked through it.
-        // A widget that keeps its own focus (`data-table-keeps-focus` on it or an ancestor, like a control) is not a cell press either: no start cell, no offer, no focus.
-        const keeps = target?.closest(KEEPS_FOCUS) != null;
-        const info: PointerPress = { anchor, pressed: target, startCell: keeps ? null : cellAddressOf(target) };
-        const claimedBy = keeps ? undefined : this.offer(event, target, (session) => session.onPointerDown, info);
-        this.presses.set(event.pointerId, { ...info, claimedBy: claimedBy ?? null });
+        // A press on a control inside its cell (or a widget with `data-table-keeps-focus`) is the control's own: no start cell, no offer, no focus.
+        const control = this.controlOf(target);
+        const info: PointerPress = { anchor, pressed: target, startCell: control ? null : cellAddressOf(target) };
+        const claimedBy = control ? undefined : this.offer(event, target, (session) => session.onPointerDown, info);
+        this.presses.set(event.pointerId, { ...info, claimedBy: claimedBy ?? null, x: event.clientX, y: event.clientY });
         if (claimedBy) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.button === 0 && event.pointerType !== 'touch' && target && !this.insideOpenEditor(path)) this.pointerFocus(target);
@@ -550,7 +559,7 @@ export class CellInteractionController<T> {
         // release: no hit test; only a touch tap may still focus what it pressed.
         if (event.type === 'pointerup' && !press.claimedBy && !press.startCell) {
             this.endPress(event.pointerId, press, event, false);
-            if (event.pointerType === 'touch') this.tapFocus(event, press.pressed);
+            if (event.pointerType === 'touch') this.tapFocus(event, press);
             return;
         }
         const where = event.type === 'pointerup' ? this.locateRelease(event, event.composedPath()) : { own: false, cell: null };
@@ -572,13 +581,17 @@ export class CellInteractionController<T> {
         // A TAP does what a mouse press on the PRESSED element does (`pointerFocus`: it focuses a cell, clears the focus on the body outside any cell, and
         // does nothing on a header, a control or a popover), unless that element is in the open editor's cell. It is a tap while the finger is released
         // within the pressed cell's box plus a small slop; further away it was a drag and focuses nothing. (A claimant is told the cell under the finger.)
-        if (event.pointerType === 'touch') this.tapFocus(event, press.pressed);
+        if (event.pointerType === 'touch') this.tapFocus(event, press);
     }
 
-    private tapFocus(event: PointerEvent, pressed: Element | null): void {
+    private tapFocus(event: PointerEvent, press: Press): void {
+        const { pressed } = press;
         if (!pressed?.isConnected) return;
-        if (!inside((pressed.closest('[data-slot="table-cell"]') ?? pressed).getBoundingClientRect(), event.clientX, event.clientY, TAP_SLOP)) return;
-        if (!this.insideOpenEditor(null, pressed)) this.pointerFocus(pressed);
+        // Still a tap: within the pressed CELL's box plus the slop; a press in no cell is measured from where it went down (an element's own box, such as a
+        // body-wide stretch row, would make any drag over it a tap).
+        const cell = pressed.closest(CELL);
+        const near = cell ? inside(cell.getBoundingClientRect(), event.clientX, event.clientY, TAP_SLOP) : Math.hypot(event.clientX - press.x, event.clientY - press.y) <= TAP_SLOP;
+        if (near && !this.insideOpenEditor(null, pressed)) this.pointerFocus(pressed);
     }
 
     /** Runs `task` after the event that scheduled it has been dispatched to every listener (the document's capture listener runs before the root's). */
@@ -651,7 +664,8 @@ export class CellInteractionController<T> {
         const target = this.targetOf(path);
         // An uncaptured mouse released over one of the table's overlays is looked through too, exactly as a touch at the same point is.
         const lookThrough = event.pointerType !== 'mouse' || this.captured.has(event.pointerId) || !!target?.closest(OVERLAY);
-        if (!lookThrough) return { own: target !== null && ownsTarget(root, target), cell: target };
+        // The same rule for a mouse over an element floating out of its cell as for a touch: it is not that cell.
+        if (!lookThrough) return { own: target !== null && ownsTarget(root, target), cell: target && floatsOut(target, event.clientX, event.clientY) ? null : target };
         return this.hitTest(event.clientX, event.clientY);
     }
 
@@ -668,10 +682,7 @@ export class CellInteractionController<T> {
             // or menu of the table, the busy overlay). The cells scrolled under those are not what the pointer is on.
             // An element drawn inside a cell but floating outside its box (a popover or menu of the cell, positioned over other cells) is not that cell:
             // the point is not inside the cell's rect. (Mark it `data-pointer-transparent` to be looked through to the cell under it instead.)
-            const host = el.closest('[data-slot="table-cell"]');
-            if (host && el !== host) {
-                if (!inside(host.getBoundingClientRect(), x, y)) return { own: true, cell: null };
-            }
+            if (floatsOut(el, x, y)) return { own: true, cell: null };
             return { own: true, cell: el }; // the element the pointer is on (`cellAddressOf` says whether it is in a cell)
         }
         return { own: false, cell: null };
@@ -726,8 +737,19 @@ export class CellInteractionController<T> {
         }
     }
 
+    /**
+     * The control a press landed on INSIDE its cell: the first element from the target up, bounded to the nearest cell (a press in no cell is bounded by
+     * the table's root), that is a control or carries `data-table-keeps-focus`. The cell itself and anything above it (an outer widget that hosts a
+     * nested table, a link around the table) do not count. The one answer for the press, the offer and the focus.
+     */
+    private controlOf(target: Element | null): Element | null {
+        const stop = target?.closest(CELL) ?? this.host.root;
+        for (let el = target; el && el !== stop; el = el.parentElement) if (el.matches(CONTROLS)) return el;
+        return null;
+    }
+
     private pointerFocus(target: Element): void {
-        if (target.closest(CONTROLS)) return;
+        if (this.controlOf(target)) return;
         const at = cellAddressOf(target);
         if (at) return this.focusCell(at.rowIndex, at.columnKey, false);
         // A click on the body outside any cell (a group row, the stretch row) clears the focus; the toolbar, header and pager do not.

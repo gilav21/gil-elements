@@ -10,7 +10,6 @@ import { type AssembledControllers, assembleControllers } from './data-table-con
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
 import { rangeModeOn, rangeSelectionDrawn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
-import { NEUTRAL_RANGE } from './data-table-range-session.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
@@ -551,11 +550,11 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /**
      * The REAL range service once the controllers exist (the first connect built them; they are kept across reconnects, and the range session owns the
-     * value from then on). Undefined without one: not built yet, no controller provides it, or the range session failed (its neutral service is not real).
+     * value from then on). Undefined without one, uniformly: not built yet, no controller provides it, or the range session failed (the controller
+     * withdraws it while the session is out).
      */
     private rangeService(): DataTableProviders<T>['range'] | undefined {
-        const service = this.built?.service('range');
-        return service === NEUTRAL_RANGE ? undefined : service;
+        return this.built?.service('range');
     }
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */

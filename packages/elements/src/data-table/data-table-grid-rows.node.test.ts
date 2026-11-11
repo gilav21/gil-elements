@@ -75,8 +75,8 @@ describe('the body rows and the wave 5 and 6 state', () => {
         renderRows(v);
         expect(rowState).toHaveBeenCalledTimes(rows.length);
         expect(cellState).toHaveBeenCalledTimes(rows.length * columns.length);
-        expect(cellState).toHaveBeenCalledWith(0, 'a', { id: 'r0', disabled: false });
-        expect(rowState).toHaveBeenCalledWith(1, { id: 'r1', disabled: false });
+        expect(cellState).toHaveBeenCalledWith(0, 'a', 'r0');
+        expect(rowState).toHaveBeenCalledWith(1, 'r1', false);
     });
 
     it('ask a row for its state but no cell when only the rows are active (draggable rows), and no row when only the cells are', () => {

@@ -1102,6 +1102,98 @@ describe('a widget in a cell that carries data-table-keeps-focus', () => {
     });
 });
 
+describe('a press on a control inside a cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is the control\'s own: no offer at down or up, no start cell (a button and a checkbox in a cell)', async () => {
+        const table = await mountTable();
+        const downs: PointerPress[] = [];
+        const ups: unknown[] = [];
+        hooks.onPointerDown = (_event, _at, press) => void downs.push(press);
+        hooks.onPointerUp = (_event, at) => void ups.push(at);
+        const cell = cellAt(table, 1, 'name')!;
+        const button = document.createElement('button');
+        button.textContent = 'go';
+        const checkbox = document.createElement('ge-checkbox');
+        cell.append(button, checkbox);
+        for (const [id, el] of [[311, button], [312, checkbox]] as const) {
+            el.dispatchEvent(pointer('pointerdown', id, { over: el }));
+            el.dispatchEvent(pointer('pointerup', id, { over: el }));
+        }
+        expect(downs).toEqual([]); // not even offered at the pointerdown
+        expect(ups).toEqual([]);
+        cell.dispatchEvent(pointer('pointerdown', 313, { over: cell })); // the cell itself is still a cell press
+        cell.dispatchEvent(pointer('pointerup', 313, { over: cell }));
+        expect(downs[0]!.startCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        expect(ups).toHaveLength(1);
+    });
+
+    it('is bounded to its cell: an outer widget that keeps its focus and hosts a nested table does not disable the nested table\'s presses', async () => {
+        const outer = await mountTable();
+        const host = cellAt(outer, 0, 'name')!;
+        const widget = document.createElement('div');
+        widget.setAttribute('data-table-keeps-focus', '');
+        const inner = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(inner, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS, showToolbar: false, showPagination: false });
+        widget.append(inner);
+        host.append(widget);
+        await settle(inner);
+        const downs: PointerPress[] = [];
+        hooks.onPointerDown = (_event, _at, press) => void downs.push(press);
+        const target = cellAt(inner, 1, 'age')!;
+        target.dispatchEvent(pointer('pointerdown', 321, { over: target }));
+        target.dispatchEvent(pointer('pointerup', 321, { over: target }));
+        expect(downs).toHaveLength(1); // the inner table's own press (the outer table does not record a nested table's presses)
+        expect(downs[0]!.startCell).toEqual({ rowIndex: 1, columnKey: 'age' });
+        inner.remove();
+    });
+});
+
+describe('a mouse release over a popover that floats out of its cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('reports the same as a touch there: not the cell that holds it', async () => {
+        const table = await mountTable();
+        const host = cellAt(table, 0, 'name')!;
+        const under = cellAt(table, 2, 'age')!.getBoundingClientRect();
+        const popover = document.createElement('div');
+        popover.style.cssText = `position:fixed;left:${under.left}px;top:${under.top}px;width:${under.width}px;height:${under.height}px;z-index:50`;
+        host.append(popover);
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        for (const [id, pointerType] of [[331, 'mouse'], [332, 'touch']] as const) {
+            popover.dispatchEvent(pointer('pointerdown', id, { pointerType, over: popover }));
+            popover.dispatchEvent(pointer('pointerup', id, { pointerType, over: popover }));
+        }
+        expect(log).toEqual(['up:null', 'up:null']);
+        popover.remove();
+    });
+});
+
+describe('a touch tap that began outside any cell', () => {
+    it('is measured from where it went down: a 300 px drag over the empty body is no tap and keeps the focus', async () => {
+        const table = await mountTable({ columns: makeColumns(3), data: makeRows(6, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 1000 }, showToolbar: false }, {}, { width: 900, height: 600 });
+        table.focusCell(0, 'c0');
+        await settle(table);
+        const group = table.querySelector<HTMLElement>('[data-kind="group"]')!;
+        const box = group.getBoundingClientRect();
+        const y = box.top + box.height / 2;
+        group.dispatchEvent(pointer('pointerdown', 341, { pointerType: 'touch', clientX: box.left + 100, clientY: y }));
+        group.dispatchEvent(pointer('pointerup', 341, { pointerType: 'touch', clientX: box.left + 400, clientY: y })); // 300 px along the row
+        await settle(table);
+        expect(table.focusedCell).not.toBeNull();
+        group.dispatchEvent(pointer('pointerdown', 342, { pointerType: 'touch', clientX: box.left + 100, clientY: y }));
+        group.dispatchEvent(pointer('pointerup', 342, { pointerType: 'touch', clientX: box.left + 103, clientY: y })); // a tap
+        await settle(table);
+        expect(table.focusedCell).toBeNull();
+    });
+});
+
 describe('a release that needs no cell', () => {
     it('makes no hit test: a touch press that began on a header and is released is located by nothing, one that began on a cell is', async () => {
         const table = await mountTable();
@@ -1150,8 +1242,7 @@ describe('a press that begins on an overlay of the table', () => {
         await settle(table);
         expect(table.focusedCell).toBeNull();
         expect(offers).toEqual([]);
-        expect(downs.map((press) => press.startCell)).toEqual([null, null]);
-        expect(downs[0]!.pressed).toBe(button);
+        expect(downs).toEqual([]); // the readout's button is a control: its press is not offered either
         button.remove();
     });
 
@@ -1309,8 +1400,8 @@ describe('a consumer component with its own shadow root in a cell', () => {
         hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
         hooks.onPointerCancel = () => void log.push('cancel');
         const inner = badge.shadowRoot!.querySelector('span')!;
-        inner.dispatchEvent(pointer('pointerdown', 151));
-        inner.dispatchEvent(pointer('pointerup', 151));
+        inner.dispatchEvent(pointer('pointerdown', 151, { over: inner }));
+        inner.dispatchEvent(pointer('pointerup', 151, { over: inner }));
         expect(log).toEqual(['up:{"rowIndex":1,"columnKey":"name"}']);
     });
 });

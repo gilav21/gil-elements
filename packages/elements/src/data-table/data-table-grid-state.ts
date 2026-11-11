@@ -53,17 +53,9 @@ export interface StateView {
     cellStateActive: boolean;
     /** `rowState` can say something now (draggable rows). */
     rowStateActive: boolean;
-    cellState(rowIndex: number, columnKey: string, row: RowInfo): CellFlags;
-    rowState(rowIndex: number, row: RowInfo): RowFlags;
-}
-
-/**
- * What the renderer already knows of the drawn row (`dataRow` reads each once): its id as a string (`getRowId` may answer a number) and whether it is
- * disabled. The state functions never ask for them again, so a row costs one `getRowId` and one `isDisabled`, however many cells it has.
- */
-export interface RowInfo {
-    readonly id: string;
-    readonly disabled: boolean;
+    /** `rowId` and `disabled` are what the renderer already read for the row (`dataRow` reads each once): plain arguments, no per-row object. */
+    cellState(rowIndex: number, columnKey: string, rowId: string): CellFlags;
+    rowState(rowIndex: number, rowId: string, disabled: boolean): RowFlags;
 }
 
 /** The keys of the columns that opted out of flash, per `columns` array: a render with the same columns builds the set once. */
@@ -100,12 +92,12 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
         cellStateActive,
         rowStateActive: dragOn,
         rangeSelectable: selectionMode,
-        cellState(rowIndex, key, row) {
+        cellState(rowIndex, key, rowId) {
             // The special columns (selection, expander, actions) are not cells of the range, of an editor or of a flash.
             if (isSpecialColumnKey(key)) return NO_CELL_FLAGS;
             const inRange = rangeMode && (range?.isInRange(rowIndex, key) ?? false);
             const fill = config.enableFillHandle && rangeActive && (range?.isFillPreview(rowIndex, key) ?? false);
-            const flash = flashable && !flashOff.has(key) ? formatting.flash(row.id, key) : undefined;
+            const flash = flashable && !flashOff.has(key) ? formatting.flash(rowId, key) : undefined;
             const editing = editingOpen && (interaction?.isEditing(rowIndex, key) ?? false); // the per-cell question only while an editor is open
             if (!inRange && !fill && flash === undefined && !editing) {
                 return selectionMode ? OUT_OF_RANGE_FLAGS : NO_CELL_FLAGS;
@@ -119,10 +111,10 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
                 editing,
             };
         },
-        rowState(rowIndex, row) {
+        rowState(rowIndex, rowId, disabled) {
             if (!dragOn) return NO_ROW_FLAGS;
-            const draggable = !row.disabled && !config.loading;
-            const isDragged = dragging !== null && dragging.draggedId === row.id;
+            const draggable = !disabled && !config.loading;
+            const isDragged = dragging !== null && dragging.draggedId === rowId;
             const edge = dragging !== null && dragging.overIndex === rowIndex ? (dragging.edge ?? undefined) : undefined;
             if (!isDragged && edge === undefined) return draggable ? DRAGGABLE_ROW_FLAGS : NO_ROW_FLAGS;
             return { draggable, dragging: isDragged, dropEdge: edge };

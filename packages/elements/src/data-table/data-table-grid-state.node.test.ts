@@ -4,8 +4,7 @@ import {
     NO_CELL_FLAGS,
     NO_ROW_FLAGS,
     OUT_OF_RANGE_FLAGS,
-    type RowInfo,
-    stateView,
+    stateView as realStateView,
 } from './data-table-grid-state.js';
 import type { DataTableViewHost } from './data-table-view.js';
 
@@ -17,8 +16,21 @@ function fakeHost(options: { config?: Record<string, unknown>; providers?: Recor
 
 /** Something can mark a cell or a row (what the renderer ORs: it keeps no `stateActive` of its own). */
 const anyActive = (state: { cellStateActive: boolean; rowStateActive: boolean }): boolean => state.cellStateActive || state.rowStateActive;
+/** What the renderer knows of a row; the state functions take its parts as plain arguments, and these tests keep them together. */
+interface RowInfo {
+    readonly id: string;
+    readonly disabled: boolean;
+}
 const row: RowInfo = { id: 'r1', disabled: false };
 const info = (id: string, disabled = false): RowInfo => ({ id, disabled });
+function stateView(host: DataTableViewHost<unknown>) {
+    const real = realStateView(host);
+    return {
+        ...real,
+        cellState: (rowIndex: number, key: string, r: RowInfo) => real.cellState(rowIndex, key, r.id),
+        rowState: (rowIndex: number, r: RowInfo) => real.rowState(rowIndex, r.id, r.disabled),
+    };
+}
 const dragPart = (state: unknown = null) => ({ active: () => true, dragState: () => state });
 const rangeService = (over: Record<string, unknown> = {}) => ({ active: () => true, isInRange: () => false, isFillPreview: () => false, edgeOf: () => '', ...over });
 

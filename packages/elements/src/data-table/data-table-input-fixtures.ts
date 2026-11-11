@@ -362,7 +362,7 @@ export function fakeClipboard({ denyWrite = false, denyRead = false, missing = f
     };
 }
 
-/** A native `paste` event carrying `text` as `text/plain`, dispatched on `el`; resolves with whether it was left alone (not default-prevented). */
+/** A native `paste` event carrying `text` as `text/plain`, dispatched on `el`; returns whether it was left alone (not default-prevented). */
 export function dispatchPaste(el: Element, text: string): boolean {
     const data = new DataTransfer();
     data.setData('text/plain', text);
