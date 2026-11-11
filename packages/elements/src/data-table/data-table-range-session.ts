@@ -41,6 +41,8 @@ export class RangeSession<T> implements CellSession {
     private held: CellRange | null = null;
     /** A COPY of the four values of `held` as last seen: `held` is the consumer's own object, which may be edited in place and assigned again (identity says nothing). */
     private seen: CellRange | null = null;
+    /** A value was assigned since the last `hostUpdate`: it survives a turn-off of range mode that update sees (property order must not matter). */
+    private assignedSince = false;
     /** A range flag was on at the last update. */
     private wasOn = false;
     /** `held` was assigned while a range flag was on, or adopted by an update that saw it on: the turn-off clears it. */
@@ -86,6 +88,7 @@ export class RangeSession<T> implements CellSession {
             this.held = next;
             this.seen = next && { ...next };
             this.heldInMode = this.rangeOn(); // assigned while range mode was off, it is not part of the mode that a later turn-off ends
+            this.assignedSince = true; // and one assigned since the last update survives a turn-off that update sees
             this.lazy.part?.setRange(next);
             // `data-in-range`, `aria-selected` and the readout read the range at render, and only in range mode: an equal value, or a value held while the mode is off, draws nothing new
             if (changed && this.rangeOn()) this.context.host.requestRender();
@@ -174,14 +177,16 @@ export class RangeSession<T> implements CellSession {
             }
         } else if (this.wasOn) {
             // Turning range selection OFF ends range mode: the range of that mode goes with it (wave 6 A.2), so turning it on again starts empty.
-            // Only a value that was held in the mode: one assigned after the mode went off (`enableCellRangeSelection = false; cellRange = r` in
-            // one tick, the update only sees the turn-off now) is not part of it and waits for the next time the mode is on.
-            if (this.heldInMode) this.held = null;
+            // Only a value that was held in the mode AND was not assigned in this same tick: the update sees the turn-off and the assignment together,
+            // in either order (`cellRange = r; enableCellRangeSelection = false` or the reverse), and an assignment made in the tick of the turn-off
+            // is not part of the mode that ends: it waits for the next time the mode is on.
+            if (this.heldInMode && !this.assignedSince) this.held = null;
             this.heldInMode = false;
         }
         // (off and never on: a value assigned before the mode was switched on waits in `held`)
         this.wasOn = on;
-        this.seen = this.held && { ...this.held };
+        this.assignedSince = false;
+        if (!sameRange(this.seen, this.held)) this.seen = this.held && { ...this.held }; // copied only when it changed
         this.lazy.sync(on);
     }
 

@@ -324,6 +324,11 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return this.providers.get(key) as DataTableProviders<T>[K] | undefined;
     }
 
+    /**
+     * Adds a handler to the grid's `keydown` chain; lower priorities run first and the first handler that returns true consumes the event. PUBLIC API:
+     * these numbers are fixed, so a consumer's handler keeps its place. The grid's own: editor 5, clipboard 10, column resize 20, history 25,
+     * column drag 30, range 35, row move 40, selection and expansion 50, edit start 60, (70 free), navigation 100. Returns the function that removes it.
+     */
     addKeyHandler(priority: number, fn: (event: KeyboardEvent) => boolean): () => void {
         return this.keyHandlers.add(priority, fn);
     }
@@ -493,8 +498,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return this.redo();
     }
 
+    /** An editor is open. Kept for parity (Angular's `isEditingCell()`, cmp 5749); it is `editingCell !== null`. */
     isEditingCell(): boolean {
-        return this.provider('interaction')?.editingCell() != null;
+        return this.editingCell !== null;
     }
 
     /** The cell whose editor is open, or null. */
@@ -621,12 +627,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.built ??= assembleControllers(this, createFactories<T>());
         const built = this.built;
         built.attachAll();
-        // Handed over only to a REAL range service; otherwise it is kept (and retried at the next connect).
-        const range = this.rangeService();
-        if (this.earlyRange !== undefined && range) {
-            range.setRange(this.earlyRange);
-            this.earlyRange = undefined;
-        }
+        this.handOverEarlyRange();
         this.lastLocale = this.resolvedLocale;
         this.assembled = built;
         this.observer = new MutationObserver(() => {
@@ -717,9 +718,23 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return super.insertBefore(node, child !== null && this.isHarvested(child) ? null : child);
     }
 
+    /**
+     * A `cellRange` held here (assigned before the first connect, or while the range session was failed) goes to the range service as soon as there is
+     * one: at a connect (the controller attaches its sessions and restores the real service), and at every update after, so it is never stranded.
+     * While there is none it stays a held value.
+     */
+    private handOverEarlyRange(): void {
+        const range = this.rangeService();
+        if (this.earlyRange !== undefined && range) {
+            range.setRange(this.earlyRange);
+            this.earlyRange = undefined;
+        }
+    }
+
     private rendering = false;
 
     protected override update(changed: PropertyValues): void {
+        this.handOverEarlyRange();
         this.rendering = true;
         try {
             super.update(changed);

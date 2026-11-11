@@ -44,6 +44,8 @@ const TAP_SLOP = 10;
 const CONTROLS = 'input, textarea, select, button, a[href], [role="checkbox"], ge-checkbox, ge-input, [contenteditable], [data-table-keeps-focus]';
 /** `data-table-keeps-focus` is the explicit opt-out for a widget in a cell that manages its own focus (a combobox, a menu button, a custom editor): treated like a control. */
 const CELL = '[data-slot="table-cell"]';
+/** Inside a cell, also an anchor used as a button or a link, and anything the content made tabbable (the cell itself is never matched: the walk stops at it). */
+const CELL_CONTROLS = `${CONTROLS}, [role="button"], [role="link"], [tabindex]:not([tabindex="-1"])`;
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
 /** Rows moved by one page key when nothing is drawn to measure. */
@@ -533,11 +535,13 @@ export class CellInteractionController<T> {
         const target = this.targetOf(path);
         // A press that begins on an overlay is the overlay's (`pressed` = the overlay, no start cell): only the RELEASE of a gesture is looked through it.
         // A press on a control inside its cell (or a widget with `data-table-keeps-focus`) is the control's own: no start cell, no offer, no focus.
-        const control = this.controlOf(target);
-        const info: PointerPress = { anchor, pressed: target, startCell: control ? null : cellAddressOf(target) };
-        const claimedBy = control ? undefined : this.offer(event, target, (session) => session.onPointerDown, info);
+        // The release side's rules apply at the pointerdown too: an element that floats out of its cell's box (a popover or menu of the cell) is not that
+        // cell, so its press is not a cell press either (and the popover keeps its focus).
+        const bypass = target !== null && (this.controlOf(target) !== null || target.closest(OVERLAY) !== null || floatsOut(target, event.clientX, event.clientY));
+        const info: PointerPress = { anchor, pressed: target, startCell: bypass ? null : cellAddressOf(target) };
+        const claimedBy = bypass ? undefined : this.offer(event, target, (session) => session.onPointerDown, info);
         this.presses.set(event.pointerId, { ...info, claimedBy: claimedBy ?? null, x: event.clientX, y: event.clientY });
-        if (claimedBy) return; // the claimant owns the press: no focus from the controller
+        if (claimedBy || bypass) return; // the claimant owns the press, or it is not a cell press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.button === 0 && event.pointerType !== 'touch' && target && !this.insideOpenEditor(path)) this.pointerFocus(target);
     }
@@ -743,8 +747,11 @@ export class CellInteractionController<T> {
      * nested table, a link around the table) do not count. The one answer for the press, the offer and the focus.
      */
     private controlOf(target: Element | null): Element | null {
-        const stop = target?.closest(CELL) ?? this.host.root;
-        for (let el = target; el && el !== stop; el = el.parentElement) if (el.matches(CONTROLS)) return el;
+        const cell = target?.closest(CELL) ?? null;
+        // Inside a cell anything the content makes focusable or interactive counts (an anchor used as a button, a custom focusable widget); outside a
+        // cell only the native controls do (the viewport and the rows have a tabindex of their own).
+        const selector = cell ? CELL_CONTROLS : CONTROLS;
+        for (let el = target; el && el !== (cell ?? this.host.root); el = el.parentElement) if (el.matches(selector)) return el;
         return null;
     }
 

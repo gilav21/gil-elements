@@ -71,6 +71,15 @@ describe('KEY_PRIORITY', () => {
         expect(new Set(values).size).toBe(values.length);
     });
 
+    it('keeps the numbers the grid had before waves 5 and 6 (addKeyHandler is public API): resize 20, column drag 30, selection and expansion 50, navigation 100', () => {
+        expect(KEY_PRIORITY.columnResize).toBe(20);
+        expect(KEY_PRIORITY.columnDrag).toBe(30);
+        expect(KEY_PRIORITY.rowControls).toBe(50);
+        expect(KEY_PRIORITY.navigation).toBe(100);
+        // the new priorities sit in the gaps and move none of them
+        expect([KEY_PRIORITY.history, KEY_PRIORITY.range]).toEqual([25, 35]);
+    });
+
     it('puts the open editor before every other handler and plain navigation after them all', () => {
         const { editor, navigation, ...others } = KEY_PRIORITY;
         for (const priority of Object.values(others)) {

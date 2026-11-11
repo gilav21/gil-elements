@@ -545,6 +545,32 @@ describe('a failed session is withdrawn: its presses end, its neutral services t
         }
     });
 
+    it('holds a cellRange assigned while the range session is failed, and applies it once a real range service is back (the reconnect), before anything is drawn', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        let fail = false;
+        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            if (fail) throw new Error('range hostUpdate failed');
+        });
+        try {
+            const table = await mountTable({ enableCellRangeSelection: true });
+            fail = true;
+            table.requestUpdate();
+            await settle(table);
+            const second = { startRow: 1, startCol: 'name', endRow: 2, endCol: 'age' };
+            table.cellRange = second; // while it is out: held by the element
+            expect(table.cellRange).toEqual(second);
+            update.mockRestore();
+            table.remove();
+            document.body.append(table);
+            await settle(table);
+            expect(table.provider('range')!.range()).toEqual(second); // the session itself holds it now, not only the element
+            expect(table.cellRange).toEqual(second);
+        } finally {
+            update.mockRestore();
+            error.mockRestore();
+        }
+    });
+
     it('an edit session that fails to attach is replaced by the neutral editing methods, the table works, and a reconnect tries it again', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const attach = vi.spyOn(EditSession.prototype, 'attach').mockImplementation(() => {
@@ -1036,8 +1062,9 @@ describe('a release over something that floats out of its cell', () => {
         hooks.onPointerDown = () => true;
         hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
         const tap = (id: number): void => {
-            popover.dispatchEvent(pointer('pointerdown', id, { pointerType: 'touch', over: popover }));
-            popover.dispatchEvent(pointer('pointerup', id, { pointerType: 'touch', over: popover }));
+            // a CLAIMED gesture that began on the cell and is released over the popover (a press that begins on the popover is the popover's own)
+            host.dispatchEvent(pointer('pointerdown', id, { pointerType: 'touch', over: host }));
+            host.dispatchEvent(pointer('pointerup', id, { pointerType: 'touch', over: popover }));
         };
         tap(231);
         popover.setAttribute('data-pointer-transparent', '');
@@ -1091,7 +1118,6 @@ describe('a widget in a cell that carries data-table-keeps-focus', () => {
         widget.append(inner);
         cell.append(widget);
         const plain = document.createElement('div');
-        plain.tabIndex = 0;
         plain.textContent = 'plain';
         cell.append(plain);
         await userEvent.click(inner);
@@ -1151,6 +1177,54 @@ describe('a press on a control inside a cell', () => {
     });
 });
 
+describe('an anchor used as a button inside a cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is a control too: `<a role="button" tabindex="0">` gets no offer and no start cell', async () => {
+        const table = await mountTable();
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const cell = cellAt(table, 1, 'name')!;
+        const anchor = document.createElement('a'); // no href: not a native link
+        anchor.setAttribute('role', 'button');
+        anchor.tabIndex = 0;
+        anchor.textContent = 'open';
+        cell.append(anchor);
+        anchor.dispatchEvent(pointer('pointerdown', 351, { over: anchor }));
+        anchor.dispatchEvent(pointer('pointerup', 351, { over: anchor }));
+        expect(downs).toEqual([]);
+    });
+});
+
+describe('a press on a popover that floats out of its cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is the popover\'s own at the pointerdown too: no offer, no start cell, and the focus is not moved out of it', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const host = cellAt(table, 0, 'name')!;
+        const under = cellAt(table, 2, 'age')!.getBoundingClientRect();
+        const popover = document.createElement('div');
+        popover.style.cssText = `position:fixed;left:${under.left}px;top:${under.top}px;width:${under.width}px;height:${under.height}px;z-index:50`;
+        host.append(popover);
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        for (const [id, pointerType] of [[361, 'mouse'], [362, 'touch']] as const) {
+            popover.dispatchEvent(pointer('pointerdown', id, { pointerType, over: popover }));
+            popover.dispatchEvent(pointer('pointerup', id, { pointerType, over: popover }));
+        }
+        await settle(table);
+        expect(downs).toEqual([]);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' }); // not moved to the cell that holds the popover (nor to the one under it)
+        popover.remove();
+    });
+});
+
 describe('a mouse release over a popover that floats out of its cell', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
@@ -1167,8 +1241,8 @@ describe('a mouse release over a popover that floats out of its cell', () => {
         hooks.onPointerDown = () => true;
         hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
         for (const [id, pointerType] of [[331, 'mouse'], [332, 'touch']] as const) {
-            popover.dispatchEvent(pointer('pointerdown', id, { pointerType, over: popover }));
-            popover.dispatchEvent(pointer('pointerup', id, { pointerType, over: popover }));
+            host.dispatchEvent(pointer('pointerdown', id, { pointerType, over: host })); // a claimed gesture that began on the cell
+            (pointerType === 'mouse' ? popover : host).dispatchEvent(pointer('pointerup', id, { pointerType, over: popover })); // a touch is delivered to the pressed element
         }
         expect(log).toEqual(['up:null', 'up:null']);
         popover.remove();

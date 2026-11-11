@@ -68,6 +68,46 @@ describe('RangeSession column validation by value', () => {
     });
 });
 
+describe('RangeSession turn-off of range mode', () => {
+    const mine = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'a' };
+    function make() {
+        const requestRender = vi.fn();
+        const config = { columns: [{ accessorKey: 'a' }], enableCellRangeSelection: true, enableFillHandle: false };
+        const range = new RangeSession({ host: { config, requestRender }, rowCount: () => 10 } as unknown as InteractionContext<unknown>);
+        range.hostUpdate(); // the mode is on and seen
+        return { range, config };
+    }
+    const turnOnAgain = (range: RangeSession<unknown>, config: { enableCellRangeSelection: boolean }) => {
+        config.enableCellRangeSelection = true;
+        range.hostUpdate();
+        return range.rangeService.range();
+    };
+
+    it('keeps a range assigned in the same tick as the turn-off, whichever property order: cellRange then flag, and flag then cellRange', () => {
+        for (const order of ['range first', 'flag first']) {
+            const { range, config } = make();
+            if (order === 'range first') {
+                range.rangeService.setRange({ ...mine });
+                config.enableCellRangeSelection = false;
+            } else {
+                config.enableCellRangeSelection = false;
+                range.rangeService.setRange({ ...mine });
+            }
+            range.hostUpdate();
+            expect(turnOnAgain(range, config), order).toEqual(mine);
+        }
+    });
+
+    it('clears a range that was held before the tick of the turn-off (the mode that ends takes its range with it)', () => {
+        const { range, config } = make();
+        range.rangeService.setRange({ ...mine });
+        range.hostUpdate(); // an update in between: the assignment is no longer "this tick"
+        config.enableCellRangeSelection = false;
+        range.hostUpdate();
+        expect(turnOnAgain(range, config)).toBeNull();
+    });
+});
+
 describe('RangeSession.setRange of an object edited in place', () => {
     it('renders again when the consumer edits its own range object and assigns the same object again', () => {
         const { range, requestRender } = session([{ accessorKey: 'a' }]);

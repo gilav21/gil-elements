@@ -152,6 +152,7 @@ describe('the range held by the shell', () => {
         session.hostUpdate();
         await flush();
         session.rangeService.setRange(range);
+        session.hostUpdate(); // the range is held by an update before the turn-off (a range assigned in the tick of the turn-off survives it: round 25)
         flags.enableCellRangeSelection = false;
         session.hostUpdate();
         expect(session.rangeService.range()).toBeNull();
@@ -286,7 +287,7 @@ describe('the range held by the shell', () => {
         expect(session.rangeService.range()).toEqual({ startRow: 0, startCol: 'q', endRow: 0, endCol: 'q' });
     });
 
-    it('turn-off only clears a value that was held in the mode: `mode off; range = r` in one tick keeps r, `range = r; mode off` clears it', () => {
+    it('turn-off only clears a value that was held in the mode BEFORE the tick of the turn-off: in that tick either property order keeps r (round 25), an earlier assignment is cleared', () => {
         const first = make({ ...on });
         first.session.hostUpdate();
         first.flags.enableCellRangeSelection = false; // the mode goes off ...
@@ -298,8 +299,9 @@ describe('the range held by the shell', () => {
 
         const second = make({ ...on });
         second.session.hostUpdate();
-        second.session.rangeService.setRange(range); // assigned while the mode is on ...
-        second.flags.enableCellRangeSelection = false; // ... then it goes off
+        second.session.rangeService.setRange(range); // assigned while the mode is on, held by an update ...
+        second.session.hostUpdate();
+        second.flags.enableCellRangeSelection = false; // ... and the mode goes off in a later tick
         second.session.hostUpdate();
         second.flags.enableCellRangeSelection = true;
         second.session.hostUpdate();

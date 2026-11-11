@@ -111,26 +111,26 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
  * |---|---|---|
  * | 5 `editor` | wave 5, edit session | EVERY key whose composed path is inside the open editor's cell: the session returns true (so nothing below acts) but calls `preventDefault` only for Enter, Escape and Tab; typing, native copy / paste and a date picker keep their behaviour. False for an event outside the editor cell |
  * | 10 `clipboard` | wave 6, clipboard | Ctrl/Cmd+C (`enable-copy`), Ctrl/Cmd+V (`enable-clipboard-paste`, not editing); never from a text field |
- * | 15 `columnResize` | wave 4 | arrows on a column resize handle (header target only) |
- * | 20 `history` | wave 5, edit session | Ctrl/Cmd+Z, Ctrl/Cmd+Y, Ctrl/Cmd+Shift+Z (`enable-edit-history`, never while editing, never from a text field or outside a cell) |
- * | 25 `columnDrag` | wave 4 | Alt+Shift+Arrow on a reorderable header (header target only) |
- * | 30 `range` | wave 6, range session | Escape (only while a range exists), Shift+Arrow / Home / End / PageUp / PageDown, Ctrl/Cmd+A, Ctrl/Cmd+D (`enable-cell-range-selection`, `enable-fill-handle` for Ctrl+D) |
+ * | 20 `columnResize` | wave 4 (unchanged) | arrows on a column resize handle (header target only) |
+ * | 25 `history` | wave 5, edit session | Ctrl/Cmd+Z, Ctrl/Cmd+Y, Ctrl/Cmd+Shift+Z (`enable-edit-history`, never while editing, never from a text field or outside a cell) |
+ * | 30 `columnDrag` | wave 4 (unchanged) | Alt+Shift+Arrow on a reorderable header (header target only) |
+ * | 35 `range` | wave 6, range session | Escape (only while a range exists), Shift+Arrow / Home / End / PageUp / PageDown, Ctrl/Cmd+A, Ctrl/Cmd+D (`enable-cell-range-selection`, `enable-fill-handle` for Ctrl+D) |
  * | 40 `rowMove` | wave 6, row-drag | Alt+ArrowUp / Alt+ArrowDown (`enable-row-drag`) |
  * | 50 `rowControls` | wave 4 | Space (select the focused row), tree ArrowLeft / ArrowRight and the group / detail toggles |
  * | 60 `editStart` | wave 5, edit session | Enter and F2 on the focused cell (never while editing: priority 5 owns the keys then) |
- * | 100 `navigation` | wave 4 | arrows, Home, End, PageUp, PageDown without Alt (Shift is the range's at 30 when its gate is on, else plain navigation) |
+ * | 100 `navigation` | wave 4 | arrows, Home, End, PageUp, PageDown without Alt (Shift is the range's at 35 when its gate is on, else plain navigation) |
  *
  * Decisions: there is no type-to-edit (wave 5 D13) and no Delete / Backspace handler in either wave, so printable characters and
  * those two keys are not claimed by any row; a wave that adds one takes the free priority 70 (`reserved`) and amends this table.
- * Escape: the editor (5) while one is open, else the range (30) when one exists; a popover closes itself before the chain sees it.
+ * Escape: the editor (5) while one is open, else the range (35) when one exists; a popover closes itself before the chain sees it.
  */
 export const KEY_PRIORITY = {
     editor: 5,
     clipboard: 10,
-    columnResize: 15,
-    history: 20,
-    columnDrag: 25,
-    range: 30,
+    columnResize: 20,
+    history: 25,
+    columnDrag: 30,
+    range: 35,
     rowMove: 40,
     rowControls: 50,
     editStart: 60,

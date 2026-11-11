@@ -78,6 +78,27 @@ describe('lazyElement', () => {
         expect(onError).toHaveBeenCalledTimes(2);
     });
 
+    it('a reset while a load is in flight: the old run neither latches nor reports, the run after the reset does (one report, a retry is not suppressed)', async () => {
+        fakeRegistry();
+        const onError = vi.fn();
+        let fail: (error: Error) => void = () => undefined;
+        const importer = vi.fn(() => new Promise<never>((_resolve, reject) => (fail = reject)));
+        const element = lazyElement('ge-x', importer, onError);
+        const first = element.load(); // in flight
+        element.reset();
+        const second = element.load(); // a fresh run after the reset (it joins the same in-flight import)
+        fail(new Error('404'));
+        await expect(first).resolves.toBe(false);
+        await expect(second).resolves.toBe(false);
+        expect(onError).toHaveBeenCalledTimes(1);
+        // the failure is latched by the CURRENT run only: a reset then lets the next load import again
+        element.reset();
+        importer.mockImplementationOnce(() => Promise.reject(new Error('again')));
+        await element.load();
+        expect(importer).toHaveBeenCalledTimes(2);
+        expect(onError).toHaveBeenCalledTimes(2);
+    });
+
     it('reports a failure once for CONCURRENT loads too: they share one promise', async () => {
         fakeRegistry();
         const onError = vi.fn();
