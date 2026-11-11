@@ -12,6 +12,16 @@ import css from './data-table-pager.css?inline';
 const sizeList = { fromAttribute: (value: string | null) => (value ?? '').split(/[\s,]+/).map(Number).filter((n) => n > 0) };
 const defaultTrue = { fromAttribute: (value: string | null) => value !== 'false' };
 
+type LabelName = 'rowsPerPageLabel' | 'pageLabel' | 'ofLabel' | 'firstLabel' | 'previousLabel' | 'nextLabel' | 'lastLabel';
+
+/** The labels that were set, by assignment or attribute, per pager: only those are its own, the rest are English as it is when read. Out of reach of the setter's `requestUpdate`. */
+const explicit = new WeakMap<object, Map<LabelName, string>>();
+const setLabels = (pager: object): Map<LabelName, string> => {
+    let labels = explicit.get(pager);
+    if (!labels) explicit.set(pager, (labels = new Map()));
+    return labels;
+};
+
 /**
  * The data table's pager: a rows-per-page select, "Page X of Y" and four chevron buttons, built on `ge-pagination`
  * (custom mode) and `ge-select`. It is controlled: it never keeps a page, it asks for one and the table feeds the state back.
@@ -24,8 +34,6 @@ const defaultTrue = { fromAttribute: (value: string | null) => value !== 'false'
  * @attr {boolean} show-page-size-selector - Defaults to true.
  * @csspart base - The wrapper.
  */
-type LabelName = 'rowsPerPageLabel' | 'pageLabel' | 'ofLabel' | 'firstLabel' | 'previousLabel' | 'nextLabel' | 'lastLabel';
-
 export class GeDataTablePager extends UiElement {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     static override readonly properties = {
@@ -53,10 +61,6 @@ export class GeDataTablePager extends UiElement {
     declare previousLabel: string;
     declare nextLabel: string;
     declare lastLabel: string;
-
-    /** The labels that were set, by assignment or attribute: only those are the pager's own; the rest are English as it is when read. */
-    /** @internal */
-    readonly explicit = new Map<LabelName, string>();
 
     constructor() {
         super();
@@ -131,12 +135,12 @@ for (const name of Object.keys(ENGLISH_OF) as LabelName[]) {
     Object.defineProperty(GeDataTablePager.prototype, name, {
         configurable: true,
         get(this: GeDataTablePager): string {
-            return this.explicit.get(name) ?? resolveDataTableLocale('en')[ENGLISH_OF[name]];
+            return setLabels(this).get(name) ?? resolveDataTableLocale('en')[ENGLISH_OF[name]];
         },
         set(this: GeDataTablePager, value: string | null | undefined) {
             const before = this[name];
-            if (value === null || value === undefined) this.explicit.delete(name);
-            else this.explicit.set(name, value);
+            if (value === null || value === undefined) setLabels(this).delete(name);
+            else setLabels(this).set(name, value);
             this.requestUpdate(name, before);
         },
     });

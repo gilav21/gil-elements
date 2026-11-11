@@ -159,7 +159,7 @@ describe('ge-typing-animation', () => {
         expect(shown(el)).toBe('q');
     });
 
-    it('a finished non-looping run types on when its last phrase is replaced by a longer one, and says so again', async () => {
+    it('a finished non-looping run types on when its last phrase is replaced by a longer one, and says `complete` once for the run', async () => {
         const el = await typing('loop="false" type-speed="10" pause-duration="10"', ['ab']);
         let completes = 0;
         el.addEventListener('complete', () => completes++);
@@ -169,11 +169,12 @@ describe('ge-typing-animation', () => {
         el.strings = ['abcde'];
         await advance(el, 500);
         expect(shown(el)).toBe('abcde');
-        expect(completes).toBe(2);
+        // `complete` is once per run: the extended phrase is typed on quietly, so a one-shot handler never runs twice
+        expect(completes).toBe(1);
         el.strings = ['vwxyz'];
         await advance(el, 500);
         expect(shown(el)).toBe('vwxyz');
-        expect(completes).toBe(2);
+        expect(completes).toBe(1);
     });
 
     it('starts again when the list is replaced by one shorter than the phrase being typed', async () => {

@@ -120,7 +120,6 @@ export class ResizeController<T> {
         return Object.hasOwn(widths, key) ? (widths[key] ?? column._width) : column._width;
     }
 
-    /** One model write and one `column-resize` event for a width the user chose. */
     /** The columns as the direction depends on them: which, in which order, pinned how, and how wide, except `key`'s own width (the run itself changes that). */
     private layoutOf(key: string): string {
         return this.columns()
@@ -129,6 +128,7 @@ export class ResizeController<T> {
             .join('|');
     }
 
+    /** One model write and one `column-resize` event for a width the user chose. */
     private commit(changes: readonly { key: string; oldWidth: string; newWidth: string }[]): void {
         if (changes.length === 0) return;
         const widths = this.host.model.get('columnWidths');

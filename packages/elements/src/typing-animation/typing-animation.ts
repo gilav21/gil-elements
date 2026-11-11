@@ -47,6 +47,8 @@ export class GeTypingAnimation extends UiElement {
     declare phase: TypingState;
 
     private started = false;
+    /** `complete` was fired in this run: a run says so once, also when its last phrase is extended and typed on (only a restart clears it). */
+    private completed = false;
     private stringIndex = 0;
     private charIndex = 0;
     private timer: ReturnType<typeof setTimeout> | null = null;
@@ -106,6 +108,7 @@ export class GeTypingAnimation extends UiElement {
     private reset(): void {
         this.stop();
         this.started = false;
+        this.completed = false;
         this.stringIndex = 0;
         this.charIndex = 0;
         this.phase = 'typing';
@@ -163,7 +166,8 @@ export class GeTypingAnimation extends UiElement {
             return;
         }
         if (!this.loop && this.stringIndex === count - 1) {
-            this.dispatchEvent(new CustomEvent('complete', { bubbles: true, composed: true }));
+            if (!this.completed) this.dispatchEvent(new CustomEvent('complete', { bubbles: true, composed: true }));
+            this.completed = true;
             return;
         }
         this.phase = 'pausing';
