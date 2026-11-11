@@ -100,16 +100,16 @@ export class CellInteractionController<T> {
         }
         const next = this.landOn(row, at.columnKey);
         if (!next) return this.clear();
+        this.lastColumn = requireProvider(this.host, 'columns').focusableKeys().indexOf(next.columnKey); // remembered by the one that takes the cell, as `focusCell` does
         if (next.rowIndex !== at.rowIndex || next.columnKey !== at.columnKey) this.set(next);
     }
 
-    /** The cell nearest to `rowIndex` and `columnKey` that exists (rows clamped, a hidden column left for its neighbour); null when there is none. */
+    /** The cell nearest to `rowIndex` and `columnKey` that exists (rows clamped, a hidden column left for its neighbour); null when there is none. It changes nothing. */
     private landOn(rowIndex: number, columnKey: string): CellAddress | null {
         const rows = this.rowCount();
         const keys = requireProvider(this.host, 'columns').focusableKeys();
         const col = nearestColumn(keys, columnKey, this.lastColumn);
         if (rows === 0 || col === -1) return null;
-        this.lastColumn = col;
         return { rowIndex: Math.min(rowIndex, rows - 1), columnKey: keys[col] as string };
     }
 

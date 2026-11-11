@@ -8,7 +8,6 @@ import { html } from 'lit';
 import { afterEach, describe, expect, it } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { GeDataTable } from './data-table.js';
-import type { ColumnDef } from './data-table.types.js';
 import { bodyRows, cellAt, headCell, makeColumns, makeRows, mountTable, q, qa, roving, type SampleRow, settle } from './data-table-fixtures.js';
 import { frames, mouseDrag, parkMouse, press, scrollGrid, withRtl, withTheme } from './data-table-input-fixtures.js';
 
@@ -25,7 +24,6 @@ const rowOf = (table: Element, id: string): HTMLElement => q(table, `[data-slot=
 const checkboxOf = (table: Element, id: string) => q(rowOf(table, id), 'ge-checkbox') as HTMLElement & { checked: boolean; indeterminate: boolean };
 /** The cells that are tab stops: the roving model keeps this at one (the header's resize separators are tab stops of their own). */
 const cellStops = (table: Element): HTMLElement[] => roving(table).filter((el) => el.matches('[data-slot="table-cell"]'));
-const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 /** Waits until the scroller has stopped moving: a scroll, the window it causes and the heights it measures. */
 async function rest(table: Table): Promise<void> {
     await settle(table);
@@ -459,7 +457,8 @@ describe('focus follows its row: the edges', () => {
         const unfocused = await mount(false)();
         const focused = await mount(true)();
         // everything a toggle costs is in `unfocused`; keeping the focus on its row adds a few reads, not a scan of the rows
-        // a search of the rows for the focused one would read about 2500 ids; the bound is a tenth of the rows, whatever the exact call pattern
+        // Calibrated the same way: the current code adds 1 read over an unfocused toggle (measured 15002 against 15001), a search for the
+        // focused row from the top (row 2500) adds about 2500. The bound, a tenth of the rows (300), is clear of both whatever the call pattern.
         expect(focused - unfocused).toBeLessThan(0.1 * 3000);
     });
 });
@@ -498,6 +497,29 @@ describe('focus follows its row: round 4', () => {
         expect(document.activeElement).not.toBe(document.body);
         expect((document.activeElement as HTMLElement).matches('[data-kind="group"] [data-toggle]')).toBe(true);
         expect((document.activeElement as HTMLElement).closest('ge-data-table')).toBe(table);
+    });
+
+    it('a deferred drop whose focus the user moved meanwhile, with a column hidden, changes neither the focus nor the column the next focus remembers', async () => {
+        const table = await mountGroups(3);
+        const button = Object.assign(document.createElement('button'), { textContent: 'other', slot: 'toolbar-start' });
+        table.showToolbar = true;
+        table.append(button);
+        await settle(table);
+        table.focusCell(1, 'c2');
+        await settle(table);
+        table.provider('expansion')!.toggleGroup('g0'); // (1, c2) is in g0: the drop would take the focus to its toggle after the render
+        table.columnVisibility = { c2: false };
+        button.focus(); // the user is elsewhere before it renders
+        await settle(table);
+        await frames(3);
+        expect(document.activeElement).toBe(button);
+        expect(table.focusedCell).toBeNull();
+        // the column comes back and the grid is entered at its first cell, as with any table that had no focus
+        table.columnVisibility = {};
+        await settle(table);
+        table.focusCell(0, 'c2');
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'c2' });
     });
 
     it('no data at all (a loading table) after a toggle is not that: the focus waits for rows', async () => {
@@ -625,9 +647,10 @@ describe('focus follows its row: round 2', () => {
         };
         const control = await mount(1500)(); // a row below the node: it moves up four places, the toggle reads every id once to find it
         const deep = await mount(4)();
-        // finding the row (or its ancestors) takes one pass over the rows (about 2000 reads); a scan per ancestor read them over four times more
-        // one pass is about n reads, a scan per ancestor is over 4 n: the bound is 3 n, whatever the exact call pattern
-        expect(deep - control).toBeLessThan(3 * 2000);
+        // Calibrated on the current code and on a per-ancestor scan (the round-1 code): the single pass adds about n = 2000 reads over the
+        // control (measured 2009), a scan per ancestor adds about 4 n more (measured 8517 then). The bound, 2 n, passes the first with
+        // a factor two to spare and fails the second by a factor two, whatever the exact call pattern.
+        expect(deep - control).toBeLessThan(2 * 2000);
     });
 });
 
