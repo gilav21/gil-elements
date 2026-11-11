@@ -4,6 +4,7 @@
  * among the navigable keys (the data columns, in drawn order).
  */
 import type { CellRange, ColumnDef, RangeAggregateStats, RangeChartPayload } from './data-table.types.js';
+import { resetWarnOnce, warnOnce } from './data-table-warn.js';
 import { computeAggregateValue, getCellValue, isSpecialColumnKey, stringifyValue, toAggregatableNumber } from './data-table.utils.js';
 
 export interface NormalizedRange {
@@ -70,19 +71,13 @@ export function rangeColumnKeys(columns: readonly { accessorKey: unknown }[]): s
 /** Range mode is on: range selection or the fill handle (the one predicate the element and the range session both use). */
 export const rangeModeOn = (config: { readonly enableCellRangeSelection: boolean; readonly enableFillHandle: boolean }): boolean => config.enableCellRangeSelection || config.enableFillHandle;
 
-let badRangeWarned = false;
-
 /** What an owner of a range says, ONCE per page, when it refuses a value that is not a range of the table (the element before the first connect and the session after share it). */
 export function warnBadRange(value: unknown): void {
-    if (badRangeWarned) return;
-    badRangeWarned = true;
-    console.warn('[ge-data-table] cellRange is not a range of this table (needs integer startRow / endRow and the keys of existing data columns as startCol / endCol); it was ignored:', value);
+    warnOnce('bad-range', '[ge-data-table] cellRange is not a range of this table (needs integer startRow / endRow and the keys of existing data columns as startCol / endCol); it was ignored:', value);
 }
 
 /** For tests: lets `warnBadRange` speak again. */
-export function resetBadRangeWarning(): void {
-    badRangeWarned = false;
-}
+export const resetBadRangeWarning = (): void => resetWarnOnce('bad-range');
 
 /** The fill source: the selected range, or the focused cell as a 1x1 range. */
 export function fillSourceRange(

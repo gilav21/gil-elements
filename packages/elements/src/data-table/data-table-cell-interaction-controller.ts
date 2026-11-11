@@ -124,7 +124,8 @@ export class CellInteractionController<T> {
         // A press still open (the table is removed mid-gesture) is cancelled for its claimant FIRST, while the session is still attached.
         this.cancelPresses();
         // The reverse of attach: the sessions go first, while the services they read are still provided.
-        this.eachBackwards((session) => session.detach());
+        // A session that throws while detaching is reported (once) and the rest still detach, and the services and listeners are always removed.
+        this.eachBackwards((session) => void this.guarded(() => session.detach()));
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
         this.observer?.disconnect();
@@ -436,7 +437,9 @@ export class CellInteractionController<T> {
         if (!own) return this.notifyCancel(press, event);
         const { anchor, claimedBy } = press;
         if (claimedBy) {
-            this.guarded(() => claimedBy.onPointerUp?.(event, cellAddressOf(target), { anchor }));
+            // Every claimant gets exactly ONE end callback: its pointerup, or, when it has none, the cancel.
+            if (claimedBy.onPointerUp) this.guarded(() => claimedBy.onPointerUp?.(event, cellAddressOf(target), { anchor }));
+            else this.notifyCancel(press, event);
             return;
         }
         if (this.offer(event, target, (session) => session.onPointerUp, anchor)) return;
@@ -464,22 +467,28 @@ export class CellInteractionController<T> {
         return this.sessions.find((session) => this.guarded(() => handlerOf(session)?.call(session, event, at, press)) === true);
     }
 
-    /** The first node of the event's composed path that is inside this table (the real target, also through shadow roots), or null. */
+    /**
+     * The element the press landed on, in the tree of this table's own cells: the first element of the composed path whose root node is the table's
+     * root node. That is the real target for a table inside another component's shadow root (the document sees it retargeted to the outermost host),
+     * and the cell content's host for a consumer component with its own shadow root in a cell (the text inside it is in another tree, where
+     * `closest()` stops). A nested table is in the same tree, so its elements are found and then refused by `ownsTarget`.
+     */
     private targetOf(event: Event): Element | null {
-        const node = event.composedPath().find((n) => n instanceof Element && composedContains(this.host.root, n));
+        const tree = this.host.root.getRootNode();
+        const node = event.composedPath().find((n) => n instanceof Element && n.getRootNode() === tree && composedContains(this.host.root, n));
         return (node as Element | undefined) ?? null;
     }
 
     private reportedSessionError = false;
 
-    /** Runs a session's pointer handler; one that throws is reported once (`console.error`) and answers nothing, so no press is ever broken by it. */
+    /** Runs a session callback (a pointer handler, a cancel, a detach); one that throws is reported once (`console.error`) and answers nothing, so no press is ever broken by it. */
     private guarded<R>(call: () => R): R | undefined {
         try {
             return call();
         } catch (error) {
             if (!this.reportedSessionError) {
                 this.reportedSessionError = true;
-                console.error('[ge-data-table] a session threw while handling a pointer:', error);
+                console.error('[ge-data-table] a session threw (pointer handling or detach):', error);
             }
             return undefined;
         }

@@ -91,6 +91,20 @@ describe('lazy parts and the render', () => {
     });
 });
 
+describe('data-editable', () => {
+    it('is written from the column layout, with no state call: editable columns mark their cells, a disabled row does not', async () => {
+        const table = await mountTable({
+            columns: [{ accessorKey: 'name', header: 'Name', editable: true }, { accessorKey: 'age', header: 'Age' }],
+        });
+        table.isRowDisabled = (row) => row === table.data[1];
+        table.requestUpdate();
+        await settle(table);
+        expect(cellAt(table, 0, 'name')!.hasAttribute('data-editable')).toBe(true);
+        expect(cellAt(table, 0, 'age')!.hasAttribute('data-editable')).toBe(false);
+        expect(cellAt(table, 1, 'name')!.hasAttribute('data-editable')).toBe(false); // the disabled row
+    });
+});
+
 describe('a feature switching on in a plain grid', () => {
     it('keeps every drawn row and cell node, and the DOM focus: the same template is used whether or not a feature is active', async () => {
         const table = await mountTable();

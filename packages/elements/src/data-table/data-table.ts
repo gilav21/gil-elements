@@ -34,15 +34,11 @@ import { defaultGetRowId } from './data-table.utils.js';
 import './sub/data-table-column-header.js';
 import './sub/data-table-pager.js';
 import { css } from './data-table-styles.js';
+import { warnOnce } from './data-table-warn.js';
 
 /** State the element reads out of its services and does not accept back (Angular: signals). */
 const READ_ONLY_STATE = ['editingCell', 'cellEditError'] as const;
-const warnedReadOnly = new Set<string>();
-function ignoreReadOnly(name: string): void {
-    if (warnedReadOnly.has(name)) return;
-    warnedReadOnly.add(name);
-    console.warn(`[ge-data-table] ${name} is read-only: the assignment was ignored.`);
-}
+const ignoreReadOnly = (name: string): void => warnOnce(`read-only:${name}`, `[ge-data-table] ${name} is read-only: the assignment was ignored.`);
 
 type Mutable<O> = { -readonly [K in keyof O]: O[K] };
 

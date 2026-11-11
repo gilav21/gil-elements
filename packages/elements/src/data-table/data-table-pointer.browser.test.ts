@@ -404,6 +404,92 @@ describe('sessions that throw', () => {
     });
 });
 
+describe('a consumer component with its own shadow root in a cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    class ShadowBadge extends HTMLElement {
+        constructor() {
+            super();
+            this.style.cssText = 'display:block;width:120px;height:24px';
+            const root = this.attachShadow({ mode: 'open' });
+            root.innerHTML = '<span style="display:block;width:100%;height:100%">badge text</span>';
+        }
+    }
+    if (!customElements.get('x-shadow-badge')) customElements.define('x-shadow-badge', ShadowBadge);
+
+    const mountWithBadge = async (): Promise<{ table: GeDataTable; badge: HTMLElement }> => {
+        const badge = new ShadowBadge();
+        const table = await mountTable({
+            columns: [
+                { accessorKey: 'name', header: 'Name', width: '200px', cellRenderer: ({ rowIndex, value }) => (rowIndex === 1 ? badge : String(value)) },
+                { accessorKey: 'age', header: 'Age', width: '120px' },
+            ],
+        });
+        return { table, badge };
+    };
+
+    it('focuses the cell when the text inside the component is clicked: the press target is the component, in the tree of the cell', async () => {
+        const { table, badge } = await mountWithBadge();
+        await userEvent.click(badge);
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+    });
+
+    it('ends a claimed press released on the text inside the component as a pointerup, with the cell address', async () => {
+        const { table, badge } = await mountWithBadge();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        hooks.onPointerCancel = () => void log.push('cancel');
+        const inner = badge.shadowRoot!.querySelector('span')!;
+        inner.dispatchEvent(pointer('pointerdown', 151));
+        inner.dispatchEvent(pointer('pointerup', 151));
+        expect(log).toEqual(['up:{"rowIndex":1,"columnKey":"name"}']);
+    });
+});
+
+describe('a claimant that has no onPointerUp', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is told by onPointerCancel when its press is released on the table: every claimant gets exactly one end callback', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event?.type}`);
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 161));
+        cell.dispatchEvent(pointer('pointerup', 161));
+        expect(log).toEqual(['cancel:pointerup']);
+    });
+});
+
+describe('a session that throws while detaching', () => {
+    it('does not stop the rest of the detach: the other sessions detach, the services and listeners are removed, the error is reported once', async () => {
+        const table = await mountTable();
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const editDetach = vi.spyOn(EditSession.prototype, 'detach').mockImplementation(() => {
+            throw new Error('edit detach failed');
+        });
+        const rangeDetach = vi.spyOn(RangeSession.prototype, 'detach');
+        try {
+            expect(() => table.remove()).not.toThrow();
+            expect(editDetach).toHaveBeenCalledTimes(1);
+            expect(rangeDetach).toHaveBeenCalledTimes(1); // after the edit session, which threw
+            expect(error).toHaveBeenCalledTimes(1);
+            expect(table.provider('interaction')).toBeUndefined(); // the teardown ran: services and listeners are gone
+            expect(table.provider('range')).toBeUndefined();
+        } finally {
+            editDetach.mockRestore();
+            rangeDetach.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
 describe('a table inside the shadow root of another component', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

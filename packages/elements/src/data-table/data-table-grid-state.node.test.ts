@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
     DRAGGABLE_ROW_FLAGS,
-    EDITABLE_CELL_FLAGS,
     NO_CELL_FLAGS,
     NO_ROW_FLAGS,
-    OUT_OF_RANGE_EDITABLE_FLAGS,
     OUT_OF_RANGE_FLAGS,
     type RowInfo,
     stateView,
@@ -32,7 +30,8 @@ describe('stateView with the step-0 services', () => {
         expect(stateView(fakeHost({ config: { enableFillHandle: true }, providers: { range } })).stateActive).toBe(true);
         expect(stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range: rangeService({ active: () => false }) } })).stateActive).toBe(false); // flag, part not active
         expect(stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash: () => undefined } } })).stateActive).toBe(true);
-        expect(stateView(fakeHost({ config: { columns: [{ accessorKey: 'a', editable: true }] } })).stateActive).toBe(true);
+        // an editable column alone is not a dynamic state: the renderer writes data-editable from the column, so the grid stays inactive
+        expect(stateView(fakeHost({ config: { columns: [{ accessorKey: 'a', editable: true }] } })).stateActive).toBe(false);
         expect(stateView(fakeHost({ providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'a' }) } } })).stateActive).toBe(true);
         expect(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: dragPart() } })).stateActive).toBe(true);
         expect(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: { active: () => false, dragState: () => null } } })).stateActive).toBe(false);
@@ -46,10 +45,10 @@ describe('stateView with the step-0 services', () => {
         expect(Object.isFrozen(NO_CELL_FLAGS)).toBe(true);
     });
 
-    it('marks an editable column one shared object, and not a disabled row', () => {
+    it('gives an editable column no flags of its own: the renderer writes data-editable from the column, and the grid is not active for it', () => {
         const state = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] } }));
-        expect(state.cellState(0, 'name', row)).toBe(EDITABLE_CELL_FLAGS);
-        expect(state.cellState(0, 'other', row)).toBe(NO_CELL_FLAGS);
+        expect(state.stateActive).toBe(false);
+        expect(state.cellState(0, 'name', row)).toBe(NO_CELL_FLAGS);
         expect(state.cellState(0, 'name', info('r2', true))).toBe(NO_CELL_FLAGS);
     });
 
@@ -66,8 +65,9 @@ describe('stateView with the step-0 services', () => {
     it('marks the cell that holds the open editor', () => {
         const interaction = { editingCell: () => ({ rowIndex: 2, columnKey: 'name' }), isEditing: (rowIndex: number, columnKey: string) => rowIndex === 2 && columnKey === 'name' };
         const state = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction } }));
-        expect(state.cellState(2, 'name', row)).toMatchObject({ editing: true, editable: true });
-        expect(state.cellState(1, 'name', row)).toBe(EDITABLE_CELL_FLAGS);
+        expect(state.stateActive).toBe(true); // an editor is open: a dynamic state
+        expect(state.cellState(2, 'name', row)).toMatchObject({ editing: true });
+        expect(state.cellState(1, 'name', row)).toBe(NO_CELL_FLAGS);
     });
 
     it('never asks for the row id or the disabled flag: the renderer reads them once per row and passes them', () => {
@@ -128,12 +128,12 @@ describe('stateView with the step-0 services', () => {
             for (const key of ['_selection', '_expander', '_actions']) expect(state.cellState(0, key, row)).toBe(NO_CELL_FLAGS);
         });
 
-        it('allocates nothing without a range: shared frozen objects for every cell, editable or not', () => {
+        it('allocates nothing without a range: one shared frozen object for every cell', () => {
             const state = stateView(fakeHost({ config: { enableCellRangeSelection: true, columns: [{ accessorKey: 'name', editable: true }] }, providers: { range: rangeService() } }));
             expect(state.cellState(0, 'other', row)).toBe(OUT_OF_RANGE_FLAGS);
-            expect(state.cellState(0, 'name', row)).toBe(OUT_OF_RANGE_EDITABLE_FLAGS);
+            expect(state.cellState(0, 'name', row)).toBe(OUT_OF_RANGE_FLAGS);
             expect(state.cellState(5, 'other', info('r9'))).toBe(OUT_OF_RANGE_FLAGS);
-            expect(Object.isFrozen(OUT_OF_RANGE_FLAGS) && Object.isFrozen(OUT_OF_RANGE_EDITABLE_FLAGS)).toBe(true);
+            expect(Object.isFrozen(OUT_OF_RANGE_FLAGS)).toBe(true);
         });
     });
 
@@ -155,12 +155,12 @@ describe('stateView with the step-0 services', () => {
         expect(state.cellState(0, 'name', row)).toBe(NO_CELL_FLAGS);
     });
 
-    it('builds the editable and flash-off key sets once per columns array, not per render', () => {
-        const columns = [{ accessorKey: 'a', editable: true }, { accessorKey: 'b', enableCellFlash: false }];
+    it('builds the flash-off key set once per columns array, not per render', () => {
+        const columns = [{ accessorKey: 'a' }, { accessorKey: 'b', enableCellFlash: false }];
         const filter = vi.spyOn(columns, 'filter');
         const host = fakeHost({ config: { columns, enableCellFlash: true }, providers: { formatting: { flash: () => undefined } } });
         for (let render = 0; render < 5; render++) stateView(host).cellState(0, 'a', row);
-        expect(filter).toHaveBeenCalledTimes(2);
+        expect(filter).toHaveBeenCalledTimes(1);
     });
 
     it('does not make a row draggable until the drag part says it handles drags', () => {
