@@ -90,6 +90,8 @@ export interface DragOptions {
     steps?: number;
     /** Time to hold at the end before the release. */
     holdMs?: number;
+    /** Touch only: time to hold the finger down, without moving, before the first move (the long-press time of a touch range gesture). */
+    holdBeforeMs?: number;
 }
 
 /** Press on `from`, move to `to` (an element, a point or an offset) in `steps` moves, release. Real hit-testing and pointer capture. */
@@ -152,10 +154,11 @@ export async function touchTap(target: Target): Promise<void> {
     await idle();
 }
 
-export async function touchDrag(from: Target, to: Target | Offset, { steps = 8, holdMs = 0 }: DragOptions = {}): Promise<void> {
+export async function touchDrag(from: Target, to: Target | Offset, { steps = 8, holdMs = 0, holdBeforeMs = 0 }: DragOptions = {}): Promise<void> {
     const start = pointOf(from);
     const end = destination(start, to);
     await touch('touchStart', start);
+    if (holdBeforeMs > 0) await new Promise((resolve) => setTimeout(resolve, holdBeforeMs));
     for (let i = 1; i <= steps; i++) await touch('touchMove', { x: start.x + ((end.x - start.x) * i) / steps, y: start.y + ((end.y - start.y) * i) / steps });
     if (holdMs > 0) await new Promise((resolve) => setTimeout(resolve, holdMs));
     await touch('touchEnd');
@@ -307,15 +310,7 @@ export async function openPopover(trigger: Element, lazyTag?: string): Promise<H
 // ---- wave 6 (spreadsheet and drag) helpers --------------------------------------------------------------------------------------------
 
 /** Touch down, hold `holdMs` (the long-press time), drag to `to` in `steps` moves, lift: the touch range gesture. */
-export async function touchLongPressDrag(from: Target, to: Target | Offset, { holdMs = 600, steps = 8 }: DragOptions = {}): Promise<void> {
-    const start = pointOf(from);
-    const end = destination(start, to);
-    await touch('touchStart', start);
-    await new Promise((resolve) => setTimeout(resolve, holdMs));
-    for (let i = 1; i <= steps; i++) await touch('touchMove', { x: start.x + ((end.x - start.x) * i) / steps, y: start.y + ((end.y - start.y) * i) / steps });
-    await touch('touchEnd');
-    await idle();
-}
+export const touchLongPressDrag = (from: Target, to: Target | Offset, { holdMs = 600, steps = 8 }: DragOptions = {}): Promise<void> => touchDrag(from, to, { steps, holdBeforeMs: holdMs });
 
 export interface FakeClipboard {
     /** What was last written, or '' . */

@@ -52,7 +52,10 @@ export function assembleControllers<T>(
     return {
         controllers,
         service<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined {
-            for (const c of controllers) if (c.services?.[key] !== undefined) return c.services[key];
+            for (const c of controllers) {
+                const found = c.services?.[key];
+                if (found !== undefined) return found;
+            }
             return undefined;
         },
         attachAll() {

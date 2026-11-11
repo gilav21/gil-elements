@@ -166,6 +166,41 @@ describe('the cellRange property', () => {
     });
 });
 
+describe('a range across a phase with no drawn rows', () => {
+    const wide = { startRow: 0, startCol: 'name', endRow: 2, endCol: 'age' };
+
+    it('survives data that arrives later (a fetch without `loading`), and is trimmed onto the rows that arrive', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true, data: [] });
+        table.cellRange = wide;
+        await settle(table);
+        expect(table.cellRange).toEqual(wide);
+        table.data = SAMPLE_ROWS.slice(0, 2);
+        await settle(table);
+        expect(table.cellRange).toEqual({ ...wide, endRow: 1 }); // the accepted edge: trimmed onto the first rows of the load
+    });
+
+    it('survives collapsing every group (no rows drawn) and expanding them again', async () => {
+        const rows = SAMPLE_ROWS.map((row, i) => ({ ...row, group: i % 2 === 0 ? 'g0' : 'g1' }));
+        const table = await mountTable({ enableCellRangeSelection: true, groupBy: 'group', data: rows });
+        table.cellRange = wide;
+        await settle(table);
+        table.collapseAllGroups();
+        await settle(table);
+        table.expandAllGroups();
+        await settle(table);
+        expect(table.cellRange).toEqual({ ...wide, endRow: Math.min(2, rows.length - 1) });
+    });
+
+    it('survives a skeleton phase', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true, skeleton: true });
+        table.cellRange = wide;
+        await settle(table);
+        table.skeleton = false;
+        await settle(table);
+        expect(table.cellRange).toEqual({ ...wide, endRow: Math.min(2, SAMPLE_ROWS.length - 1) });
+    });
+});
+
 describe('the read-only state accessors', () => {
     it('ignore an assignment (a framework property binding) instead of throwing, with one warning, and keep reading the service', async () => {
         const warn = console.warn;

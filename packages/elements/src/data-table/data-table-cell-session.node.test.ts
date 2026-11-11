@@ -299,26 +299,24 @@ describe('the range held by the shell', () => {
         expect(session.rangeService.range()).toBeNull();
     });
 
-    it('clears the range when the data is emptied and the table is not loading, and keeps it while loading', () => {
-        const state = { rows: 10 };
-        const { context, flags } = rangeContext({ ...on }, { rowCount: 10 });
+    it('leaves the range untouched while no rows are drawn (before the data arrives, a skeleton, every group collapsed), and trims it onto the rows of a later load (the accepted edge)', () => {
+        const state = { rows: 0 };
+        const { context } = rangeContext({ ...on }, { rowCount: 0 });
         Object.assign(context, { rowCount: () => state.rows });
-        const config = (context as unknown as { host: { config: Record<string, unknown> } }).host.config;
         const session = new RangeSession(context);
         session.attach();
-        session.rangeService.setRange({ ...range, endRow: 8 });
-        session.hostUpdate();
-        state.rows = 0;
-        config['loading'] = true; // rows are not there yet: the range waits
+        session.rangeService.setRange({ ...range, endRow: 8 }); // set before the data arrives
+        for (let update = 0; update < 3; update++) session.hostUpdate();
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 8 });
+        state.rows = 20; // the data arrives, then every group is collapsed, then expanded again
         session.hostUpdate();
         expect(session.rangeService.range()).toEqual({ ...range, endRow: 8 });
-        config['loading'] = false; // emptied: gone, a later load must not trim it onto rows nobody selected
+        state.rows = 0;
         session.hostUpdate();
-        expect(session.rangeService.range()).toBeNull();
-        state.rows = 20;
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 8 });
+        state.rows = 5; // a later load with fewer rows: trimmed onto them
         session.hostUpdate();
-        expect(session.rangeService.range()).toBeNull();
-        expect(flags.enableCellRangeSelection).toBe(true);
+        expect(session.rangeService.range()).toEqual({ ...range, endRow: 4 });
     });
 
     it('keeps a held range while a column is merely hidden, and trims only its rows on update (the part checks the columns)', () => {

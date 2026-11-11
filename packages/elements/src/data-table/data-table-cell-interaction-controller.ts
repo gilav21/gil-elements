@@ -1,7 +1,7 @@
 import { html, type TemplateResult } from 'lit';
 import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
-import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { RangeSession } from './data-table-range-session.js';
@@ -55,6 +55,8 @@ export class CellInteractionController<T> {
     /** The one list: attach and the pointer go through it forwards, detach and `hostUpdate` backwards. */
     private readonly sessions: readonly CellSession[];
     private readonly service: CellInteractionService;
+    /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. */
+    readonly services: { readonly range: RangeService };
     /**
      * The presses in progress, one per pointer id (several fingers are several presses; a pointerdown never overwrites another pointer's):
      * the roving cell at its pointerdown, so both ends of one press see the same anchor, and the session that claimed it, which alone gets its
@@ -78,6 +80,7 @@ export class CellInteractionController<T> {
         this.edit = new EditSession(context);
         this.range = new RangeSession(context);
         this.sessions = [this.range, this.edit];
+        this.services = { range: this.range.rangeService };
         this.service = {
             focusedCell: () => this.focused,
             focusCell: (rowIndex, columnKey) => this.focusCell(rowIndex, columnKey, true),
@@ -86,10 +89,6 @@ export class CellInteractionController<T> {
         };
     }
 
-    /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. */
-    get services(): { range: RangeService } {
-        return { range: this.range.rangeService };
-    }
 
     attach(): void {
         this.attachment++;
@@ -101,15 +100,13 @@ export class CellInteractionController<T> {
             host.provide('range', this.range.rangeService),
             host.addKeyHandler(KEY_PRIORITY.navigation, (event) => this.onKey(event)),
             host.topics.on('expansion', () => this.noteFocusedRow()),
-            disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event))),
-            // The ends of a press are heard in the CAPTURE phase: a consumer cell (or anything else) that stops propagation cannot hide them and leave a
-            // press, and "a pointer is down", for ever. On the table's root they run before the target's own handlers; the document's run first of all,
-            // so they only take a release that is OUTSIDE the table (inside, the root's own handlers route it to the claimant).
-            disposables.listen<PointerEvent>(root, 'pointerup', ownEvents(root, (event: PointerEvent) => this.onPointerUp(event)), true),
-            disposables.listen<PointerEvent>(root, 'pointercancel', ownEvents(root, (event: PointerEvent) => this.endPress(event)), true),
+            // A press is recorded and ended in the CAPTURE phase, so a consumer cell or an inner widget that stops propagation can neither hide a press
+            // (no focus, no offer) nor leave one open for ever. The start is on the table's root (own events only: a nested table records its own); the
+            // end is closed by POINTER ID on the document, wherever the pointer is released (outside, over a nested table, on this table's own cells).
+            disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event)), true),
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => !root.contains(event.target as Node) && (this.within = false), true),
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.endPressOutside(event), true),
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.endPressOutside(event), true),
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.onRelease(event), true),
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.onRelease(event), true),
             // The window lost focus (alt-tab, a release over an iframe never heard): no pointer is down any more.
             disposables.listen(root.ownerDocument.defaultView ?? window, 'blur', () => {
                 this.within = false;
@@ -420,16 +417,19 @@ export class CellInteractionController<T> {
     }
 
     /**
-     * A pointerup on the table ends the press of that pointer. A press with no pointerdown of this table behind it (it started outside, or was
-     * already ended) does nothing. A CLAIMED press is routed only to its claimant (no other session sees it, the controller does not focus); an
-     * unclaimed one is offered to the sessions and, for a touch, focuses the tapped cell, as before. The page-level `endPress` that runs next
-     * only finds presses that ended elsewhere.
+     * The pointer of a recorded press was released or cancelled, anywhere on the page: the press is closed by its pointer id. A pointerup on THIS
+     * table's own cells (not outside it, not over a nested table) ends it as a pointerup: a CLAIMED press is routed only to its claimant (no other
+     * session sees it, the controller does not focus), an unclaimed one is offered to the sessions and, for a touch, focuses the tapped cell. Any
+     * other end (a cancel, a release outside, over a nested table in a detail row) is a cancel for the claimant. A release with no recorded press
+     * (the pointer went down outside the table) does nothing.
      */
-    private onPointerUp(event: PointerEvent): void {
+    private onRelease(event: PointerEvent): void {
         const press = this.presses.get(event.pointerId);
         if (!press) return;
         this.presses.delete(event.pointerId);
-        this.pointer = this.presses.size > 0;
+        this.pointer = this.presses.size > 0; // "a pointer is down" ends here (another finger may still be down)
+        const own = event.type === 'pointerup' && event.composedPath().includes(this.host.root) && ownsTarget(this.host.root, event.target);
+        if (!own) return this.notifyCancel(press, event);
         const { anchor, claimedBy } = press;
         if (claimedBy) {
             claimedBy.onPointerUp?.(event, cellAddressOf(event.target), { anchor });
@@ -457,23 +457,6 @@ export class CellInteractionController<T> {
         const at = cellAddressOf(event.target);
         const press: PointerPress = { anchor };
         return this.sessions.find((session) => handlerOf(session)?.call(session, event, at, press) === true);
-    }
-
-    /**
-     * A pointer was released or cancelled somewhere on the page (after the table's own pointerup, which has already ended a press released on
-     * the table): the press is over. A press that reaches here ended WITHOUT a pointerup on the table (a cancel, or a release outside), so the
-     * session that claimed it is told through `onPointerCancel`, and the pointer is no longer "down" (the next Tab into the grid is not a click).
-     */
-    private endPress(event: PointerEvent): void {
-        const press = this.presses.get(event.pointerId);
-        this.presses.delete(event.pointerId);
-        this.pointer = this.presses.size > 0; // "a pointer is down" ends here and in `onPointerUp` (another finger may still be down)
-        if (press) this.notifyCancel(press, event);
-    }
-
-    /** The document heard a release or cancel first: only one outside the table is taken here (inside it, the root's own handlers do it). */
-    private endPressOutside(event: PointerEvent): void {
-        if (!event.composedPath().includes(this.host.root)) this.endPress(event);
     }
 
     /** Tells the claimant its press ended without a pointerup on the table; a claimant that throws is reported and never stops the caller. */

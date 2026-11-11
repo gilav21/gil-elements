@@ -23,6 +23,21 @@ const dragPart = (state: unknown = null) => ({ active: () => true, dragState: ()
 const rangeService = (over: Record<string, unknown> = {}) => ({ active: () => true, isInRange: () => false, isFillPreview: () => false, edgeOf: () => '', ...over });
 
 describe('stateView with the step-0 services', () => {
+    it('is not active for a plain grid, so the renderer uses the pre-step-0 templates; every feature that can mark a cell or a row makes it active', () => {
+        expect(stateView(fakeHost({})).stateActive).toBe(false);
+        const range = rangeService();
+        const noInteraction = { editingCell: () => null };
+        expect(stateView(fakeHost({ providers: { range, interaction: noInteraction } })).stateActive).toBe(false); // services alone, no flag
+        expect(stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range } })).stateActive).toBe(true);
+        expect(stateView(fakeHost({ config: { enableFillHandle: true }, providers: { range } })).stateActive).toBe(true);
+        expect(stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range: rangeService({ active: () => false }) } })).stateActive).toBe(false); // flag, part not active
+        expect(stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash: () => undefined } } })).stateActive).toBe(true);
+        expect(stateView(fakeHost({ config: { columns: [{ accessorKey: 'a', editable: true }] } })).stateActive).toBe(true);
+        expect(stateView(fakeHost({ providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'a' }) } } })).stateActive).toBe(true);
+        expect(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: dragPart() } })).stateActive).toBe(true);
+        expect(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: { active: () => false, dragState: () => null } } })).stateActive).toBe(false);
+    });
+
     it('answers the shared frozen none object for every cell and row of a plain grid', () => {
         const state = stateView(fakeHost({}));
         expect(state.cellState(0, 'name', row)).toBe(NO_CELL_FLAGS);
@@ -39,7 +54,7 @@ describe('stateView with the step-0 services', () => {
     });
 
     it('marks the cell that holds the open editor', () => {
-        const interaction = { isEditing: (rowIndex: number, columnKey: string) => rowIndex === 2 && columnKey === 'name' };
+        const interaction = { editingCell: () => ({ rowIndex: 2, columnKey: 'name' }), isEditing: (rowIndex: number, columnKey: string) => rowIndex === 2 && columnKey === 'name' };
         const state = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction } }));
         expect(state.cellState(2, 'name', row)).toMatchObject({ editing: true, editable: true });
         expect(state.cellState(1, 'name', row)).toBe(EDITABLE_CELL_FLAGS);
@@ -80,12 +95,20 @@ describe('stateView with the step-0 services', () => {
             expect(state.cellState(0, 'c', row)).toBe(OUT_OF_RANGE_FLAGS);
         });
 
-        it('is range mode with the fill handle alone, the same predicate the session and the getter use', () => {
+        it('draws the range with the fill handle alone (the fill source is visible) but claims no selection to assistive technology', () => {
             const range = rangeService({ isInRange: (r: number) => r === 0, edgeOf: () => 'top' });
             const state = stateView(fakeHost({ config: { enableCellRangeSelection: false, enableFillHandle: true }, providers: { range } }));
-            expect(state.rangeSelectable).toBe(true);
-            expect(state.cellState(0, 'a', row)).toMatchObject({ inRange: true, selected: 'true' });
-            expect(state.cellState(1, 'a', row)).toBe(OUT_OF_RANGE_FLAGS);
+            expect(state.stateActive).toBe(true);
+            expect(state.rangeSelectable).toBe(false); // no aria-multiselectable
+            const inside = state.cellState(0, 'a', row);
+            expect(inside).toMatchObject({ inRange: true, rangeEdge: 'top' });
+            expect(inside.selected).toBeUndefined(); // no aria-selected
+            expect(state.cellState(1, 'a', row)).toBe(NO_CELL_FLAGS);
+            // selection on: both the drawing and the ARIA
+            const selecting = stateView(fakeHost({ config: { enableCellRangeSelection: true, enableFillHandle: true }, providers: { range } }));
+            expect(selecting.rangeSelectable).toBe(true);
+            expect(selecting.cellState(0, 'a', row)).toMatchObject({ inRange: true, selected: 'true' });
+            expect(selecting.cellState(1, 'a', row)).toBe(OUT_OF_RANGE_FLAGS);
             // neither flag: nothing, whatever the service says
             expect(stateView(fakeHost({ providers: { range } })).cellState(0, 'a', row)).toBe(NO_CELL_FLAGS);
         });

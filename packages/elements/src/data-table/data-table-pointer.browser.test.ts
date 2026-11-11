@@ -230,6 +230,49 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
         expect(table.focusedCell).toBeNull();
     });
 
+    it('closes a press that starts in the table and is released over a NESTED table (a detail row): the claimant is told, nobody is "down"', async () => {
+        const nested = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(nested, { columns: [{ accessorKey: 'name', header: 'Name' }], data: [{ name: 'inner' }], showToolbar: false, showPagination: false });
+        const table = await mountTable({
+            columns: [
+                { accessorKey: 'name', header: 'Name', width: '200px', cellRenderer: ({ rowIndex, value }) => (rowIndex === 0 ? nested : String(value)) },
+                { accessorKey: 'age', header: 'Age', width: '120px' },
+            ],
+        });
+        await settle(nested);
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = () => void log.push('up');
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event?.type}`);
+        table.focusCell(1, 'name');
+        await settle(table);
+        cellAt(table, 1, 'age')!.dispatchEvent(pointer('pointerdown', 101));
+        const inner = nested.querySelector('[data-slot="table-cell"]')!;
+        inner.dispatchEvent(pointer('pointerup', 101));
+        // not an up on THIS table's cells: the outer press ends as a cancel for its claimant (the nested table has no press of its own for this pointer)
+        expect(log).toEqual(['cancel:pointerup']);
+        table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!.focus();
+        await frames(2);
+        expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
+    });
+
+    it('records a press an inner widget tried to hide: a touch tap on a cell whose content stops pointerdown still focuses it', async () => {
+        const widget = document.createElement('span');
+        widget.textContent = 'widget';
+        widget.style.cssText = 'display:inline-block;width:100px;height:20px';
+        widget.addEventListener('pointerdown', (event) => event.stopPropagation());
+        const table = await mountTable({
+            columns: [
+                { accessorKey: 'name', header: 'Name', width: '200px', cellRenderer: ({ rowIndex, value }) => (rowIndex === 1 ? widget : String(value)) },
+                { accessorKey: 'age', header: 'Age', width: '120px' },
+            ],
+        });
+        widget.dispatchEvent(pointer('pointerdown', 111, { pointerType: 'touch' }));
+        widget.dispatchEvent(pointer('pointerup', 111, { pointerType: 'touch' }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+    });
+
     it('ends a press that is still open when its pointer goes down again (a lost pointerup): the claimant is told first', async () => {
         const table = await mountTable();
         const log: string[] = [];
@@ -332,7 +375,7 @@ describe('a press inside the open editor', () => {
         const editor = new ShadowEditor();
         const table = await mountTable({
             columns: [
-                { accessorKey: 'name', header: 'Name', width: '200px', cellRenderer: ({ rowIndex, value }) => (rowIndex === 0 ? editor : String(value)) },
+                { accessorKey: 'name', header: 'Name', width: '200px', editable: true, cellRenderer: ({ rowIndex, value }) => (rowIndex === 0 ? editor : String(value)) },
                 { accessorKey: 'age', header: 'Age', width: '120px' },
             ],
         });
@@ -355,7 +398,7 @@ describe('a press inside the open editor', () => {
         const editor = new ShadowEditor();
         const table = await mountTable({
             columns: [
-                { accessorKey: 'name', header: 'Name', width: '200px', cellRenderer: ({ rowIndex, value }) => (rowIndex === 0 ? editor : String(value)) },
+                { accessorKey: 'name', header: 'Name', width: '200px', editable: true, cellRenderer: ({ rowIndex, value }) => (rowIndex === 0 ? editor : String(value)) },
                 { accessorKey: 'age', header: 'Age', width: '120px' },
             ],
         });

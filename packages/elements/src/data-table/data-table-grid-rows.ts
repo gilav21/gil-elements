@@ -177,9 +177,15 @@ function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInde
     return node && String(c.accessorKey) === v.treeHost ? treeHostCell(v, node, content) : content;
 }
 
-function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined, info: RowInfo): TemplateResult {
+function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined, info: RowInfo | undefined): TemplateResult {
     const key = String(c.accessorKey);
     const focused = v.focusedCell?.rowIndex === rowIndex && v.focusedCell.columnKey === key;
+    // No wave 5 or 6 feature is active (the common grid): the cell as it was before step 0, no state call and no extra binding to compare per cell.
+    if (info === undefined) {
+        return html`<div data-slot="table-cell" role="gridcell" aria-colindex=${v.aria.colIndex(n)} data-column=${key} data-row-index=${rowIndex}
+        data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(key) ? specialSlotOf(c) : nothing}
+        data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, row, rowIndex, node, false)}</div>`;
+    }
     // Range, fill, flash and editor state of waves 5 and 6: one shared object per cell (data-table-grid-state.ts).
     const state = v.cellState(rowIndex, key, info);
     return html`<div data-slot="table-cell" role="gridcell" aria-colindex=${v.aria.colIndex(n)} data-column=${key} data-row-index=${rowIndex}
@@ -209,7 +215,15 @@ function dataRow<T>(v: GridView<T>, row: T, i: number, ordinal: number, node: Fl
     const disabled = v.isDisabled(row);
     const level = node ? treeRowAria(node) : null;
     const wide = v.renderFullWidth?.(row);
-    const info: RowInfo = { id: String(id), disabled };
+    const info: RowInfo | undefined = v.stateActive ? { id: String(id), disabled } : undefined;
+    if (info === undefined) {
+        return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(ordinal)} aria-selected=${v.selectable ? String(selected) : nothing}
+        aria-level=${level?.level ?? nothing} aria-expanded=${level?.expanded == null ? nothing : String(level.expanded)} aria-setsize=${node?.setSize ?? nothing} aria-posinset=${node?.posInSet ?? nothing}
+        data-kind="data" data-row-index=${i} data-row-id=${id} data-depth=${node?.depth ?? nothing} style=${rowStyle(node, retainedTop)} ?data-retained=${retainedTop !== undefined}
+        data-state=${selected ? 'selected' : nothing} ?data-disabled=${disabled} aria-disabled=${disabled ? 'true' : nothing}>
+        ${claims(wide) ? wideCell(v, wide) : html`${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : bodyCell(v, p.column, p.n, row, i, node, undefined)))}${v.hasFlexible ? nothing : filler}`}
+    </div>`;
+    }
     const drag = v.rowState(i, info);
     return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(ordinal)} aria-selected=${v.selectable ? String(selected) : nothing}
         draggable=${drag.draggable ? 'true' : nothing} ?data-draggable=${drag.draggable} ?data-dragging=${drag.dragging} ?data-drop-target=${drag.dropEdge !== undefined}

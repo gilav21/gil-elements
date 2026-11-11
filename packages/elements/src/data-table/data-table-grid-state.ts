@@ -45,8 +45,13 @@ export const NO_ROW_FLAGS: RowFlags = Object.freeze({ draggable: false, dragging
 export const DRAGGABLE_ROW_FLAGS: RowFlags = Object.freeze({ draggable: true, dragging: false });
 
 export interface StateView {
-    /** `enable-cell-range-selection`: data cells carry `aria-selected` and the grid is `aria-multiselectable`. */
+    /** `enable-cell-range-selection` with the range part active: data cells carry `aria-selected` and the grid is `aria-multiselectable`. */
     rangeSelectable: boolean;
+    /**
+     * Some wave 5 or 6 feature can mark a cell or a row now (range mode, flash, editable columns, an open editor, draggable rows). When false the
+     * renderer uses the cell and row templates of before step 0 and never calls `cellState` / `rowState`: a plain grid pays nothing per cell.
+     */
+    stateActive: boolean;
     cellState(rowIndex: number, columnKey: string, row: RowInfo): CellFlags;
     rowState(rowIndex: number, row: RowInfo): RowFlags;
 }
@@ -80,14 +85,20 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     // Range mode is drawn (`aria-selected`, `aria-multiselectable`) only once the range part is loaded and handles ranges: not while it loads,
     // and not after a load that failed (the same rule as `rowDrag.active()` for draggable rows).
     const rangeActive = range?.active() ?? false;
-    const rangeMode = rangeModeOn(config) && rangeActive; // the one predicate the session and the `cellRange` getter use (selection OR fill handle)
+    // What is DRAWN of a range follows range mode (selection OR fill handle: the fill source is visible); what is CLAIMED to assistive technology
+    // (`aria-selected`, `aria-multiselectable`) follows the SELECTION flag alone, like `data-range-selection`: a fill-handle-only grid is not multiselectable.
+    const rangeMode = rangeModeOn(config) && rangeActive;
+    const selectionMode = config.enableCellRangeSelection && rangeActive;
     const { editable, flashOff } = columnSets(config.columns);
     const flashable = config.enableCellFlash && formatting !== undefined;
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;
+    const editingOpen = interaction?.editingCell() != null;
+    const flashActive = config.enableCellFlash && formatting !== undefined;
     return {
-        rangeSelectable: rangeMode,
+        stateActive: rangeMode || flashActive || editable.size > 0 || editingOpen || dragOn,
+        rangeSelectable: selectionMode,
         cellState(rowIndex, key, row) {
             // The special columns (selection, expander, actions) are not cells of the range, of an editor or of a flash.
             if (isSpecialColumnKey(key)) return NO_CELL_FLAGS;
@@ -97,7 +108,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
             const flash = flashable && !flashOff.has(key) ? formatting.flash(row.id, key) : undefined;
             const editing = interaction?.isEditing(rowIndex, key) ?? false;
             if (!inRange && !fill && flash === undefined && !editing) {
-                if (rangeMode) return canEdit ? OUT_OF_RANGE_EDITABLE_FLAGS : OUT_OF_RANGE_FLAGS;
+                if (selectionMode) return canEdit ? OUT_OF_RANGE_EDITABLE_FLAGS : OUT_OF_RANGE_FLAGS;
                 return canEdit ? EDITABLE_CELL_FLAGS : NO_CELL_FLAGS;
             }
             return {
@@ -105,7 +116,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
                 rangeEdge: inRange ? range?.edgeOf(rowIndex, key) : undefined,
                 fillPreview: fill,
                 flash,
-                selected: rangeMode ? (inRange ? 'true' : 'false') : undefined,
+                selected: selectionMode ? (inRange ? 'true' : 'false') : undefined,
                 editable: canEdit,
                 editing,
             };
