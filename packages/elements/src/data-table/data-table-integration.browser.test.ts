@@ -459,6 +459,84 @@ describe('focus follows its row: the edges', () => {
     });
 });
 
+describe('focus follows its row: round 2', () => {
+    const mountGrouped = (extra: Record<string, unknown> = {}): Promise<Table> =>
+        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(12, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, ...extra }, {}, { width: 600, height: 520 });
+    const mountTreeRound2 = (extra: Record<string, unknown> = {}): Promise<Table> =>
+        mountTable<SampleRow>({ columns: makeColumns(3), data: makeRows(4, { columns: 3, children: 2 }), enableSubRows: true, subRowDefaultExpanded: true, showToolbar: false, showPagination: false, ...extra }, {}, { width: 600, height: 500 });
+
+    it('a button of the consumer that collapses the group keeps its focus: only focus on the dropped cell is moved', async () => {
+        const table = await mountGrouped();
+        const button = Object.assign(document.createElement('button'), { textContent: 'collapse', slot: 'toolbar-start' });
+        table.append(button);
+        await settle(table);
+        table.focusCell(1, 'c0');
+        await settle(table);
+        button.focus();
+        expect(document.activeElement).toBe(button);
+        table.provider('expansion')!.toggleGroup('g0');
+        await settle(table);
+        await frames(3);
+        expect(bodyRows(table)).toHaveLength(8);
+        expect(table.focusedCell).toBeNull();
+        expect(document.activeElement).toBe(button);
+    });
+
+    it('a row that is not drawn for a reason other than a collapsed group (a filter in the same tick) leaves the roving cell clamped, not cleared', async () => {
+        const table = await mountTreeRound2();
+        table.focusCell(5, 'c0'); // r0 r0-c0 r0-c1 r1 r1-c0 r1-c1
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(table.data[1]!);
+        table.data = table.data.slice(3); // only r3 and its children remain, r1 and its descendants are gone with no ancestor drawn
+        await settle(table);
+        await frames(2);
+        const rows = bodyRows(table).length;
+        expect(rows).toBeGreaterThan(0);
+        expect(table.focusedCell).toEqual({ rowIndex: rows - 1, columnKey: 'c0' });
+        expect(cellStops(table)).toEqual([cellAt(table, rows - 1, 'c0')]);
+    });
+
+    it('a row recorded for one cell is not applied to another cell focused while the list was empty', async () => {
+        const table = await mountTreeRound2();
+        const rows = table.data;
+        table.focusCell(2, 'c0');
+        await settle(table);
+        table.provider('expansion')!.collapseSubRow(rows[0]!); // records the row of (2, c0)...
+        table.data = []; // ...and the list is empty for a render: the focus waits
+        await settle(table);
+        table.data = rows;
+        table.focusCell(5, 'c1'); // another cell takes the focus before the rows are drawn again
+        await settle(table);
+        await frames(2);
+        expect(table.focusedCell).toEqual({ rowIndex: 5, columnKey: 'c1' });
+    });
+
+    it('finding the row of a deep child under closed ancestors reads the ids a constant number of times, not once per ancestor', async () => {
+        const reads = { count: 0 };
+        const leaf = (id: string): SampleRow => ({ id, name: id, age: 1 });
+        const chain: SampleRow = { id: 'top', name: 'top', age: 1, children: [{ ...leaf('l1'), children: [{ ...leaf('l2'), children: [{ ...leaf('l3'), children: [leaf('l4')] }] }] }] };
+        const data = [chain, ...makeRows(2000)];
+        const mount = (focusAt: number) => async (): Promise<number> => {
+            const table = await mountTable<SampleRow>(
+                { columns: makeColumns(2), data, enableSubRows: true, subRowDefaultExpanded: true, getRowId: (row: SampleRow) => (reads.count++, row.id), showPagination: false, showToolbar: false },
+                {},
+                { width: 600, height: 400 },
+            );
+            table.focusCell(focusAt, 'c0'); // 4 is the deepest of top l1 l2 l3 l4; the control is a root row the toggle does not move
+            await settle(table);
+            reads.count = 0;
+            table.provider('expansion')!.collapseSubRow(data[0]!);
+            await settle(table);
+            expect(table.focusedCell).toEqual({ rowIndex: focusAt === 4 ? 0 : focusAt - 4, columnKey: 'c0' });
+            return reads.count;
+        };
+        const control = await mount(1500)(); // a row below the node: it moves up four places, the toggle reads every id once to find it
+        const deep = await mount(4)();
+        // finding the row (or its ancestors) takes one pass over the rows (about 2000 reads); a scan per ancestor read them over four times more
+        expect(deep - control).toBeLessThan(2 * 2000 + 500);
+    });
+});
+
 // ---- 4. rtl + pinned columns + virtual columns ---------------------------------------------------------------------
 
 describe.each([

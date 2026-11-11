@@ -58,6 +58,15 @@ describe('validatePlan', () => {
     });
 });
 
+describe('the default plan and the focus', () => {
+    it('lets cell-interaction read the expansion topic, and flags it when nothing writes that topic', () => {
+        expect(DEFAULT_ORDER.find((c) => c.id === 'cell-interaction')!.reads).toContain('expansion');
+        expect(validatePlan(DEFAULT_ORDER)).toEqual([]);
+        const withoutWriter = DEFAULT_ORDER.map((c) => (c.id === 'expansion' ? { ...c, writes: [] } : c));
+        expect(validatePlan(withoutWriter)).toContain("'cell-interaction' reads topic 'expansion', which nothing publishes");
+    });
+});
+
 describe('topics', () => {
     it('are typed names on the shared bus', () => {
         const bus = new TopicBus<DataTableTopic>();

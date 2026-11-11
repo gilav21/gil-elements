@@ -1,5 +1,4 @@
 import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, requireProvider } from './data-table-host.js';
-import { isGroupingActive } from './data-table-group.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import type { CellEditError, CellRange, EditingCell } from './data-table.types.js';
@@ -29,7 +28,7 @@ export class CellInteractionController<T> {
     private pointer = false;
     private observer: MutationObserver | null = null;
     /** The row that held the focus when a node or group was opened or closed: the render that follows follows it. */
-    private rowAtExpansion: { id: string } | null = null;
+    private rowAtExpansion: { at: CellAddress; id: string; cell: HTMLElement | null } | null = null;
     private watched: Element | null = null;
     private teardown: (() => void)[] = [];
 
@@ -77,9 +76,10 @@ export class CellInteractionController<T> {
     hostUpdate(): void {
         this.watchDom();
         // Consumed once, whatever the rest of this update does: it belongs to the render that follows its `expansion`, not to a later one.
-        const moved = this.rowAtExpansion;
-        this.rowAtExpansion = null;
+        // And only for the cell it was taken for: a focus set since then is another cell's.
         const at = this.focused;
+        const moved = this.rowAtExpansion?.at === at ? this.rowAtExpansion : null;
+        this.rowAtExpansion = null;
         if (!at) return;
         const rows = this.rowCount();
         // An empty list (a server page loading) changes nothing: the focus waits for rows, and so does the row it was following.
@@ -87,8 +87,13 @@ export class CellInteractionController<T> {
             this.rowAtExpansion = moved;
             return;
         }
-        const row = moved ? this.followRow(at, moved) : at.rowIndex;
-        if (row === -1) return this.dropFocus(moved?.id);
+        let row = moved ? this.followRow(at, moved.id) : at.rowIndex;
+        if (row === -1) {
+            // Gone with a collapsed group, the roving cell has nowhere to stay; gone for any other reason (a page, a filter) it is clamped like any cell.
+            const group = moved ? this.groupOf(moved.id) : undefined;
+            if (moved && group !== undefined && this.host.model.get('collapsedGroups')[group] === true) return this.dropFocus(moved.cell, group);
+            row = at.rowIndex;
+        }
         const keys = requireProvider(this.host, 'columns').focusableKeys();
         const col = nearestColumn(keys, at.columnKey, this.lastColumn);
         if (col === -1) return this.clear();
@@ -97,54 +102,64 @@ export class CellInteractionController<T> {
         if (next.rowIndex !== at.rowIndex || next.columnKey !== at.columnKey) this.set(next);
     }
 
-    /** A node or group opened or closed while a row held the focus: remember which row (from the drawn DOM, still the old one). */
+    /** A node or group opened or closed while a row held the focus: remember which row (from the drawn DOM, still the old one) and whether DOM focus sat in its cell. */
     private noteFocusedRow(): void {
-        const row = this.focused ? this.host.rowAt(this.focused.rowIndex) : null;
-        this.rowAtExpansion = row?.dataset['rowId'] === undefined ? null : { id: row.dataset['rowId'] };
+        const at = this.focused;
+        const id = at ? this.host.rowAt(at.rowIndex)?.dataset['rowId'] : undefined;
+        if (!at || id === undefined) {
+            this.rowAtExpansion = null;
+            return;
+        }
+        const cell = this.host.cellAt(at.rowIndex, at.columnKey);
+        const active = this.rootNode().activeElement;
+        this.rowAtExpansion = { at, id, cell: cell?.contains(active) ? cell : null };
     }
 
     /**
      * Where the row that held the focus is now: its own index, or its nearest ancestor's when a tree node closed over it, and -1 when
-     * it left with its group. A row still at the index the focus is at costs one id read, which is every detail toggle.
+     * it is not drawn. A row still at the index the focus is at costs one id read, which is every detail toggle; otherwise the ids
+     * are read once, in one pass, and the ancestors are looked up in that.
      */
-    private followRow(at: CellAddress, was: { id: string }): number {
+    private followRow(at: CellAddress, id: string): number {
         const { config } = this.host;
         const query = requireProvider(this.host, 'query');
         const idOf = (row: unknown): string => config.getRowId(row as never);
         const here = query.renderedRowAt(at.rowIndex);
-        if (here !== undefined && idOf(here) === was.id) return at.rowIndex;
-        const rows = query.renderedRows();
-        const indexOf = (id: string): number => rows.findIndex((row) => idOf(row) === id);
-        let index = indexOf(was.id);
+        if (here !== undefined && idOf(here) === id) return at.rowIndex;
+        const indexes = new Map<string, number>();
+        query.renderedRows().forEach((row, i) => indexes.has(idOf(row)) || indexes.set(idOf(row), i));
+        let index = indexes.get(id) ?? -1;
         if (index === -1 && config.enableSubRows) {
             const parents = query.treeIndex().parent;
-            for (let parent = parents.get(was.id); parent !== undefined && index === -1; parent = parents.get(parent)) index = indexOf(parent);
+            for (let parent = parents.get(id); parent !== undefined && index === -1; parent = parents.get(parent)) index = indexes.get(parent) ?? -1;
         }
         return index;
     }
 
-    /**
-     * The focused row left with its group (or its tree has no node of it drawn): the roving cell has nowhere to stay. The toggle of its
-     * group header is the nearest thing drawn; failing that the viewport is, so the keyboard never falls out of the grid onto the page.
-     */
-    private dropFocus(id: string | undefined): void {
-        const hadFocus = this.within;
-        const group = id === undefined ? undefined : this.groupOf(id);
-        this.clear();
-        if (!hadFocus) return;
-        this.host.afterRender(() => {
-            const toggle = group === undefined ? undefined : ownElements(this.host.root, this.host.root.querySelectorAll<HTMLElement>(`[data-kind="group"][data-group-key="${CSS.escape(group)}"] [data-toggle]`))[0];
-            (toggle ?? this.host.root.querySelector<HTMLElement>(VIEWPORT))?.focus();
-        });
+    /** The key of the group a row belongs to, from the query's own grouping (undefined when rows are not grouped). */
+    private groupOf(id: string): string | undefined {
+        const { config } = this.host;
+        return requireProvider(this.host, 'query')
+            .groupRows()
+            .find((group) => group.rows.some((row) => config.getRowId(row) === id))?.groupKey;
     }
 
-    /** The key of the group a row belongs to, read from the data (the drawn header may not be in the DOM); only while rows are grouped. */
-    private groupOf(id: string): string | undefined {
-        const { config, model } = this.host;
-        if (!isGroupingActive(config.groupBy, config.enableSubRows, this.host.provider('virtual')?.active() ?? false)) return undefined;
-        const row = model.get('data').find((candidate) => config.getRowId(candidate) === id);
-        const column = config.columns.find((c) => String(c.accessorKey) === config.groupBy);
-        return row === undefined ? undefined : String(requireProvider(this.host, 'query').cellValue(row, config.groupBy as string, column));
+    /**
+     * The focused row left with its collapsed group: the roving cell has nowhere to stay. If DOM focus was on that cell the toggle of its
+     * group header takes it, failing that the viewport, so the keyboard never falls out of the grid onto the page. If it was anywhere else
+     * (a toolbar button that collapsed the group, a widget in a detail row) it stays where it is.
+     */
+    private dropFocus(cell: HTMLElement | null, group: string): void {
+        this.clear();
+        if (!cell) return;
+        this.host.afterRender(() => {
+            const active = this.rootNode().activeElement;
+            const viewport = this.host.root.querySelector<HTMLElement>(VIEWPORT);
+            // Still nowhere: the cell is gone with its row (focus fell to the page) or is the viewport; something else has it by now otherwise.
+            if (active && active !== this.host.root.ownerDocument.body && active !== cell && active !== viewport) return;
+            const toggle = ownElements(this.host.root, this.host.root.querySelectorAll<HTMLElement>(`[data-kind="group"][data-group-key="${CSS.escape(group)}"] [data-toggle]`))[0];
+            (toggle ?? viewport)?.focus();
+        });
     }
 
     // ---- state ------------------------------------------------------------------------------------------------------
