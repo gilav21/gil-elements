@@ -52,20 +52,25 @@ export function lazyElement(
 ): LazyElement {
     const once = lazyOnce(importer);
     let failed = false;
+    /** The whole load, failure handling included, as ONE promise: concurrent callers share it, so one failure is one report. */
+    let loading: Promise<boolean> | undefined;
+    const run = async (): Promise<boolean> => {
+        try {
+            await once();
+        } catch (error) {
+            failed = true;
+            onError(error);
+            return false;
+        }
+        return customElements.get(tag) !== undefined;
+    };
     return {
-        load: async () => {
-            if (failed) return false;
-            try {
-                await once();
-            } catch (error) {
-                failed = true;
-                onError(error);
-                return false;
-            }
-            return customElements.get(tag) !== undefined;
-        },
+        load: () => (failed ? Promise.resolve(false) : (loading ??= run())),
         ready: () => customElements.get(tag) !== undefined,
-        reset: () => void (failed = false),
+        reset: () => {
+            failed = false;
+            loading = undefined;
+        },
     };
 }
 

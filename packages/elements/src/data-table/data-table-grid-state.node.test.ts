@@ -29,7 +29,9 @@ describe('stateView with the step-0 services', () => {
         expect(stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range } })).stateActive).toBe(true);
         expect(stateView(fakeHost({ config: { enableFillHandle: true }, providers: { range } })).stateActive).toBe(true);
         expect(stateView(fakeHost({ config: { enableCellRangeSelection: true }, providers: { range: rangeService({ active: () => false }) } })).stateActive).toBe(false); // flag, part not active
-        expect(stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash: () => undefined } } })).stateActive).toBe(true);
+        // flash is a dynamic state only while something is flashing: the flag alone (nothing flashing) leaves the grid inactive, so no per-cell work
+        expect(stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash: () => undefined, anyFlashing: () => false } } })).stateActive).toBe(false);
+        expect(stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash: () => undefined, anyFlashing: () => true } } })).stateActive).toBe(true);
         // an editable column alone is not a dynamic state: the renderer writes data-editable from the column, so the grid stays inactive
         expect(stateView(fakeHost({ config: { columns: [{ accessorKey: 'a', editable: true }] } })).stateActive).toBe(false);
         expect(stateView(fakeHost({ providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'a' }) } } })).stateActive).toBe(true);
@@ -73,7 +75,7 @@ describe('stateView with the step-0 services', () => {
     it('never asks for the row id or the disabled flag: the renderer reads them once per row and passes them', () => {
         const getRowId = vi.fn(() => 'x');
         const isDisabled = vi.fn(() => false);
-        const formatting = { flash: vi.fn() };
+        const formatting = { flash: vi.fn(), anyFlashing: () => true };
         const columns = [{ accessorKey: 'a', editable: true }, { accessorKey: 'b', editable: true }];
         const host = { ...fakeHost({ config: { enableCellFlash: true, enableRowDrag: true, columns, getRowId }, providers: { formatting, rowDrag: dragPart() } }), isDisabled };
         const state = stateView(host as DataTableViewHost<unknown>);
@@ -147,8 +149,16 @@ describe('stateView with the step-0 services', () => {
         expect(stateView(fakeHost({ providers: { range: { ...preview, active: () => true } } })).cellState(0, 'a', row)).toBe(NO_CELL_FLAGS);
     });
 
+    it('makes no per-cell flash call while nothing is flashing, with enable-cell-flash on', () => {
+        const flash = vi.fn();
+        const state = stateView(fakeHost({ config: { enableCellFlash: true }, providers: { formatting: { flash, anyFlashing: () => false } } }));
+        expect(state.stateActive).toBe(false);
+        state.cellState(0, 'a', row);
+        expect(flash).not.toHaveBeenCalled();
+    });
+
     it('reads the flash of a cell, unless the column opted out', () => {
-        const formatting = { flash: (id: string, key: string) => (id === 'r1' && key === 'price' ? ('up' as const) : undefined) };
+        const formatting = { flash: (id: string, key: string) => (id === 'r1' && key === 'price' ? ('up' as const) : undefined), anyFlashing: () => true };
         const columns = [{ accessorKey: 'price' }, { accessorKey: 'name', enableCellFlash: false }];
         const state = stateView(fakeHost({ config: { enableCellFlash: true, columns }, providers: { formatting } }));
         expect(state.cellState(0, 'price', row)).toMatchObject({ flash: 'up' });
@@ -158,7 +168,7 @@ describe('stateView with the step-0 services', () => {
     it('builds the flash-off key set once per columns array, not per render', () => {
         const columns = [{ accessorKey: 'a' }, { accessorKey: 'b', enableCellFlash: false }];
         const filter = vi.spyOn(columns, 'filter');
-        const host = fakeHost({ config: { columns, enableCellFlash: true }, providers: { formatting: { flash: () => undefined } } });
+        const host = fakeHost({ config: { columns, enableCellFlash: true }, providers: { formatting: { flash: () => undefined, anyFlashing: () => true } } });
         for (let render = 0; render < 5; render++) stateView(host).cellState(0, 'a', row);
         expect(filter).toHaveBeenCalledTimes(1);
     });

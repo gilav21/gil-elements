@@ -66,13 +66,16 @@ export function sortControl<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown
     return html`<ge-data-table-column-header .title=${c.header} .column=${key} .direction=${direction} .sortIndex=${index} .shortcuts=${v.reorderable && isReorderable(c) ? REORDER_KEYS : ''} .label=${sortAriaLabel(c.header, direction, index, v.locale)} @sort-request=${(e: CustomEvent<{ direction: SortDirection; multi: boolean }>) => v.onSortRequest(key, e)}></ge-data-table-column-header>`;
 }
 
+/** A renderer result that draws nothing: Lit's `nothing`, `null`, `undefined` or an empty string. */
+export const isEmptyContent = (value: unknown): boolean => value === nothing || value === null || value === undefined || value === '';
+
 function headContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
     const special = specialHead(v, c);
     if (special !== undefined) return special;
     const control = sortControl(v, c);
     const trigger = v.filters.trigger(c);
     // A custom header renderer is drawn bare, unless a filter trigger has to sit beside it (wave 5).
-    return c.headerRenderer && trigger === nothing ? control : html`<div data-slot="data-table-head-controls">${control}${trigger}</div>`;
+    return c.headerRenderer && isEmptyContent(trigger) ? control : html`<div data-slot="data-table-head-controls">${control}${trigger}</div>`;
 }
 
 /** A separator's `aria-valuemax` defaults to 100 and clamps the value; a column has no real maximum. */

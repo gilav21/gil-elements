@@ -11,7 +11,7 @@ export class FormattingController<T> {
     constructor(private readonly host: DataTableCoreHost<T>) {}
 
     attach(): void {
-        this.unprovide = this.host.provide('formatting', { cell: resolveCellFormatting, flash: () => undefined });
+        this.unprovide = this.host.provide('formatting', { cell: resolveCellFormatting, flash: () => undefined, anyFlashing: () => false });
     }
 
     detach(): void {

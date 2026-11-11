@@ -309,8 +309,11 @@ export async function openPopover(trigger: Element, lazyTag?: string): Promise<H
 
 // ---- wave 6 (spreadsheet and drag) helpers --------------------------------------------------------------------------------------------
 
-/** Touch down, hold `holdMs` (the long-press time), drag to `to` in `steps` moves, lift: the touch range gesture. */
-export const touchLongPressDrag = (from: Target, to: Target | Offset, { holdMs = 600, steps = 8 }: DragOptions = {}): Promise<void> => touchDrag(from, to, { steps, holdBeforeMs: holdMs });
+/**
+ * Touch down, hold `holdBeforeMs` (default: the 600 ms long press) without moving, drag to `to` in `steps` moves, hold `holdMs` at the end (as
+ * `touchDrag` documents it), lift: the touch range gesture.
+ */
+export const touchLongPressDrag = (from: Target, to: Target | Offset, { holdBeforeMs = 600, steps = 8, holdMs = 0 }: DragOptions = {}): Promise<void> => touchDrag(from, to, { steps, holdMs, holdBeforeMs });
 
 export interface FakeClipboard {
     /** What was last written, or '' . */

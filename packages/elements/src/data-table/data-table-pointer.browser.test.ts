@@ -205,6 +205,7 @@ describe('the press contract: one press per pointer, routed to its claimant', ()
         expect(log).toEqual(['up:42']);
         // A is released outside the table: its press is still there and its claimant is told
         document.body.dispatchEvent(pointer('pointerup', 41));
+        await frames(1); // a release outside is closed after the dispatch (the document hears it before the table's root)
         expect(log).toEqual(['up:42', 'cancel:41:0']);
     });
 
@@ -450,6 +451,129 @@ describe('a session that throws while attaching', () => {
     });
 });
 
+describe('a table in a CLOSED shadow root', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    async function mountClosed(): Promise<{ host: HTMLElement; shadow: ShadowRoot; table: GeDataTable }> {
+        const host = document.createElement('div');
+        document.body.append(host);
+        const shadow = host.attachShadow({ mode: 'closed' });
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS, showToolbar: false, showPagination: false });
+        shadow.append(table);
+        await settle(table);
+        return { host, shadow, table };
+    }
+
+    it('hears its own releases at the root: a claimant gets onPointerUp, an unclaimed press is offered to the sessions, and a release outside is a cancel', async () => {
+        const { host, table } = await mountClosed();
+        const log: string[] = [];
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event?.type}`);
+        const cell = cellAt(table, 1, 'age')!;
+        // unclaimed: offered at its pointerup
+        cell.dispatchEvent(pointer('pointerdown', 181));
+        cell.dispatchEvent(pointer('pointerup', 181));
+        expect(log).toEqual(['up:{"rowIndex":1,"columnKey":"age"}']);
+        // claimed: onPointerUp
+        log.length = 0;
+        hooks.onPointerDown = () => true;
+        cell.dispatchEvent(pointer('pointerdown', 182));
+        cell.dispatchEvent(pointer('pointerup', 182));
+        await frames(1); // the document's deferred look finds nothing left open
+        expect(log).toEqual(['up:{"rowIndex":1,"columnKey":"age"}']);
+        // released outside: the root never hears it, the document's look cancels it
+        log.length = 0;
+        cell.dispatchEvent(pointer('pointerdown', 183));
+        document.body.dispatchEvent(pointer('pointerup', 183));
+        await frames(1);
+        expect(log).toEqual(['cancel:pointerup']);
+        host.remove();
+    });
+
+    it('keeps `within` for a press inside (the document cannot see into a closed shadow root): the DOM focus survives a render that moves the cell', async () => {
+        const { host, shadow, table } = await mountClosed();
+        table.focusCell(1, 'name');
+        await settle(table);
+        await mouseDrag(cellAt(table, 1, 'name')!, { dx: 0, dy: 0 }, { steps: 1 }); // a real press and release (the test runner's own click cannot reach into a closed root)
+        await settle(table);
+        await frames(2); // the document's deferred look at the press has run
+        table.data = [...table.data].reverse();
+        await settle(table);
+        await frames(3);
+        expect((shadow.activeElement as HTMLElement | null)?.matches('[data-slot="table-cell"]')).toBe(true);
+        host.remove();
+    });
+});
+
+describe('a captured pointer in an open shadow root', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is located by where it is released: with setPointerCapture on the start cell, a release over another row reports the cell under the pointer', async () => {
+        const host = document.createElement('div');
+        document.body.append(host);
+        const shadow = host.attachShadow({ mode: 'open' });
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS, showToolbar: false, showPagination: false });
+        shadow.append(table);
+        await settle(table);
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        const start = cellAt(table, 0, 'name')!;
+        start.addEventListener('pointerdown', (event) => start.setPointerCapture(event.pointerId)); // a gesture capturing the pointer
+        await mouseDrag(start, cellAt(table, 2, 'age')!, { steps: 4 });
+        expect(log).toEqual(['up:{"rowIndex":2,"columnKey":"age"}']);
+        host.remove();
+    });
+});
+
+describe('a touch tap on a cell covered by an overlay of the table', () => {
+    it('focuses the cell below the overlay (the range readout and the fill handle are looked through): the last row under the sticky readout', async () => {
+        const table = await mountTable();
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        const last = cellAt(table, table.data.length - 1, 'name')!;
+        const rect = last.getBoundingClientRect();
+        const readout = document.createElement('div');
+        readout.setAttribute('data-slot', 'range-actions');
+        readout.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;z-index:50`;
+        viewport.append(readout);
+        // the tap lands on the readout (its pointerdown, and the pointerup delivered to it by the implicit capture), over the last cell
+        readout.dispatchEvent(pointer('pointerdown', 191, { pointerType: 'touch', over: readout }));
+        readout.dispatchEvent(pointer('pointerup', 191, { pointerType: 'touch', over: readout }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: table.data.length - 1, columnKey: 'name' });
+        readout.remove();
+    });
+
+    it('looks through an element marked data-pointer-transparent too, and falls back to the pressed cell for an unclaimed tap when no cell is under the finger', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        const rect = cell.getBoundingClientRect();
+        const cover = document.createElement('div');
+        cover.setAttribute('data-pointer-transparent', '');
+        cover.style.cssText = `position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;height:${rect.height}px;z-index:50`;
+        viewport.append(cover);
+        cover.dispatchEvent(pointer('pointerdown', 192, { pointerType: 'touch', over: cover }));
+        cover.dispatchEvent(pointer('pointerup', 192, { pointerType: 'touch', over: cover }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        cover.remove();
+        // no cell under the finger (the point is over the empty header corner area): the pressed cell is focused
+        const other = cellAt(table, 2, 'age')!;
+        other.dispatchEvent(pointer('pointerdown', 193, { pointerType: 'touch' }));
+        const header = table.querySelector<HTMLElement>('[data-slot="table-head"]')!;
+        other.dispatchEvent(pointer('pointerup', 193, { pointerType: 'touch', over: header }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'age' });
+    });
+});
+
 describe('a touch release is decided by where the finger is, not by the pressed element', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
@@ -600,6 +724,7 @@ describe('a table inside the shadow root of another component', () => {
         log.length = 0;
         cell.dispatchEvent(pointer('pointerdown', 132));
         document.body.dispatchEvent(pointer('pointerup', 132));
+        await frames(1);
         expect(log).toEqual(['cancel:pointerup']);
         host.remove();
     });

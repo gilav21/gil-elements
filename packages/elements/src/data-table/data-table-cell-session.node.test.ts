@@ -4,6 +4,7 @@ import type { InteractionContext } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
 import { resetBadRangeWarning } from './data-table-range.js';
 import { RangeSession } from './data-table-range-session.js';
+import { RangePart } from './lazy/range.js';
 
 const DIRECTORY = new URL('.', import.meta.url);
 const SOURCES = readdirSync(DIRECTORY).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
@@ -342,6 +343,25 @@ describe('the range held by the shell', () => {
         state.rows = 5; // a later load with fewer rows: trimmed onto them
         session.hostUpdate();
         expect(session.rangeService.range()).toEqual({ ...range, endRow: 4 });
+    });
+
+    it('hands the range held NOW to the part right after it attaches: a range set after the part was built but before it attached is not overwritten by the stale one of the part at the next update', async () => {
+        const { session } = make();
+        session.rangeService.setRange(range); // the part is built with this one ...
+        const target = { ...range, endRow: 4 };
+        const attach = vi.spyOn(RangePart.prototype, 'attach').mockImplementation(() => {
+            (session as unknown as { held: unknown }).held = target; // ... and a setRange that reached `held` only lands before its attach completes
+        });
+        try {
+            session.hostUpdate();
+            const loaded = (): unknown => (session as unknown as { lazy: { part: unknown } }).lazy.part;
+            await vi.waitFor(() => expect(loaded()).not.toBeNull());
+            expect(session.rangeService.range()).toEqual(target); // the part was told right after attach
+            session.hostUpdate();
+            expect(session.rangeService.range()).toEqual(target); // and the update did not read the stale value back
+        } finally {
+            attach.mockRestore();
+        }
     });
 
     it('keeps a held range while a column is merely hidden, and trims only its rows on update (the part checks the columns)', () => {

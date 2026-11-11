@@ -78,6 +78,16 @@ describe('lazyElement', () => {
         expect(onError).toHaveBeenCalledTimes(2);
     });
 
+    it('reports a failure once for CONCURRENT loads too: they share one promise', async () => {
+        fakeRegistry();
+        const onError = vi.fn();
+        const importer = vi.fn(() => Promise.reject(new Error('404')));
+        const element = lazyElement('ge-x', importer, onError);
+        await expect(Promise.all([element.load(), element.load(), element.load()])).resolves.toEqual([false, false, false]);
+        expect(importer).toHaveBeenCalledTimes(1);
+        expect(onError).toHaveBeenCalledTimes(1);
+    });
+
     it('logs a failed import through console.error by default', async () => {
         fakeRegistry();
         const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);

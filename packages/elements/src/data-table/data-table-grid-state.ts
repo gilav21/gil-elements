@@ -84,7 +84,8 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     const rangeMode = rangeModeOn(config) && rangeActive;
     const selectionMode = config.enableCellRangeSelection && rangeActive;
     const flashOff = flashOffKeys(config.columns);
-    const flashable = config.enableCellFlash && formatting !== undefined;
+    // Flash costs per-cell work only while some cell is actually flashing (`enable-cell-flash` alone, with nothing flashing, does not).
+    const flashable = config.enableCellFlash && formatting !== undefined && formatting.anyFlashing();
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;

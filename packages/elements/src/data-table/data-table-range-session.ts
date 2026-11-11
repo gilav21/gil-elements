@@ -31,8 +31,14 @@ export class RangeSession<T> implements CellSession {
             part.setRange(this.held);
             return part;
         }),
-        // The overlay, the cell flags and the fill handle come from the part: its arrival and departure are drawn.
-        { changed: () => this.context.host.requestRender() },
+        // Right after the part attaches (it is `lazy.part` from the moment it attaches): the range held NOW goes to it (a `setRange` between the part's
+        // construction and its attach reached `held` only, and the next update would have read the part's stale value back), and the arrival is drawn.
+        {
+            changed: () => {
+                this.lazy.part?.setRange(this.held);
+                this.context.host.requestRender();
+            },
+        },
     );
 
     constructor(protected readonly context: InteractionContext<T>) {}

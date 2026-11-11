@@ -9,6 +9,16 @@ import { KEY_PRIORITY } from './data-table-registry.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
 const BODY = '[data-slot="table-body"]';
+/** Elements of the table that sit over its cells and must not take a release: the pointer is looked through them to the cell below. */
+const OVERLAYS = '[data-pointer-transparent], [data-slot="range-actions"], [data-slot="fill-handle"], [data-slot="data-table-drop-edge"]';
+
+interface Press {
+    readonly anchor: CellAddress | null;
+    readonly claimedBy: CellSession | null;
+    /** The element the pointerdown landed on (the tapped cell of a touch, when nothing better is found under the release). */
+    readonly pressed: Element | null;
+}
+
 /** A press on one of these belongs to the control: it keeps its own focus and click. */
 const CONTROLS = 'input, textarea, select, button, a, [role="checkbox"], ge-checkbox, ge-input, [contenteditable]';
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
@@ -63,7 +73,9 @@ export class CellInteractionController<T> {
      * pointerup, cancel, and the cancel at detach. Ended by the pointerup on the table, or by the page-level pointerup / pointercancel
      * (a release outside), or by `detach()`.
      */
-    private readonly presses = new Map<number, { readonly anchor: CellAddress | null; readonly claimedBy: CellSession | null }>();
+    private readonly presses = new Map<number, Press>();
+    /** The pointerdowns the table's root has heard (the document hears them first, and a table in a closed shadow root is invisible to its path): what the document's deferred check asks. */
+    private readonly heardDown = new WeakSet<Event>();
 
     constructor(private readonly host: DataTableCoreHost<T>) {
         const context: InteractionContext<T> = {
@@ -103,11 +115,16 @@ export class CellInteractionController<T> {
             // A press is recorded and ended in the CAPTURE phase, so a consumer cell or an inner widget that stops propagation can neither hide a press
             // (no focus, no offer) nor leave one open for ever. The start is on the table's root (own events only: a nested table records its own); the
             // end is closed by POINTER ID on the document, wherever the pointer is released (outside, over a nested table, on this table's own cells).
-            disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, (event: PointerEvent) => this.onPointerDown(event)), true),
-            // A press outside the table: read from the composed path (the target is retargeted when the table sits in another component's shadow root).
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => this.targetOf(event) === null && (this.within = false), true),
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.onRelease(event), true),
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.onRelease(event), true),
+            disposables.listen<PointerEvent>(root, 'pointerdown', (event) => this.onRootDown(event), true),
+            // A release the table's root hears (on its own cells, over a nested table, or by a captured pointer) is handled by the root, in the capture
+            // phase: it sees the table's own nodes even inside a closed shadow root, and a consumer's stopPropagation cannot hide it.
+            disposables.listen<PointerEvent>(root, 'pointerup', (event) => this.onRelease(event), true),
+            disposables.listen<PointerEvent>(root, 'pointercancel', (event) => this.onRelease(event), true),
+            // The document hears every event FIRST (before the root's capture listener) and cannot tell, for a table in a closed shadow root, whether the
+            // root will hear it: so it only schedules a look after the dispatch, at what the root left open (a release or a press OUTSIDE the table).
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => this.afterDispatch(() => !this.heardDown.has(event) && (this.within = false)), true),
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.closeUnheard(event), true),
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.closeUnheard(event), true),
             // The window lost focus (alt-tab, a release over an iframe never heard): no pointer is down any more.
             disposables.listen(root.ownerDocument.defaultView ?? window, 'blur', () => {
                 this.within = false;
@@ -411,6 +428,11 @@ export class CellInteractionController<T> {
      * range from it). A session that claims it (returns true) moves the focus itself; otherwise the controller focuses the pressed cell, except
      * for a press inside the open editor's cell, which never moves focus (an editor may be a custom element the tag list below does not know).
      */
+    private onRootDown(event: PointerEvent): void {
+        this.heardDown.add(event);
+        if (ownsTarget(this.host.root, event.target)) this.onPointerDown(event); // a nested table records its own presses
+    }
+
     private onPointerDown(event: PointerEvent): void {
         this.pointer = true;
         // The anchor is read BEFORE the offer: a claimant that moves the focus in its onPointerDown must not change the anchor of its own press.
@@ -423,7 +445,7 @@ export class CellInteractionController<T> {
         }
         const target = this.targetOf(event);
         const claimedBy = this.offer(event, target, (session) => session.onPointerDown, anchor);
-        this.presses.set(event.pointerId, { anchor, claimedBy: claimedBy ?? null });
+        this.presses.set(event.pointerId, { anchor, claimedBy: claimedBy ?? null, pressed: target });
         if (claimedBy) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (event.button === 0 && event.pointerType !== 'touch' && target && !this.insideOpenEditor(event)) this.pointerFocus(target);
@@ -443,18 +465,39 @@ export class CellInteractionController<T> {
         this.pointer = this.presses.size > 0; // "a pointer is down" ends here (another finger may still be down)
         // The document's listener sees a target RETARGETED to the outermost host when this table sits in another component's shadow root: the target
         // is read from the composed path (the first node inside this table), for ownership, the cell address and the tapped cell alike.
-        const target = this.releaseTargetOf(event);
-        const own = event.type === 'pointerup' && target !== null && ownsTarget(this.host.root, target);
-        if (!own) return this.notifyCancel(press, event);
+        const where = event.type === 'pointerup' ? this.locateRelease(event) : { own: false, cell: null };
+        if (!where.own) return this.notifyCancel(press, event);
         const { anchor, claimedBy } = press;
+        const cell = where.cell;
         if (claimedBy) {
             // Every claimant gets exactly ONE end callback: its pointerup, or, when it has none, the cancel.
-            if (claimedBy.onPointerUp) this.guarded(() => claimedBy.onPointerUp?.(event, cellAddressOf(target), { anchor }));
+            if (claimedBy.onPointerUp) this.guarded(() => claimedBy.onPointerUp?.(event, cellAddressOf(cell), { anchor }));
             else this.notifyCancel(press, event);
             return;
         }
-        if (this.offer(event, target, (session) => session.onPointerUp, anchor)) return;
-        if (event.pointerType === 'touch' && !this.insideOpenEditor(event)) this.pointerFocus(target);
+        if (this.offer(event, cell, (session) => session.onPointerUp, anchor)) return;
+        const tapped = cell ?? press.pressed; // the cell under the finger, else the one that was pressed
+        if (event.pointerType === 'touch' && tapped && !this.insideOpenEditor(event)) this.pointerFocus(tapped);
+    }
+
+    /** Runs `task` after the event that scheduled it has been dispatched to every listener (the document's capture listener runs before the root's). */
+    private afterDispatch(task: () => void): void {
+        this.host.disposables.timeout(task, 0);
+    }
+
+    /**
+     * The document heard a release or cancel of a recorded press. If the root hears it too (the release is on this table, or over a nested one) the
+     * root has closed the press by the time the check runs; what is still open then was released OUTSIDE the table and is cancelled for its claimant.
+     */
+    private closeUnheard(event: PointerEvent): void {
+        const press = this.presses.get(event.pointerId);
+        if (!press) return;
+        this.afterDispatch(() => {
+            if (this.presses.get(event.pointerId) !== press) return;
+            this.presses.delete(event.pointerId);
+            this.pointer = this.presses.size > 0;
+            this.notifyCancel(press, event);
+        });
     }
 
     /** The event's composed path runs through the cell that holds the open editor (also through a shadow root, where the target is retargeted to the host). */
@@ -479,19 +522,32 @@ export class CellInteractionController<T> {
     }
 
     /**
-     * Where a pointer was RELEASED, in the tree of this table's own cells, or null outside the table. A touch (and any captured pointer: the pointer
-     * capture a gesture sets, or the implicit capture of a touch) delivers its pointerup to the element that was PRESSED, whatever is under the finger
-     * now, so for those the element under the release point is found by a hit test (`elementFromPoint` of the table's own root node: the document, or
-     * the shadow root the table sits in) and kept only when it is inside this table. A mouse without capture releases on the element it is over.
+     * Where a pointer was released, as the root hears it: whether it is on THIS table, and the cell under it. A mouse without capture releases on the
+     * element it is over: the first element of the root-local composed path. A touch (implicit capture) and any captured pointer (a gesture's
+     * `setPointerCapture`, read on the node that holds it: the first node of the path, not the retargeted `event.target`) deliver the pointerup to
+     * the element that was PRESSED, so for those the point is hit-tested (`elementsFromPoint` on the table's own root node): the table's overlays
+     * (`OVERLAYS`: the range readout, the fill handle, drop edges, anything marked `data-pointer-transparent`) are looked through to the first CELL
+     * under them; an element of a nested table, or one outside the table that is on top, makes it not this table's release.
      */
-    private releaseTargetOf(event: PointerEvent): Element | null {
-        const pressed = event.target as Element | null;
-        const captured = event.pointerType !== 'mouse' || (pressed?.hasPointerCapture?.(event.pointerId) ?? false);
-        if (!captured) return this.targetOf(event);
-        const tree = this.host.root.getRootNode();
-        const scope = tree instanceof ShadowRoot ? tree : this.host.root.ownerDocument;
-        const hit = scope.elementFromPoint(event.clientX, event.clientY);
-        return hit !== null && composedContains(this.host.root, hit) ? hit : null;
+    private locateRelease(event: PointerEvent): { own: boolean; cell: Element | null } {
+        const { root } = this.host;
+        const holder = event.composedPath()[0] as Element | undefined;
+        const captured = event.pointerType !== 'mouse' || (holder?.hasPointerCapture?.(event.pointerId) ?? false);
+        if (!captured) {
+            const target = this.targetOf(event);
+            return { own: target !== null && ownsTarget(root, target), cell: target };
+        }
+        const tree = root.getRootNode();
+        const scope = tree instanceof ShadowRoot ? tree : root.ownerDocument;
+        let sawOwn = false;
+        for (const el of scope.elementsFromPoint(event.clientX, event.clientY)) {
+            if (!composedContains(root, el)) break; // something outside the table: on top of it (nothing of the table seen yet) or just below it (its ancestors)
+            if (!ownsTarget(root, el)) return { own: false, cell: null }; // a nested table
+            if (el.closest(OVERLAYS)) continue;
+            sawOwn = true;
+            if (cellAddressOf(el)) return { own: true, cell: el };
+        }
+        return { own: sawOwn, cell: null };
     }
 
     /**
