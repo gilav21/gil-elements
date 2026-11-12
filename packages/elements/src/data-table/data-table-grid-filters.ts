@@ -5,9 +5,10 @@
  * with the extra members of `FilterUiService`, which this view asks for. A `filters` provider of the plain `FilterService` shape
  * (a stub) draws no trigger and no row.
  */
-import { html, nothing, svg, type TemplateResult } from 'lit';
+import { html, nothing, type TemplateResult } from 'lit';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
+import { filterIcon } from './data-table-filter-controller.js';
 import { filterInputsOf } from './data-table-filters.js';
 import { columnParts, columnSpacer } from './data-table-grid-window.js';
 import { requireProvider } from './data-table-host.js';
@@ -49,12 +50,6 @@ export interface FilterUiService<T> extends FilterService<T> {
 /** The step 0 view: no trigger, no floating row. A constant, so a render with nothing to filter allocates no view. */
 const NO_FILTERS: FiltersView<unknown> = Object.freeze({ trigger: () => nothing, row: () => nothing, rows: 0 });
 
-const FILTER_GLYPH = svg`<path d="M3 5h18l-7 8.5V20l-4-2v-4.5z" />`;
-
-/** The `filter` glyph of `ge-icon` inline; `solid` is its filled weight (fill, no stroke), the "filter applied" state. */
-export const filterIcon = (px: number, solid = false): TemplateResult =>
-    html`<span data-slot="dt-icon"><svg xmlns="http://www.w3.org/2000/svg" width=${px} height=${px} viewBox="0 0 24 24" fill=${solid ? 'currentColor' : 'none'} stroke=${solid ? 'none' : 'currentColor'} stroke-width=${solid ? '0' : '2'} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FILTER_GLYPH}</svg></span>`;
-
 const isUiService = <T>(service: FilterService<T> | undefined): service is FilterUiService<T> => typeof (service as Partial<FilterUiService<T>> | undefined)?.panelOpen === 'function';
 
 export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
@@ -92,14 +87,14 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
     const cell = (c: EnhancedColumnDef<T>, n: number): TemplateResult => {
         const has = service.hasFloating(c);
         return html`<div data-slot="table-head" role=${has ? 'columnheader' : 'presentation'} aria-colindex=${has ? n + 1 : nothing} data-width=${c._width === 'auto' ? 'auto' : 'fixed'}
-            data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(c.accessorKey) ? specialSlotOf(c) : nothing} data-border style=${cellVarsStyle(c, n)}>${has ? control(c) : nothing}</div>`;
+            data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(c.accessorKey) ? specialSlotOf(c) : nothing} style=${cellVarsStyle(c, n)}>${has ? control(c) : nothing}</div>`;
     };
 
     const row = (): TemplateResult => {
         const columns = requireProvider(host, 'columns').enhancedColumns();
         const window: BodyWindow = host.provider('virtual')?.window() ?? { start: 0, end: 0, padStart: 0, padEnd: 0, colPadStart: 0, colPadEnd: 0, colStart: 0, colEnd: columns.length, retained: [] };
         const flexible = columns.some((c) => c._width === 'auto');
-        return html`<div data-slot="table-row" role="row" data-kind="filter" aria-rowindex="2">${columnParts(columns, window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : cell(p.column, p.n)))}${flexible ? nothing : html`<div data-slot="table-head" role="presentation" data-border></div>`}</div>`;
+        return html`<div data-slot="table-row" role="row" data-kind="filter" aria-rowindex="2">${columnParts(columns, window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : cell(p.column, p.n)))}${flexible ? nothing : html`<div data-slot="table-head" role="presentation"></div>`}</div>`; // no column borders: Angular's floating cells have none (html 763)
     };
 
     return { trigger, row, rows: 1 };

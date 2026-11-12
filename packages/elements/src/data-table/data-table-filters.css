@@ -7,18 +7,26 @@
     /* Floating filter row (758-811). The row is inside the sticky header group, so these cells never need their own offset. */
     ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] {
         padding: 0.25rem;
-        background-color: color-mix(in oklab, var(--muted) 50%, var(--background));
+        box-shadow: none; /* the header row's shadow-sm is not repeated (html 763: no shadow, no border) */
+        background-color: color-mix(in oklab, var(--muted) 50%, transparent); /* bg-muted/50: the header row's shadow shows through, as in Angular */
     }
-    ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] > ge-input {
-        display: block;
+    /* `ui-input class="h-7 text-xs"`: ge-input is display: contents, so its field part carries the height and the text size (md:text-sm stays, as tailwind-merge keeps it). */
+    ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] > ge-input::part(input) {
         height: 1.75rem;
         font-size: 0.75rem;
+        line-height: calc(1 / 0.75);
+    }
+    @media (min-width: 768px) {
+        ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] > ge-input::part(input) {
+            font-size: 0.875rem;
+            line-height: calc(1.25 / 0.875);
+        }
     }
     @media (pointer: coarse) {
         ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] {
             height: auto;
         }
-        ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] > ge-input {
+        ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] > ge-input::part(input) {
             height: 2.75rem;
         }
     }

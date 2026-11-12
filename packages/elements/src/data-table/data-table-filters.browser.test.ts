@@ -424,10 +424,11 @@ describe('F6 the floating filter row', () => {
 
     it('makes the floating input at least 44 px tall on a coarse pointer', async () => {
         const table = await mount({ columns: floatingColumns, enableFloatingFilters: true });
-        expect(Math.round(filterRow(table)!.querySelector('ge-input')!.getBoundingClientRect().height)).toBe(28);
+        const field = (): HTMLElement => shadow(filterRow(table)!.querySelector('ge-input'), 'input');
+        expect(Math.round(field().getBoundingClientRect().height)).toBe(28);
         await emulateTouch(true);
         await frames(2);
-        expect(filterRow(table)!.querySelector('ge-input')!.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
+        expect(field().getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     });
 });
 

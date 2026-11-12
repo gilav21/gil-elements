@@ -1,11 +1,17 @@
-import { html, nothing, type TemplateResult } from 'lit';
+import { html, nothing, svg, type TemplateResult } from 'lit';
 import { builderColumns, emptyGroup, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
-import { filterIcon, type FilterUiService } from './data-table-grid-filters.js';
+import type { FilterUiService } from './data-table-grid-filters.js';
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
 import { countConditions } from './data-table-query.js';
 import { EN_FILTER_BUILDER_LABELS, interpolate } from './data-table.locales.js';
 import type { ColumnDef, ComponentOutputs, FilterGroup } from './data-table.types.js';
+
+const FILTER_GLYPH = svg`<path d="M3 5h18l-7 8.5V20l-4-2v-4.5z" />`;
+
+/** The `filter` glyph of `ge-icon` inline (the header trigger and the toolbar trigger); `solid` is its filled weight (fill, no stroke), the "filter applied" state. */
+export const filterIcon = (px: number, solid = false): TemplateResult =>
+    html`<span data-slot="dt-icon"><svg xmlns="http://www.w3.org/2000/svg" width=${px} height=${px} viewBox="0 0 24 24" fill=${solid ? 'currentColor' : 'none'} stroke=${solid ? 'none' : 'currentColor'} stroke-width=${solid ? '0' : '2'} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FILTER_GLYPH}</svg></span>`;
 
 /** How long the result announcement of a column or advanced filter waits for the edits to settle (D7). */
 export const FILTER_UI_ANNOUNCE_MS = 500;
