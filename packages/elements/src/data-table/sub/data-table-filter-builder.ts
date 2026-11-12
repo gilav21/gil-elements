@@ -4,7 +4,7 @@ import { chromeIcon } from '../data-table-icons.js';
 import { UiElement } from '@gilav21/elements-base';
 import '../../button/define.js';
 import { stringifyValue } from '../data-table.utils.js';
-import { addCondition, addGroup, EMPTY_GROUP, type FilterBuilderColumn, needsValue, OPERATOR_ORDER, patchCondition, removeRule, setCombinator, updateRule } from '../data-table-filters.js';
+import { addCondition, addGroup, EMPTY_GROUP, type FilterBuilderColumn, needsValue, OPERATOR_ORDER, patchCondition, removeRule, sameStructure, setCombinator, updateRule } from '../data-table-filters.js';
 import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels } from '../data-table.locales.js';
 import type { FilterCondition, FilterGroup, FilterOperator } from '../data-table.types.js';
 import css from './data-table-filter-builder.css?inline';
@@ -149,7 +149,9 @@ export class GeDataTableFilterBuilder extends UiElement {
     }
 
     private emit(group: FilterGroup): void {
-        if (group === this.group) return; // a patch of a slot that holds a group changes nothing (Angular emits nothing); also an edit that changed nothing
+        // An edit that changed nothing emits nothing: a patch of a slot that holds a group (Angular emits nothing), and a new tree STRUCTURALLY equal to
+        // the current one (a value typed then erased within the debounce).
+        if (sameStructure(group, this.group)) return;
         this.lastEmitted = group;
         this.dispatchEvent(new CustomEvent<FilterGroup>('group-change', { detail: group }));
     }

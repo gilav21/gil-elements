@@ -1195,6 +1195,21 @@ describe('F7 the advanced filter builder', () => {
         });
     });
 
+    it('a value typed and erased within the debounce emits no group-change (round 15)', async () => {
+        const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'A' }] };
+        const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 200 });
+        const trees = record(table, 'advanced-filter-change');
+        await openBuilder(table);
+        const input = inner(table, 'input.value')[0]!;
+        await typeText(input, 'l');
+        await press('{Backspace}');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await settle(table);
+        expect(trees).toHaveLength(0);
+        expect(table.advancedFilter).toBe(group);
+        await closePopover(table);
+    });
+
     it('debounces a typed value with filterDebounce (other edits are never delayed)', async () => {
         const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: '' }] };
         const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 300 });
