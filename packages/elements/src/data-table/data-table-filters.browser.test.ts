@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { axTree, bodyRows, cellAt, headCell, mountTable, q, qa, settle } from './data-table-fixtures.js';
 import { dateFilterFn, dateRangeFilterFn, multiselectFilterFn } from './data-table-filters.js';
-import { emulateTouch, frames, openPopover, parkMouse, press, typeText, whenDefined, withRtl, withTheme } from './data-table-input-fixtures.js';
+import { emulateTouch, frames, mouseDrag, openPopover, parkMouse, press, touchLongPressDrag, typeText, whenDefined, withRtl, withTheme } from './data-table-input-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 import { DATA_TABLE_LOCALES } from './data-table.locales.js';
 import type { ColumnDef, DataTableDateRange, FilterGroup } from './data-table.types.js';
@@ -233,6 +233,56 @@ describe('F3 the date-range panel', () => {
         expect(table.columnFilters['day']).toBe(range);
         expect(names(table)).toEqual(['Alice']);
         await closePopover(table);
+    });
+});
+
+describe('a press inside an open header panel never drags its column (round 5)', () => {
+    /** A point at `fraction` of a header's width, mid-height: where a column drag drops (as the column tests aim). */
+    const inHead = (table: Element, key: string, fraction: number): { x: number; y: number } => {
+        const rect = headCell(table, key).getBoundingClientRect();
+        return { x: rect.left + rect.width * fraction, y: rect.top + rect.height / 2 };
+    };
+    const mountWide = (): Promise<Table> =>
+        mountTable<Row>({ columns: [nameColumn, roleColumn, dateColumn], data: ROWS, enableColumnReorder: true, showPagination: false }, {}, { width: 900, height: 500 }) as Promise<Table>;
+
+    it('(control) a mouse drag from the header itself does reorder', async () => {
+        const table = await mountWide();
+        await mouseDrag(inHead(table, 'day', 0.3), inHead(table, 'name', 0.2));
+        await settle(table);
+        expect(table.columnOrder[0]).toBe('day');
+    });
+
+    /** A point on the panel's own padding (not on a control: the calendar and the command list are value controls the drag already skips). */
+    const onPanelPadding = (table: Element): { x: number; y: number } => {
+        const rect = q(table, '[data-slot="data-table-filter-panel"]').getBoundingClientRect();
+        return { x: rect.left + 3, y: rect.top + 3 };
+    };
+
+    it('a mouse drag from a calendar day, or from the panel padding, does not reorder', async () => {
+        const table = await mountWide();
+        const panel = await openPanel(table, 'day', 'ge-data-table-date-filter');
+        await mouseDrag(calendarDay(panel, 10), inHead(table, 'name', 0.2));
+        await settle(table);
+        expect(table.columnOrder).toEqual([]);
+        const again = await openPanel(table, 'day', 'ge-data-table-date-filter');
+        void again;
+        await mouseDrag(onPanelPadding(table), inHead(table, 'name', 0.2));
+        await settle(table);
+        expect(table.columnOrder).toEqual([]);
+    });
+
+    it('a touch long press and drag in the panel does not reorder', async () => {
+        const table = await mountWide();
+        const panel = await openPanel(table, 'day', 'ge-data-table-date-filter');
+        await emulateTouch(true);
+        try {
+            void panel;
+            await touchLongPressDrag(onPanelPadding(table), inHead(table, 'name', 0.2));
+            await settle(table);
+            expect(table.columnOrder).toEqual([]);
+        } finally {
+            await emulateTouch(false);
+        }
     });
 });
 

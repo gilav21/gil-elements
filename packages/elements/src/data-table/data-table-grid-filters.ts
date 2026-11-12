@@ -69,10 +69,12 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
         const active = service.isActive(key);
         const open = service.panelOpen(key);
         const prefetch = (): void => service.prefetch(c);
+        // The panel sits inside the head cell (DOM-wise): `data-table-keeps-focus` makes every press in it the panel's own, so the column drag
+        // (its OWN_PRESS already matches the attribute) never starts from a panel, whatever controls a consumer's panel holds.
         return html`<ge-popover close-on-scroll @open-change=${service.onPanelToggle(key)}>
             <ge-popover-trigger><button type="button" data-slot="data-table-filter-trigger" ?data-active=${active} aria-label=${interpolate(active ? locale.filterColumnActive : locale.filterColumn, { column: c.header })}
                 @pointerenter=${prefetch} @focus=${prefetch}>${chromeIcon('filter', 'sm', undefined, active)}</button></ge-popover-trigger>
-            <ge-popover-content data-slot="data-table-filter-panel" strategy="fixed" align="end">${open && c.filterComponent ? componentCell(c.filterComponent, service.panelInputs(c), service.panelOutputs(c)) : nothing}</ge-popover-content>
+            <ge-popover-content data-slot="data-table-filter-panel" data-table-keeps-focus strategy="fixed" align="end">${open && c.filterComponent ? componentCell(c.filterComponent, service.panelInputs(c), service.panelOutputs(c)) : nothing}</ge-popover-content>
         </ge-popover>`;
     };
 
