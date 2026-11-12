@@ -153,8 +153,8 @@ describe('reconcileEditor: the editor follows its row (Angular spec 3452-3606)',
         expect(reconcileEditor(at, 'o5', rows('o1', 'o2'), getId)).toEqual({ kind: 'drop' });
     });
 
-    it('changes nothing while no row is drawn (loading, a server page in flight)', () => {
-        expect(reconcileEditor(at, 'o5', [], getId)).toEqual({ kind: 'keep' });
+    it('drops it when no row is drawn at all: there is nothing to edit into (round 5)', () => {
+        expect(reconcileEditor(at, 'o5', [], getId)).toEqual({ kind: 'drop' });
     });
 
     it('compares ids as strings: getRowId may answer numbers', () => {
@@ -219,7 +219,7 @@ describe('textDraftFor: a text editor on a number cell (round 4)', () => {
     it('gives a number for text that reads as a finite number, trimmed', () => {
         expect(textDraftFor('42', 7)).toBe(42);
         expect(textDraftFor(' -3.5 ', 7)).toBe(-3.5);
-        expect(textDraftFor('1e3', 7)).toBe(1000);
+        expect(textDraftFor('+5', 7)).toBe(5);
     });
 
     it('keeps any other text a string', () => {
@@ -227,6 +227,11 @@ describe('textDraftFor: a text editor on a number cell (round 4)', () => {
         expect(textDraftFor('  ', 7)).toBe('  ');
         expect(textDraftFor('12abc', 7)).toBe('12abc');
         expect(textDraftFor('Infinity', 7)).toBe('Infinity');
+        // Plain decimal text only (round 5): no hex, no exponent, no locale separators, no bare dot forms.
+        expect(textDraftFor('0x1A', 7)).toBe('0x1A');
+        expect(textDraftFor('1e3', 7)).toBe('1e3');
+        expect(textDraftFor('1,5', 7)).toBe('1,5');
+        expect(textDraftFor('.5', 7)).toBe('.5');
     });
 
     it('leaves the text alone for a cell that did not hold a number', () => {
@@ -305,5 +310,15 @@ describe('historyKey (Angular spec 6974-7010)', () => {
         expect(key('z', { ctrlKey: true, altKey: true })).toBeNull();
         expect(key('y', { ctrlKey: true, shiftKey: true })).toBeNull();
         expect(key('End', { ctrlKey: true })).toBeNull();
+    });
+
+    it('on a non-Latin layout the physical key decides: KeyZ undoes, KeyY redoes (round 5)', () => {
+        const base = { ctrlKey: true, metaKey: false, shiftKey: false, altKey: false };
+        expect(historyKey({ ...base, key: 'ז', code: 'KeyZ' })).toBe('undo');
+        expect(historyKey({ ...base, key: 'ז', code: 'KeyZ', shiftKey: true })).toBe('redo');
+        expect(historyKey({ ...base, key: 'ט', code: 'KeyY' })).toBe('redo');
+        expect(historyKey({ ...base, key: 'ש', code: 'KeyA' })).toBeNull();
+        // A Latin key wins over its position (an AZERTY or Dvorak layout puts z elsewhere).
+        expect(historyKey({ ...base, key: 'w', code: 'KeyZ' })).toBeNull();
     });
 });

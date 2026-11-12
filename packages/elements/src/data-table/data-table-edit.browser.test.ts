@@ -918,6 +918,21 @@ describe('review round 2', () => {
         expect(input.value).toBe('fooz');
     });
 
+    it('closes the editor, writing nothing, when no row is drawn any more (round 5)', async () => {
+        const table = await mount();
+        const edits = record(table, 'cell-edit');
+        await startEditingAt(table, 0, 'name');
+        await userEvent.type(openEditor(table)!, 'x');
+        table.data = [];
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        expect(edits).toHaveLength(0);
+        table.data = ROWS.map((r) => ({ ...r }));
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        expect(openEditor(table)).toBeNull();
+    });
+
     it('a text editor on a number cell commits a number for numeric text, the text otherwise (round 4)', async () => {
         const values: unknown[] = [];
         const table = await mount({ columns: editColumns({ age: { editType: 'text', valueSetter: (row, v) => (values.push(v), { ...row, age: v as number }) } }) });

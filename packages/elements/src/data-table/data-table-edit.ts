@@ -96,16 +96,18 @@ export function coerceDraft(kind: EditKind, raw: unknown, options?: readonly { r
 }
 
 /**
- * The draft of a TEXT editor on a cell that held a number: the text as a number when it reads as a finite one (trimmed, `' 42 '` is 42), so a
+ * The draft of a TEXT editor on a cell that held a number: the text as a number when it is a plain decimal (trimmed, `' 42 '` is 42), so a
  * numeric column stays numeric and retyping the same number is "unchanged"; any other text stays a string (the validator decides). A cell that
  * did not hold a number gets the text as typed.
  */
 export function textDraftFor(raw: string, original: unknown): unknown {
     if (typeof original !== 'number') return raw;
     const trimmed = raw.trim();
-    const n = Number(trimmed);
-    return trimmed !== '' && Number.isFinite(n) ? n : raw;
+    // Plain decimal text only (locale-neutral): `0x1A`, `1e3`, `Infinity` or `1,5` stay text for the validator to judge.
+    return PLAIN_DECIMAL.test(trimmed) ? Number(trimmed) : raw;
 }
+
+const PLAIN_DECIMAL = /^[+-]?\d+(\.\d+)?$/;
 
 /** The index of the option that holds `value` (the select draws it selected), -1 for none. Strict first, then by string, as a native select compares. */
 export function optionIndexOf(options: readonly { readonly value: unknown }[], value: unknown): number {
@@ -150,10 +152,12 @@ export type EditorReconcile = { kind: 'keep' } | { kind: 'move'; rowIndex: numbe
 /**
  * The editor follows ITS row (by id, compared as strings) rather than the index it was opened at (Angular `keepEditorOnItsRow`, cmp 2994):
  * a row still at its index keeps it, a row drawn elsewhere moves it, a row that left the drawn list drops it (silently: its draft is not
- * written into whatever row now sits there). An empty list (loading, a server page in flight) changes nothing.
+ * written into whatever row now sits there). An empty list drops it too: there is no row to edit into.
  */
 export function reconcileEditor<T>(at: EditingCell, rowId: string, rows: readonly T[], getId: (row: T) => string): EditorReconcile {
-    if (rows.length === 0) return { kind: 'keep' };
+    // No row is drawn (the data emptied, every group collapsed, a page in flight): there is nothing to edit into, so the editor closes, like a row
+    // that left the drawn list (Angular cancels such a commit too, spec 3503).
+    if (rows.length === 0) return { kind: 'drop' };
     const here = rows[at.rowIndex];
     if (here !== undefined && String(getId(here)) === rowId) return { kind: 'keep' };
     const moved = rows.findIndex((row) => String(getId(row)) === rowId);
@@ -195,11 +199,13 @@ export function createDoubleTap(delay = 300, slop = 10): DoubleTap {
 
 /**
  * The history key of a keydown (Angular cmp 4440-4460): Ctrl/Cmd+Z undoes, Ctrl/Cmd+Y and Ctrl/Cmd+Shift+Z redo. Alt, a plain `z` and any
- * other key are not history keys. Matched on `key`, case-insensitively (Shift makes it `Z`).
+ * other key are not history keys. Matched on `key`, case-insensitively (Shift makes it `Z`); on a non-Latin layout (`key` is `ז`, `я`) the
+ * physical key decides (`code` `KeyZ` / `KeyY`), as the platform's own undo does.
  */
-export function historyKey(event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'>): 'undo' | 'redo' | null {
+export function historyKey(event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'> & { code?: string }): 'undo' | 'redo' | null {
     if (!(event.ctrlKey || event.metaKey) || event.altKey) return null;
-    const key = event.key.toLowerCase();
+    const latin = /^[a-z]$/i.test(event.key);
+    const key = latin ? event.key.toLowerCase() : event.code === 'KeyZ' ? 'z' : event.code === 'KeyY' ? 'y' : '';
     if (key === 'z') return event.shiftKey ? 'redo' : 'undo';
     if (key === 'y' && !event.shiftKey) return 'redo';
     return null;
