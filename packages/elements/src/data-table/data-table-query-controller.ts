@@ -3,10 +3,12 @@ import { interpolate } from './data-table.locales.js';
 import type { QueryService } from './data-table-providers.js';
 import {
     activeSorts,
+    changeAdvancedFilterOf,
     createQueryPipeline,
     memoLast,
     nextSortChain,
     pagesLocally,
+    resetPageOf,
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
@@ -190,11 +192,7 @@ export class QueryController<T> {
     }
 
     private resetPage(): void {
-        const page = this.host.model.get('paginationState');
-        if (page.pageIndex === 0) return;
-        const next = { ...page, pageIndex: 0 };
-        this.host.model.set('paginationState', next);
-        this.host.emit('page-change', next);
+        resetPageOf(this.host.model, (page) => this.host.emit('page-change', page));
     }
 
     private applyGlobalFilter(value: string): void {
@@ -285,15 +283,7 @@ export class QueryController<T> {
         // wave 5, package A (filters) implements the column filter and the count; joint step 0 leaves them inert. They are the only part of this file wave 5
         // edits. The ADVANCED filter is real already (the `advancedFilter` model key filters the rows): wave 5 A builds on it (announcement, builder UI).
         changeColumnFilter: () => undefined,
-        changeAdvancedFilter: (group) => {
-            const { model } = this.host;
-            if ((model.get('advancedFilter') ?? null) === (group ?? null)) return;
-            // Like `applyGlobalFilter`: the model change and the page reset in ONE batch, so `page-change` fires before the model's `advanced-filter-change`.
-            model.batch(() => {
-                model.set('advancedFilter', group);
-                this.resetPage();
-            });
-        },
+        changeAdvancedFilter: (group) => changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group),
         filteredCount: () => undefined,
     };
 

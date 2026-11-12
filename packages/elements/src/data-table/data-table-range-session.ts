@@ -159,7 +159,6 @@ export class RangeSession<T> implements CellSession {
         return rangeModeOn(this.context.host.config);
     }
 
-
     attach(): void {}
 
     /** The lifecycle: the value maintenance, then the lazy part follows the mode. A FAILED session no longer gets this (it only runs `keepValue`). */

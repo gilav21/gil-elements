@@ -16,7 +16,7 @@ import { neutralRowDrag } from './data-table-row-drag-controller.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
 import type { ClipboardResult, DataTableConfig, DataTableProviders, RowDragService } from './data-table-providers.js';
-import { memoLast } from './data-table-query.js';
+import { changeAdvancedFilterOf, memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
 import { buildView, type DataTableViewHost } from './data-table-view.js';
 import { type DataTableLocale, dataTableLocaleVersion, interpolate, onDataTableLocaleChange, resolveDataTableLocale } from './data-table.locales.js';
@@ -535,18 +535,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // directly (a no-op when there is no filter), so it is cleared when the table attaches.
         const query = this.provider('query');
         if (query) query.changeAdvancedFilter(null);
-        else {
-            if ((this.model.get('advancedFilter') ?? null) === null) return;
-            const page = this.model.get('paginationState');
-            this.model.batch(() => {
-                if (page.pageIndex !== 0) {
-                    const next = { ...page, pageIndex: 0 };
-                    this.model.set('paginationState', next);
-                    this.emit('page-change', next); // before the model's advanced-filter-change, like the attached order
-                }
-                this.model.set('advancedFilter', null);
-            });
-        }
+        else changeAdvancedFilterOf(this.model, (page) => this.emit('page-change', page), null);
     }
 
     // ---- range, fill, clipboard and row drag (wave 6) ---------------------------------------------------------

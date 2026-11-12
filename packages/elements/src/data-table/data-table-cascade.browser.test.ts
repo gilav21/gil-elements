@@ -20,6 +20,31 @@ describe('the stylesheet cascade after the region files were spliced in', () => 
         expect(style.outlineWidth).toBe('2px');
     });
 
+    it('a pinned cell in the range or the fill preview stays opaque (the tint is mixed over its own background), also on a hovered or selected row', async () => {
+        const table = await mountTable({
+            columns: [
+                { accessorKey: 'id', header: 'Id', width: '100px', pin: 'left' },
+                { accessorKey: 'name', header: 'Name', width: '200px' },
+            ],
+            enableRowSelection: true,
+        });
+        // The computed colour is in whatever space the browser keeps (rgb, oklab, color(srgb)): the alpha is the number after a slash, none means opaque.
+        const alpha = (cell: HTMLElement): number => {
+            const match = /\/\s*([\d.]+)(%?)\s*\)/.exec(getComputedStyle(cell).backgroundColor);
+            return match ? Number(match[1]) / (match[2] ? 100 : 1) : 1;
+        };
+        const pinned = cellAt(table, 1, 'id')!;
+        expect(pinned.hasAttribute('data-pinned')).toBe(true);
+        for (const mark of ['data-in-range', 'data-fill-preview']) {
+            pinned.setAttribute(mark, '');
+            expect(alpha(pinned), mark).toBe(1);
+            pinned.removeAttribute(mark);
+        }
+        const plain = cellAt(table, 1, 'name')!;
+        plain.setAttribute('data-in-range', ''); // an unpinned cell keeps the see-through tint (the row colour shows)
+        expect(alpha(plain)).toBeLessThan(1);
+    });
+
     it('a row that is retained AND draggable stays out of flow (position: absolute): the drag rule does not beat the window rule', async () => {
         const table = await mountTable();
         const row = bodyRows(table)[0]!;

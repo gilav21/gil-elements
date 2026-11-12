@@ -53,8 +53,9 @@ const CONTROLS = `${NATIVE_CONTROLS.join(", ")}, [role="checkbox"], ${INTERACTIV
 const CELL = '[data-slot="table-cell"]';
 /** A touch press with no pointer event for this long is taken as lost (its release was swallowed). */
 const STALE_TOUCH_MS = 2000;
-/** A viewport focus within this long of a press's last pointer event is that press's own (a real press focuses the viewport at its pointerdown, within the same event). */
+/** The message every session failure is reported under (`reportOncePer` / `report`). */
 const SESSION_THREW = '[ge-data-table] a session threw:';
+/** A viewport focus within this long of a press's last pointer event, or of its end, is that press's own (a real press focuses the viewport at its pointerdown, a touch tap just after its pointerup). */
 const FRESH_PRESS_MS = 500;
 /** A pointer event that carries a position: a synthetic one (`new PointerEvent('pointerdown')`, testing-library's fireEvent) has none (all zero), and its point says nothing about where it landed. */
 const hasPosition = (event: PointerEvent): boolean => event.clientX !== 0 || event.clientY !== 0 || event.screenX !== 0 || event.screenY !== 0;
@@ -114,6 +115,8 @@ export class CellInteractionController<T> {
     private readonly presses = new Map<number, Press>();
     /** Removes the document listeners of `watchPresses`: set while a press is open. */
     private unwatchPresses: (() => void) | null = null;
+    /** The `timeStamp` of the last event that ended a TOUCH press: a viewport focus right after it is that tap's own. */
+    private lastPressEnd = -Infinity;
     /** The tap the capture listener decided on, for the bubble listener of the SAME event (by identity); dropped when used, at the next pointerdown and at detach. */
     private tapPending: { event: PointerEvent; press: Press } | null = null;
     /** The pointerup / pointercancel the document saw for a press the root did not hear, until the deferred close handles it (the same pointer may press again first). */
@@ -165,7 +168,6 @@ export class CellInteractionController<T> {
         }
         this.service = service as unknown as CellInteractionService;
     }
-
 
     attach(): void {
         this.attachment++;
@@ -480,7 +482,6 @@ export class CellInteractionController<T> {
         return !active || active === active.ownerDocument.body || active === active.ownerDocument.documentElement;
     }
 
-
     /** A render can remove or move the focused element (a sort, a row leaving the window): DOM focus then falls to the page. */
     private watchDom(): void {
         const viewport = this.host.root.querySelector(VIEWPORT);
@@ -513,7 +514,7 @@ export class CellInteractionController<T> {
         if (event.relatedTarget instanceof Node && !this.host.root.contains(event.relatedTarget)) this.within = false;
     }
 
-/**
+    /**
      * While a press is open (and only then) the document's moves and keys are watched, so no listener costs anything while nothing is pressed. A press whose
      * release was swallowed (a window-level capture listener) is closed by the next move of its mouse or pen with no button down (such a pointer is not
      * pressing any more); a moving press stays fresh. A key closes the stale presses (`closeStale`) but never a held one (a Shift during a drag).
@@ -542,6 +543,7 @@ export class CellInteractionController<T> {
         this.closeStale(now);
         // A FRESH press (some pointer event within FRESH_PRESS_MS): the focus it causes on the viewport is not a Tab arrival. An older one is a press whose release
         // was lost (swallowed, and no move since): the Tab arrives.
+        if (now - this.lastPressEnd <= FRESH_PRESS_MS) return; // a touch tap: the browser focuses the viewport just AFTER the pointerup that ended the press (pre-existing bug on main: the focus jumped to the first cell)
         for (const press of this.presses.values()) if (now - press.seen <= FRESH_PRESS_MS) return;
         const keys = requireProvider(this.host, 'columns').focusableKeys();
         const first = keys[0];
@@ -719,8 +721,9 @@ export class CellInteractionController<T> {
         // Still a tap: within the pressed DATA cell's box plus the slop (the shared touch slop). Anything else (the stretch / spacer cell, a full-width
         // or group cell, a header, the body outside any cell) is measured from where the press went down: such a box spans the row, and would make any
         // drag along it a tap.
-        const cell = this.addressOf(pressed) ? this.cellOf(pressed) : null;
-        const near = cell ? inside(cell.getBoundingClientRect(), event.clientX, event.clientY, TOUCH_SLOP_PX) : withinTouchSlop(event.clientX - press.x, event.clientY - press.y);
+        const owned = this.cellOf(pressed);
+        const cell = owned && cellAddressOf(owned) ? owned : null; // a cell that has an address: not the stretch / spacer cell
+        const near = !hasPosition(event) || (cell ? inside(cell.getBoundingClientRect(), event.clientX, event.clientY, TOUCH_SLOP_PX) : withinTouchSlop(event.clientX - press.x, event.clientY - press.y));
         if (near && !this.insideOpenEditor(pressed)) this.pointerFocus(pressed);
     }
 
@@ -756,6 +759,7 @@ export class CellInteractionController<T> {
      */
     private endPress(pointerId: number, press: Press, event: PointerEvent | null, notify = true): void {
         this.presses.delete(pointerId);
+        if (event && press.touch) this.lastPressEnd = event.timeStamp; // a mouse or pen focuses the viewport at its pointerdown, not after the release
         if (this.presses.size === 0) this.unwatchPresses?.(), (this.unwatchPresses = null);
         this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed
@@ -819,9 +823,11 @@ export class CellInteractionController<T> {
         const { root } = this.host;
         const target = this.targetOf(path);
         // An uncaptured mouse released over one of the table's overlays is looked through too, exactly as a touch at the same point is.
-        const lookThrough = event.pointerType !== 'mouse' || this.captured.has(event.pointerId) || (target !== null && this.overlayOf(target) !== null);
+        // A release with no position (a synthetic event) is not located: its root-local target decides, and nothing is measured.
+        const placed = hasPosition(event);
+        const lookThrough = placed && (event.pointerType !== 'mouse' || this.captured.has(event.pointerId) || (target !== null && this.overlayOf(target) !== null));
         // The same rule for a mouse over an element floating out of its cell as for a touch: it is not that cell.
-        if (!lookThrough) return { own: target !== null && ownsTarget(root, target), cell: target && this.floatsOut(target, event.clientX, event.clientY) ? null : target };
+        if (!lookThrough) return { own: target !== null && ownsTarget(root, target), cell: target && placed && this.floatsOut(target, event.clientX, event.clientY) ? null : target };
         return this.hitTest(event.clientX, event.clientY);
     }
 

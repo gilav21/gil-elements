@@ -1822,6 +1822,54 @@ describe('a release a window-level capture listener swallowed', () => {
     });
 });
 
+describe('the viewport focus a touch tap causes AFTER its pointerup', () => {
+    it('is the tap\'s own (no hand-off to the first cell); the same focus 1 s later (a Tab) goes to the roving cell', async () => {
+        const table = await mountTable();
+        table.focusCell(2, 'age');
+        await settle(table);
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        const cell = cellAt(table, 1, 'name')!;
+        const button = document.createElement('button');
+        cell.append(button);
+        button.dispatchEvent(pointer('pointerdown', 591, { pointerType: 'touch', over: button }));
+        button.dispatchEvent(pointer('pointerup', 591, { pointerType: 'touch', over: button })); // the press ends
+        (document.activeElement as HTMLElement).blur();
+        viewport.focus(); // what the browser does for the tap, just after the pointerup
+        await frames(2);
+        expect(document.activeElement).toBe(viewport); // not handed to a cell (it used to jump to the first / roving cell)
+        viewport.blur();
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        viewport.focus(); // a Tab, much later
+        await frames(2);
+        expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
+    });
+});
+
+describe('a release with no coordinates', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is not hit-tested: a coordinate-less touch tap on a span in a cell focuses the cell, and a claimed coordinate-less mouse press gets that cell at its release', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const span = document.createElement('span');
+        cell.append(span);
+        const bare = (type: string, pointerType: string, id: number): PointerEvent => new PointerEvent(type, { bubbles: true, composed: true, button: 0, pointerId: id, pointerType });
+        span.dispatchEvent(bare('pointerdown', 'touch', 601));
+        span.dispatchEvent(bare('pointerup', 'touch', 601));
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        table.focusCell(0, 'name');
+        await settle(table);
+        const ups: unknown[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerUp = (_event, at) => void ups.push(at);
+        span.dispatchEvent(bare('pointerdown', 'mouse', 602));
+        span.dispatchEvent(bare('pointerup', 'mouse', 602));
+        expect(ups).toEqual([{ rowIndex: 1, columnKey: 'name' }]);
+    });
+});
+
 describe('a MOUSE release that was swallowed with no move since', () => {
     it('does not make the Tab in a pointer arrival: 700 ms later the viewport focus goes to a cell; during a fresh press it does not', async () => {
         const table = await mountTable();

@@ -16,6 +16,14 @@
         outline: 1px dashed color-mix(in oklab, var(--primary) 40%, transparent);
         outline-offset: -1px;
     }
+    /* A pinned cell is opaque (it covers what scrolls under it): the tint is mixed over its own background instead of over nothing. Same specificity as
+       the hover / selected pinned rules of data-table.css, and spliced after them. */
+    ge-data-table [data-slot="table-cell"][data-pinned][data-in-range] {
+        background-color: color-mix(in oklab, var(--primary) 15%, var(--ge-dt-cell-bg));
+    }
+    ge-data-table [data-slot="table-cell"][data-pinned][data-fill-preview] {
+        background-color: color-mix(in oklab, var(--primary) 5%, var(--ge-dt-cell-bg));
+    }
     /* This region is spliced AFTER data-table-window.css, so its (0,2,1) outline would now beat the forced-colours focus ring of equal specificity there
        (on main the focus rule came later and won). The focus ring wins again, whatever the region order: one more attribute. */
     @media (forced-colors: active) {
