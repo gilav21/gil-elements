@@ -10,6 +10,9 @@ export interface EditView<T> {
     cell(column: EnhancedColumnDef<T>, row: T, rowIndex: number): unknown | undefined;
 }
 
+/** The step 0 view: nothing is edited. A constant (waves 5 B replaces the function, not this), so a render allocates no view. */
+const NO_EDIT: EditView<unknown> = Object.freeze({ cell: () => undefined });
+
 export function editView<T>(_host: DataTableViewHost<T>): EditView<T> {
-    return { cell: () => undefined };
+    return NO_EDIT as EditView<T>;
 }

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { PointerPress } from './data-table-cell-session.js';
+import { hasPosition } from './data-table-cell-interaction-controller.js';
 import { cellAt, makeColumns, makeRows, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
 import { frames, mouseDrag, parkMouse, scrollGrid } from './data-table-input-fixtures.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
@@ -806,7 +807,7 @@ describe('what a session registered before its attach threw', () => {
 });
 
 describe('a session failing in two callbacks', () => {
-    it('reports each callback once: an earlier renderOverlay failure does not hide a later keepValue failure', async () => {
+    it('reports a render-time callback once on its own key (renderOverlay), and the session failure once for hostUpdate and keepValue together', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         let failHost = false;
         const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
@@ -823,14 +824,13 @@ describe('a session failing in two callbacks', () => {
             expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toContain('overlay');
             failHost = true;
             table.requestUpdate();
-            await settle(table); // hostUpdate throws: the session is failed
-            error.mockClear();
+            await settle(table); // hostUpdate throws: the session is failed and reported
             table.requestUpdate();
-            await settle(table); // now only its keepValue runs: it fails and is reported, though renderOverlay was reported before
-            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(['keep']);
+            await settle(table); // now only its keepValue runs (and throws): the same report key as the failure, so nothing new
             table.requestUpdate();
             await settle(table);
-            expect(error).toHaveBeenCalledTimes(1); // and only once
+            expect(keep.mock.calls.length).toBeGreaterThan(0);
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(['overlay', 'host']);
         } finally {
             delete (RangeSession.prototype as unknown as { renderOverlay?: unknown }).renderOverlay;
             update.mockRestore();
@@ -2485,6 +2485,43 @@ describe('a session whose keepValue throws inside its hostUpdate', () => {
             keep.mockRestore();
             error.mockRestore();
         }
+    });
+});
+
+describe('a session whose keepValue keeps throwing after it failed in its hostUpdate', () => {
+    it('is reported ONCE across several updates (the failure and the broken loop share one report)', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const table = await mountTable({ enableCellRangeSelection: true });
+        error.mockClear();
+        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            throw new Error('hostUpdate failed');
+        });
+        const keep = vi.spyOn(RangeSession.prototype, 'keepValue').mockImplementation(() => {
+            throw new Error('keepValue failed');
+        });
+        try {
+            for (let i = 0; i < 4; i++) {
+                table.requestUpdate();
+                await settle(table);
+            }
+            expect(keep.mock.calls.length).toBeGreaterThan(1); // the broken loop did run it
+            expect(error).toHaveBeenCalledTimes(1);
+        } finally {
+            update.mockRestore();
+            keep.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
+describe('hasPosition', () => {
+    it('is false only for an UNTRUSTED event with all-zero coordinates: a real (trusted) press at (0, 0) has a position', () => {
+        const at = (isTrusted: boolean, clientX = 0, clientY = 0, screenX = 0, screenY = 0) => ({ isTrusted, clientX, clientY, screenX, screenY });
+        expect(hasPosition(at(false))).toBe(false); // new PointerEvent('pointerdown'), fireEvent
+        expect(hasPosition(at(true))).toBe(true); // a real press in the corner of the page
+        expect(hasPosition(at(false, 5))).toBe(true);
+        expect(hasPosition(at(false, 0, 0, 0, 7))).toBe(true);
+        expect(hasPosition(new PointerEvent('pointerdown'))).toBe(false); // untrusted, no position
     });
 });
 

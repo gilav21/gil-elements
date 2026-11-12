@@ -262,3 +262,11 @@ export function planPaste(grid: readonly (readonly string[])[], startRow: number
         }),
     );
 }
+
+/**
+ * THE answer to "is this cell selected" (Angular's `isCellSelected`), shared by `interaction.isCellSelected` and the cell's `aria-selected`: with a range, whether
+ * the cell is in it (`inRange`, asked only then); with none, whether it is the focused cell.
+ */
+export function cellSelectedBy(range: CellRange | null | undefined, inRange: () => boolean, focused: { rowIndex: number; columnKey: string } | null, rowIndex: number, columnKey: string): boolean {
+    return range ? inRange() : focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
+}

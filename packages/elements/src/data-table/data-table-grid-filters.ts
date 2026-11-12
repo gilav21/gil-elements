@@ -16,6 +16,9 @@ export interface FiltersView<T> {
     rows: number;
 }
 
+/** The step 0 view: no trigger, no floating row. A constant (wave 5 A replaces the function, not this), so a render allocates no view. */
+const NO_FILTERS: FiltersView<unknown> = Object.freeze({ trigger: () => nothing, row: () => nothing, rows: 0 });
+
 export function filtersView<T>(_host: DataTableViewHost<T>): FiltersView<T> {
-    return { trigger: () => nothing, row: () => nothing, rows: 0 };
+    return NO_FILTERS as FiltersView<T>;
 }

@@ -57,8 +57,9 @@ const STALE_TOUCH_MS = 2000;
 const SESSION_THREW = '[ge-data-table] a session threw:';
 /** A viewport focus within this long of a press's last pointer event, or of its end, is that press's own (a real press focuses the viewport at its pointerdown, a touch tap just after its pointerup). */
 const FRESH_PRESS_MS = 500;
-/** A pointer event that carries a position: a synthetic one (`new PointerEvent('pointerdown')`, testing-library's fireEvent) has none (all zero), and its point says nothing about where it landed. */
-const hasPosition = (event: PointerEvent): boolean => event.clientX !== 0 || event.clientY !== 0 || event.screenX !== 0 || event.screenY !== 0;
+/** A pointer event that carries a position: an UNTRUSTED one (`new PointerEvent('pointerdown')`, a test library's fireEvent) with all-zero coordinates has none, and its point says nothing about where it landed. A real (trusted) press at (0, 0) has one. */
+export const hasPosition = (event: Pick<PointerEvent, 'isTrusted' | 'clientX' | 'clientY' | 'screenX' | 'screenY'>): boolean =>
+    event.isTrusted || event.clientX !== 0 || event.clientY !== 0 || event.screenX !== 0 || event.screenY !== 0;
 /** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
 const CELL_CONTROLS = `${CONTROLS}, a, ${INTERACTIVE_ROLES.map((role) => `[role="${role}"]`).join(', ')}`;
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
@@ -231,7 +232,7 @@ export class CellInteractionController<T> {
     }
 
     /**
-     * A session failed (its `attach()` or a `hostUpdate()` threw): a bug. It is reported once, marked broken FIRST (nothing calls it again, not even
+     * A session failed (its `attach()` or a `hostUpdate()` threw): a bug. It is reported once (`reportOncePer`, key `failure`), marked broken FIRST (nothing calls it again, not even
      * for the presses it claimed, which end without telling it), detached NOW (that removes what it registered, a key handler or a listener, and disposes
      * a range session's lazy part) and left out of its LIFECYCLE (pointer, hostUpdate, overlay, detach) until the next attach. Its methods of the merged
      * `interaction` service that need its live part answer from `neutral.service` while it is broken; its VALUE (the range: `range()`, `setRange()`,
@@ -239,7 +240,7 @@ export class CellInteractionController<T> {
      * simply resumes the lifecycle.
      */
     private fail(session: CellSession, error: unknown): void {
-        this.report(error);
+        reportOncePer(session, 'failure', SESSION_THREW, error); // the same key as the broken loop's `keepValue`: a value rule that keeps throwing is the same bug, reported once
         this.broken.add(session);
         for (const [id, press] of [...this.presses]) if (press.claimedBy === session) this.endPress(id, press, null); // `notifyCancel` skips a broken claimant
         this.guarded(() => session.detach());
@@ -270,7 +271,7 @@ export class CellInteractionController<T> {
         this.reconcile();
         // A FAILED session stops its lifecycle but not its value: `keepValue` (guarded, reported once per session) keeps its value rules running. It runs BEFORE
         // the live sessions' updates, so a session that fails in THIS update (its `hostUpdate` is where its value rules threw) is not run twice nor reported twice.
-        for (const session of this.broken) this.guarded(() => session.keepValue?.(), session, 'keepValue');
+        for (const session of this.broken) this.guarded(() => session.keepValue?.(), session, 'failure');
         // A session whose `hostUpdate` throws is failed like one whose attach threw (reported once, left out from now on, withdrawn): it would throw at every
         // render. The others, and the rest of the update, still run.
         this.eachBackwards((session) => {

@@ -10,7 +10,7 @@
  *
  * The lead owns this file: a wave implements its service, not this composition.
  */
-import { rangeModeOn, rangeSelectionDrawn } from './data-table-range.js';
+import { cellSelectedBy, rangeModeOn, rangeSelectionDrawn } from './data-table-range.js';
 import type { DataTableViewHost } from './data-table-view.js';
 import type { CellFlashDirection } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
@@ -34,10 +34,12 @@ export interface RowFlags {
     readonly dropEdge?: 'top' | 'bottom' | 'on';
 }
 
-const cell = (selected: 'false' | undefined): CellFlags => Object.freeze({ inRange: false, fillPreview: false, selected, editing: false });
+const cell = (selected: 'true' | 'false' | undefined): CellFlags => Object.freeze({ inRange: false, fillPreview: false, selected, editing: false });
 export const NO_CELL_FLAGS: CellFlags = cell(undefined);
 /** In range mode a cell outside any range still says `aria-selected="false"`. */
 export const OUT_OF_RANGE_FLAGS: CellFlags = cell('false');
+/** In range mode a cell that is selected by the focus or its selected row (no range in it) says `aria-selected="true"`. */
+const SELECTED_FLAGS: CellFlags = cell('true');
 export const NO_ROW_FLAGS: RowFlags = Object.freeze({ draggable: false, dragging: false });
 export const DRAGGABLE_ROW_FLAGS: RowFlags = Object.freeze({ draggable: true, dragging: false });
 
@@ -67,6 +69,9 @@ function flashOffKeys(columns: readonly { accessorKey: unknown; enableCellFlash?
     return keys;
 }
 
+/** What `stateView` answers while nothing can be flagged (no range mode, flash, open editor, draggable rows): the renderer never calls its closures. */
+const IDLE_STATE: StateView = Object.freeze({ cellStateActive: false, rowStateActive: false, rangeSelectable: false, cellState: () => NO_CELL_FLAGS, rowState: () => NO_ROW_FLAGS });
+
 export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolean): StateView {
     const { config } = host;
     const range = host.provider('range');
@@ -88,7 +93,12 @@ export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolea
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;
     const editingAt = interaction?.editingCell?.() ?? null; // ONE answer to "which cell holds the editor": its address, the same the pointer guard (`isEditorCell`) reads
     const editingOpen = editingAt !== null;
+    // aria-selected (selection mode): THE selection predicate `interaction.isCellSelected` answers (in the range, else the focused cell), or its row is selected.
+    const rangeNow = selectionMode ? (range?.range() ?? null) : null;
+    const focusedNow = selectionMode ? (interaction?.focusedCell?.() ?? null) : null;
+    const rowSelection = selectionMode && config.enableRowSelection ? host.provider('selection') : undefined;
     const cellStateActive = rangeMode || flashable || editingOpen;
+    if (!cellStateActive && !dragOn && !selectionMode) return IDLE_STATE; // the plain grid: one shared frozen view, no closures allocated per render
     return {
         cellStateActive,
         rowStateActive: dragOn,
@@ -100,15 +110,17 @@ export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolea
             const fill = config.enableFillHandle && rangeActive && (range?.isFillPreview(rowIndex, key) ?? false);
             const flash = flashable && !flashOff.has(key) ? formatting?.flash?.(rowId, key) : undefined;
             const editing = editingAt !== null && editingAt.rowIndex === rowIndex && editingAt.columnKey === key;
+            const selected = selectionMode && (cellSelectedBy(rangeNow, () => inRange, focusedNow, rowIndex, key) || rowSelection?.isSelected(rowId) === true);
             if (!inRange && !fill && flash === undefined && !editing) {
-                return selectionMode ? OUT_OF_RANGE_FLAGS : NO_CELL_FLAGS;
+                if (!selectionMode) return NO_CELL_FLAGS;
+                return selected ? SELECTED_FLAGS : OUT_OF_RANGE_FLAGS;
             }
             return {
                 inRange,
                 rangeEdge: inRange ? range?.edgeOf(rowIndex, key) : undefined,
                 fillPreview: fill,
                 flash,
-                selected: selectionMode ? (inRange ? 'true' : 'false') : undefined,
+                selected: selectionMode ? (selected ? 'true' : 'false') : undefined,
                 editing,
             };
         },

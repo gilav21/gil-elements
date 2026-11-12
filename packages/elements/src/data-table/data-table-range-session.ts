@@ -12,7 +12,7 @@
 import type { CellSession, InteractionContext } from './data-table-cell-session.js';
 import { callPart, lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
-import { clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
+import { cellSelectedBy, clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
@@ -104,11 +104,8 @@ export class RangeSession<T> implements CellSession {
      */
     readonly service: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = {
         cellRange: () => this.rangeService.range(),
-        isCellSelected: (rowIndex, columnKey) => {
-            if (this.rangeService.active() && this.rangeService.range()) return this.rangeService.isInRange(rowIndex, columnKey);
-            const focused = this.context.focused();
-            return focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
-        },
+        isCellSelected: (rowIndex, columnKey) =>
+            cellSelectedBy(this.rangeService.active() ? this.rangeService.range() : null, () => this.rangeService.isInRange(rowIndex, columnKey), this.context.focused(), rowIndex, columnKey),
     };
 
     /** The attached part's range when there is a part (it may have cleared it: null is an answer), else the held one; whatever the range mode. */
