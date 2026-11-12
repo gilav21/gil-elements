@@ -94,7 +94,7 @@ describe('the joint step 0 sessions', () => {
     it('has no neutral override for isCellSelected: with no live part (loading, or a failed session) its own service answers the focused cell', () => {
         const { context } = rangeContext({ enableCellRangeSelection: true, enableFillHandle: false }, { focused: { rowIndex: 1, columnKey: 'a' } });
         const session = new RangeSession(context);
-        expect(session.neutral).toEqual({});
+        expect(session.neutral).toBeUndefined();
         expect(session.service.isCellSelected(1, 'a')).toBe(true);
         expect(session.service.isCellSelected(2, 'a')).toBe(false);
     });

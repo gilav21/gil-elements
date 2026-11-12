@@ -122,8 +122,8 @@ export interface CellSession {
     readonly service?: Partial<CellInteractionService>;
     /** Provided under `range` (range session only). */
     readonly rangeService?: RangeService;
-    /** What the merged `interaction` service answers while this session is FAILED, for the methods that need its live part (typed answers: false, null); methods it does not list (its VALUE methods) keep going to the session. */
-    readonly neutral: { readonly service?: Partial<CellInteractionService> };
+    /** What the merged `interaction` service answers while this session is FAILED, for the methods that need its live part (typed answers: false, null); methods it does not list (its VALUE methods) keep going to the session. Optional: a session with none (the range session) omits it. */
+    readonly neutral?: { readonly service?: Partial<CellInteractionService> };
     /** Value maintenance that must continue after the session FAILED (the controller calls it for a broken session at every update, guarded and reported once); the range shell's value rules. */
     keepValue?(): void;
 }

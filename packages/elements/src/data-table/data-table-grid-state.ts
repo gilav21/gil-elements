@@ -55,9 +55,9 @@ export interface StateView {
     cellStateActive: boolean;
     /** `rowState` can say something now (draggable rows). */
     rowStateActive: boolean;
-    /** `rowId` and `disabled` are what the renderer already read for the row (`dataRow` reads each once): plain arguments, no per-row object. */
-    /** `selected`: the row is selected (the renderer read it once for the row). */
+    /** `rowId` is the row's id; `selected` is the row's selection (the renderer read it once for the row, so no lookup per cell). */
     cellState(rowIndex: number, columnKey: string, rowId: string, selected: boolean): CellFlags;
+    /** `rowId` and `disabled` are what the renderer already read for the row (`dataRow` reads each once): plain arguments, no per-row object. */
     rowState(rowIndex: number, rowId: string, disabled: boolean): RowFlags;
 }
 

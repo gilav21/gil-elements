@@ -155,12 +155,12 @@ export class CellInteractionController<T> {
             focusCell: (rowIndex: number, columnKey: string) => this.focusCell(rowIndex, columnKey, true),
         };
         for (const session of this.sessions) {
-            for (const key of new Set([...Object.keys(session.service ?? {}), ...Object.keys(session.neutral.service ?? {})])) {
+            for (const key of new Set([...Object.keys(session.service ?? {}), ...Object.keys(session.neutral?.service ?? {})])) {
                 if (key in service) continue; // the first session that declares a key owns it
                 service[key] = (...args: unknown[]): unknown => {
                     // A broken session answers NEUTRALLY only for the methods its `neutral.service` lists (the ones that need its live part); the rest (its VALUE
                     // methods) keep going to the session.
-                    const neutral = this.broken.has(session) ? (session.neutral.service as Record<string, unknown> | undefined) : undefined;
+                    const neutral = this.broken.has(session) ? (session.neutral?.service as Record<string, unknown> | undefined) : undefined;
                     const source = neutral && key in neutral ? neutral : (session.service as Record<string, unknown> | undefined);
                     const method = source?.[key];
                     return typeof method === 'function' ? method.apply(source, args) : undefined;
@@ -539,6 +539,15 @@ export class CellInteractionController<T> {
         this.unwatchPresses = () => undo.forEach((off) => off());
     }
 
+    /**
+     * A PRIMARY touch pointerdown means no other finger is down: every other open TOUCH press (claimed or not) lost its release (swallowed, so no pointerup or
+     * pointercancel came) and is ended, cancel to its claimant with no event. A second, non-primary finger of a held press ends nothing.
+     */
+    private endOtherTouches(event: PointerEvent): void {
+        if (event.pointerType !== 'touch' || !event.isPrimary) return;
+        for (const [id, press] of [...this.presses]) if (press.touch && id !== event.pointerId) this.endPress(id, press, null);
+    }
+
     /** Ends the UNCLAIMED TOUCH presses that have seen no pointer event for `STALE_TOUCH_MS` before `now`: their release never came. A press being dragged keeps seeing moves. */
     private closeStale(now: number): void {
         for (const [id, press] of [...this.presses]) if (press.touch && !press.claimedBy && now - press.seen > STALE_TOUCH_MS) this.endPress(id, press, null);
@@ -574,6 +583,7 @@ export class CellInteractionController<T> {
         // A press of the same pointer that does NOT reach this table's `recordPress` (outside the table, or on a nested table, which records its own) ends
         // the earlier press whose release was lost (a pointerup swallowed over an iframe): its claimant is told, and "a pointer is down" ends.
         this.closeStale(event.timeStamp);
+        this.endOtherTouches(event);
         const open = this.presses.get(event.pointerId);
         if (open && !ownsTarget(this.host.root, event.target)) this.endPress(event.pointerId, open, this.closing.get(event.pointerId)?.event ?? null);
         this.clearedAt = null;
@@ -622,6 +632,7 @@ export class CellInteractionController<T> {
         // The same pointer already has an open press (its pointerup was lost: a release over an iframe, alt-tab): that one ends first, its claimant is told.
         // Released outside a moment ago (the deferred close has not run yet): with the REAL pointerup. Otherwise the old press ended without an event
         // (like at detach and window blur); the new pointerdown is not its end.
+        this.endOtherTouches(event);
         const lost = this.presses.get(event.pointerId);
         if (lost) this.endPress(event.pointerId, lost, this.closing.get(event.pointerId)?.event ?? null);
         const path = event.composedPath(); // once per event: a path is built at every call
@@ -632,7 +643,7 @@ export class CellInteractionController<T> {
         // cell, so its press is not a cell press either (and the popover keeps its focus).
         // Only the PRIMARY button (the left mouse button, a touch or pen contact) makes a cell press: a right or middle press is not offered to the sessions
         // and moves no focus (the context menu addon handles `contextmenu` itself).
-        const own = event.button === 0 && !(target !== null && (this.controlOf(target) !== null || (hasPosition(event) && this.floatsOut(target, event.clientX, event.clientY))));
+        const own = event.button === 0 && !(target !== null && (this.controlOf(target, path) !== null || (hasPosition(event) && this.floatsOut(target, event.clientX, event.clientY))));
         // An overlay press (the fill handle, a readout) is OFFERED so a session can claim it (`pressed` = the overlay; `at` and the start cell null); unclaimed it does nothing.
         const overlay = own && target !== null && this.overlayOf(target) !== null;
         const startCell = !own || overlay ? null : this.addressOf(target);
@@ -765,8 +776,9 @@ export class CellInteractionController<T> {
      */
     private endPress(pointerId: number, press: Press, event: PointerEvent | null, notify = true): void {
         this.presses.delete(pointerId);
-        // Only a TAP in the body (a touch press ended by its pointerup, on this table's rows) can cause the browser's viewport focus that follows: not a scroll's pointercancel, not a toolbar, header or pager tap.
-        if (event?.type === 'pointerup' && press.touch && press.view.pressed && ownClosest(this.host.root, press.view.pressed, BODY)) this.lastPressEnd = event.timeStamp;
+        // Only a TAP in the VIEWPORT (a touch press ended by its pointerup, on the body, header, footer or empty area; the toolbar and pager are outside it) can
+        // cause the browser's viewport focus that follows: not a scroll's pointercancel.
+        if (event?.type === 'pointerup' && press.touch && press.view.pressed && ownClosest(this.host.root, press.view.pressed, VIEWPORT)) this.lastPressEnd = event.timeStamp;
         if (this.presses.size === 0) this.unwatchPresses?.(), (this.unwatchPresses = null);
         this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed
@@ -931,21 +943,27 @@ export class CellInteractionController<T> {
     }
 
     /**
-     * The control a press landed on INSIDE its cell: the first element from the target up, bounded to the nearest cell (a press in no cell is bounded by
-     * the table's root), that is a control or carries `data-table-keeps-focus`. The cell itself and anything above it (an outer widget that hosts a
-     * nested table, a link around the table) do not count. The one answer for the press, the offer and the focus.
+     * The control a press landed on INSIDE its cell: the first element of the press's COMPOSED PATH, from the deepest node up, bounded to the nearest cell (a
+     * press in no cell is bounded by the table's root), that is a control or carries `data-table-keeps-focus`. The path shows the inside of an OPEN shadow root (a
+     * consumer component's own input or button counts, with no list to keep); a CLOSED root stops at its host, where `INTERACTIVE_TAGS` (in the selector) is the
+     * fallback. The cell itself and anything above it (an outer widget that hosts a nested table, a link around the table) do not count. The one answer for the
+     * press, the offer and the focus.
      */
-    private controlOf(target: Element | null): Element | null {
+    private controlOf(target: Element | null, path: readonly EventTarget[]): Element | null {
         // The nearest cell counts only when THIS table owns it: in a nested table, a press outside the nested table's own cells (its header, its toolbar) finds
         // the OUTER table's cell above the whole table, and the walk must neither stop there nor use the in-cell rules.
         const cell = this.cellOf(target);
         // Inside a cell anything the content makes focusable or interactive counts (an anchor used as a button, a custom focusable widget); outside a
         // cell only the native controls do (the viewport and the rows have a tabindex of their own).
         const selector = cell ? CELL_CONTROLS : CONTROLS;
-        for (let el = target; el && el !== (cell ?? this.host.root); el = el.parentElement) if (el.matches(selector)) return el;
+        const stop = cell ?? this.host.root;
+        if (target === null) return null;
+        for (const node of path) {
+            if (node === stop) break;
+            if (node instanceof Element && node.matches(selector)) return node;
+        }
         return null;
     }
-
     /** The `data-pointer-transparent` overlay a target is (or sits in), bounded to THIS table (an ancestor of the whole table never counts). */
     private overlayOf(target: Element): Element | null {
         for (let el: Element | null = target; el && el !== this.host.root; el = el.parentElement) if (el.matches(OVERLAY)) return el;

@@ -199,7 +199,7 @@ export class ColumnDragController<T> {
     private handleKey(event: KeyboardEvent): boolean {
         if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return false;
         const target = event.target as Element;
-        const head = target.closest<HTMLElement>(DRAGGABLE_HEAD);
+        const head = ownClosest<HTMLElement>(this.host.root, target, DRAGGABLE_HEAD);
         const key = head?.dataset['columnId'];
         const group = key === undefined ? null : this.groupOf(key);
         if (!head || key === undefined || !group) return false;

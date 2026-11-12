@@ -62,9 +62,6 @@ export class RangeSession<T> implements CellSession {
 
     constructor(protected readonly context: InteractionContext<T>) {}
 
-    /** No neutral answers: while the shell is broken `isCellSelected` is answered by its own `service`, which reports the focused cell when no part is active (as while the part loads). */
-    readonly neutral = {};
-
     // wave 6: the methods below that answer "nothing" delegate to `this.lazy.part` once the part implements them.
     readonly rangeService: RangeService = {
         ...NEUTRAL_RANGE,

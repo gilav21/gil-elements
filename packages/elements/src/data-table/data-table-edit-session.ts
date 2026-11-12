@@ -27,6 +27,7 @@ export class EditSession<T> implements CellSession {
 
     readonly service: EditService = { ...NEUTRAL_EDIT };
 
+    /** ONE neutral table (`NEUTRAL_EDIT`): `service` is a copy of it, and a broken session answers from it. */
     readonly neutral = { service: NEUTRAL_EDIT };
 
     attach(): void {}

@@ -2539,12 +2539,79 @@ describe('a session that fails again after a reconnect', () => {
     });
 });
 
-describe('the viewport focus after a touch press that was not a tap in the body', () => {
-    it('a scroll (pointercancel) or a header tap does not make the viewport focus within 500 ms "pointer-caused": the Tab-in goes to the roving cell', async () => {
+describe('controls seen through the composed path', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('a consumer component (in no list) with an OPEN shadow root: a press on its inner input is the control\'s own; a plain inner span is a cell press', async () => {
         const table = await mountTable();
-        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        table.focusCell(0, 'name');
+        await settle(table);
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const host = document.createElement('x-consumer-widget');
+        const root = host.attachShadow({ mode: 'open' });
+        const input = document.createElement('input');
+        const span = document.createElement('span');
+        root.append(input, span);
+        cellAt(table, 1, 'name')!.append(host);
+        input.dispatchEvent(pointer('pointerdown', 641, { over: host }));
+        input.dispatchEvent(pointer('pointerup', 641, { over: host }));
+        expect(downs).toEqual([]);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        span.dispatchEvent(pointer('pointerdown', 642, { over: host }));
+        span.dispatchEvent(pointer('pointerup', 642, { over: host }));
+        expect(downs).toEqual(['down']); // not a control: a cell press
+    });
+
+    it('a library control with a CLOSED shadow root still counts (the path stops at its host, which is in the list)', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const host = document.createElement('ge-signature-pad');
+        const inner = document.createElement('div');
+        host.attachShadow({ mode: 'closed' }).append(inner);
+        cellAt(table, 1, 'name')!.append(host);
+        inner.dispatchEvent(pointer('pointerdown', 643, { over: host }));
+        inner.dispatchEvent(pointer('pointerup', 643, { over: host }));
+        expect(downs).toEqual([]);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+    });
+});
+
+describe('a CLAIMED touch press whose release was swallowed', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is ended by the next PRIMARY touch (no other finger is down): the claimant gets one cancel; a second, non-primary finger during a held press ends nothing', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
         const cell = cellAt(table, 1, 'name')!;
-        const head = table.querySelector<HTMLElement>('[data-slot="table-head"]')!;
+        const other = cellAt(table, 2, 'age')!;
+        cell.dispatchEvent(pointer('pointerdown', 631, { pointerType: 'touch', over: cell, isPrimary: true }));
+        // a second finger of the gesture (not primary): the held press goes on
+        other.dispatchEvent(pointer('pointerdown', 632, { pointerType: 'touch', over: other, isPrimary: false }));
+        expect(log).toEqual([]);
+        other.dispatchEvent(pointer('pointerup', 632, { pointerType: 'touch', over: other, isPrimary: false }));
+        expect(log).toEqual(['cancel:pointerup']); // only the second finger's own end (it has no onPointerUp: its release is a cancel); the first press is still open
+        // the first finger's release was swallowed; a new gesture starts with a primary touch elsewhere
+        document.body.dispatchEvent(pointer('pointerdown', 633, { pointerType: 'touch', isPrimary: true }));
+        expect(log).toEqual(['cancel:pointerup', 'cancel:null']); // the first press: one cancel, no event
+        document.body.dispatchEvent(pointer('pointerup', 633, { pointerType: 'touch', isPrimary: true }));
+    });
+});
+
+describe('the viewport focus after a touch press', () => {
+    const setup = async (props: Record<string, unknown> = {}) => {
+        const table = await mountTable(props);
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        // Focus the viewport right after a press (what the browser does), reporting whether it was handed to a cell (a Tab arrival).
         const focusViewport = async (): Promise<boolean> => {
             (document.activeElement as HTMLElement).blur();
             viewport.focus();
@@ -2553,17 +2620,31 @@ describe('the viewport focus after a touch press that was not a tap in the body'
             (document.activeElement as HTMLElement).blur();
             return handed;
         };
-        cell.dispatchEvent(pointer('pointerdown', 621, { pointerType: 'touch', over: cell }));
-        cell.dispatchEvent(pointer('pointercancel', 621, { pointerType: 'touch', over: cell })); // the browser took the touch for a scroll
-        expect(await focusViewport()).toBe(true);
-        const box = head.getBoundingClientRect();
-        const at = { pointerType: 'touch', clientX: box.left + 3, clientY: box.top + 3 };
-        head.dispatchEvent(pointer('pointerdown', 622, at));
-        head.dispatchEvent(pointer('pointerup', 622, at)); // a tap on the header
+        const tap = (el: Element, id: number, up = 'pointerup'): void => {
+            const box = el.getBoundingClientRect();
+            const at = { pointerType: 'touch', clientX: box.left + 3, clientY: box.top + 3 };
+            el.dispatchEvent(pointer('pointerdown', id, at));
+            el.dispatchEvent(pointer(up, id, at));
+        };
+        return { table, focusViewport, tap };
+    };
+
+    it('after a scroll (pointercancel) is a Tab arrival: it goes to the roving cell', async () => {
+        const { table, focusViewport, tap } = await setup();
+        tap(cellAt(table, 1, 'name')!, 621, 'pointercancel');
         expect(await focusViewport()).toBe(true);
     });
-});
 
+    it('after a tap on a header or on the footer belongs to that tap (both are inside the viewport): no jump to a cell', async () => {
+        const { table, focusViewport, tap } = await setup({ columns: [{ accessorKey: 'name', header: 'Name', width: '200px', sortable: false, footer: 'Total' }, { accessorKey: 'age', header: 'Age', width: '120px' }] });
+        tap(table.querySelector<HTMLElement>('[data-slot="table-head"]')!, 622);
+        expect(await focusViewport()).toBe(false);
+        const footer = table.querySelector<HTMLElement>('[data-slot="table-footer"]')!;
+        expect(footer).not.toBeNull();
+        tap(footer, 623);
+        expect(await focusViewport()).toBe(false);
+    });
+});
 describe('hasPosition', () => {
     it('is false only for an UNTRUSTED event with all-zero coordinates: a real (trusted) press at (0, 0) has a position', () => {
         const at = (isTrusted: boolean, clientX = 0, clientY = 0, screenX = 0, screenY = 0) => ({ isTrusted, clientX, clientY, screenX, screenY });

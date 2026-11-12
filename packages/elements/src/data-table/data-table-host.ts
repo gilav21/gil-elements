@@ -71,7 +71,11 @@ export const ownClosest = <E extends Element = Element>(root: Element, target: u
 /** The elements of `list` that belong to this table, not to a table nested in one of its rows. */
 export const ownElements = <E extends Element>(root: Element, list: Iterable<E>): E[] => [...list].filter((el) => ownsTarget(root, el));
 
-/** A listener for events of this table only: a nested table's events bubble through the outer one's root. */
+/**
+ * A listener for events of this table only: a nested table's events bubble through the outer one's root. THE rule for ownership: `ownEvents` guarantees only that the
+ * TARGET is this table's own; an element it then looks UP for (`closest`) may still be the outer table's row, cell or header above the whole nested table, so every
+ * such lookup goes through `ownClosest` (never a bare `closest`), behind `ownEvents` or not.
+ */
 export const ownEvents =
     <E extends Event>(root: Element, listener: (event: E) => void) =>
     (event: E): void => {
