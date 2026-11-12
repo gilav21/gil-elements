@@ -1,9 +1,9 @@
-import { clipboardEventForGrid, type CopyScope, type CopySource, copyGrid, editorOpen, gridCells, inTextField, keyboardCopyGrid, onGrid, selectsGridText } from './data-table-clipboard-grid.js';
+import { clipboardEventForGrid, type CopyScope, type CopySource, copyGrid, editorOpen, gridCells, inTextField, keyboardCopyGrid, onGrid, pasteStart, selectsGridText } from './data-table-clipboard-grid.js';
 import { type DataTableCoreHost, ownElements, requireProvider } from './data-table-host.js';
 import { lazyPart } from './data-table-lazy.js';
 import { interpolate } from './data-table.locales.js';
 import type { ClipboardResult, ClipboardService } from './data-table-providers.js';
-import { normalizeCellRange } from './data-table-range.js';
+import { flattenTree } from './data-table-tree.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { toClipboardText } from './data-table.spreadsheet.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
@@ -107,10 +107,14 @@ export class ClipboardController<T> {
             rowAt: (index) => query.renderedRowAt(index),
             focused: host.provider('interaction')?.focusedCell() ?? null,
             // The range counts only while the range part handles ranges (a held value of a mode that is off, or a part still loading, is no range).
-            range: range?.active() ? normalizeCellRange(range.range(), navigableKeys) : null,
+            range: range?.active() ? range.normalized() : null,
             drawnRows: () => {
-                // A tree draws its visible nodes flattened (children under their parents): the copy follows that list (`sortedData()` holds the roots only).
-                if (host.config.enableSubRows) return query.renderedRows();
+                // A tree: every node of the whole (filtered, sorted) tree, flattened in the drawn order (children under their parents), whatever is collapsed
+                // and whatever the page, like the grouped and flat copies (`sortedData()` holds the sorted roots, their children sorted with them).
+                if (host.config.enableSubRows) {
+                    const { getRowId, getChildren } = host.config;
+                    return flattenTree(query.sortedData(), { getId: (row) => String(getRowId(row)), getChildren, expanded: {}, defaultExpandedDepth: -1 }).map((node) => node.row);
+                }
                 // Grouping draws group by group (collapsed groups included): the copy follows the screen, across pages.
                 const groups = query.groupRows();
                 return groups.length > 0 ? groups.flatMap((group) => group.rows) : query.sortedData();
@@ -195,26 +199,27 @@ export class ClipboardController<T> {
         return true;
     }
 
-    /** Pastes at the focused cell, read NOW (the focus may move during the await). Not while editing, not without a focused cell. */
+    /** Pastes at the range's top-left, else the focused cell (`pasteStart`), read NOW (the focus may move during the await). Not while editing, not without a target. */
     private keyPaste(event: KeyboardEvent): boolean {
         const { host } = this;
         if (!host.config.enableClipboardPaste || editorOpen(host) || !canRead() || !this.paste.part) return false;
-        if (!host.provider('interaction')?.focusedCell()) return false;
+        if (!pasteStart(host)) return false;
         event.preventDefault();
         void this.pasteFromClipboard();
         return true;
     }
 
     /**
-     * Reads the async clipboard and pastes at the focused cell; a refused read is announced, never an unhandled rejection. Nothing is read (no permission
-     * prompt) while the paste part is not loaded. The target is taken NOW, as its row's id: after the await it is found again by that id, so a sort or a
-     * new page that arrived meanwhile does not paste into whichever row now sits at the old index (a row that is gone pastes nothing).
+     * Reads the async clipboard and pastes at the range's top-left, else the focused cell; a refused read is announced, never an unhandled rejection.
+     * Nothing is read (no permission prompt) while the paste part is not loaded. The target is taken NOW, as its row's id: after the await it is found
+     * again by that id, so a sort or a new page that arrived meanwhile does not paste into whichever row now sits at the old index (a row that is gone
+     * pastes nothing), and an editor that opened during the read wins (nothing is written).
      */
     private async pasteFromClipboard(): Promise<ClipboardResult> {
         const { host } = this;
         if (!host.config.enableClipboardPaste) return { status: 'ignored' };
         if (!canRead()) return { status: 'unavailable' };
-        const at = host.provider('interaction')?.focusedCell() ?? null;
+        const at = pasteStart(host);
         if (this.pending || editorOpen(host) || !at || !this.paste.part) return { status: 'ignored' };
         const query = requireProvider(host, 'query');
         const row = query.renderedRowAt(at.rowIndex);
@@ -233,6 +238,7 @@ export class ClipboardController<T> {
         }
         if (attachment !== this.attachment) return { status: 'ignored' }; // detached meanwhile: nothing is written into a table that is gone
         this.pending = false;
+        if (editorOpen(host)) return { status: 'ignored' }; // an editor opened during the read: the paste would write under it
         const rowIndex = rowIndexOf(requireProvider(host, 'query').renderedRows(), rowId, host.config.getRowId);
         if (rowIndex === -1) return { status: 'ignored' }; // the row left the drawn rows during the read
         return this.paste.part?.pasteText(text, { rowIndex, columnKey: at.columnKey }) ?? { status: 'ignored' };

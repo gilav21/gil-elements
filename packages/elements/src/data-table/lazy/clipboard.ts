@@ -4,7 +4,7 @@
  * nothing, so its `lazyPart` has no `changed`.
  */
 import { cellAddressOf, type CellAddress, type DataTableCoreHost, ownClosest, requireProvider } from '../data-table-host.js';
-import { CELL_SELECTOR, clipboardEventForGrid, editorOpen, inTextField } from '../data-table-clipboard-grid.js';
+import { CELL_SELECTOR, clipboardEventForGrid, editorOpen, inTextField, pasteStart } from '../data-table-clipboard-grid.js';
 import { pasteAnnouncement, pastedGrid, pasteEvent, planPasteRequests } from '../data-table-paste-apply.js';
 import type { ClipboardResult } from '../data-table-providers.js';
 import { rangeModeOn } from '../data-table-range.js';
@@ -30,7 +30,7 @@ export class PastePart<T> {
         const { host } = this;
         if (event.defaultPrevented || !host.config.enableClipboardPaste || editorOpen(host) || inTextField(host.root, event)) return;
         if (!clipboardEventForGrid(host.root, event)) return;
-        const at = host.provider('interaction')?.focusedCell() ?? cellAddressOf(ownClosest(host.root, event.target, CELL_SELECTOR));
+        const at = pasteStart(host) ?? cellAddressOf(ownClosest(host.root, event.target, CELL_SELECTOR));
         if (!at) return;
         event.preventDefault();
         this.pasteText(event.clipboardData?.getData('text/plain') ?? '', at);
@@ -43,7 +43,7 @@ export class PastePart<T> {
      */
     pasteText(text: string, at?: CellAddress): ClipboardResult {
         const { host } = this;
-        const target = at ?? host.provider('interaction')?.focusedCell() ?? null;
+        const target = at ?? pasteStart(host); // the range's top-left, else the focused cell
         if (host.config.loading || !target) return { status: 'ignored' };
         const grid = pastedGrid(text);
         if (grid.length === 0) return { status: 'empty' };

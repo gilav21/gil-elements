@@ -6,7 +6,7 @@
  * Angular: `copyCellToClipboard`, `copyRowToClipboard`, `copySelectedToClipboard`, `copyCellRangeToClipboard`, `copyAllToClipboard`, `handleCopyKeydown`.
  */
 import { cellText } from './data-table-cells.js';
-import { type DataTableCoreHost, ownClosest, ownsTarget } from './data-table-host.js';
+import { type CellAddress, type DataTableCoreHost, ownClosest, ownsTarget } from './data-table-host.js';
 import type { NormalizedRange } from './data-table-range.js';
 import type { ColumnDef } from './data-table.types.js';
 
@@ -77,8 +77,11 @@ export function copyGrid<T>(scope: CopyScope, source: CopySource<T>, row?: T): s
             return selectedGrid(source);
         case 'range':
             return rangeGrid(source);
-        default:
-            return source.exportAll();
+        default: {
+            // A header with no data row under it is nothing to copy (`empty`, like the other scopes), not a header-only clipboard.
+            const all = source.exportAll();
+            return all.length > 1 ? all : null;
+        }
     }
 }
 
@@ -137,6 +140,15 @@ export function clipboardEventForGrid(root: Element, event: Event): boolean {
     const target = event.target as Node | null;
     if (ownClosest(root, target, CELL_SELECTOR)) return true;
     return target !== null && !root.contains(target) && root.matches?.(':focus-within') === true;
+}
+
+/** Where a paste starts: the TOP-LEFT cell of the range when there is one (however it was made: dragged from its bottom-right too), else the focused cell. */
+export function pasteStart<T>(host: DataTableCoreHost<T>): CellAddress | null {
+    const range = host.provider('range');
+    const rect = range?.active() ? range.normalized() : null;
+    const key = rect ? host.provider('columns')?.navigableKeys()[rect.minCol] : undefined;
+    if (rect && key !== undefined) return { rowIndex: rect.minRow, columnKey: key };
+    return host.provider('interaction')?.focusedCell() ?? null;
 }
 
 /** An editor is open somewhere in the table (the one test the clipboard controller and the paste part share). */

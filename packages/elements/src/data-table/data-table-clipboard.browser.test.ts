@@ -212,16 +212,33 @@ describe('copy', () => {
         expect(fake.writes).toEqual([]);
     });
 
-    it('copies the selected rows of a tree, children included, in the drawn order', async () => {
+    it('copies the selected rows of the WHOLE tree in the drawn order: children included, under a collapsed parent and on another page too', async () => {
         const fake = install();
         type Node = Row & { children?: Node[] };
         const tree: Node[] = [
             { id: 'p', name: 'Parent', qty: 1, ok: true, note: 'p', children: [{ id: 'k', name: 'Kid', qty: 2, ok: false, note: 'k' }] },
-            { id: 'q', name: 'Other', qty: 3, ok: true, note: 'q' },
+            { id: 'q', name: 'Other', qty: 3, ok: true, note: 'q', children: [{ id: 'h', name: 'Hidden', qty: 4, ok: true, note: 'h' }] },
+            { id: 'z', name: 'Last', qty: 5, ok: false, note: 'z' },
         ];
-        const table = await mountTable<Node>({ columns: COLUMNS as ColumnDef<Node>[], data: tree, getRowId: (row: Node) => row.id, enableSubRows: true, subRowDefaultExpanded: true, enableRowSelection: true, rowSelection: { k: true, q: true } });
-        await expect(table.copySelectedToClipboard()).resolves.toEqual({ status: 'done', cells: 12 });
-        expect(fake.text.split('\n')).toEqual(['Name\tQty\tOK\tNote', 'Kid\t2\tfalse\tk', 'Other\t3\ttrue\tq']);
+        const table = await mountTable<Node>({
+            columns: COLUMNS as ColumnDef<Node>[],
+            data: tree,
+            getRowId: (row: Node) => row.id,
+            enableSubRows: true,
+            subRowExpandedRows: { p: true }, // q stays collapsed: h is not drawn
+            enableRowSelection: true,
+            rowSelection: { k: true, h: true, z: true },
+            paginationState: { pageIndex: 0, pageSize: 1 }, // z is on page 3
+        });
+        await expect(table.copySelectedToClipboard()).resolves.toEqual({ status: 'done', cells: 16 });
+        expect(fake.text.split('\n')).toEqual(['Name\tQty\tOK\tNote', 'Kid\t2\tfalse\tk', 'Hidden\t4\ttrue\th', 'Last\t5\tfalse\tz']);
+    });
+
+    it('answers empty for copyAll with no data row (no header-only clipboard)', async () => {
+        const fake = install();
+        const table = await grid({ data: [] });
+        await expect(table.copyAllToClipboard()).resolves.toEqual({ status: 'empty' });
+        expect(fake.writes).toEqual([]);
     });
 
     it('a stale text selection elsewhere does not stop the grid copy; one over the focused cell does', async () => {
@@ -342,6 +359,39 @@ describe('paste', () => {
         await expect(pasting).resolves.toMatchObject({ status: 'done', cells: 1 });
         const byId = Object.fromEntries((table.data as Row[]).map((r) => [r.id, r.qty]));
         expect(byId).toEqual({ a: 1, b: 77, c: 3, d: 4 });
+    });
+
+    it('pastes from the TOP-LEFT of the range, whichever corner it was made from', async () => {
+        install({ text: 'P\t5\ttrue\nQ\t6\tfalse' });
+        const table = await grid({ enableClipboardPaste: true, enableCellRangeSelection: true });
+        await pasteReady(table);
+        await rangeReady(table);
+        await focusCell(table, 3, 'ok');
+        table.cellRange = { startRow: 3, startCol: 'ok', endRow: 2, endCol: 'name' }; // made from the bottom-right
+        await settle(table);
+        await press('{Control>}v{/Control}');
+        await until(() => (table.data as Row[])[2]?.name === 'P');
+        expect((table.data as Row[]).map((r) => [r.name, r.qty, r.ok])).toEqual([
+            ['=SUM(1,2)', 1, true],
+            ['Bob', 2, false],
+            ['P', 5, true],
+            ['Q', 6, false],
+        ]);
+    });
+
+    it('writes nothing when an editor opened while the clipboard was being read', async () => {
+        const fake = install({ text: '42' });
+        let release: (value: string) => void = () => undefined;
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText: () => Promise.resolve(), readText: () => new Promise<string>((resolve) => (release = resolve)) }, configurable: true });
+        const table = await grid({ enableClipboardPaste: true });
+        await pasteReady(table);
+        await focusCell(table, 1, 'qty');
+        const pasting = table.provider('clipboard')!.paste();
+        (table.provider('interaction') as { editingCell(): unknown }).editingCell = () => ({ rowIndex: 0, columnKey: 'name' }); // an editor opens meanwhile
+        release('42');
+        await expect(pasting).resolves.toEqual({ status: 'ignored' });
+        expect((table.data as Row[])[1]?.qty).toBe(2);
+        void fake;
     });
 
     it('a paste that writes no cell (every value refused, or only columns without a setter) emits no cells-paste and keeps the range', async () => {
