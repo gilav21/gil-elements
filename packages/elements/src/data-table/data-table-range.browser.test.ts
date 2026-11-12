@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { GeDataTable } from './data-table.js';
 import { axProps, axTree, bodyRows, cellAt, makeColumns, makeRows, mountTable, q, qa, type SampleRow, settle } from './data-table-fixtures.js';
-import { emulateTouch, frames, mouseDrag, nativeDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPressDrag, withRtl, withTheme } from './data-table-input-fixtures.js';
+import { emulateTouch, fakeClipboard, frames, mouseDrag, nativeDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPressDrag, withRtl, withTheme } from './data-table-input-fixtures.js';
 import type { ColumnDef, FillSeriesEvent, RangeChartPayload } from './data-table.types.js';
 import { RangePart } from './lazy/range.js';
 
@@ -159,6 +159,27 @@ describe('range selection by keys', () => {
         await settle(table);
         await press('{Shift>}{ArrowUp}{/Shift}');
         expect(table.cellRange).toBeNull();
+    });
+
+    it('a focus move without Shift ends the range: the next Shift+key starts at the new cell, and Ctrl+C copies the focused cell', async () => {
+        const clipboard = fakeClipboard();
+        try {
+            const table = await mountRange();
+            await focusAt(table, 0, 'name');
+            table.cellRange = { startRow: 0, startCol: 'name', endRow: 2, endCol: 'label' };
+            await settle(table);
+            for (let i = 0; i < 5; i++) await press('{ArrowDown}');
+            expect(table.cellRange).toBeNull();
+            expect(deepActive()).toBe(cell(table, 5, 'name'));
+            await press('{Control>}c{/Control}');
+            await vi.waitFor(() => expect(clipboard.writes).toEqual(['n5']));
+            await press('{Shift>}{ArrowDown}{/Shift}');
+            expect(table.cellRange).toEqual({ startRow: 5, startCol: 'name', endRow: 6, endCol: 'name' });
+            await press('{Tab}');
+            expect(table.cellRange).toBeNull();
+        } finally {
+            clipboard.restore();
+        }
     });
 
     it('flips ArrowLeft and ArrowRight in rtl', async () => {
@@ -318,6 +339,7 @@ describe('the fill handle', () => {
         await settle(table);
         await vi.waitFor(() => expect(handle(table)).not.toBeNull());
         await settle(table);
+        await frames(4); // the layout observer's first report (it reports once when it starts watching) has been measured
         const corner = cell(table, 2, 'label');
         const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect');
         const measured = (): number => spy.mock.contexts.filter((el) => el === corner).length;
@@ -357,6 +379,27 @@ describe('the fill handle', () => {
         const r = cellAt(table, 1, 'c1')!.getBoundingClientRect();
         const h = handle(table)!.getBoundingClientRect();
         expect(Math.abs(h.left + h.width / 2 - r.right)).toBeLessThanOrEqual(1);
+    });
+
+    it('follows its cell when a detail row opens above it (a layout change with the same rows and columns)', async () => {
+        const detail = (): HTMLElement => {
+            const el = document.createElement('div');
+            el.textContent = 'detail';
+            el.style.height = '120px';
+            return el;
+        };
+        const table = await mountRange({ enableFillHandle: true, enableRowExpansion: true, renderDetail: detail });
+        await focusAt(table, 2, 'score');
+        await vi.waitFor(() => expect(handle(table)).not.toBeNull());
+        const before = handle(table)!.getBoundingClientRect().top;
+        table.expandedRows = { r0: true };
+        await settle(table);
+        await vi.waitFor(() => {
+            const r = cell(table, 2, 'score').getBoundingClientRect();
+            const h = handle(table)!.getBoundingClientRect();
+            expect(Math.abs(h.top + h.height / 2 - r.bottom)).toBeLessThanOrEqual(1);
+        });
+        expect(handle(table)!.getBoundingClientRect().top).toBeGreaterThan(before + 100);
     });
 
     it('is hidden with no focus and no range, with the flag off, and follows the focused cell', async () => {

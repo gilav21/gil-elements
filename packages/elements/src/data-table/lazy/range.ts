@@ -98,6 +98,9 @@ export class RangePart<T> {
     private off: (() => void)[] = [];
     private cancelAnnounce: (() => void) | null = null;
     private handleFrame: number | null = null;
+    /** Watches the grid element's size while a handle is shown (`observeLayout`); disconnected at detach. */
+    private resizer: ResizeObserver | null = null;
+    private observed: Element | null = null;
     /** What placed the handle when it was last measured (`followHandle`): the same inputs need no new measure. */
     private handleInputs: readonly unknown[] | null = null;
     /** The keys of the last update: a range whose column LEAVES the layout is dropped (a programmatic range on a hidden column is only not drawn). */
@@ -152,6 +155,9 @@ export class RangePart<T> {
         this.handleFrame = null;
         this.handleAt = null;
         this.handleInputs = null;
+        this.resizer?.disconnect();
+        this.resizer = null;
+        this.observed = null;
         for (const off of this.off) off();
         this.off = [];
     }
@@ -508,6 +514,12 @@ export class RangePart<T> {
     private onKey(event: KeyboardEvent): boolean {
         if (event.defaultPrevented || event.isComposing || event.altKey || !this.inGrid(event)) return false;
         if (event.key === 'Escape') return this.onEscape(event);
+        // A focus move WITHOUT Shift (an arrow, Home / End, a page key, Tab) ends the range, as in a spreadsheet: the next Shift+key starts a new one
+        // anchored at the cell the focus moved to. The key goes on to navigation (false: not consumed here).
+        if (!event.shiftKey && this.range && !this.drag && (NAVIGATION_KEYS.has(event.key) || event.key === 'Tab')) {
+            this.setOwn(null);
+            return false;
+        }
         if (this.context.hasOpenEditor()) return false;
         const { config } = this.context.host;
         const mod = event.ctrlKey || event.metaKey;
@@ -662,12 +674,25 @@ export class RangePart<T> {
         this.context.host.requestRender();
     }
 
+    /**
+     * A layout change with no change of the handle's inputs (a detail row opened above it, a density change, a column's content reflowing) moves its
+     * cell: the grid element is watched by a ResizeObserver while a handle is shown, which measures in the next frame.
+     */
+    private observeLayout(grid: HTMLElement | null): void {
+        if (!grid || grid === this.observed || typeof ResizeObserver === 'undefined') return;
+        this.resizer ??= new ResizeObserver(() => this.measureSoon());
+        this.resizer.disconnect();
+        this.resizer.observe(grid);
+        this.observed = grid;
+    }
+
     private handlePoint(): { top: number; left: number } | null {
         const { host } = this.context;
         const cell = this.fillHandleCell();
         const el = cell && host.cellAt(cell.rowIndex, cell.columnKey);
         const viewport = el && ownClosest<HTMLElement>(host.root, el, VIEWPORT);
         if (!el || !viewport) return null;
+        this.observeLayout(ownClosest<HTMLElement>(host.root, el, '[data-slot="table"]'));
         const box = viewport.getBoundingClientRect();
         const rect = el.getBoundingClientRect();
         const rtl = getComputedStyle(host.root).direction === 'rtl';
