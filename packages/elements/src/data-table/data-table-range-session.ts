@@ -249,11 +249,11 @@ export class RangeSession<T> implements CellSession {
     }
 
     detach(): void {
-        // A detach keeps the range (a DOM move): the next attach's part gets it back.
-        try {
-            this.held = this.live();
-        } finally {
-            this.lazy.dispose(); // always: a part left attached would be reused by the next attach
-        }
+        // A detach keeps the range (a DOM move): the next attach's part gets it back. The part is disposed FIRST (always: a part left attached would be
+        // reused by the next attach; `lazyPart` guards its detach, so this never throws) and read back after, so a gesture its detach gave back (a range
+        // drag restores the range from before its press) is what is kept.
+        const part = this.lazy.part;
+        this.lazy.dispose();
+        this.held = callPart(part, this.context.host, 'range-part-getRange', (p) => p.getRange(), this.held);
     }
 }

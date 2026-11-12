@@ -22,10 +22,10 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { startAutoScroll, type AutoScrollController } from '../../shared/auto-scroll.js';
 import { onLongPress } from '../../shared/touch.js';
 import type { InteractionContext, PointerPress } from '../data-table-cell-session.js';
-import { CELL_SELECTOR, inTextField } from '../data-table-clipboard-grid.js';
+import { CELL_SELECTOR, onGrid } from '../data-table-clipboard-grid.js';
 import { buildFillValues } from '../data-table-fill.js';
 import { fillOutcome, type FillInput, planFill, repeatFirst } from '../data-table-fill-apply.js';
-import { type CellAddress, cellAddressOf, ownClosest, ownsTarget } from '../data-table-host.js';
+import { type CellAddress, cellAddressOf, ownClosest, ownElements, ownsTarget } from '../data-table-host.js';
 import { ensureIconElement } from '../data-table-icons.js';
 import { NAVIGATION_KEYS } from '../data-table-keys.js';
 import { interpolate } from '../data-table.locales.js';
@@ -140,6 +140,10 @@ export class RangePart<T> {
     }
 
     detach(): void {
+        // A gesture still running is given back (as `endDrag(false)` does, without the render: the table is leaving): a range drag restores the range
+        // from before its press, which the shell reads back with `getRange()` right after; a fill writes nothing.
+        const drag = this.drag;
+        if (drag?.kind === 'range') this.range = drag.before;
         this.stopDrag();
         this.fill = null;
         this.cancelAnnounce?.();
@@ -190,6 +194,8 @@ export class RangePart<T> {
             host.provider('columns')?.enhancedColumns(),
             window?.start,
             window?.end,
+            window?.colStart, // a column window that moves draws or drops the handle's cell
+            window?.colEnd,
             host.root.getAttribute('dir'),
             host.config.columns,
         ] as const;
@@ -199,8 +205,9 @@ export class RangePart<T> {
         this.context.afterRender(() => this.measureHandle());
     }
 
+    /** A measure in the next frame, whenever there should be a handle: also one not drawn now (its cell was scrolled out and may be back). */
     private measureSoon(): void {
-        if (!this.context.host.config.enableFillHandle || !this.handleAt) return;
+        if (!this.fillHandleCell()) return;
         this.handleFrame ??= requestAnimationFrame(() => {
             this.handleFrame = null;
             this.measureHandle();
@@ -407,10 +414,27 @@ export class RangePart<T> {
                 this.fill.end = hit.row;
                 this.changed();
             }
-        } else if (drag.anchor && hit.cell) {
+        } else if (drag.anchor) {
+            // Over the sticky header or footer (where auto-scroll runs) no body cell is hit: the end goes to the body row nearest the pointer in that
+            // direction, in the column under it, so the range keeps growing while the grid scrolls under the header.
+            const cell = hit.cell ?? this.edgeCell(drag.x, drag.y);
             const { anchor } = drag;
-            this.setOwn({ startRow: anchor.rowIndex, startCol: anchor.columnKey, endRow: hit.cell.rowIndex, endCol: hit.cell.columnKey });
+            if (cell) this.setOwn({ startRow: anchor.rowIndex, startCol: anchor.columnKey, endRow: cell.rowIndex, endCol: cell.columnKey });
         }
+    }
+
+    /** The data cell at the body's edge nearest a point outside the body (on the sticky header or footer, or outside the viewport); null for a point inside it. */
+    private edgeCell(x: number, y: number): CellAddress | null {
+        const { root } = this.context.host;
+        const viewport = ownElements(root, root.querySelectorAll<HTMLElement>(VIEWPORT))[0];
+        if (!viewport) return null;
+        const box = viewport.getBoundingClientRect();
+        const rectOf = (slot: string): DOMRect | undefined => ownElements(root, viewport.querySelectorAll(`[data-slot="${slot}"]`))[0]?.getBoundingClientRect();
+        const top = Math.max(box.top, rectOf('table-header')?.bottom ?? box.top) + 1;
+        const bottom = Math.min(box.bottom, rectOf('table-footer')?.top ?? box.bottom) - 1;
+        if (y >= top && y <= bottom && x > box.left && x < box.right) return null; // inside the body: a group or detail row keeps the last cell
+        const clamp = (value: number, min: number, max: number): number => Math.min(Math.max(value, min), max);
+        return this.hit(clamp(x, box.left + 1, box.right - 1), clamp(y, top, bottom)).cell;
     }
 
     /** The gesture ends: `commit` keeps it (a fill writes, a 1x1 range collapses to plain focus, a range is announced), else it is given back. */
@@ -497,11 +521,7 @@ export class RangePart<T> {
 
     /** A key typed on a cell of this table, or on its viewport or root (the roving focus): never in a text field, never on a control outside the cells. */
     private inGrid(event: KeyboardEvent): boolean {
-        const { root } = this.context.host;
-        const target = event.target as Element | null;
-        if (!target || !ownsTarget(root, target)) return false;
-        if (inTextField(root, event)) return false; // the one text-field rule (clipboard, row move and range share it)
-        return target === root || target.matches(VIEWPORT) || ownClosest(root, target, CELL_SELECTOR) !== null;
+        return onGrid(this.context.host.root, event); // the one grid-key rule (clipboard, row move and range share it)
     }
 
     private onEscape(event: KeyboardEvent): boolean {

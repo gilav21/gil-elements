@@ -6,9 +6,10 @@ import axe from 'axe-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { GeDataTable } from './data-table.js';
-import { axProps, axTree, bodyRows, cellAt, makeRows, mountTable, q, qa, type SampleRow, settle } from './data-table-fixtures.js';
+import { axProps, axTree, bodyRows, cellAt, makeColumns, makeRows, mountTable, q, qa, type SampleRow, settle } from './data-table-fixtures.js';
 import { emulateTouch, frames, mouseDrag, nativeDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPressDrag, withRtl, withTheme } from './data-table-input-fixtures.js';
 import type { ColumnDef, FillSeriesEvent, RangeChartPayload } from './data-table.types.js';
+import { RangePart } from './lazy/range.js';
 
 afterEach(async () => {
     await parkMouse();
@@ -334,6 +335,30 @@ describe('the fill handle', () => {
         }
     });
 
+    it('comes back when its column is scrolled out of a column-virtualised grid and back in', async () => {
+        const table = await mountTable<SampleRow>(
+            { columns: makeColumns(30), data: makeRows(40, { columns: 30 }), enableVirtualScroll: true, enableFillHandle: true, enableCellRangeSelection: true },
+            {},
+            { width: 600, height: 400 },
+        );
+        await vi.waitFor(() => expect(table.provider('range')?.active()).toBe(true));
+        table.focusCell(1, 'c1');
+        await settle(table);
+        await vi.waitFor(() => expect(handle(table)).not.toBeNull());
+        const viewport = q(table, '[data-slot="data-table-viewport"]');
+        await scrollGrid(viewport, { left: 3000 });
+        await settle(table);
+        await settle(table);
+        expect(cellAt(table, 1, 'c1')).toBeNull(); // the column left the window
+        expect(handle(table)).toBeNull();
+        await scrollGrid(viewport, { left: 0 });
+        await settle(table);
+        await vi.waitFor(() => expect(handle(table)).not.toBeNull());
+        const r = cellAt(table, 1, 'c1')!.getBoundingClientRect();
+        const h = handle(table)!.getBoundingClientRect();
+        expect(Math.abs(h.left + h.width / 2 - r.right)).toBeLessThanOrEqual(1);
+    });
+
     it('is hidden with no focus and no range, with the flag off, and follows the focused cell', async () => {
         const table = await mountRange({ enableFillHandle: true });
         expect(handle(table)).toBeNull();
@@ -519,6 +544,23 @@ describe('virtual grid', () => {
         expect(cell(table, 0, 'score').hasAttribute('data-in-range')).toBe(true);
     });
 
+    it('keeps growing the range while the pointer holds over the sticky header and the grid scrolls up under it', async () => {
+        const table = await mountRange({ data: big(), enableVirtualScroll: true }, { width: 600, height: 320 });
+        const viewport = q(table, '[data-slot="data-table-viewport"]');
+        await scrollGrid(viewport, { top: 2000 });
+        await settle(table);
+        const header = q(table, '[data-slot="table-header"]').getBoundingClientRect();
+        // a row well below the header (the window also draws buffer rows above the visible ones)
+        const visible = bodyRows(table).filter((row) => row.getBoundingClientRect().top > header.bottom + 60);
+        const start = Math.min(...visible.map((row) => Number(row.dataset['rowIndex'])));
+        await mouseDrag(cell(table, start, 'score'), { x: header.left + 150, y: header.top + header.height / 2 }, { steps: 4, holdMs: 1200 });
+        await settle(table);
+        const range = table.cellRange!;
+        expect(range.startRow).toBe(start);
+        expect(range.endRow).toBeLessThan(start - 5); // it followed the rows that scrolled in under the header
+        expect(range.endCol).toBe('score');
+    });
+
     it('is trimmed when the data shrinks and dropped when its column is hidden', async () => {
         const table = await mountRange();
         table.cellRange = { startRow: 2, startCol: 'score', endRow: 6, endCol: 'label' };
@@ -530,6 +572,33 @@ describe('virtual grid', () => {
         await settle(table);
         await settle(table);
         expect(table.cellRange).toBeNull();
+    });
+});
+
+describe('a gesture cut short', () => {
+    it('gives back the range from before the press when the part detaches mid-drag (the session failed, the part was disposed)', async () => {
+        const attach = vi.spyOn(RangePart.prototype, 'attach');
+        const table = await mountRange();
+        const part = attach.mock.contexts.at(-1) as RangePart<Row>;
+        attach.mockRestore();
+        const before = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'name' };
+        table.cellRange = before;
+        await settle(table);
+        // press on a cell and move to another (no release): a range drag is running
+        const from = cell(table, 2, 'score').getBoundingClientRect();
+        const to = cell(table, 4, 'label').getBoundingClientRect();
+        const pointer = (type: string, at: DOMRect, target: EventTarget): void =>
+            void target.dispatchEvent(new PointerEvent(type, { bubbles: true, composed: true, cancelable: true, pointerId: 7, pointerType: 'mouse', button: 0, buttons: 1, clientX: at.left + 5, clientY: at.top + 5 }));
+        pointer('pointerdown', from, cell(table, 2, 'score'));
+        pointer('pointermove', to, document);
+        await frames(2);
+        expect(table.provider('range')?.gestureActive()).toBe(true);
+        expect(table.cellRange).not.toEqual(before);
+        // the part leaves with the gesture open (its press was not cancelled first): what its detach leaves is the range from before the press
+        part.detach();
+        expect(part.getRange()).toEqual(before);
+        expect(part.gestureActive()).toBe(false);
+        document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 7, pointerType: 'mouse' }));
     });
 });
 
