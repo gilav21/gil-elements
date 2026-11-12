@@ -937,6 +937,53 @@ describe('review round 2', () => {
         expect((node as { description?: { value?: string } } | undefined)?.description?.value).toBe('Not that day');
     });
 
+    it('options that arrive while a select editor is open are shown and mapped (the kind switches, the draft is kept) (round 7)', async () => {
+        const table = await mount({ columns: editColumns({ age: { editType: 'select' } }) }); // no options yet: a text input
+        await startEditingAt(table, 0, 'age');
+        expect(openEditor(table)?.localName).toBe('input');
+        table.columns = editColumns({ age: { editType: 'select', editOptions: [{ label: 'Forty-one', value: 41 }, { label: 'Fifty', value: 50 }] } });
+        await settle(table);
+        const select = openEditor(table) as HTMLSelectElement;
+        expect(select.localName).toBe('select');
+        expect(select.selectedOptions[0]?.textContent).toBe('Forty-one'); // the draft (41) kept and shown
+        await pointerPick(select, '1');
+        await settle(table);
+        expect(table.data[0]!.age).toBe(50);
+    });
+
+    it('setEditValue shows in a select editor, whatever was picked in it before (round 7)', async () => {
+        const options = [{ label: 'Twenty', value: 20 }, { label: 'Thirty', value: 30 }, { label: 'Forty-one', value: 41 }];
+        const table = await mount({ columns: editColumns({ age: { editType: 'select', editOptions: options } }) });
+        await startEditingAt(table, 0, 'age');
+        const select = openEditor(table) as HTMLSelectElement;
+        await press('{ArrowUp}'); // the keyboard moves the draft to Thirty
+        await settle(table);
+        expect(select.value).toBe('1');
+        table.provider('interaction')?.setEditValue?.(41);
+        await settle(table);
+        expect(select.value).toBe('2');
+        table.provider('interaction')?.setEditValue?.(20);
+        await settle(table);
+        expect(select.value).toBe('0');
+    });
+
+    it('Tab without a change looks no row up again (round 7)', async () => {
+        let calls = 0;
+        const table = await mount({ getRowId: (row: SampleRow) => (calls++, row.id) });
+        await startEditingAt(table, 0, 'name');
+        // The baseline: what one render of this table costs in row-id reads (rows, selection, aria), with the editor open.
+        calls = 0;
+        table.requestUpdate();
+        await settle(table);
+        const render = calls;
+        calls = 0;
+        await press('{Tab}'); // unchanged: no write, the rows stay the same array
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'age' });
+        // Two renders (close, open) and the new editor's own row id: no scan of the rows by the Tab itself.
+        expect(calls).toBeLessThanOrEqual(2 * render + 1);
+    });
+
     it('a rejected date pick keeps showing the picked day, also across an unrelated render (round 6)', async () => {
         const rows = ROWS.map((r) => ({ ...r, born: '2020-01-15' }));
         const born: ColumnDef<SampleRow> = { accessorKey: 'born', header: 'Born', width: '220px', editable: true, editType: 'date', editValidator: () => 'Not that day', valueSetter: (row, v) => ({ ...row, born: v }) };

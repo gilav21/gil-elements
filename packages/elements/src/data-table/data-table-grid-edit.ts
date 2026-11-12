@@ -32,6 +32,7 @@ export function editView<T>(host: DataTableViewHost<T>): EditView<T> {
     // Fixed-height virtual rows: a message in the flow would change the row's height under the window's arithmetic.
     const overlay = (host.provider('virtual')?.active() ?? false) && !host.config.virtualVariableRowHeight;
     return {
+        // The column passed here is the one drawn now; the session refreshed `open.column` / `open.kind` from it before this render (hostUpdate).
         cell: (column, row, rowIndex) => (rowIndex === open.at.rowIndex && String(column.accessorKey) === open.at.columnKey ? editorOf(session, open, row, overlay) : undefined),
     };
 }
@@ -111,7 +112,9 @@ function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overl
             // empty, selected placeholder (not the first option, which would then be unpickable: choosing it fires no `change`).
             // A pick with the POINTER (the picker list) commits at once, as Angular; a change from the keyboard (arrows on the closed select) moves
             // only the draft, which Enter, Tab or leaving commits.
-            editor = html`<select data-edit-input aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
+            // `.value` (the option INDEX, '' for the placeholder) is bound with `live`: `setEditValue` and fresh options always reach the select,
+            // whatever the user picked in it before.
+            editor = html`<select data-edit-input .value=${live(selected === -1 ? '' : String(selected))} aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
                 @pointerdown=${() => pointerPicks.add(open)} @keydown=${() => pointerPicks.delete(open)}
                 @change=${(event: Event) => session.change(open, (event.target as HTMLSelectElement).value, pointerPicks.delete(open))}>${selected === -1 ? html`<option value="" selected disabled data-placeholder></option>` : nothing}${options.map(
                     (o, i) => html`<option value=${i} ?selected=${i === selected}>${o.label}</option>`,

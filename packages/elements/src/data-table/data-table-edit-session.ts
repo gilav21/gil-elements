@@ -68,8 +68,12 @@ export interface OpenEditor<T> {
     /** Where it is now: the DRAWN row index (it follows its row) and the column. */
     at: EditingCell;
     readonly rowId: string;
-    readonly column: EnhancedColumnDef<T>;
-    readonly kind: EditKind;
+    /**
+     * The column as drawn NOW, and the editor it opens: refreshed at every update (`hostUpdate`), so options that arrive while the editor is open
+     * are shown and mapped, and a kind that changes with them (a select whose options arrive) switches the editor; the draft is kept.
+     */
+    column: EnhancedColumnDef<T>;
+    kind: EditKind;
     /** The cell value at open: what "unchanged" is measured against, and the shape a date editor writes back in. */
     readonly original: unknown;
     /** The draft, as the validator and the setter receive it. */
@@ -179,7 +183,17 @@ export class EditSession<T> implements CellSession {
         if (!open) return;
         const { host } = this;
         const focusedIn = composedContains(host.cellAt(open.at.rowIndex, open.at.columnKey), this.context.deepActive());
-        if (!this.columnOf(open.at.columnKey)?.editable) return this.close(false);
+        const column = this.columnOf(open.at.columnKey);
+        if (!column?.editable) return this.close(false);
+        // The FRESH column (options that arrived, a renderer swapped): the editor draws and maps through it, keeping its draft.
+        if (column !== open.column) {
+            open.column = column;
+            const kind = editKindOf(column);
+            if (kind !== open.kind) {
+                open.kind = kind;
+                if (kind === 'date') void DATE_PICKER.load();
+            }
+        }
         if (!this.follow(open)) return this.close(false); // not a cancel: handing the focus to the grid would take it from wherever the user is now
         if (focusedIn) this.keepFocus(open);
     }
@@ -513,12 +527,16 @@ export class EditSession<T> implements CellSession {
      */
     private onTab(event: KeyboardEvent, open: OpenEditor<T>): void {
         const { host } = this;
+        const query = requireProvider(host, 'query');
         const keys = requireProvider(host, 'columns').navigableKeys();
-        const rows = requireProvider(host, 'query').renderedRows();
-        const from = this.indexOfRow(open.rowId, open.at.rowIndex);
-        const next = tabTarget(event.shiftKey, from, keys.indexOf(open.at.columnKey), keys.length, this.context.rowCount());
-        // The target is a RECORD: the commit may re-sort or re-filter the rows, so it is found again by id after the write.
-        const target = next && rows[next.row] !== undefined ? String(host.config.getRowId(rows[next.row] as T)) : null;
+        // The editor follows its row first (one scan, skipped when nothing moved): `open.at.rowIndex` is then where it is drawn.
+        if (!this.follow(open)) {
+            this.close(false);
+            return;
+        }
+        const rows = query.renderedRows();
+        const next = tabTarget(event.shiftKey, open.at.rowIndex, keys.indexOf(open.at.columnKey), keys.length, this.context.rowCount());
+        const nextRow = next ? rows[next.row] : undefined;
         const result = this.commit(false);
         if (result === 'rejected') {
             event.preventDefault();
@@ -527,7 +545,9 @@ export class EditSession<T> implements CellSession {
         if (!next) return;
         event.preventDefault();
         const key = keys[next.col] as string;
-        const row = target === null ? next.row : this.indexOfRow(target, next.row);
+        // The target is a RECORD: only when the commit changed the drawn rows (a re-sort, a re-filter) is it looked up again, by id.
+        const moved = query.renderedRows() !== rows && nextRow !== undefined;
+        const row = moved ? this.indexOfRow(String(host.config.getRowId(nextRow)), next.row) : next.row;
         this.context.setFocus(row, key, true);
         this.startAt(row, key);
     }
