@@ -90,7 +90,7 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 
 ### J8 Measured at the end of step 0
 - Typecheck `tsc -p packages/elements --noEmit`: clean. Node project: 86 files, 1597 tests, all green. Browser project (`packages/elements/src/data-table`): 16 files, 477 tests, all green. Parity `data-table data-table-rows data-table-integration`: 48 comparisons, 0 differing. Build: green.
-- Size (gzip, `node scripts/size.mjs`, `size-budget.json` untouched as instructed): after review round 41 all 343 entries are within the lead's budget lines (round 35 was 57 and 79 B over the previous lines, which the lead then raised) (round 31 was 174 and 196 B over the previous lines, which the lead then raised) (round 26 was 274 and 278 B over the previous lines, which the lead then raised; dropping the Proxy gave bytes back) (round 20 was 135 and 139 B over the previous lines, which the lead then raised; the simpler failure machinery gave bytes back; `size-budget.json` untouched) (before step 0: 76 921; the lead's budget lines are 80 500 and 80 950, all entries within budget); the five lazy entries are 20 to 160 B each. The +3.3 KB is the real static cost of the seams: the two sessions and the cell-state composition, three stub controllers and their lazy shells, about 20 element delegations, the 22 locale strings, the lazy helper. It comes out of the 7 KB the two waves estimated for their static code, so the integration PR measures the final figure rather than the estimates of wave 5 section 4 and wave 6 section G.
+- Size (gzip, `node scripts/size.mjs`, `size-budget.json` untouched as instructed): after review round 42 all 343 entries are within the lead's budget lines (round 35 was 57 and 79 B over the previous lines, which the lead then raised) (round 31 was 174 and 196 B over the previous lines, which the lead then raised) (round 26 was 274 and 278 B over the previous lines, which the lead then raised; dropping the Proxy gave bytes back) (round 20 was 135 and 139 B over the previous lines, which the lead then raised; the simpler failure machinery gave bytes back; `size-budget.json` untouched) (before step 0: 76 921; the lead's budget lines are 80 500 and 80 950, all entries within budget); the five lazy entries are 20 to 160 B each. The +3.3 KB is the real static cost of the seams: the two sessions and the cell-state composition, three stub controllers and their lazy shells, about 20 element delegations, the 22 locale strings, the lazy helper. It comes out of the 7 KB the two waves estimated for their static code, so the integration PR measures the final figure rather than the estimates of wave 5 section 4 and wave 6 section G.
 - Known not covered here: `nativeDrag` and `fakeClipboard` are written but not yet exercised by a test (no wave 6 test exists); the `data-edit` parity hook is untested until editing lands.
 
 ### J9 Contract changes from review round 1 (they amend J1 to J8)
@@ -273,13 +273,13 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 **Round 22 (amends the above):**
 - **Overlays:** see the round 22 refinement in round 21 above (a press that begins on an overlay has no start cell; only a release is looked through).
 - **`validateColumns` caches by VALUE** (a copy of the four validated fields plus the `columns` array), because the held range is the consumer's own object (identity read-back) and may be mutated later: a changed `endCol` naming a missing column is dropped with the warning at the next update.
-- **`cellRange` and a missing real range service:** the element hands an early value over only to a REAL range service (not the neutral one of a failed session) and otherwise keeps holding it (the getter reports it while range mode is on) and retries at the next connect. A custom plan without the cell-interaction controller has no range service: `cellRange` is then a held value only.
+- (SUPERSEDED by round 42 for the failed-range case.) **`cellRange` and a missing real range service:** the element hands an early value over only to a REAL range service (not the neutral one of a failed session) and otherwise keeps holding it (the getter reports it while range mode is on) and retries at the next connect. A custom plan without the cell-interaction controller has no range service: `cellRange` is then a held value only.
 - **`endPress(pointerId, press, event, notify)`** is the one place a press ends (forgets the press, its capture and its pending close, recomputes "a pointer is down", notifies the claimant); `inside(box, x, y, slop)` is the one point-in-box test (tap slop, floating-element rule).
 - **`StateView.stateActive` is gone:** the renderer uses `cellStateActive || rowStateActive`.
 
 **Round 23 (amends the above):**
 - **`setRange` compares by VALUE** against a copy of the last seen four values (not the live object), so a consumer that edits its own range object in place and assigns it again gets a render.
-- **Failed range session, corrected:** its detach saves the live range and the next attach serves it again; while it is out `cellRange` reads null (a value assigned meanwhile is held by the element and handed over at the next connect with a real range service). This replaces "the held range is lost" of rounds 21 and 22.
+- (SUPERSEDED by round 42 for the failed-range case.) **Failed range session, corrected:** its detach saves the live range and the next attach serves it again; while it is out `cellRange` reads null (a value assigned meanwhile is held by the element and handed over at the next connect with a real range service). This replaces "the held range is lost" of rounds 21 and 22.
 - **A failed session is marked broken FIRST:** its claimed presses end without calling it (no `onPointerCancel`), as it just threw. `neutral` (`{ service, rangeService }`) is a field of each session (`CellSession.neutral`); the controller keeps no map.
 - **`data-table-keeps-focus`:** the explicit opt-out for a widget in a cell that manages its own focus (a combobox, a menu button, a non-native custom editor): on the element or an ancestor inside the cell, the grid treats it like a control: no focus move, no offer to the sessions, no start cell. The press is still recorded in the capture phase (round 10: a renderer's `stopPropagation` cannot hide a plain press). Documented in the session contract and on `CellRendering`. Wave 6 A: a range session never sees such a press.
 - **No hit test for a release that needs no cell:** a press with no claimant and no start cell is not located at its release (only a touch tap may focus what it pressed, by the slop rule).
@@ -299,7 +299,7 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 - **The pointerdown follows the release side's rules:** a press whose target floats out of its cell's box (a popover or menu), or is inside a `data-pointer-transparent` element, or is a control, has no start cell, is not offered to the sessions and moves no focus. Inside a cell the control rule also covers `[role=button]`, `[role=link]` and any `[tabindex]` other than `-1` (an anchor used as a button); outside a cell only the native controls count (the viewport and the rows carry a tabindex of their own).
 - **`lazyElement.reset()` bumps a generation:** a load that was in flight neither latches the failure nor reports it; the load after the reset does, so one failure is one report and a retry is never suppressed.
 - **Turn-off of range mode and property order:** a range assigned since the last update (the tick of the turn-off) survives the turn-off whichever order the properties were set; a range held by an earlier update is cleared with its mode, as before. Wave 6 A: the shell does this, the part need not.
-- **A `cellRange` held by the element is handed to the range service at a connect AND at every update** once a real one exists (it is never stranded after a failure); while the session is failed it stays a held value.
+- (SUPERSEDED by round 42 for the failed-range case.) **A `cellRange` held by the element is handed to the range service at a connect AND at every update** once a real one exists (it is never stranded after a failure); while the session is failed it stays a held value.
 - **`seen` (the value copy of the range) is refreshed only when the range changed.** `isEditingCell()` stays (Angular has it, cmp 5749) and is `editingCell !== null`.
 - **Parity:** the generic `data-props` loop is back in its original place for every component; `ge-data-table[data-edit]` cases get their props in the `data-edit` block, which the generic loop skips.
 
@@ -352,7 +352,7 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 - **`contenteditable="false"` is not a control** (`[contenteditable]:not([contenteditable="false"])`).
 - **`lazyPart` lets a `dispose()` / `sync(false)` from inside the part's own `attach()` win:** a throw after it is stale (no second detach, no latch, no report) and `changed` is not called; the next `sync(true)` loads again. Wave 6 parts may dispose themselves from `attach()`.
 - **`resetIconElement()` is `resetIfFailed()`:** `lazyElement.reset()` bumps a generation and makes a load in flight stale, so a table attach must not call it unconditionally (another table's failing import would be swallowed). `resetIfFailed()` resets only a latched failure.
-- **`services.range` is derived** (a getter: undefined while the range session is broken), never written.
+- (SUPERSEDED by round 42 for the failed-range case.) **`services.range` is derived** (a getter: undefined while the range session is broken), never written.
 - **The release look is cancelled by the root:** one pending look per pointer id; the root's own `endPress` of the same dispatch cancels its timer, so it only runs when the root did not hear the event. The bubble-phase focus move checks the open editor by the recorded pressed element (no second `composedPath()`).
 - **`parity/run.mjs`:** a `data-edit` whose row is missing or whose editor does not open THROWS with the case id (no case uses it yet; wave 5 B makes `startEditing` real).
 
@@ -393,14 +393,14 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 
 **Round 39 (amends round 38: the interaction routing is REVERSED):**
 - **Detached behaviour is split by what a method needs.** `serviceOf(key)` (the controller's own service, which survives a disconnect) is for VALUE-holding services only: the range VALUE (`cellRange`) and the row-drag `reorderData` / `moveRow`. Everything that needs the LIVE grid reads `provider(key)`, cleared at disconnect: the interaction methods, the clipboard (`copy*ToClipboard` resolves `unavailable` while detached), `fillDownTo` and `openRangeChart` are inert or null while detached, as on main. Wave 6 A / B / C: a method that reads the query, the columns or the DOM belongs on the `provider()` side; only a held value goes through `services`. `services.interaction` and `services.clipboard` were removed again.
-- **A `cellRange` assigned to a live range service clears a value held from an earlier gap** (`earlyRange`).
+- (SUPERSEDED by round 42 for the failed-range case.) **A `cellRange` assigned to a live range service clears a value held from an earlier gap** (`earlyRange`).
 - **`QueryService.changeAdvancedFilter(group)` is real** (one batch: page reset, then `advanced-filter-change`), and `clearAdvancedFilter()` calls it.
 - **A controller that throws in `renderToolbar` / `renderOverlay` is reported once and draws nothing.**
 - The `rangeService()` alias is gone.
 
 **Round 40 (amends the above):**
 - **A formatting service without the optional `anyFlashing`** is asked for every cell (wave 6 C: implement `anyFlashing` to gate the work; callers tolerate its absence by asking every cell).
-- **A pending `cellRange` wins** until it is handed over at the next connect.
+- (SUPERSEDED by round 42 for the failed-range case.) **A pending `cellRange` wins** until it is handed over at the next connect.
 - **The bubble-phase listener trusts the pointer id** (a target replaced mid-dispatch no longer makes the press look stopped; the focus move falls back to the start cell).
 - **Warnings are scoped per table** (`warnOncePer`; `callPart` takes the table as `scope`: wave 6 A / C pass their `host`).
 - **One frozen `PointerPress` per press:** the same object, by identity, at `onPointerDown`, `onPointerUp` and `onPointerCancel` of one press.
@@ -412,6 +412,11 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 - **`package.json` `sideEffects` lists the data-table lazy entries** (`**/data-table/lazy/*.js`), so a consumer's bundler keeps what a lazy module defines; a node test covers every lazy entry of `vite.config.ts`.
 - **`floatsOut` is the plain rule** (the press point outside the cell's box is not that cell); no `getComputedStyle`.
 - **`Press` keeps only `view`**; `pressOf` is gone.
+
+**Round 42 (amends the above; SIMPLIFIES the failed range path):**
+- **The range VALUE is never withdrawn.** `services.range` is always the range session's own `rangeService`; a FAILED range session only stops its lifecycle (`hostUpdate`, pointer offers, overlay) and its lazy part is disposed; `range()`, `setRange()` and the turn-off rule keep working (the shell's `keepValue()`, called by the controller for a broken session at every update). `NEUTRAL_RANGE_CELL` is only `isCellSelected`; `CellSession.neutral` has no `rangeService`; `CellSession.keepValue?()` is new. Wave 6 A: keep the VALUE rules in the shell (not in the part); the part only draws and gestures.
+- **The element's `earlyRange` exists ONLY for before the first connect** (and a custom plan with no range service); the failed-case rules of rounds 21 to 41 are gone (superseded bullets marked).
+- **A session whose `onPointerDown` ends the press is cancelled BEFORE its own detach** (provisional claimant during the offer); a press of a previous attachment is dropped silently.
 - **The paste part has no `changed` on purpose** (round 26): nothing renders from it today. Wave 6 B adds `changed: () => host.requestRender()` to its `lazyPart` when the part draws something (a status, a preview).
 
 ## 0. What exists, and what the reading changed (read first)

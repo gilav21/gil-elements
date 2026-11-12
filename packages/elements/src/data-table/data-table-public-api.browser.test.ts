@@ -48,36 +48,6 @@ describe('the element methods on a DETACHED table', () => {
     });
 });
 
-describe('a cellRange assigned to a live range service', () => {
-    it('clears a value held from an earlier gap: it cannot overwrite the newer one at a reconnect', async () => {
-        const table = await mountTable({ enableCellRangeSelection: true });
-        const older = { startRow: 0, startCol: 'name', endRow: 0, endCol: 'name' };
-        const newer = { startRow: 1, startCol: 'name', endRow: 2, endCol: 'age' };
-        (table as unknown as { earlyRange: unknown }).earlyRange = older; // held from a gap in which no real range service existed
-        table.cellRange = newer;
-        table.remove();
-        document.body.append(table);
-        await settle(table);
-        expect(table.cellRange).toEqual(newer);
-    });
-});
-
-describe('a cellRange that the range service REFUSES', () => {
-    it('leaves a pending held value alone (only an accepted value supersedes it)', async () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-        const table = await mountTable({ enableCellRangeSelection: true });
-        const pending = { startRow: 0, startCol: 'name', endRow: 0, endCol: 'name' };
-        (table as unknown as { earlyRange: unknown }).earlyRange = pending;
-        table.cellRange = { startRow: 'x' } as never; // not a range of this table: refused
-        expect(table.cellRange).toEqual(pending); // the pending value still wins
-        table.remove();
-        document.body.append(table);
-        await settle(table);
-        expect(table.cellRange).toEqual(pending); // and is handed over at the reconnect
-        warn.mockRestore();
-    });
-});
-
 describe('a failure of the same kind in TWO tables', () => {
     it('is reported for each table: one table\'s warning never silences the other\'s', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);

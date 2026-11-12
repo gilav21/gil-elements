@@ -52,11 +52,12 @@
  * - Only the PRIMARY button makes a cell press: a right or middle press (`event.button !== 0`) is not offered to the sessions, has no start cell
  *   and moves no focus (the context menu addon handles `contextmenu` itself); a touch or pen contact has button 0.
  * - A session that throws in `attach()` or `hostUpdate()` has a bug: the error is reported once, it is marked broken FIRST (it is never called
- *   again, not even for the presses it claimed, which just end), detached, and left out of everything until the next attach. Its `neutral`
- *   services (`NEUTRAL_RANGE`, `NEUTRAL_RANGE_CELL`, `NEUTRAL_EDIT`: one definition per session, in its file, exposed as `session.neutral`)
- *   replace its `service` / `rangeService`. While it is out `cellRange` reads null; a `cellRange` assigned meanwhile is held by the element
- *   and handed over at the next connect with a real range service; the range the failed range session held is kept by its detach and served
- *   again after the next attach. An error in any other callback is reported and the callback answers nothing.
+ *   again, not even for the presses it claimed, which just end), detached, and left out of its LIFECYCLE (pointer, `hostUpdate`, overlay) until
+ *   the next attach. What it holds as a VALUE is never withdrawn: `services.range` and the `range` provider stay its own, its `range()` /
+ *   `setRange()` keep working, and `keepValue()` (the value half of its update, if it has one) keeps being called at every update. Only the
+ *   methods that need its live part answer from its `neutral.service` (`NEUTRAL_EDIT`, `NEUTRAL_RANGE_CELL`: `isCellSelected` false) while it is
+ *   out. An error in any other callback is reported and the callback answers nothing. A press that ends inside a session's own `onPointerDown`
+ *   (a blur, a detach of the table) is cancelled to it before the call returns, before its detach.
  * - A widget in a cell that manages its own focus (a combobox, a menu button, a custom editor that is not a native control) marks itself, or an
  *   ancestor inside the cell, with `data-table-keeps-focus`: the grid then treats it like a control (it does not move the focus, does not offer the
  *   press to the sessions, and the press has no start cell). The press is still RECORDED in the capture phase, so a `stopPropagation` of a renderer
@@ -121,6 +122,8 @@ export interface CellSession {
     readonly service?: Partial<CellInteractionService>;
     /** Provided under `range` (range session only). */
     readonly rangeService?: RangeService;
-    /** What the controller installs in place of `service` / `rangeService` when this session fails: inert objects with the same keys and typed answers (false, '', null). */
-    readonly neutral: { readonly service?: Partial<CellInteractionService>; readonly rangeService?: RangeService };
+    /** What the merged `interaction` service answers while this session is FAILED, for the methods that need its live part (typed answers: false, null); methods it does not list (its VALUE methods) keep going to the session. */
+    readonly neutral: { readonly service?: Partial<CellInteractionService> };
+    /** Value maintenance that must continue after the session FAILED (the controller calls it for a broken session at every update, guarded and reported once); the range shell's value rules. */
+    keepValue?(): void;
 }

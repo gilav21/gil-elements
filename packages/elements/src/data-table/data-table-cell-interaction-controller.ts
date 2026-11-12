@@ -136,13 +136,7 @@ export class CellInteractionController<T> {
         const edit = new EditSession(context);
         this.range = new RangeSession(context);
         this.sessions = [this.range, edit];
-        // DERIVED, never written: the range service while the range session is healthy, undefined while it is broken.
-        const controller = this;
-        this.services = {
-            get range(): RangeService | undefined {
-                return controller.broken.has(controller.range) ? undefined : controller.range.rangeService;
-            },
-        };
+        this.services = { range: this.range.rangeService }; // always the range session's own service: its VALUE is never withdrawn, even when the session failed
         // The merged `interaction` service is a PLAIN object built once: for every key a session declares (on its `service` or its `neutral.service`) ONE
         // stable function that, at call time, calls that key on the owning session's `service` (its `neutral.service` while it is broken). So there is
         // no snapshot (a session that replaces a method on its own `service` later, in `attach()` or when its lazy part loads, is heard), the functions
@@ -155,7 +149,10 @@ export class CellInteractionController<T> {
             for (const key of new Set([...Object.keys(session.service ?? {}), ...Object.keys(session.neutral.service ?? {})])) {
                 if (key in service) continue; // the first session that declares a key owns it
                 service[key] = (...args: unknown[]): unknown => {
-                    const source = (this.broken.has(session) ? session.neutral.service : session.service) as Record<string, unknown> | undefined;
+                    // A broken session answers NEUTRALLY only for the methods its `neutral.service` lists (the ones that need its live part); the rest (its VALUE
+                    // methods) keep going to the session.
+                    const neutral = this.broken.has(session) ? (session.neutral.service as Record<string, unknown> | undefined) : undefined;
+                    const source = neutral && key in neutral ? neutral : (session.service as Record<string, unknown> | undefined);
                     const method = source?.[key];
                     return typeof method === 'function' ? method.apply(source, args) : undefined;
                 };
@@ -221,23 +218,17 @@ export class CellInteractionController<T> {
 
     /**
      * A session failed (its `attach()` or a `hostUpdate()` threw): a bug. It is reported once, marked broken FIRST (nothing calls it again, not even
-     * for the presses it claimed, which end without telling it), detached NOW (that removes what it registered, a key handler or a listener; a range
-     * session keeps its range for the next attach) and left out of everything after (pointer, hostUpdate, overlay, detach) until the next attach, and its
-     * NEUTRAL service objects (`CellSession.neutral`) replace its methods in the merged `interaction` service and its `rangeService` (provided and in
-     * `services`), so nothing keeps calling a half-attached session. `cellRange` reads null and `isCellSelected` answers false while it is out; the next
-     * attach restores the real services, and the range the session held is served again.
+     * for the presses it claimed, which end without telling it), detached NOW (that removes what it registered, a key handler or a listener, and disposes
+     * a range session's lazy part) and left out of its LIFECYCLE (pointer, hostUpdate, overlay, detach) until the next attach. Its methods of the merged
+     * `interaction` service that need its live part answer from `neutral.service` while it is broken; its VALUE (the range: `range()`, `setRange()`,
+     * the turn-off rule through `keepValue`) is never withdrawn: `services.range` and the `range` provider stay the session's own, and the next attach
+     * simply resumes the lifecycle.
      */
     private fail(session: CellSession, error: unknown): void {
         this.report(error);
         this.broken.add(session);
         for (const [id, press] of [...this.presses]) if (press.claimedBy === session) this.endPress(id, press, null); // `notifyCancel` skips a broken claimant
         this.guarded(() => session.detach());
-        const { neutral } = session;
-        // (its methods of the merged `interaction` service are answered by `neutral.service` from now on: the delegation reads it while the session is broken)
-        if (neutral.rangeService) {
-            // (`services.range` is withdrawn by the getter while the session is broken: the element holds a cellRange itself; the neutral one is only the `range` PROVIDER)
-            this.teardown.push(this.host.provide('range', neutral.rangeService));
-        }
     }
 
     detach(): void {
@@ -272,6 +263,8 @@ export class CellInteractionController<T> {
                 this.fail(session, error);
             }
         });
+        // A FAILED session stops its lifecycle but not its value: `keepValue` (guarded, reported once per session) keeps its value rules running.
+        for (const session of this.broken) this.guarded(() => session.keepValue?.(), session);
     }
 
     private reconcile(): void {
@@ -558,14 +551,11 @@ export class CellInteractionController<T> {
         press.bubbled = true;
         if (press.bypass) return; // not a cell press: no offer, no focus
         const target = press.view.pressed;
-        const claimant = this.offer(event, press.overlay ? null : target, (session) => session.onPointerDown, press.view) ?? null;
-        press.claimedBy = claimant; // recorded before any further work
-        // A session's `onPointerDown` may END the press itself (it blurs the window, detaches the table): then the end path found no claimant yet, so the
-        // claimant that returned true is told now, once, and the press is not routed or focused any more.
-        if (this.presses.get(event.pointerId) !== press) {
-            if (claimant) this.notifyCancel(press, null);
-            return;
-        }
+        const claimant = this.offer(event, press.overlay ? null : target, (session) => session.onPointerDown, press.view, press);
+        // A session's `onPointerDown` may END the press itself (it blurs the window, detaches the table): the end path already cancelled it to the session
+        // being offered (the provisional claimant, see `offer`), before any detach, so nothing is routed, notified again or focused here. That also drops a press
+        // of a previous attachment silently (the table was detached and attached again inside the handler: its claimant was cancelled by the detach).
+        if (this.presses.get(event.pointerId) !== press) return;
         if (claimant) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
         if (press.overlay) return; // an unclaimed overlay press does nothing: no focus move
@@ -726,10 +716,18 @@ export class CellInteractionController<T> {
     }
 
     /** The press goes to the sessions in order (range, edit); the first that returns true claims it and is returned. */
-    private offer(event: PointerEvent, target: Element | null, handlerOf: (session: CellSession) => CellSession['onPointerDown'], press: PointerPress): CellSession | undefined {
+    private offer(event: PointerEvent, target: Element | null, handlerOf: (session: CellSession) => CellSession['onPointerDown'], press: PointerPress, owner?: Press): CellSession | undefined {
         const at = cellAddressOf(target);
         // A session that throws is reported (once) and does not claim: the press goes on to the next session and then to the controller's own behaviour.
-        return this.sessions.find((session) => !this.broken.has(session) && this.guarded(() => handlerOf(session)?.call(session, event, at, press)) === true);
+        return this.sessions.find((session) => {
+            if (this.broken.has(session)) return false;
+            // With an `owner` (the pointerdown offer) the session being offered is the PROVISIONAL claimant for the duration of its call: a press that ends inside
+            // its `onPointerDown` (a blur, a detach of the table) is cancelled to it by the ordinary end path, BEFORE it is detached, exactly once.
+            if (owner) owner.claimedBy = session;
+            const claimed = this.guarded(() => handlerOf(session)?.call(session, event, at, press)) === true;
+            if (owner && !claimed && this.presses.get(event.pointerId) === owner) owner.claimedBy = null;
+            return claimed;
+        });
     }
 
     /**

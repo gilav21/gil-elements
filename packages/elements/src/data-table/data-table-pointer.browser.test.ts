@@ -515,37 +515,8 @@ describe('a failed session is withdrawn: its presses end, its neutral services t
         }
     });
 
-    it('installs the neutral services while it is out (cellRange reads null), renders, and a reconnect restores the real session with the range it held', async () => {
-        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-        let fail = false;
-        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
-            if (fail) throw new Error('range hostUpdate failed');
-        });
-        try {
-            const table = await mountTable({ enableCellRangeSelection: true });
-            const realService = table.provider('range')!;
-            const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
-            table.cellRange = range;
-            fail = true;
-            table.requestUpdate();
-            await settle(table);
-            expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull(); // the table still renders
-            expect(table.provider('range')).not.toBe(realService); // the neutral one
-            expect(table.cellRange).toBeNull(); // while it is out, cellRange reads null
-            update.mockRestore();
-            table.remove();
-            document.body.append(table);
-            await settle(table);
-            expect(table.provider('range')).toBe(realService); // the real session is back
-            expect(table.cellRange).toEqual(range); // and serves the range it held when it failed
-            expect(error).toHaveBeenCalledTimes(1);
-        } finally {
-            update.mockRestore();
-            error.mockRestore();
-        }
-    });
 
-    it('holds a cellRange assigned while the range session is failed, and applies it once a real range service is back (the reconnect), before anything is drawn', async () => {
+    it('keeps a cellRange assigned while the range session is failed in the session itself, and it survives a detach and the reconnect', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         let fail = false;
         const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
@@ -565,6 +536,44 @@ describe('a failed session is withdrawn: its presses end, its neutral services t
             await settle(table);
             expect(table.provider('range')!.range()).toEqual(second); // the session itself holds it now, not only the element
             expect(table.cellRange).toEqual(second);
+        } finally {
+            update.mockRestore();
+            error.mockRestore();
+        }
+    });
+
+    it('a FAILED range session keeps its VALUE: assign, toggle the range mode off and on and it is dropped like a healthy session\'s; assign, remove, read, reconnect: it is still there', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        let fail = false;
+        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            if (fail) throw new Error('range hostUpdate failed');
+        });
+        try {
+            const table = await mountTable({ enableCellRangeSelection: true });
+            const service = table.provider('range')!;
+            fail = true;
+            table.requestUpdate();
+            await settle(table);
+            expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull(); // the table still renders
+            expect(table.provider('range')).toBe(service); // never re-provided over: it is still the session's own service
+            expect(service.active()).toBe(false); // the live-part answers are neutral while it is out
+            const r = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
+            table.cellRange = r;
+            expect(table.cellRange).toEqual(r); // the value works
+            await settle(table);
+            table.enableCellRangeSelection = false;
+            await settle(table);
+            table.enableCellRangeSelection = true;
+            await settle(table);
+            expect(table.cellRange).toBeNull(); // the turn-off rule ran (keepValue): dropped, like a healthy session
+            table.cellRange = r;
+            table.remove();
+            expect(table.cellRange).toEqual(r); // detached: the value is still there
+            update.mockRestore();
+            document.body.append(table);
+            await settle(table);
+            expect(table.cellRange).toEqual(r); // and the reconnected session still holds it
+            expect(error).toHaveBeenCalledTimes(1);
         } finally {
             update.mockRestore();
             error.mockRestore();
@@ -1370,6 +1379,43 @@ describe('a session whose onPointerDown ends the press', () => {
         cell.dispatchEvent(pointer('pointerdown', 451, { over: cell }));
         cell.dispatchEvent(pointer('pointerup', 451, { over: cell }));
         expect(log).toEqual(['cancel:null']);
+    });
+
+    it('that DETACHES the table and claims it gets exactly one onPointerCancel, delivered BEFORE its own detach', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        const detach = vi.spyOn(RangeSession.prototype, 'detach').mockImplementation(() => void log.push('detach'));
+        hooks.onPointerDown = () => {
+            table.remove(); // the table is detached inside the handler
+            return true;
+        };
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
+        hooks.onPointerUp = () => void log.push('up');
+        try {
+            const cell = cellAt(table, 1, 'name')!;
+            cell.dispatchEvent(pointer('pointerdown', 461, { over: cell }));
+            expect(log).toEqual(['cancel:null', 'detach']);
+        } finally {
+            detach.mockRestore();
+        }
+    });
+
+    it('that detaches and re-attaches the table inside the handler: the NEW attachment never sees the stale press', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => {
+            log.push('down');
+            table.remove();
+            document.body.append(table); // attached again, inside the same handler
+            return true;
+        };
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
+        hooks.onPointerUp = () => void log.push('up');
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 462, { over: cell }));
+        await settle(table);
+        cellAt(table, 1, 'name')!.dispatchEvent(pointer('pointerup', 462, { over: cellAt(table, 1, 'name')! }));
+        expect(log).toEqual(['down', 'cancel:null']); // one cancel (from the detach), no stale up
     });
 });
 

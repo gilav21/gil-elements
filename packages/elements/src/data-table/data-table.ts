@@ -541,24 +541,20 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * value assigned before the table is attached waits for the range service.
      */
     get cellRange(): CellRange | null {
-        // A value PENDING in `earlyRange` (assigned while no real range service existed: before the first connect, or while the range session was failed)
-        // wins until it is handed over at the next connect: once the failure's `broken` mark is cleared by a detach the session answers again with its OLD
-        // value, which must not shadow the newer one.
-        if (this.earlyRange !== undefined && rangeModeOn(this)) return this.earlyRange;
-        return this.serviceOf('range')?.range() ?? null;
+        const service = this.serviceOf('range'); // the range session's own (the controllers are built at the first connect and kept; a FAILED session keeps its value)
+        if (service) return service.range();
+        return this.earlyRange !== undefined && rangeModeOn(this) ? this.earlyRange : null;
     }
 
     set cellRange(range: CellRange | null) {
         const service = this.serviceOf('range');
         if (service) {
-            // The session checks the value and asks for the render. Only an ACCEPTED value supersedes a held one (a failed session, before the first connect):
-            // it must not overwrite the newer value at a reconnect; a refused value (not a range of this table) leaves the pending one alone.
-            if (service.setRange(range)) this.earlyRange = undefined;
+            service.setRange(range); // the session checks the value and asks for the render
             return;
         }
-        // No REAL range service exists (before the first connect nothing is assembled; a custom plan may have no cell-interaction controller; the range
-        // session may have failed, which leaves a neutral one): the value waits here, checked by the same rules (rows are not known yet), and the
-        // range session adopts it at a connect where one exists. Without any range service it stays a held value only.
+        // No range service yet: before the first connect nothing is assembled (a custom plan without the cell-interaction controller never has one, and
+        // then it stays a held value only). The value waits here, checked by the same rules (rows are not known yet), and the range session adopts it
+        // right after the first attach.
         const next = sanitizeCellRange(range, 0, []); // the columns are looked up by the session at its next update
         if (next === undefined) warnBadRange(range);
         else this.earlyRange = next;
@@ -738,9 +734,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     }
 
     /**
-     * A `cellRange` held here (assigned before the first connect, or while the range session was failed) goes to the range service as soon as there is
-     * one, and a real one comes back only when the controllers attach: so it is handed over right after `attachAll()` at a connect (never from an update:
-     * that would request a render while rendering). While there is none it stays a held value.
+     * A `cellRange` held here (assigned before the first connect) goes to the range session right after the first `attachAll()` (never from an update:
+     * that would request a render while rendering). With no range service at all (a custom plan) it stays a held value.
      */
     private handOverEarlyRange(): void {
         const range = this.serviceOf('range');

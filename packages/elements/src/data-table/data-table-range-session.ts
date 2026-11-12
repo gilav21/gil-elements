@@ -33,8 +33,8 @@ export const NEUTRAL_RANGE: Readonly<RangeService> = Object.freeze({
     fillHandleCell: () => null,
     gestureActive: () => false,
 });
-/** The range session's methods of the `interaction` service, neutral (installed when it fails: `isCellSelected` answers false there, not the focused cell). */
-export const NEUTRAL_RANGE_CELL: Readonly<Pick<CellInteractionService, 'cellRange' | 'isCellSelected'>> = Object.freeze({ cellRange: () => null, isCellSelected: () => false });
+/** The range session's methods of the `interaction` service that need the LIVE part, neutral (while it is broken `isCellSelected` answers false, not the focused cell). Its VALUE methods (`cellRange`) are never neutral. */
+export const NEUTRAL_RANGE_CELL: Readonly<Pick<CellInteractionService, 'isCellSelected'>> = Object.freeze({ isCellSelected: () => false });
 
 export class RangeSession<T> implements CellSession {
     /** The range while no part is attached; see the header. */
@@ -64,7 +64,7 @@ export class RangeSession<T> implements CellSession {
 
     constructor(protected readonly context: InteractionContext<T>) {}
 
-    readonly neutral = { service: NEUTRAL_RANGE_CELL, rangeService: NEUTRAL_RANGE };
+    readonly neutral = { service: NEUTRAL_RANGE_CELL };
 
     // wave 6: the methods below that answer "nothing" delegate to `this.lazy.part` once the part implements them.
     readonly rangeService: RangeService = {
@@ -159,7 +159,17 @@ export class RangeSession<T> implements CellSession {
 
     attach(): void {}
 
+    /** The lifecycle: the value maintenance, then the lazy part follows the mode. A FAILED session no longer gets this (it only runs `keepValue`). */
     hostUpdate(): void {
+        this.keepValue();
+        this.lazy.sync(this.rangeOn());
+    }
+
+    /**
+     * The VALUE rules of the shell (columns, rows, the turn-off rule, the value copy), which never stop: the controller keeps calling this for a session that
+     * FAILED, so its range value keeps behaving like a healthy session's (the one place of the turn-off rule).
+     */
+    keepValue(): void {
         const on = this.rangeOn();
         if (on) {
             this.held = this.live();
@@ -190,7 +200,6 @@ export class RangeSession<T> implements CellSession {
         this.wasOn = on;
         this.assignedSince = false;
         if (!sameRange(this.seen, this.held)) this.seen = this.held && { ...this.held }; // copied only when it changed
-        this.lazy.sync(on);
     }
 
     detach(): void {
