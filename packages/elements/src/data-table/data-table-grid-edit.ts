@@ -53,6 +53,17 @@ function outputsOf<T>(session: EditSession<T>, open: OpenEditor<T>): ComponentOu
     return outputs;
 }
 
+/** The date editor's `Date` per open editor, kept while its shown value is the same: a render that changes nothing hands the picker the same object. */
+const shownDates = new WeakMap<object, { shown: unknown; date: Date | null }>();
+
+function shownDate<T>(open: OpenEditor<T>): Date | null {
+    const cached = shownDates.get(open);
+    if (cached && Object.is(cached.shown, open.shown)) return cached.date;
+    const date = asEditableDate(open.shown);
+    shownDates.set(open, { shown: open.shown, date });
+    return date;
+}
+
 /** Select editors the pointer is picking in (a press opened its list): their next `change` commits. */
 const pointerPicks = new WeakSet<object>();
 
@@ -90,7 +101,7 @@ function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overl
             // The trigger's own text (the date, or the placeholder) is its name; a label on the host would sit on an element with no role. The
             // error reaches the trigger (the focusable part, in the picker's shadow root, where no id reference can point) through `invalid` and
             // `errorMessage` (its aria-invalid and aria-description).
-            editor = html`<ge-date-picker data-edit-input .date=${asEditableDate(open.shown)} .invalid=${invalid} .errorMessage=${message ?? ''}
+            editor = html`<ge-date-picker data-edit-input .date=${shownDate(open)} .invalid=${invalid} .errorMessage=${message ?? ''}
                 @date-change=${(event: CustomEvent<unknown>) => session.change(open, event.detail)}></ge-date-picker>`;
             break;
         case 'select': {

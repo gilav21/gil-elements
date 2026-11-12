@@ -937,6 +937,25 @@ describe('review round 2', () => {
         expect((node as { description?: { value?: string } } | undefined)?.description?.value).toBe('Not that day');
     });
 
+    it('a rejected date pick keeps showing the picked day, also across an unrelated render (round 6)', async () => {
+        const rows = ROWS.map((r) => ({ ...r, born: '2020-01-15' }));
+        const born: ColumnDef<SampleRow> = { accessorKey: 'born', header: 'Born', width: '220px', editable: true, editType: 'date', editValidator: () => 'Not that day', valueSetter: (row, v) => ({ ...row, born: v }) };
+        const table = await mount({ data: rows, columns: editColumns({}, [born]) });
+        await startEditingAt(table, 0, 'born');
+        await whenDefined('ge-date-picker');
+        await frames(2);
+        (openEditor(table) as HTMLElement).dispatchEvent(new CustomEvent('date-change', { detail: new Date(2021, 4, 9), bubbles: true, composed: true }));
+        await settle(table);
+        const picker = openEditor(table) as HTMLElement & { date: Date | null; updateComplete: Promise<unknown> };
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'born' });
+        expect(picker.date?.getDate()).toBe(9);
+        const before = picker.date;
+        table.requestUpdate();
+        await settle(table);
+        expect(picker.date).toBe(before); // the same object: nothing reassigned
+        expect(picker.date?.getMonth()).toBe(4);
+    });
+
     it('closes the editor, writing nothing, when no row is drawn any more (round 5)', async () => {
         const table = await mount();
         const edits = record(table, 'cell-edit');

@@ -430,7 +430,8 @@ export class EditSession<T> implements CellSession {
     change(open: OpenEditor<T>, raw: unknown, commitNow = true): void {
         if (this.open !== open) return;
         const value = open.kind === 'date' ? writeBackDate(raw instanceof Date ? raw : null, open.original) : coerceDraft(open.kind, raw, open.column.editOptions);
-        if (open.kind === 'select') open.shown = value;
+        // The control keeps showing the DRAFT (a keyboard-moved select option; a picked date the validator refused).
+        if (open.kind === 'select' || open.kind === 'date') open.shown = value;
         this.setValue(open, value, false);
         if (commitNow) this.commit();
     }
