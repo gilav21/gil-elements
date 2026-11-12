@@ -128,6 +128,14 @@ describe('multiselectFilterFn', () => {
         expect(multiselectFilterFn({ s: 'a' }, ['a', 'b'], at)).toBe(true);
         expect(multiselectFilterFn({ s: 'c' }, ['a', 'b'], at)).toBe(false);
     });
+    it('reads a Set as its values; any other value is no filter, never a substring match, never a throw (round 15)', () => {
+        expect(multiselectFilterFn({ s: 'a' }, new Set(['a']), at)).toBe(true);
+        expect(multiselectFilterFn({ s: 'c' }, new Set(['a']), at)).toBe(false);
+        for (const odd of ['abc', 'c', 42, { 0: 'c', length: 1 }, true]) {
+            expect(multiselectFilterFn({ s: 'c' }, odd as never, at)).toBe(true);
+            expect(multiselectFilterFn({ s: 'zzz' }, odd as never, at)).toBe(true);
+        }
+    });
 });
 
 // Ported from sub/data-table-multiselect-filter.component.spec.ts 44-200 (the component's logic, without its DOM).

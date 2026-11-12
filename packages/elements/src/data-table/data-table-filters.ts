@@ -46,10 +46,14 @@ export function dateRangeFilterFn<R>(row: R, filterValue: DataTableDateRange | {
     return !end || ts <= toDateOnlyTimestamp(end);
 }
 
-/** The multiselect panel's filter: the cell value is one of the selected values (by identity); no selection lets every row through. */
-export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] | null | undefined, getValue: (row: R) => unknown): boolean {
-    if (!filterValue || filterValue.length === 0) return true;
-    return filterValue.includes(getValue(row));
+/**
+ * The multiselect panel's filter: the cell value is one of the selected values (by identity, `includes`); no selection lets every row through.
+ * Only an array (or a `Set`, read as its values) is a selection: any other value (a string set from outside, an object) is no filter and lets every
+ * row through. It never throws and never matches a substring.
+ */
+export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] | ReadonlySet<unknown> | null | undefined, getValue: (row: R) => unknown): boolean {
+    const selected: readonly unknown[] = Array.isArray(filterValue) ? filterValue : filterValue instanceof Set ? [...filterValue] : [];
+    return selected.length === 0 || selected.includes(getValue(row));
 }
 
 /** How long a filter result announcement waits for the edits to settle (D7): ONE value for the global filter and the column / advanced filters. */
