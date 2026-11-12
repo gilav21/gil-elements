@@ -1293,6 +1293,22 @@ describe('F9 result announcements (D7)', () => {
         expect(live).toBeDefined();
     });
 
+    it("a consumer's own filter write cancels an older announcement: the column one and the global one (round 14)", async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true });
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'al');
+        table.advancedFilter = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'o' }] };
+        await new Promise((resolve) => setTimeout(resolve, 650));
+        await settle(table);
+        expect(announcer(table)).toBe('');
+        table.provider('query')!.changeGlobalFilter('b');
+        await settle(table);
+        table.columnFilters = {};
+        await new Promise((resolve) => setTimeout(resolve, 650));
+        await settle(table);
+        expect(announcer(table)).toBe('');
+    });
+
     it('server filtering announces the ANSWER total once its rows arrive, never the total from before the request', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
         table.addEventListener('query', () => setTimeout(() => Object.assign(table, { data: [...table.data], total: 3 }), 900));

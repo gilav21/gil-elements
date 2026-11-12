@@ -1,5 +1,6 @@
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import { interpolate } from './data-table.locales.js';
+import type { ModelOrigin } from './data-table-model.js';
 import type { QueryService } from './data-table-providers.js';
 import {
     activeSorts,
@@ -40,6 +41,7 @@ export class QueryController<T> {
     /** The sequence number of the latest filter change (global, column, advanced): an announcement for an older one says nothing. */
     private seq = 0;
     private unsubscribeData: (() => void) | undefined;
+    private unsubscribeFilters: (() => void) | undefined;
     /** `config.total` when the last query was sent: a different one is its answer. */
     private totalAtQuery: number | undefined;
     /** `loading` was seen true since the last query: the consumer drives it, and its end (not a data push) is the answer. */
@@ -396,6 +398,12 @@ export class QueryController<T> {
             if (this.host.config.loading) this.loadingSeen = true;
             else if (!this.loadingSeen) this.answered();
         });
+        // wave5: a consumer's own write of a filter (the property) is a filter change too: it takes the next number, so every announcement of an older
+        // change (the global filter's here, the column / advanced one of the filter UI) says nothing. It announces nothing itself.
+        const external = (_: unknown, origin: ModelOrigin): void => void (origin === 'property' && this.filterChanged());
+        const { model } = this.host;
+        const filterSubscriptions = [model.subscribe('columnFilters', external), model.subscribe('advancedFilter', external), model.subscribe('globalFilter', external)];
+        this.unsubscribeFilters = () => filterSubscriptions.forEach((undo) => undo());
     }
 
     /**
@@ -443,6 +451,8 @@ export class QueryController<T> {
     detach(): void {
         this.unsubscribe?.();
         this.unsubscribeData?.();
+        this.unsubscribeFilters?.();
+        this.unsubscribeFilters = undefined;
         this.cancelAnswerWait?.();
         this.cancelAnswerWait = undefined;
         this.dropWaiting();
