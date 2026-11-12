@@ -2539,6 +2539,55 @@ describe('a session that fails again after a reconnect', () => {
     });
 });
 
+describe('two pointerdowns of the same pointer that only the root hears', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('end the first press (one cancel, no event) and leave ONE watcher pair: no overwritten press, no leaked listeners', async () => {
+        // A table in a shadow root, and NON-composed synthetic events: they never leave the shadow tree, so the document does not hear them.
+        const host = document.createElement('div');
+        document.body.append(host);
+        const frame = document.createElement('div');
+        frame.style.cssText = 'width:600px;height:400px;';
+        host.attachShadow({ mode: 'open' }).append(frame);
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS });
+        frame.append(table);
+        const added: string[] = [];
+        const removed: string[] = [];
+        const add = vi.spyOn(Document.prototype, 'addEventListener').mockImplementation(function (this: Document, type: string, ...rest: unknown[]) {
+            if (type === 'pointermove' || type === 'keydown') added.push(type);
+            return EventTarget.prototype.addEventListener.call(this, type, ...(rest as [EventListenerOrEventListenerObject, AddEventListenerOptions]));
+        });
+        const remove = vi.spyOn(Document.prototype, 'removeEventListener').mockImplementation(function (this: Document, type: string, ...rest: unknown[]) {
+            if (type === 'pointermove' || type === 'keydown') removed.push(type);
+            return EventTarget.prototype.removeEventListener.call(this, type, ...(rest as [EventListenerOrEventListenerObject, EventListenerOptions]));
+        });
+        try {
+            await settle(table);
+            const log: string[] = [];
+            hooks.onPointerDown = () => true;
+            hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
+            const cell = cellAt(table, 1, 'name')!;
+            const down = (): PointerEvent => new PointerEvent('pointerdown', { bubbles: true, composed: false, button: 0, pointerId: 651, pointerType: 'mouse', clientX: 30, clientY: 30 });
+            added.length = 0;
+            removed.length = 0;
+            cell.dispatchEvent(down());
+            cell.dispatchEvent(down()); // the same pointer again, its release never came
+            expect(log).toEqual(['cancel:null']);
+            const net = (): number => added.filter((type) => type === 'pointermove').length - removed.filter((type) => type === 'pointermove').length;
+            expect(net()).toBe(1); // the first press's pair went with it: ONE pair is watching
+            cell.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, composed: false, button: 0, pointerId: 651, pointerType: 'mouse', clientX: 30, clientY: 30 }));
+            expect(net()).toBe(0); // the last press takes the last pair away: nothing leaked
+        } finally {
+            add.mockRestore();
+            remove.mockRestore();
+            host.remove();
+        }
+    });
+});
+
 describe('controls seen through the composed path', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

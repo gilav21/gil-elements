@@ -16,7 +16,7 @@ import { cellSelectedBy, clampToRows, rangeColumnKeys, rangeModeOn, sameRange, s
 import type { CellRange } from './data-table.types.js';
 import type { RangePart } from './lazy/range.js';
 
-/** The range service that does nothing and answers "nothing" with the right types: the shell is built on it, and the controller installs it when this session fails. */
+/** The range service that does nothing and answers "nothing" with the right types: the session's shell is built on it (its own `rangeService` spreads it and overrides what it can answer). Nothing installs it when a session fails: a failed session keeps its own range service and value. */
 export const NEUTRAL_RANGE: Readonly<RangeService> = Object.freeze({
     active: () => false,
     range: () => null,

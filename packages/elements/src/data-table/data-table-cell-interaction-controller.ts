@@ -582,14 +582,19 @@ export class CellInteractionController<T> {
     // ---- pointer ----------------------------------------------------------------------------------------------------
 
     /** The document hears every press first: one whose composed path does not include the root clears `within` now (the root restores it for a press it hears). */
+    /** Ends the open press of this pointer, if any (`event`: the release that was seen, or null). */
+    private endOpenPress(pointerId: number, event: PointerEvent | null): void {
+        const open = this.presses.get(pointerId);
+        if (open) this.endPress(pointerId, open, event);
+    }
+
     private onDocumentDown(event: PointerEvent): void {
         // A press of the same pointer that is still open (inside this table, outside it, or on a nested table, which records its own) ends
         // the earlier press whose release was lost (a pointerup swallowed over an iframe, alt-tab): its claimant is told, with the REAL pointerup when the release
         // was seen outside a moment ago (the deferred close has not run yet), else with no event. Every press-ending rule that precedes a new pointerdown lives here.
         this.closeStale(event.timeStamp);
         this.endOtherTouches(event);
-        const open = this.presses.get(event.pointerId);
-        if (open) this.endPress(event.pointerId, open, this.closing.get(event.pointerId)?.event ?? null);
+        this.endOpenPress(event.pointerId, this.closing.get(event.pointerId)?.event ?? null);
         this.clearedAt = null;
         if (!this.within || event.composedPath().includes(this.host.root)) return; // nothing to clear (the path is built only when `within` is set)
         this.clearedAt = event.timeStamp;
@@ -633,8 +638,10 @@ export class CellInteractionController<T> {
     private recordPress(event: PointerEvent): void {
         // The anchor is read BEFORE the offer: a claimant that moves the focus in its onPointerDown must not change the anchor of its own press.
         const anchor = this.focused;
-        // (A press of the same pointer that was still open, and the other fingers' presses, were ended by `onDocumentDown`, which hears every pointerdown before
-        // this root does: the root only ever hears an event the document heard.)
+        // The document ends an open press of the same pointer (and the other fingers' presses) before this root hears a pointerdown, but an event the document
+        // never hears (a non-composed synthetic one dispatched inside a shadow root) reaches only this root: an open press of the same pointer ends here too
+        // (cancel to its claimant, no event), never overwritten and never leaving its watchers behind.
+        this.endOpenPress(event.pointerId, null);
         const path = event.composedPath(); // once per event: a path is built at every call
         const target = this.targetOf(path);
         // A press that begins on an overlay is OFFERED (see `overlay` below) but is never a cell press: it has no start cell, and only the RELEASE of a gesture is looked through it.
@@ -648,8 +655,8 @@ export class CellInteractionController<T> {
         const overlay = own && target !== null && this.overlayOf(target) !== null;
         const startCell = !own || overlay ? null : this.addressOf(target);
         const view: PointerPress = Object.freeze({ anchor, pressed: target, startCell });
+        if (this.presses.size === 0) this.watchPresses(); // the map goes from empty to non-empty: ONE watcher pair
         this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', seen: event.timeStamp, overlay, clears: !startCell && target !== null && this.clearsFocus(target) });
-        if (this.presses.size === 1) this.watchPresses();
     }
 
     /**
