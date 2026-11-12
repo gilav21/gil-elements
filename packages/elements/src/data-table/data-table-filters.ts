@@ -103,9 +103,11 @@ export function hasFloatingFilter<T>(column: ColumnDef<T>): boolean {
     return !!column.floatingFilterComponent || !!column.floatingFilterRenderer || hasDefaultFloatingInput(column);
 }
 
-/** Some column asks for the floating row (cmp 2523, Angular's test, which also counts a bare `floatingFilter: true`). */
-export const hasAnyFloatingFilter = <T>(columns: readonly ColumnDef<T>[]): boolean =>
-    columns.some((c) => !isSpecialColumnKey(c.accessorKey) && (c.floatingFilter === true || !!c.floatingFilterComponent || !!c.floatingFilterRenderer || (hasDefaultFloatingInput(c) && c.floatingFilter !== false)));
+/**
+ * Some column draws a floating control, so the floating row is drawn: exactly the columns `hasFloatingFilter` draws. Angular (cmp 2523) also counts a bare
+ * `floatingFilter: true`, which draws nothing there: an empty row. Not here; the config check warns about that column instead.
+ */
+export const hasAnyFloatingFilter = <T>(columns: readonly ColumnDef<T>[]): boolean => columns.some((c) => hasFloatingFilter(c));
 
 /** `filterComponentInputs`, read afresh (a factory is called on every render, cmp 3943). */
 export const filterInputsOf = <T>(column: ColumnDef<T>): Record<string, unknown> =>

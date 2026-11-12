@@ -112,7 +112,6 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         panelWithoutFlag.length > 0,
         `Columns [${keys(panelWithoutFlag)}] have a filterComponent but no enableFiltering. The header shows no filter trigger and the column filter is not applied; set enableFiltering.`,
     );
-    // Only the three built-in panels report values that are not text; a consumer's own panel may well report text the default match handles.
     // Angular draws a floating component or renderer without `enableFiltering` (cmp 2547) but never applies its value (cmp 1284): kept for parity, warned.
     // Only with the floating row on: without it no floating control is drawn at all.
     const floatingWithoutFlag = !c.enableFloatingFilters ? [] : c.columns.filter((col) => (col.floatingFilterComponent || col.floatingFilterRenderer) && col.floatingFilter !== false && !col.enableFiltering);
@@ -120,6 +119,14 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         floatingWithoutFlag.length > 0,
         `Columns [${keys(floatingWithoutFlag)}] have a floating filter component or renderer but no enableFiltering. The control is drawn but its value filters nothing; set enableFiltering.`,
     );
+    // A bare `floatingFilter: true` (no enableFiltering, no component or renderer) draws nothing in the floating row: no row is drawn for it (Angular draws
+    // an empty one, cmp 2523).
+    const bareFloating = !c.enableFloatingFilters ? [] : c.columns.filter((col) => col.floatingFilter === true && !col.enableFiltering && !col.floatingFilterComponent && !col.floatingFilterRenderer);
+    warn(
+        bareFloating.length > 0,
+        `Columns [${keys(bareFloating)}] have floatingFilter: true but no enableFiltering, floatingFilterComponent or floatingFilterRenderer. Nothing is drawn in the floating filter row for them; set enableFiltering.`,
+    );
+    // Only the three built-in panels report values that are not text; a consumer's own panel may well report text the default match handles.
     // Server filtering never matches rows here, so a missing filterFn changes nothing then.
     const panelWithoutFn = c.localFiltering === false ? [] : c.columns.filter((col) => col.enableFiltering && builtInPanelOf(col.filterComponent) !== undefined && !col.filterFn);
     warn(
