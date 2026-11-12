@@ -21,8 +21,7 @@ interface ColumnHandlers {
     change: (event: Event) => void;
     input: (event: Event) => void;
     toggle: (event: CustomEvent<boolean>) => void;
-    /** The header panel's listeners, built for one column object (rebuilt when the consumer replaces the column). */
-    /** Kept for the consumer's `filterComponentOutputs` OBJECT (the cache key; the column object may be rebuilt every render). */
+    /** The header panel's listeners, kept for the consumer's `filterComponentOutputs` OBJECT (the cache key; the column object may be rebuilt every render). */
     panel?: { readonly own: object | null; readonly outputs: ComponentOutputs };
     /** The floating component's listeners: only the table's `filter-change`. */
     floating: ComponentOutputs;

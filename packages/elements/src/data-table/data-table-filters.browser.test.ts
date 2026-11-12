@@ -320,6 +320,19 @@ describe('round 8', () => {
         expect(announcer(table)).toBe('3 rows match the filters');
     });
 
+    it('a column filter change within 500 ms of global typing drops the global announcement: only the column count is spoken (round 10)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn] });
+        const spoken: string[] = [];
+        new MutationObserver(() => spoken.push(announcer(table))).observe(q(table, '[data-slot="data-table-announcer"]'), { childList: true, characterData: true, subtree: true });
+        table.provider('query')?.changeGlobalFilter('a');
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        table.provider('query')?.changeColumnFilter('role', ['Engineer']);
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        await settle(table);
+        expect(spoken.filter((s) => s !== '')).toEqual([announcer(table)]);
+        expect(announcer(table)).toMatch(/rows? match(es)? the filters/);
+    });
+
     it('a cache answering in the same task (loading true, data, loading false) ends the wait at once (round 9)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
         table.addEventListener('query', () => {
@@ -478,6 +491,22 @@ describe('an equal column filter write is a no-op (round 6)', () => {
         expect(table.columnFilters).toBe(stored);
         expect(table.paginationState.pageIndex).toBe(1);
         await closePopover(table);
+    });
+
+    it('any array or object written is a change (round 10): two Sets, the same mutated array re-emitted, [""] then [null]', async () => {
+        const table = await mount();
+        const changes = record(table, 'column-filters-change');
+        const write = (value: unknown): void => table.provider('query')?.changeColumnFilter('role', value);
+        write(new Set(['Engineer']));
+        write(new Set(['Designer']));
+        const same = ['Engineer'];
+        write(same);
+        same.push('Manager');
+        write(same);
+        write(['']);
+        write([null]);
+        await settle(table);
+        expect(changes).toHaveLength(6);
     });
 
     it('the floating input ending a debounce on the text already stored fires nothing', async () => {
@@ -648,6 +677,18 @@ describe('F5 a custom filter component', () => {
         expect(order).toEqual(['consumer:B', 'table']);
         expect(table.columnFilters['name']).toBe('B');
         await closePopover(table);
+    });
+
+    it('the floating component and renderer get null for no filter, like the header panel (round 10)', async () => {
+        const seen: unknown[] = [];
+        const columns: ColumnDef<Row>[] = [
+            { ...nameColumn, enableFiltering: true, floatingFilterComponent: 'x-text-filter' },
+            { ...roleColumn, floatingFilterRenderer: (ctx) => (seen.push(ctx.value), '') },
+        ];
+        const table = await mount({ columns, enableFloatingFilters: true });
+        const floating = table.querySelector('[data-kind="filter"] x-text-filter') as TextFilter;
+        expect(floating.value).toBeNull();
+        expect(seen.at(-1)).toBeNull();
     });
 
     it('the floating component gets only its own contract: no header panel inputs or outputs (round 4)', async () => {

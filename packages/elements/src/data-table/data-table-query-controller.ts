@@ -219,8 +219,7 @@ export class QueryController<T> {
             this.resetPage();
         });
         this.host.emit('filter-change', value);
-        this.cancelAnnounce?.();
-        this.dropWaiting(); // a newer filter (also clearing it) drops an announcement still waiting for the previous one's answer
+        this.dropWaiting(); // a newer filter (also clearing it) drops every announcement of an earlier one
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
             // ONE rule with the column and advanced filter announcement: `filteredCount` (server filtering: the total of the ANSWER, so wait for it).
@@ -392,9 +391,11 @@ export class QueryController<T> {
      * A waiting announcement is spoken a tick later (the consumer may set `total` after `data`), and the table renders, so a controller that
      * waits for the count in its own update sees it.
      *
-     * KNOWN LIMITATION (only for a consumer that does not drive `loading`): the table cannot tell an answer from any other `data` the consumer
+     * KNOWN LIMITATIONS: (1) for a consumer that does not drive `loading`, the table cannot tell an answer from any other `data` the consumer
      * assigns, so ANY outside `data` assignment ends the wait (an unrelated push between the query and its answer ends it early, and the count
-     * spoken is that moment's `total`).
+     * spoken is that moment's `total`). (2) With `loading` and OVERLAPPING requests, the older request's `loading = false` ends the wait of the
+     * newer query (the table does not know which request a loading cycle belongs to), and a `loading = true` that lasts keeps the count waiting
+     * as long as it lasts. An explicit answer signal (a consumer call naming the query it answers) is a possible future API.
      */
     private answered(): void {
         if (!this.awaitingRows) return;
@@ -412,8 +413,13 @@ export class QueryController<T> {
         this.host.requestRender();
     }
 
-    /** A newer filter change: the announcement waiting for the previous one's answer (or already scheduled) is dropped. */
+    /**
+     * A newer filter change (global, column or advanced): every announcement of an earlier one is dropped, the global filter's own 500 ms one
+     * included, as well as one waiting for an answer or already scheduled.
+     */
     private dropWaiting(): void {
+        this.cancelAnnounce?.();
+        this.cancelAnnounce = undefined;
         this.onRows = null;
         this.cancelSay?.();
         this.cancelSay = undefined;

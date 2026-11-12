@@ -272,7 +272,7 @@ describe('filter state questions', () => {
     });
 });
 
-describe('sameFilterValue (round 6: an equal write is a no-op)', () => {
+describe('sameFilterValue (an equal write is a no-op; conservative since round 10)', () => {
     it('treats every "no filter" spelling as equal', () => {
         expect(sameFilterValue(null, undefined)).toBe(true);
         expect(sameFilterValue(undefined, null)).toBe(true);
@@ -284,16 +284,25 @@ describe('sameFilterValue (round 6: an equal write is a no-op)', () => {
         expect(sameFilterValue('', 'a')).toBe(false);
     });
 
-    it('compares primitives, dates by instant, arrays by member, ranges by key', () => {
+    it('is the same only for primitives (Object.is) and dates of the same instant (round 10: conservative)', () => {
         expect(sameFilterValue('ab', 'ab')).toBe(true);
+        expect(sameFilterValue(3, 3)).toBe(true);
+        expect(sameFilterValue(Number.NaN, Number.NaN)).toBe(true);
         expect(sameFilterValue('ab', 'abc')).toBe(false);
         expect(sameFilterValue(new Date(2024, 1, 3), new Date(2024, 1, 3))).toBe(true);
         expect(sameFilterValue(new Date(2024, 1, 3), new Date(2024, 1, 4))).toBe(false);
-        expect(sameFilterValue(['a', 'b'], ['a', 'b'])).toBe(true);
-        expect(sameFilterValue(['a', 'b'], ['b', 'a'])).toBe(false);
-        expect(sameFilterValue({ start: new Date(1), end: null }, { start: new Date(1), end: null })).toBe(true);
-        expect(sameFilterValue({ start: new Date(1), end: null }, { start: new Date(1), end: new Date(2) })).toBe(false);
-        expect(sameFilterValue(['a'], { 0: 'a' })).toBe(false);
+    });
+
+    it('counts any array or object as a change, as Angular re-filters on every write (round 10)', () => {
+        expect(sameFilterValue(['a', 'b'], ['a', 'b'])).toBe(false);
+        const same = ['a'];
+        expect(sameFilterValue(same, same)).toBe(false); // the SAME array, mutated and re-emitted
+        expect(sameFilterValue(new Set(['a']), new Set(['b']))).toBe(false);
+        expect(sameFilterValue(new Set(['a']), new Set(['a']))).toBe(false);
+        expect(sameFilterValue([''], [null])).toBe(false);
+        expect(sameFilterValue({ start: new Date(1), end: null }, { start: new Date(1), end: null })).toBe(false);
+        expect(sameFilterValue(/a/, /a/)).toBe(false);
+        expect(sameFilterValue('2024-01-01', new Date(2024, 0, 1))).toBe(false);
     });
 });
 

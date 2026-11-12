@@ -55,21 +55,17 @@ export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] |
 // ---- filter value equality -----------------------------------------------------------------------------------------------------------
 
 /**
- * Two column filter values that filter the same: the same primitive (`Object.is`), dates of the same instant, arrays with the same members in the
- * same order, plain objects (a date range) with the same keys and equal values, and "no filter" in any spelling (`null`, `undefined`, an absent
- * key, `''`, `[]`, an empty range: the `isFilterValueEmpty` rule). A write of an equal value is a no-op: no new object, no page reset, no event.
+ * Two column filter values that are CERTAINLY the same filter, so writing one over the other is a no-op (no new object, no page reset, no event).
+ * Conservative on purpose: only (a) both "no filter" (the `isFilterValueEmpty` rule: null, undefined, an absent key, `''`, `[]`, an empty range),
+ * (b) the same primitive (`Object.is`), or (c) two dates of the same instant. Any array or object (a Set, a Map, a class instance, a range, and
+ * the SAME array mutated and re-emitted) counts as a change, as in Angular: the table writes it and re-filters.
  */
 export function sameFilterValue(a: unknown, b: unknown): boolean {
-    // "No filter" in any spelling (`isFilterValueEmpty`: null, undefined, '', [], an empty range): typing then deleting is no change.
     const emptyA = isFilterValueEmpty(a);
     if (emptyA || isFilterValueEmpty(b)) return emptyA && isFilterValueEmpty(b);
-    if (Object.is(a, b)) return true;
-    if (a instanceof Date || b instanceof Date) return a instanceof Date && b instanceof Date && a.getTime() === b.getTime();
-    if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameFilterValue(v, b[i]));
-    if (typeof a !== 'object' || typeof b !== 'object' || Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false;
-    const ka = Object.keys(a as object);
-    const kb = Object.keys(b as object);
-    return ka.length === kb.length && ka.every((k) => Object.hasOwn(b as object, k) && sameFilterValue((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+    if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
+    const primitive = (v: unknown): boolean => v === null || (typeof v !== 'object' && typeof v !== 'function');
+    return primitive(a) && primitive(b) && Object.is(a, b);
 }
 
 // ---- the built-in panels -------------------------------------------------------------------------------------------------------------

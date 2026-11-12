@@ -72,7 +72,8 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
         .some((c) => service.hasTrigger(c));
     if (!floating && !anyTrigger) return NO_FILTERS as FiltersView<T>;
     const filters = host.model.get('columnFilters');
-    const valueOf = (key: string): unknown => (Object.hasOwn(filters, key) ? filters[key] : undefined);
+    // `null` for no filter, as the header panel gets it (the floating component and renderer see the same value for "none").
+    const valueOf = (key: string): unknown => (Object.hasOwn(filters, key) ? (filters[key] ?? null) : null);
 
     const trigger = (c: EnhancedColumnDef<T>): unknown => {
         if (!service.hasTrigger(c)) return nothing;
