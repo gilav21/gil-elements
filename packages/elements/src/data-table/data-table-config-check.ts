@@ -33,7 +33,7 @@ export interface ConfigCheckInput<T> {
     enableClipboardPaste?: boolean;
     /** Wave 6 row-drag check; set by the diagnostics snapshot only while `enableRowDrag`. */
     localReorder?: boolean;
-    /** A sort (single or multi) is applied; set by the diagnostics snapshot only while `enableRowDrag && localReorder`. */
+    /** A LOCAL sort is in force (`localSorting` and `activeSorts(...)` non-empty, single or multi as the table decides); set by the diagnostics snapshot only while `enableRowDrag && localReorder`. */
     sortActive?: boolean;
 }
 

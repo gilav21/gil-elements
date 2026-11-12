@@ -1,5 +1,6 @@
 import { type ConfigCheckInput, validateConfig } from './data-table-config-check.js';
 import type { DataTableCoreHost } from './data-table-host.js';
+import { activeSorts } from './data-table-query.js';
 import { findDuplicateRowIds } from './data-table.utils.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
@@ -34,7 +35,7 @@ export class DiagnosticsController<T> {
     hostUpdate(): void {
         const { config, model } = this.host;
         const virtualActive = this.host.provider('virtual')?.active() ?? false;
-        const snapshot: Snapshot = {
+        const snapshot: ConfigCheckInput<T> = {
             columns: config.columns,
             data: model.get('data'),
             getRowId: config.getRowId,
@@ -53,21 +54,22 @@ export class DiagnosticsController<T> {
             enableRowSelection: config.enableRowSelection,
             enableRowDrag: config.enableRowDrag,
             enableEditHistory: config.enableEditHistory,
-            // Only what a check reads is here: each re-run costs the O(rows) id scan.
+            // Only what a check reads (or a wave check about to land reads) is here: each re-run costs the O(rows) id scan.
             enableFillHandle: config.enableFillHandle,
             enableClipboardPaste: config.enableClipboardPaste,
         };
         // The row-drag checks read these; outside row drag a sort change must not re-run the checks.
         if (config.enableRowDrag) {
             snapshot.localReorder = config.localReorder;
+            // A server sort draws `data` in its own order, so only a LOCAL sort hides a reorder. The same rule the query uses.
             if (config.localReorder) {
-                const sort = model.get('sortState');
-                snapshot.sortActive = !!sort?.direction || model.get('multiSortState').length > 0;
+                snapshot.sortActive = config.localSorting && activeSorts(config.enableMultiSort, model.get('sortState'), model.get('multiSortState')).length > 0;
             }
         }
-        if (!sameSnapshot(this.last, snapshot)) {
-            this.last = snapshot;
-            this.check(snapshot as unknown as ConfigCheckInput<T>);
+        const compared = snapshot as unknown as Snapshot;
+        if (!sameSnapshot(this.last, compared)) {
+            this.last = compared;
+            this.check(snapshot);
         }
         if (virtualActive && !this.viewportChecked) {
             this.viewportChecked = true;

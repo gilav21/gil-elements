@@ -7,11 +7,28 @@ import { DiagnosticsController } from './data-table-diagnostics-controller.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 
 /** A host whose sort state is replaced between renders, the way a header click does. */
-function setup(config: Record<string, unknown>): { run(): void; sort(column: string, direction?: string | null): void; config: Record<string, unknown> } {
-    let sortState: { column: string; direction: string | null } | null = { column: 'a', direction: 'asc' };
+type Sort = { column: string; direction: 'asc' | 'desc' | null };
+
+function setup(config: Record<string, unknown>): {
+    run(): void;
+    sort(column: string, direction?: Sort['direction']): void;
+    multiSort(chain: Sort[]): void;
+    config: Record<string, unknown>;
+} {
+    let sortState: Sort = { column: 'a', direction: 'asc' };
     const data: unknown[] = [];
-    const multi: unknown[] = [];
-    const base = { columns: [], getRowId: (row: unknown) => String(row), localPagination: true, showPagination: true, enableVirtualScroll: false, localReorder: true, ...config };
+    let multi: Sort[] = [];
+    const base = {
+        columns: [],
+        getRowId: (row: unknown) => String(row),
+        localPagination: true,
+        showPagination: true,
+        enableVirtualScroll: false,
+        localReorder: true,
+        localSorting: true,
+        enableMultiSort: false,
+        ...config,
+    };
     const host = {
         config: base,
         model: { get: (key: string) => (key === 'sortState' ? sortState : key === 'data' ? data : key === 'multiSortState' ? multi : undefined) },
@@ -24,6 +41,7 @@ function setup(config: Record<string, unknown>): { run(): void; sort(column: str
         config: base,
         run: () => controller.hostUpdate(),
         sort: (column, direction = 'desc') => void (sortState = { column, direction }),
+        multiSort: (chain) => void (multi = chain),
     };
 }
 
@@ -53,6 +71,27 @@ describe('the diagnostics snapshot', () => {
         table.sort('a', null);
         table.run();
         expect(validateConfig).toHaveBeenCalledTimes(2);
+        expect(lastInput()['sortActive']).toBe(false);
+    });
+
+    it.each([
+        ['a single sort, multi-sort off', { enableMultiSort: false }, null, true],
+        ['a stale multi chain while multi-sort is off', { enableMultiSort: false }, [{ column: 'b', direction: 'asc' }], true],
+        ['multi-sort on with an empty chain (the single sort is ignored)', { enableMultiSort: true }, [], false],
+        ['multi-sort on with a chain entry', { enableMultiSort: true }, [{ column: 'b', direction: 'asc' }], true],
+        ['multi-sort on with only a direction-less entry', { enableMultiSort: true }, [{ column: 'b', direction: null }], false],
+        ['a server sort (localSorting off)', { localSorting: false }, null, false],
+    ] as const)('sortActive follows the table’s own rule: %s', (_name, config, chain, expected) => {
+        const table = setup({ enableRowDrag: true, localReorder: true, ...config });
+        if (chain) table.multiSort([...chain]);
+        table.run();
+        expect(lastInput()['sortActive']).toBe(expected);
+    });
+
+    it('an empty sorted column is not a sort', () => {
+        const table = setup({ enableRowDrag: true, localReorder: true });
+        table.sort('', 'asc');
+        table.run();
         expect(lastInput()['sortActive']).toBe(false);
     });
 
