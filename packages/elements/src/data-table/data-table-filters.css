@@ -1,5 +1,5 @@
 /*
- * Wave 5, package A (filters): the floating filter row, and later the header trigger, panels and builder. Bare rules, scoped under
+ * Wave 5, package A (filters): the floating filter row, the header trigger and its panel, the advanced-filter popover. Bare rules, scoped under
  * `ge-data-table [data-slot=...]`: they are appended inside the closing brace of the `ge-data-table` layer of data-table.css
  * (see data-table-styles.ts), so do not wrap them in `@layer` and keep the comment style below.
  * The toolbar's advanced-filter trigger shares one rule with the columns trigger in data-table.css (lead only): override it here.
@@ -13,4 +13,91 @@
         display: block;
         height: 1.75rem;
         font-size: 0.75rem;
+    }
+    @media (pointer: coarse) {
+        ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] {
+            height: auto;
+        }
+        ge-data-table [data-slot="table-row"][data-kind="filter"] > [data-slot="table-head"] > ge-input {
+            height: 2.75rem;
+        }
+    }
+
+    /* Header filter trigger (633-651): relative inline-flex shrink-0 items-center justify-center rounded-md h-8 w-8, text-primary while active. */
+    ge-data-table [data-slot="data-table-filter-trigger"] {
+        position: relative;
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        border: 0;
+        border-radius: calc(var(--radius) - 2px);
+        background-color: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
+        transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    ge-data-table [data-slot="data-table-filter-trigger"][data-active] {
+        color: var(--primary);
+    }
+    @media (hover: hover) {
+        ge-data-table [data-slot="data-table-filter-trigger"]:hover {
+            background-color: var(--accent);
+            color: var(--accent-foreground);
+        }
+    }
+    @media (pointer: coarse) {
+        ge-data-table [data-slot="data-table-filter-trigger"] {
+            width: 2.75rem;
+            height: 2.75rem;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        ge-data-table [data-slot="data-table-filter-trigger"] {
+            transition: none;
+        }
+    }
+    /* The panels: w-80 max-w-[calc(100vw-2rem)] (popover content); the builder: w-[min(420px,calc(100vw-2rem))] p-2. */
+    ge-data-table [data-slot="data-table-filter-panel"]::part(panel) {
+        width: 20rem;
+        max-width: calc(100vw - 2rem);
+    }
+    ge-data-table [data-slot="advanced-filter-panel"]::part(panel) {
+        width: min(420px, calc(100vw - 2rem));
+        padding: 0.5rem;
+    }
+    ge-data-table [data-slot="advanced-filter-body"] {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    ge-data-table [data-slot="advanced-filter-body"] > ge-data-table-filter-builder {
+        align-self: stretch;
+    }
+    /* "Clear all filters": text-xs text-muted-foreground hover:text-destructive. */
+    ge-data-table [data-slot="advanced-filter-clear"] {
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: var(--muted-foreground);
+        font: inherit;
+        font-size: 0.75rem;
+        line-height: 1rem;
+        cursor: pointer;
+    }
+    @media (hover: hover) {
+        ge-data-table [data-slot="advanced-filter-clear"]:hover {
+            color: var(--destructive);
+        }
+    }
+    @media (pointer: coarse) {
+        ge-data-table [data-slot="advanced-filter-clear"] {
+            min-width: 2.75rem;
+            min-height: 2.75rem;
+        }
     }

@@ -281,11 +281,19 @@ export class QueryController<T> {
             if (debounce > 0) this.cancelFilter = this.host.disposables.timeout(() => this.applyGlobalFilter(value), debounce);
             else this.applyGlobalFilter(value);
         },
-        // wave 5, package A (filters) implements the column filter and the count; joint step 0 leaves them inert. They are the only part of this file wave 5
-        // edits. The ADVANCED filter is real already (the `advancedFilter` model key filters the rows): wave 5 A builds on it (announcement, builder UI).
-        changeColumnFilter: () => undefined,
+        // wave 5, package A (filters): the column filter write and the count. They are the only part of this file wave 5 edits.
+        // The value is stored as given (`null` stays a key, Angular cmp 3629), with the page reset in ONE batch; the loading controller marks the
+        // `filtering` trigger from the `columnFilters` key. The model fires `column-filters-change`; no other event.
+        changeColumnFilter: (key, value) => {
+            const { model } = this.host;
+            model.batch(() => {
+                model.set('columnFilters', { ...model.get('columnFilters'), [String(key)]: value });
+                this.resetPage();
+            });
+        },
         changeAdvancedFilter: (group) => changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group),
-        filteredCount: () => undefined,
+        // Server filtering: the held rows are not the matches, so the server's total (or nothing), like the global announcement.
+        filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total),
     };
 
     private visibleDataColumns(): ColumnDef<T>[] {

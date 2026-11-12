@@ -96,6 +96,18 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     );
 
     // ---- wave 5 (filters and editing): package A and B add their `warn(...)` calls here, each in its own marked block -------------------
+    // wave5: package A (filters). Reads only `columns` (already in the snapshot).
+    const panelWithoutFlag = c.columns.filter((col) => col.filterComponent && !col.enableFiltering);
+    warn(
+        panelWithoutFlag.length > 0,
+        `Columns [${keys(panelWithoutFlag)}] have a filterComponent but no enableFiltering. The header shows no filter trigger and the column filter is not applied; set enableFiltering.`,
+    );
+    const panelWithoutFn = c.columns.filter((col) => col.enableFiltering && col.filterComponent && !col.filterFn);
+    warn(
+        panelWithoutFn.length > 0,
+        `Columns [${keys(panelWithoutFn)}] have a filterComponent but no filterFn. A panel value that is not text (a date, a list) is matched as text and filters every row out; pair the panel with its filter function (dateFilterFn, dateRangeFilterFn, multiselectFilterFn).`,
+    );
+    // wave5: end of package A.
     // ---- wave 6 (spreadsheet and drag): packages A, B and C add theirs here, each in its own marked block -----------------------------
     // The flash + default getRowId warning is above; the row-drag-with-sort warning is `ROW_DRAG_SORT_WARNING`, checked per render by
     // `DiagnosticsController.hostUpdate` (a sort click must not re-run these checks).
