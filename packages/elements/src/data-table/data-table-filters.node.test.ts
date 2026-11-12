@@ -318,10 +318,12 @@ describe('the package A config checks', () => {
             { accessorKey: 'c', header: 'C', floatingFilterComponent: 'x-f', enableFiltering: true, filterFn: () => true },
             { accessorKey: 'd', header: 'D', floatingFilterComponent: 'x-f', floatingFilter: false },
         ];
-        expect(validateConfig<unknown>({ ...base, columns }).filter((w) => w.includes('floating filter component or renderer'))).toEqual([
+        expect(validateConfig<unknown>({ ...base, columns, enableFloatingFilters: true }).filter((w) => w.includes('floating filter component or renderer'))).toEqual([
             '[ge-data-table] Columns [a, b] have a floating filter component or renderer but no enableFiltering. The control is drawn but its value filters nothing; set enableFiltering.',
         ]);
         expect(hasFloatingFilter(columns[0]!)).toBe(true); // still drawn, as in Angular
+        // Round 8: without the floating row nothing is drawn, so nothing to warn about.
+        expect(validateConfig<unknown>({ ...base, columns }).filter((w) => w.includes('floating filter component or renderer'))).toEqual([]);
     });
     it('does not ask for a filterFn with server filtering (localFiltering off: nothing is matched here)', () => {
         const columns: ColumnDef<unknown>[] = [{ accessorKey: 'b', header: 'B', enableFiltering: true, filterComponent: 'ge-data-table-date-filter' }];

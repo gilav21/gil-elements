@@ -108,6 +108,15 @@ describe('decideCommit (Angular spec 1129-1266)', () => {
         expect(decideCommit('Bad Value', 'Alice', error('Bad Value', 0, 'role'), at)).toEqual({ action: 'write', report: true });
     });
 
+    it('a text editor treats an empty draft and an empty cell as unchanged; a number editor does not confuse 0 with empty (round 8)', () => {
+        expect(decideCommit('', null, null, at, 'text')).toEqual({ action: 'cancel' });
+        expect(decideCommit('', undefined, null, at, 'text')).toEqual({ action: 'cancel' });
+        expect(decideCommit(null, '', null, at, 'text')).toEqual({ action: 'cancel' });
+        expect(decideCommit('', null, null, at)).toEqual({ action: 'write', report: true }); // no kind: strict
+        expect(decideCommit(null, 0, null, at, 'number')).toEqual({ action: 'write', report: true });
+        expect(decideCommit('', 'x', null, at, 'text')).toEqual({ action: 'write', report: true });
+    });
+
     it('compares dates by instant', () => {
         expect(sameEditValue(new Date(1), new Date(1))).toBe(true);
         expect(sameEditValue(new Date(1), new Date(2))).toBe(false);

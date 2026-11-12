@@ -5,6 +5,7 @@
  */
 import type { CellEditError, ColumnDef, EditingCell } from './data-table.types.js';
 import { dateOnlyParts, toLocalDateString, type Ymd } from './data-table.utils.js';
+import { toDateOnlyTimestamp } from './data-table-filters.js';
 
 /** The editor a column opens, in Angular's precedence (html 207-290): a component, a renderer, then `editType`, else a text input. */
 export type EditKind = 'component' | 'renderer' | 'checkbox' | 'date' | 'select' | 'number' | 'text';
@@ -60,8 +61,7 @@ export function writeBackDate(picked: Date | null, previous: unknown): unknown {
         if (!dateTime || !shown || Number.isNaN(shown.getTime())) return toLocalDateString(picked);
         // The editor showed the instant's LOCAL day; the string's date part may be another day (a `Z` time near midnight). Moving the written
         // date by the days the user moved keeps the string's own calendar, time and offset exact.
-        const midnight = (d: Date): number => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-        const days = Math.round((midnight(picked) - midnight(shown)) / 86_400_000);
+        const days = Math.round((toDateOnlyTimestamp(picked) - toDateOnlyTimestamp(shown)) / 86_400_000);
         // The written date as a LOCAL calendar day only to do the day arithmetic (a whole-day move is the same in any zone), then written back.
         const written = dateOnlyParts(dateTime[1] as string) as Ymd;
         return `${toLocalDateString(new Date(written.y, written.m - 1, written.d + days))}${dateTime[2]}`;
@@ -125,8 +125,12 @@ export function sameEditValue(a: unknown, b: unknown): boolean {
  * What a commit does before it writes: `cancel` for a draft equal to the stored value (no event, Angular cmp 4836), else `write`; `report`
  * says whether a rejection may fire `edit-error` (false for the value of the cell already reported: a repeated rejection is reported once).
  */
-export function decideCommit(draft: unknown, stored: unknown, error: CellEditError | null, at: EditingCell): { action: 'cancel' } | { action: 'write'; report: boolean } {
+const isEmptyText = (value: unknown): boolean => value === '' || value === null || value === undefined;
+
+export function decideCommit(draft: unknown, stored: unknown, error: CellEditError | null, at: EditingCell, kind?: EditKind): { action: 'cancel' } | { action: 'write'; report: boolean } {
     if (sameEditValue(draft, stored)) return { action: 'cancel' };
+    // A TEXT editor shows an empty cell (null, undefined) as '': typing then deleting leaves it as it was (not for a number: 0 is a value).
+    if (kind === 'text' && isEmptyText(draft) && isEmptyText(stored)) return { action: 'cancel' };
     const reported = error !== null && error.rowIndex === at.rowIndex && error.columnKey === at.columnKey && sameEditValue(error.value, draft);
     return { action: 'write', report: !reported };
 }

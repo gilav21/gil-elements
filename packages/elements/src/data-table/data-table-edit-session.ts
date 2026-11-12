@@ -331,7 +331,7 @@ export class EditSession<T> implements CellSession {
             this.close(refocus);
             return 'cancelled';
         }
-        const decision = decideCommit(open.draft, query.cellValue(row, open.at.columnKey, column), open.error, open.at);
+        const decision = decideCommit(open.draft, query.cellValue(row, open.at.columnKey, column), open.error, open.at, open.kind);
         if (decision.action === 'cancel') {
             this.close(refocus);
             return 'cancelled';

@@ -114,7 +114,8 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     );
     // Only the three built-in panels report values that are not text; a consumer's own panel may well report text the default match handles.
     // Angular draws a floating component or renderer without `enableFiltering` (cmp 2547) but never applies its value (cmp 1284): kept for parity, warned.
-    const floatingWithoutFlag = c.columns.filter((col) => (col.floatingFilterComponent || col.floatingFilterRenderer) && col.floatingFilter !== false && !col.enableFiltering);
+    // Only with the floating row on: without it no floating control is drawn at all.
+    const floatingWithoutFlag = !c.enableFloatingFilters ? [] : c.columns.filter((col) => (col.floatingFilterComponent || col.floatingFilterRenderer) && col.floatingFilter !== false && !col.enableFiltering);
     warn(
         floatingWithoutFlag.length > 0,
         `Columns [${keys(floatingWithoutFlag)}] have a floating filter component or renderer but no enableFiltering. The control is drawn but its value filters nothing; set enableFiltering.`,

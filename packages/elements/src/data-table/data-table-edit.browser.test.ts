@@ -937,6 +937,21 @@ describe('review round 2', () => {
         expect((node as { description?: { value?: string } } | undefined)?.description?.value).toBe('Not that day');
     });
 
+    it('a text editor on an empty (null) cell: type, delete, Enter fires no cell-edit (round 8)', async () => {
+        const table = await mount({ data: ROWS.map((r, i) => ({ ...r, name: i === 0 ? (null as unknown as string) : r.name })) });
+        const edits = record(table, 'cell-edit');
+        await startEditingAt(table, 0, 'name');
+        const input = openEditor(table) as HTMLInputElement;
+        expect(input.value).toBe('');
+        await userEvent.type(input, 'x');
+        await press('{Backspace}');
+        await press('{Enter}');
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        expect(edits).toHaveLength(0);
+        expect(table.data[0]!.name).toBeNull();
+    });
+
     it('options that arrive while a select editor is open are shown and mapped (the kind switches, the draft is kept) (round 7)', async () => {
         const table = await mount({ columns: editColumns({ age: { editType: 'select' } }) }); // no options yet: a text input
         await startEditingAt(table, 0, 'age');
