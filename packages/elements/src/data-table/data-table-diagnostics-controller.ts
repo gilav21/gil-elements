@@ -1,6 +1,5 @@
-import { type ConfigCheckInput, scansRowIds, validateConfig } from './data-table-config-check.js';
+import { type ConfigCheckInput, ROW_DRAG_SORT_WARNING, scansRowIds, validateConfig } from './data-table-config-check.js';
 import type { DataTableCoreHost } from './data-table-host.js';
-import { isGroupingActive } from './data-table-group.js';
 import { sortReordersRows } from './data-table-query.js';
 import { findDuplicateRowIds } from './data-table.utils.js';
 
@@ -58,24 +57,26 @@ export class DiagnosticsController<T> {
             // Only what a check reads (or a wave check about to land reads) is here: each re-run costs the O(rows) id scan.
             enableFillHandle: config.enableFillHandle,
             enableClipboardPaste: config.enableClipboardPaste,
-            // Resolved to one boolean, and false outside row drag with local reorder, so a sort change re-runs nothing there.
-            rowDragOrderOverridden:
-                config.enableRowDrag &&
-                config.localReorder &&
-                (isGroupingActive(config.groupBy, config.enableSubRows, virtualActive) ||
-                    sortReordersRows({
-                        multi: config.enableMultiSort,
-                        sortState: model.get('sortState'),
-                        multiSortState: model.get('multiSortState'),
-                        columns: config.columns,
-                        localSorting: config.localSorting,
-                        tree: config.enableSubRows,
-                        subRowSorting: config.enableSubRowSorting,
-                    })),
         };
         if (!sameSnapshot(this.last, snapshot)) {
             this.last = snapshot;
             this.check(snapshot);
+        }
+        // Outside the snapshot: a sort click must not re-run the O(rows) checks. Cheap, and allocates only while sorted.
+        if (
+            config.enableRowDrag &&
+            config.localReorder &&
+            sortReordersRows({
+                multi: config.enableMultiSort,
+                sortState: model.get('sortState'),
+                multiSortState: model.get('multiSortState'),
+                columns: config.columns,
+                localSorting: config.localSorting,
+                tree: config.enableSubRows,
+                subRowSorting: config.enableSubRowSorting,
+            })
+        ) {
+            this.warn(ROW_DRAG_SORT_WARNING);
         }
         if (virtualActive && !this.viewportChecked) {
             this.viewportChecked = true;
@@ -98,7 +99,6 @@ export class DiagnosticsController<T> {
         if (virtualActive && enableRowExpansion && !virtualVariableRowHeight) {
             this.warn('[ge-data-table] enable-row-expansion with virtual scroll: a detail row has no fixed height, so row heights are measured (as with virtual-variable-row-height) and the window uses them.');
         }
-        // `validateConfig` already reports shared ids for the features that act on them; rows are KEYED by id either way.
         // Rows are keyed by id even without a feature that needs ids; `validateConfig` already scanned them when one does.
         if (data && data.length > 1 && !scansRowIds(input)) {
             const dupes = findDuplicateRowIds(data, (getRowId ?? this.host.config.getRowId) as (row: T) => string);

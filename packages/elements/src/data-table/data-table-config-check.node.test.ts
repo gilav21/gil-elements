@@ -23,10 +23,6 @@ describe('validateConfig: wave 6', () => {
         const withSetter = { columns: [{ accessorKey: 'name' as const, header: 'N', valueSetter: (row: Row) => row }] };
         expect(check({ [flag]: true, ...withSetter }).some((m) => m.includes('no column has a valueSetter'))).toBe(false);
     });
-    it('warns about row drag while the drawn order is overridden', () => {
-        expect(check({ rowDragOrderOverridden: true }).some((m) => m.includes('does not appear to move'))).toBe(true);
-        expect(check({ rowDragOrderOverridden: false })).toEqual([]);
-    });
 });
 
 describe('validateConfig', () => {

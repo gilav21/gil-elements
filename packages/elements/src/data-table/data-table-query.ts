@@ -169,21 +169,19 @@ function sortCounts(sort: SortState): boolean {
     return !!sort.column && !!sort.direction;
 }
 
-/** A counting sort on a column the table has (`buildSortComparator` skips the others). */
-function sortApplies<T>(sort: SortState, columns: readonly ColumnDef<T>[]): boolean {
-    if (!sortCounts(sort)) return false;
-    for (const column of columns) if (String(column.accessorKey) === sort.column) return true;
-    return false;
+/** The column a sort step orders by, or undefined when the step is skipped. The one rule of `buildSortComparator` and `sortReordersRows`. */
+function sortStepColumn<T>(sort: SortState, byKey: ReadonlyMap<string, ColumnDef<T>>): ColumnDef<T> | undefined {
+    return sortCounts(sort) ? byKey.get(sort.column) : undefined;
 }
 
-/** Whether the table sorts rows itself: local sorting, and in tree mode only with sub-row sorting. The one gate the tree and the diagnostics share. */
+/** Whether the table sorts rows itself: local sorting, and in tree mode only with sub-row sorting. The gate the tree and the diagnostics share (the flat path's is plain `localSorting`). */
 export function localSortApplies(localSorting: boolean, tree: boolean, subRowSorting: boolean): boolean {
     return localSorting && (!tree || subRowSorting);
 }
 
 /**
- * Whether the table itself reorders the rows by a sort: `localSortApplies`, and a sort in force (`activeSorts`' rule) on
- * at least one known column (`buildSortComparator` skips the others). Allocates nothing (plain loops).
+ * Whether the table itself reorders the rows by a sort: `localSortApplies`, and at least one step `buildSortComparator`
+ * would not skip (`sortStepColumn`). Allocates only when a sort is set.
  */
 export function sortReordersRows<T>({ multi, sortState, multiSortState, columns, localSorting, tree, subRowSorting }: {
     multi: boolean;
@@ -195,9 +193,10 @@ export function sortReordersRows<T>({ multi, sortState, multiSortState, columns,
     subRowSorting: boolean;
 }): boolean {
     if (!localSortApplies(localSorting, tree, subRowSorting)) return false;
-    if (!multi) return sortApplies(sortState, columns);
-    for (const sort of multiSortState) if (sortApplies(sort, columns)) return true;
-    return false;
+    const steps: readonly SortState[] = multi ? multiSortState : [sortState];
+    if (!steps.some(sortCounts)) return false;
+    const byKey = indexColumns(columns);
+    return steps.some((sort) => sortStepColumn(sort, byKey) !== undefined);
 }
 
 function compareValues(a: unknown, b: unknown): number {
@@ -213,8 +212,8 @@ function compareValues(a: unknown, b: unknown): number {
 export function buildSortComparator<T>(sorts: readonly SortState[], columns: readonly ColumnDef<T>[]): (a: T, b: T) => number {
     const byKey = indexColumns(columns);
     const steps = sorts.flatMap((sort) => {
-        const column = byKey.get(sort.column);
-        return column && sort.direction ? [{ column, sign: sort.direction === 'asc' ? 1 : -1 }] : [];
+        const column = sortStepColumn(sort, byKey);
+        return column ? [{ column, sign: sort.direction === 'asc' ? 1 : -1 }] : [];
     });
     return (a, b) => {
         for (const { column, sign } of steps) {
@@ -323,7 +322,7 @@ export function createQueryPipeline<T>(): (input: QueryInput<T>) => QueryOutput<
         const filtered = i.localFiltering
             ? filter(i.data, i.columns, i.globalFilter, i.globalFilterFn, i.columnFilters, i.advancedFilter)
             : i.data;
-        return { filtered, sorted: sort(filtered, stableSorts(localSortApplies(i.localSorting, false, false) ? i.sorts : NO_SORTS), i.columns) };
+        return { filtered, sorted: sort(filtered, stableSorts(i.localSorting ? i.sorts : NO_SORTS), i.columns) };
     };
 }
 

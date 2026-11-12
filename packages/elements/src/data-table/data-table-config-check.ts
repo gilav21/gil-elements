@@ -31,15 +31,16 @@ export interface ConfigCheckInput<T> {
     /** Wave 6 checks: fill and paste write through value setters. */
     enableFillHandle?: boolean;
     enableClipboardPaste?: boolean;
-    /**
-     * Row drag with local reorder is on AND the table draws its own order: a sort it applies itself (`sortReordersRows`) or
-     * grouping in force (`isGroupingActive`). Resolved by the diagnostics snapshot; false otherwise.
-     */
-    rowDragOrderOverridden?: boolean;
 }
 
+/**
+ * wave6: C. Row drag with local reorder while the table sorts the rows itself (`sortReordersRows`): a drop reorders `data`
+ * but the sorted order is drawn, so the row does not move. Grouping alone is fine (groups keep `data` order inside).
+ */
+export const ROW_DRAG_SORT_WARNING = `[ge-data-table] enable-row-drag with local-reorder is on while the table is sorted. A drop reorders \`data\`, but the table keeps drawing the sorted order, so the row does not appear to move; clear the sort while dragging, or turn local-reorder off and reorder yourself.`;
+
 /** Whether `validateConfig` scans the row ids for duplicates (so the diagnostics need not scan them again). */
-export function scansRowIds<T>(c: ConfigCheckInput<T>): boolean {
+export function scansRowIds<T>(c: ConfigCheckInput<T>): c is ConfigCheckInput<T> & { data: readonly T[] } {
     const needsIdentity = c.enableRowSelection || c.enableRowDrag || c.enableCellFlash || c.enableSubRows || c.columns.some((col) => col.editable);
     return !!needsIdentity && !!c.data && c.data.length > 1;
 }
@@ -93,15 +94,13 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
 
     // ---- wave 5 (filters and editing): package A and B add their `warn(...)` calls here, each in its own marked block -------------------
     // ---- wave 6 (spreadsheet and drag): packages A, B and C add theirs here, each in its own marked block -----------------------------
-    // The flash + default getRowId warning is above.
+    // The flash + default getRowId warning is above; the row-drag-with-sort warning is `rowDragSortWarning` (checked per render, cheaply).
+    // wave6: A + B (fill handle, paste)
     warn(
         (c.enableFillHandle || c.enableClipboardPaste) && !c.columns.some((col) => col.valueSetter),
         'enable-fill-handle or enable-clipboard-paste is on but no column has a valueSetter. Fill and paste write cells through value setters, so nothing will be written.',
     );
-    warn(
-        c.rowDragOrderOverridden,
-        'enable-row-drag with local-reorder is on while a sort or group-by decides the drawn order. A drop reorders `data`, but the table keeps drawing its sorted or grouped order, so the row does not appear to move; clear the sort and grouping while dragging, or turn local-reorder off and reorder yourself.',
-    );
+    // wave6: end A + B
 
     const noSetter = c.columns.filter((col) => col.editable && !col.valueSetter);
     warn(
@@ -128,7 +127,7 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         `Columns [${keys(multiple)}] have more than one rendering strategy (component, cellRenderer, cell). Only one is used (component, then cellRenderer, then cell); remove the unused ones.`,
     );
 
-    if (scansRowIds(c) && c.data) {
+    if (scansRowIds(c)) {
         const getId = (c.getRowId ?? defaultGetRowId) as (row: T) => string;
         const dupes = findDuplicateRowIds(c.data, getId);
         warn(
