@@ -120,6 +120,32 @@ describe('copy', () => {
         expect(fake.writes).toEqual([]);
     });
 
+    it('leaves Ctrl+C and the native copy to the browser while text is selected in the table', async () => {
+        const fake = install();
+        const table = await grid();
+        const cell = await focusCell(table, 1, 'name');
+        // a text selection inside the table (a cell's text): the user copies that text, not the grid
+        const selection = document.getSelection()!;
+        selection.removeAllRanges();
+        const text = document.createRange();
+        text.selectNodeContents(cell);
+        selection.addRange(text);
+        expect(selection.isCollapsed).toBe(false);
+        const key = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, cancelable: true, composed: true });
+        cell.dispatchEvent(key);
+        expect(key.defaultPrevented).toBe(false);
+        const copy = dispatchCopy(cell);
+        expect(copy.notPrevented).toBe(true);
+        expect(copy.data.getData('text/plain')).toBe('');
+        await frames(2);
+        expect(fake.writes).toEqual([]);
+        // with the selection gone the grid copies the focused cell again
+        selection.removeAllRanges();
+        cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, cancelable: true, composed: true }));
+        await until(() => fake.writes.length > 0);
+        expect(fake.writes).toEqual(['Bob']);
+    });
+
     it('catches a refused write: no unhandled rejection, the failure is announced, the promise resolves denied', async () => {
         install({ denyWrite: true });
         const rejections = unhandledRejections();
@@ -220,6 +246,26 @@ describe('paste', () => {
         await press('{Control>}v{/Control}');
         await until(() => table.cellRange !== null);
         expect(table.cellRange).toEqual({ startRow: 0, startCol: 'qty', endRow: 1, endCol: 'ok' });
+    });
+
+    it('a paste that writes no cell (every value refused, or only columns without a setter) emits no cells-paste and keeps the range', async () => {
+        const table = await grid({ enableClipboardPaste: true, enableCellRangeSelection: true });
+        await pasteReady(table);
+        await rangeReady(table);
+        const range = { startRow: 2, startCol: 'name', endRow: 3, endCol: 'qty' };
+        table.cellRange = range;
+        await settle(table);
+        const pastes: CellsPasteEvent[] = [];
+        table.addEventListener('cells-paste', (e) => pastes.push((e as CustomEvent<CellsPasteEvent>).detail));
+        const service = table.provider('clipboard')!;
+        // 500 and 600 are refused by the qty validator
+        expect(service.pasteText('500\n600', { rowIndex: 0, columnKey: 'qty' })).toEqual({ status: 'done', cells: 0, rejected: 2 });
+        // the note column has no valueSetter
+        expect(service.pasteText('a\tb', { rowIndex: 0, columnKey: 'note' })).toEqual({ status: 'done', cells: 0, rejected: 0 });
+        await settle(table);
+        expect(pastes).toEqual([]);
+        expect(table.cellRange).toEqual(range);
+        expect(announced(table)).toContain('0 cells pasted, 2 rejected');
     });
 
     it('a refused read changes nothing: announced, no cells-paste, no unhandled rejection', async () => {

@@ -50,7 +50,9 @@ export function planPasteRequests<T>(grid: readonly (readonly string[])[], start
         if (row === undefined || !column?.valueSetter) continue;
         requests.push({ target: { rowIndex: target.rowIndex, columnKey: target.columnKey }, value: coercePasteValue(target.raw, source.cellValue(row, column)) });
     }
-    const width = Math.max(...grid.map((cells) => cells.length));
+    // A loop, not `Math.max(...spread)`: a paste of a few hundred thousand lines would overflow the argument list.
+    let width = 0;
+    for (const cells of grid) width = Math.max(width, cells.length);
     const endRow = Math.min(startRow + grid.length, rowCount) - 1;
     const endCol = Math.min(startCol + width, navigableKeys.length) - 1;
     const rect = endRow >= startRow && endCol >= startCol ? { startRow, startCol: startColumn, endRow, endCol: navigableKeys[endCol] as string } : null;

@@ -68,6 +68,24 @@ function table(initial: FillRow[], columns = COLUMNS, history = true) {
     return { data: () => data, events, errors, changes, writer, paste, source };
 }
 
+describe('paste planning of a huge grid', () => {
+    it('plans 200k short lines without overflowing the call stack (no spread of every row into one call)', () => {
+        const lines = Array.from({ length: 200_000 }, (_, i) => String(i % 10)).join('\n');
+        const grid = pastedGrid(lines);
+        expect(grid).toHaveLength(200_000);
+        const rows = blank();
+        const plan = planPasteRequests(grid, 0, 'n', {
+            navigableKeys: COLUMNS.map((c) => String(c.accessorKey)),
+            rowCount: rows.length,
+            rowAt: (i) => rows[i],
+            columnByKey: (key) => COLUMNS.find((c) => c.accessorKey === key),
+            cellValue: (row, column) => getCellValue(row, column.accessorKey, column),
+        });
+        expect(plan?.requests).toHaveLength(3); // only the drawn rows
+        expect(plan?.rect).toEqual({ startRow: 0, startCol: 'n', endRow: 2, endCol: 'n' });
+    });
+});
+
 describe('paste planning and writing', () => {
     it('writes a grid from the start cell across columns and rows, coercing numbers (spec 6838)', () => {
         const t = table(blank());

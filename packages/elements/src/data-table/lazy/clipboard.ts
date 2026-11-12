@@ -63,6 +63,12 @@ export class PastePart<T> {
         if (!plan) return { status: 'ignored' };
         const results = host.runAsCommand(() => host.writeCells(plan.requests));
         const detail = pasteEvent(plan, results);
+        if (detail.cellsApplied === 0) {
+            // Nothing written (every target skipped or rejected), like a fill that wrote nothing: no `cells-paste`, the range stays. Rejections were
+            // reported per cell (`edit-error`) and are said in the live region.
+            if (detail.cellsRejected > 0) host.announce(pasteAnnouncement(host.resolvedLocale, 0, detail.cellsRejected));
+            return { status: 'done', cells: 0, rejected: detail.cellsRejected };
+        }
         host.emit('cells-paste', detail);
         const { rect } = plan;
         if (rect && rangeModeOn(host.config) && (rect.endRow > rect.startRow || rect.endCol !== rect.startCol)) host.provider('range')?.setRange(rect);

@@ -1,4 +1,4 @@
-import { CELL_SELECTOR, type CopyScope, type CopySource, copyGrid, gridCells, inTextField, keyboardCopyGrid } from './data-table-clipboard-grid.js';
+import { CELL_SELECTOR, type CopyScope, type CopySource, copyGrid, gridCells, hasTextSelection, inTextField, keyboardCopyGrid } from './data-table-clipboard-grid.js';
 import { type DataTableCoreHost, ownClosest, ownEvents, requireProvider } from './data-table-host.js';
 import { lazyPart } from './data-table-lazy.js';
 import { interpolate } from './data-table.locales.js';
@@ -141,7 +141,7 @@ export class ClipboardController<T> {
     /** The browser's own copy (no Async Clipboard API, or its Copy menu entry) on a cell of this table: the grid's copy goes into the event. */
     private onNativeCopy(event: ClipboardEvent): void {
         const { host } = this;
-        if (event.defaultPrevented || !host.config.enableCopy || !event.clipboardData || inTextField(host.root, event)) return;
+        if (event.defaultPrevented || !host.config.enableCopy || !event.clipboardData || inTextField(host.root, event) || hasTextSelection(host.root)) return;
         if (!ownClosest(host.root, event.target, CELL_SELECTOR)) return;
         const grid = keyboardCopyGrid(this.source());
         if (!grid) return;
@@ -163,6 +163,7 @@ export class ClipboardController<T> {
     /** Angular's precedence (cmp 4571): the range, else the focused cell, else the selected rows. Consumed only when the API can write it. */
     private keyCopy(event: KeyboardEvent): boolean {
         if (!this.host.config.enableCopy || !canWrite()) return false; // no API: the browser's own `copy` event follows and is answered there
+        if (hasTextSelection(this.host.root)) return false; // text selected in the table: the browser copies that text
         const grid = keyboardCopyGrid(this.source());
         if (!grid) return false;
         event.preventDefault();

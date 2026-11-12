@@ -101,3 +101,14 @@ const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]
 export function inTextField(root: Element, event: Event): boolean {
     return ownClosest(root, event.target, TEXT_FIELD) !== null || ((event.composedPath()[0] as Element | undefined)?.matches?.(TEXT_FIELD) ?? false);
 }
+
+/**
+ * The user selected TEXT inside this table (a non-collapsed selection that starts or ends in it): a copy is then the browser's copy of that text, not the
+ * grid's (Ctrl/Cmd+C and the native `copy` event alike).
+ */
+export function hasTextSelection(root: Element): boolean {
+    const selection = root.ownerDocument?.getSelection?.(); // (a host without a document, a node test's, has no selection)
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return false;
+    const inside = (node: Node | null): boolean => node !== null && root.contains(node);
+    return inside(selection.anchorNode) || inside(selection.focusNode);
+}
