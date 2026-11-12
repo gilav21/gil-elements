@@ -637,6 +637,48 @@ describe('F7 the advanced filter builder', () => {
         await closePopover(table);
     });
 
+    describe('nested groups and the debounce (round 4)', () => {
+        const cond = (column: string, value: string): FilterGroup['rules'][number] => ({ type: 'condition', column, operator: 'contains', value });
+        const nestedInputs = (table: Table, at: number): HTMLInputElement[] => {
+            const nested = inner(table, 'ge-data-table-filter-builder')[at] as HTMLElement;
+            return [...nested.shadowRoot!.querySelectorAll<HTMLInputElement>('input.value')];
+        };
+
+        it('a value typed in subgroup 0, then subgroup 0 removed within the debounce, leaves subgroup 1 unchanged', async () => {
+            const group: FilterGroup = {
+                type: 'group',
+                combinator: 'and',
+                rules: [
+                    { type: 'group', combinator: 'or', rules: [cond('name', 'a')] },
+                    { type: 'group', combinator: 'or', rules: [cond('role', 'Eng')] },
+                ],
+            };
+            const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 400 });
+            await openBuilder(table);
+            await typeText(nestedInputs(table, 0)[0]!, 'xyz');
+            await userEvent.click(byText(table, 'Remove group')); // the first subgroup's
+            await refresh(table);
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            await refresh(table);
+            expect(table.advancedFilter!.rules).toEqual([{ type: 'group', combinator: 'or', rules: [cond('role', 'Eng')] }]);
+            await closePopover(table);
+            expect(table.advancedFilter!.rules).toEqual([{ type: 'group', combinator: 'or', rules: [cond('role', 'Eng')] }]);
+        });
+
+        it('values typed at the top level and in a nested group, then the popover closed within the debounce, are both kept (one change)', async () => {
+            const group: FilterGroup = { type: 'group', combinator: 'and', rules: [cond('name', ''), { type: 'group', combinator: 'or', rules: [cond('role', '')] }] };
+            const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 1000 });
+            const trees = record(table, 'advanced-filter-change');
+            await openBuilder(table);
+            await typeText(inner(table, 'input.value')[0]!, 'Al');
+            await typeText(nestedInputs(table, 0)[0]!, 'Eng');
+            await closePopover(table);
+            await settle(table);
+            expect(trees).toHaveLength(1);
+            expect(table.advancedFilter).toEqual({ type: 'group', combinator: 'and', rules: [cond('name', 'Al'), { type: 'group', combinator: 'or', rules: [cond('role', 'Eng')] }] });
+        });
+    });
+
     it('debounces a typed value with filterDebounce (other edits are never delayed)', async () => {
         const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: '' }] };
         const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 300 });

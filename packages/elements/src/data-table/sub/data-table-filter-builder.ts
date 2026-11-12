@@ -8,13 +8,22 @@ import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels } from '../data-tabl
 import type { FilterCondition, FilterGroup, FilterOperator } from '../data-table.types.js';
 import css from './data-table-filter-builder.css?inline';
 
+/** `change` applied to the group at `path` of `tree` (the rule indexes from the top), the groups above it rebuilt: a new tree, nothing mutated. */
+function updateAt(tree: FilterGroup, path: readonly number[], change: (group: FilterGroup) => FilterGroup): FilterGroup {
+    if (path.length === 0) return change(tree);
+    const [index, ...rest] = path as [number, ...number[]];
+    const child = tree.rules[index];
+    if (child?.type !== 'group') return tree; // the path no longer names a group (the tree changed): nothing to apply
+    return updateRule(tree, index, updateAt(child, rest, change));
+}
 
 /**
  * The recursive AND/OR editor of the data table's advanced filter (shadcn-angular `ui-data-table-filter-builder`). Fully controlled: every edit
  * reports a whole new tree and changes nothing here until `group` is fed back. Nested groups are drawn by nested builders. Native `select` and
  * `input` controls (D10), each with an accessible name (the Angular builder has none).
  *
- * @fires group-change - The new tree after any edit (also one made in a nested group). Does not bubble: listen on the builder.
+ * @fires group-change - The new WHOLE tree after any edit, also one made in a nested group: fired by the top-level builder only. Does not bubble:
+ * listen on the builder.
  */
 export class GeDataTableFilterBuilder extends UiElement {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];
@@ -23,15 +32,25 @@ export class GeDataTableFilterBuilder extends UiElement {
         columns: { attribute: false },
         labels: { attribute: false },
         debounce: { attribute: false },
+        owner: { attribute: false },
+        path: { attribute: false },
     };
 
     /**
      * Milliseconds a typed value waits before `group-change` (the table's `filterDebounce`, like its floating input; 0 = at once, Angular's
-     * behaviour). Column, operator and structure edits are never delayed. Nested builders get the same.
+     * behaviour). Column, operator and structure edits are never delayed. Read on the top-level builder.
      */
     declare debounce: number;
-    /** The pending value edit per condition index: its timer and the value it will report. */
-    private readonly pending = new Map<number, { timer: ReturnType<typeof setTimeout>; value: string }>();
+    /**
+     * A NESTED builder's top-level builder (null on the top level itself). Every edit of a nested group goes up to it: ONE tree, ONE pending map,
+     * ONE timer and ONE `group-change`, so a nested builder that Lit reuses for another group (its row index changed) never holds anything of its own.
+     */
+    declare owner: GeDataTableFilterBuilder | null;
+    /** Where this builder's group sits in the top-level tree: the rule indexes from the top (empty on the top level). */
+    declare path: readonly number[];
+    /** Top level only: the typed values waiting on the debounce, by the PATH of their condition (`'0.2'`), and the one timer. */
+    private readonly pending = new Map<string, { path: readonly number[]; value: string }>();
+    private timer: ReturnType<typeof setTimeout> | undefined;
 
     declare group: FilterGroup;
     /**
@@ -48,35 +67,51 @@ export class GeDataTableFilterBuilder extends UiElement {
         this.columns = [];
         this.labels = EN_FILTER_BUILDER_LABELS;
         this.debounce = 0;
+        this.owner = null;
+        this.path = [];
+    }
+
+    /** The top-level builder: the one that holds the tree, the pending values and the event. */
+    private get root(): GeDataTableFilterBuilder {
+        return this.owner ?? this;
     }
 
     override disconnectedCallback(): void {
         super.disconnectedCallback();
-        // The popover closed (or the table went) while a typed value waited: it is reported now, once, not lost.
-        if (this.pending.size > 0) this.edit((group) => group);
+        // The popover closed (or the table went) while a typed value waited: the top level reports it now, once, against its latest tree.
+        if (!this.owner && this.pending.size > 0) this.edit([], (group) => group);
     }
 
-    /** A value typed in condition `index`: reported now, or after `debounce` ms of quiet (the last value wins, patched into the tree of THAT moment). */
-    private typed(index: number, value: string): void {
-        clearTimeout(this.pending.get(index)?.timer);
-        this.pending.delete(index);
-        if (!(this.debounce > 0)) return this.edit((group) => patchCondition(group, index, { value }));
-        const timer = setTimeout(() => this.edit((group) => group), this.debounce);
-        this.pending.set(index, { timer, value });
+    /** A value typed in the condition at `path` (top-level tree): reported now, or after `debounce` ms of quiet (the last value per condition wins). */
+    private typed(path: readonly number[], value: string): void {
+        const root = this.root;
+        root.pending.set(path.join('.'), { path, value });
+        clearTimeout(root.timer);
+        if (root.debounce > 0) root.timer = setTimeout(() => root.edit([], (group) => group), root.debounce);
+        else root.edit([], (group) => group);
     }
 
     /**
-     * Every edit goes through here: the values still waiting on the debounce are patched in FIRST (into the slots they were typed in, before a
-     * structural edit can move them), then `change` applies, and ONE new tree is reported.
+     * Every edit goes through the top level: the values still waiting on the debounce are patched in FIRST (into the conditions they were typed
+     * in, before a structural edit can move them), then `change` applies to the group at `at`, and ONE new tree is reported.
      */
-    private edit(change: (group: FilterGroup) => FilterGroup): void {
-        let group = this.group ?? emptyGroup();
-        for (const [index, { timer, value }] of this.pending) {
-            clearTimeout(timer);
-            group = patchCondition(group, index, { value });
+    private edit(at: readonly number[], change: (group: FilterGroup) => FilterGroup): void {
+        const root = this.root;
+        if (root !== this) return root.edit(at, change);
+        clearTimeout(this.timer);
+        this.timer = undefined;
+        let tree = this.group ?? emptyGroup();
+        for (const { path, value } of this.pending.values()) {
+            const index = path.at(-1) as number;
+            tree = updateAt(tree, path.slice(0, -1), (group) => patchCondition(group, index, { value }));
         }
         this.pending.clear();
-        this.emit(change(group));
+        this.emit(updateAt(tree, at, change));
+    }
+
+    /** The value shown in the condition at `path`: a typed one still waiting, else the tree's. */
+    private shownValue(path: readonly number[], rule: FilterCondition): string {
+        return this.root.pending.get(path.join('.'))?.value ?? asText(rule.value);
     }
 
     private emit(group: FilterGroup): void {
@@ -91,17 +126,17 @@ export class GeDataTableFilterBuilder extends UiElement {
         // The rows are drawn by index, so a row is REUSED for another rule (remove condition 0: row 0 now shows condition 1). Each select's
         // `.value` is therefore bound with `live` against the DOM, so it shows the model's choice and not the one the reused row last had.
         return html`<div class="condition" data-slot="filter-condition">
-            <select class="column" aria-label=${l.columnLabel ?? 'Column'} .value=${live(known ? rule.column : '')} @change=${(e: Event) => this.edit((g) => patchCondition(g, index, { column: value(e) }))}>
+            <select class="column" aria-label=${l.columnLabel ?? 'Column'} .value=${live(known ? rule.column : '')} @change=${(e: Event) => this.edit(this.path, (g) => patchCondition(g, index, { column: value(e) }))}>
                 ${known ? nothing : html`<option value="" disabled selected data-unknown>${rule.column || '(unknown column)'}</option>`}
                 ${this.columns.map((c) => html`<option value=${c.key} ?selected=${c.key === rule.column}>${c.header}</option>`)}
             </select>
-            <select class="operator" aria-label=${l.operatorLabel ?? 'Operator'} .value=${live(rule.operator)} @change=${(e: Event) => this.edit((g) => patchCondition(g, index, { operator: value(e) as FilterOperator }))}>
+            <select class="operator" aria-label=${l.operatorLabel ?? 'Operator'} .value=${live(rule.operator)} @change=${(e: Event) => this.edit(this.path, (g) => patchCondition(g, index, { operator: value(e) as FilterOperator }))}>
                 ${OPERATOR_ORDER.map((op) => html`<option value=${op} ?selected=${op === rule.operator}>${l.operators[op]}</option>`)}
             </select>
             ${needsValue(rule.operator)
-                ? html`<input type="text" class="value" placeholder=${l.valuePlaceholder} aria-label=${l.valueLabel ?? 'Value'} .value=${live(this.pending.get(index)?.value ?? asText(rule.value))} @input=${(e: Event) => this.typed(index, value(e))} />`
+                ? html`<input type="text" class="value" placeholder=${l.valuePlaceholder} aria-label=${l.valueLabel ?? 'Value'} .value=${live(this.shownValue([...this.path, index], rule))} @input=${(e: Event) => this.typed([...this.path, index], value(e))} />`
                 : nothing}
-            <button type="button" class="remove" aria-label=${l.removeCondition} @click=${() => this.edit((g) => removeRule(g, index))}>
+            <button type="button" class="remove" aria-label=${l.removeCondition} @click=${() => this.edit(this.path, (g) => removeRule(g, index))}>
 ${chromeIcon('x', 'xs')}</button>
         </div>`;
     }
@@ -109,8 +144,8 @@ ${chromeIcon('x', 'xs')}</button>
     private subgroup(rule: FilterGroup, index: number) {
         const l = { ...EN_FILTER_BUILDER_LABELS, ...this.labels };
         return html`<div class="subgroup" data-slot="filter-subgroup">
-            <ge-data-table-filter-builder .group=${rule} .columns=${this.columns} .labels=${this.labels} .debounce=${this.debounce} @group-change=${(e: CustomEvent<FilterGroup>) => this.edit((g) => updateRule(g, index, e.detail))}></ge-data-table-filter-builder>
-            <button type="button" class="remove-group" @click=${() => this.edit((g) => removeRule(g, index))}>${l.removeGroup}</button>
+            <ge-data-table-filter-builder .group=${rule} .columns=${this.columns} .labels=${this.labels} .owner=${this.root} .path=${[...this.path, index]}></ge-data-table-filter-builder>
+            <button type="button" class="remove-group" @click=${() => this.edit(this.path, (g) => removeRule(g, index))}>${l.removeGroup}</button>
         </div>`;
     }
 
@@ -121,15 +156,15 @@ ${chromeIcon('x', 'xs')}</button>
         return html`<div part="base" class="group" data-slot="filter-group" role="group" aria-label=${l.groupLabel ?? 'Group'}>
             <div class="header">
                 <div class="combinator">
-                    <button type="button" aria-pressed=${and ? 'true' : 'false'} ?data-active=${and} @click=${() => this.edit((g) => setCombinator(g, 'and'))}>${l.and}</button>
-                    <button type="button" aria-pressed=${and ? 'false' : 'true'} ?data-active=${!and} @click=${() => this.edit((g) => setCombinator(g, 'or'))}>${l.or}</button>
+                    <button type="button" aria-pressed=${and ? 'true' : 'false'} ?data-active=${and} @click=${() => this.edit(this.path, (g) => setCombinator(g, 'and'))}>${l.and}</button>
+                    <button type="button" aria-pressed=${and ? 'false' : 'true'} ?data-active=${!and} @click=${() => this.edit(this.path, (g) => setCombinator(g, 'or'))}>${l.or}</button>
                 </div>
                 <span class="hint">${and ? l.matchAll : l.matchAny}</span>
             </div>
             ${group.rules.map((rule, index) => (rule.type === 'condition' ? this.condition(rule, index) : this.subgroup(rule, index)))}
             <div class="footer">
-                <ge-button size="sm" variant="outline" @click=${() => this.edit((g) => addCondition(g, this.columns))}>${l.addCondition}</ge-button>
-                <ge-button size="sm" variant="ghost" @click=${() => this.edit((g) => addGroup(g))}>${l.addGroup}</ge-button>
+                <ge-button size="sm" variant="outline" @click=${() => this.edit(this.path, (g) => addCondition(g, this.columns))}>${l.addCondition}</ge-button>
+                <ge-button size="sm" variant="ghost" @click=${() => this.edit(this.path, (g) => addGroup(g))}>${l.addGroup}</ge-button>
             </div>
         </div>`;
     }
