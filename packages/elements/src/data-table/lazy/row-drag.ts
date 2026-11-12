@@ -12,6 +12,7 @@
 import { type AutoScrollController, startAutoScroll } from '../../shared/auto-scroll.js';
 import { CONTROLS_SELECTOR } from '../../shared/interactive-tags.js';
 import { interpolate } from '../../shared/interpolate.js';
+import { CELL_SELECTOR, inTextField } from '../data-table-clipboard-grid.js';
 import { type DataTableCoreHost, ownClosest, ownElements, ownEvents } from '../data-table-host.js';
 import type { RowDragState } from '../data-table-providers.js';
 import { KEY_PRIORITY } from '../data-table-registry.js';
@@ -21,8 +22,6 @@ import { reportOncePer } from '../data-table-warn.js';
 
 const ROW = '[data-slot="table-row"][data-kind="data"]';
 const VIEWPORT = '[data-slot="data-table-viewport"]';
-const CELL = '[data-slot="table-cell"]';
-const TEXT_FIELD = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
 /** The private payload type: a drop from another table or another page carries none of this table's state and is ignored anyway. */
 const MIME = 'application/x-ge-data-table-row';
 /** Distance from the viewport edge (px) where a drag auto-scrolls (Angular's 40 px edge zone). */
@@ -99,6 +98,8 @@ export class RowDragPart<T> {
 
     private onDragStart(event: DragEvent): void {
         const { root, config } = this.host;
+        // An earlier drag whose end was never heard is over now: its state and listeners go first (idempotent).
+        this.clear();
         const rowEl = ownClosest<HTMLElement>(root, event.target, ROW);
         if (!rowEl) return; // not a row drag (a column header's, a consumer's own draggable)
         const index = Number(rowEl.dataset['rowIndex']);
@@ -110,7 +111,8 @@ export class RowDragPart<T> {
             config.loading ||
             row === undefined ||
             (this.host.provider('selection')?.isDisabled(row) ?? false) ||
-            origin.closest?.(`${TEXT_FIELD}, ${CONTROLS_SELECTOR}`) != null || // a text selection or a control's own drag
+            inTextField(root, event) || // a text selection's own drag
+            origin.closest?.(CONTROLS_SELECTOR) != null || // a control's own drag
             this.host.provider('interaction')?.editingCell?.()?.rowIndex === index; // an editor is open in the row
         if (refused) {
             event.preventDefault();
@@ -130,11 +132,18 @@ export class RowDragPart<T> {
         this.publish();
     }
 
-    /** While a drag runs: the document's drag over outside the table stops the auto-scroll; Escape and a window blur end the drag. */
+    /**
+     * While a drag runs: the document's drag over outside the table stops the auto-scroll; Escape and a window blur end the drag. Its end is also heard
+     * where the root cannot hear it: a `dragend` dispatched to a source row a render REMOVED never bubbles to the root (nor anywhere), so a drop anywhere on
+     * the page, a `dragend` the document does see, or the first pointer event after it (none is dispatched while a native drag runs) ends it too.
+     */
     private watchDrag(): void {
         const { root, disposables } = this.host;
         const doc = root.ownerDocument;
         this.dragTeardown = [
+            disposables.listen(doc, 'dragend', () => this.clear(), true),
+            disposables.listen(doc, 'drop', () => this.clear()), // bubble phase: this table's own drop handler (on the root) has run first
+            disposables.listen(doc, 'pointermove', () => this.clear(), true),
             disposables.listen<DragEvent>(doc, 'dragover', (event) => {
                 if (!event.composedPath().includes(root)) this.scroller?.stop();
             }, true),
@@ -291,10 +300,9 @@ export class RowDragPart<T> {
         const { root, config } = this.host;
         const direction = MOVE_KEYS[event.key];
         if (!direction || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.defaultPrevented || event.isComposing || !config.enableRowDrag) return false;
-        const origin = (event.composedPath()[0] ?? event.target) as Element;
-        if (origin.closest?.(TEXT_FIELD)) return false;
+        if (inTextField(root, event)) return false; // the shared rule: a checkbox or a button in a cell is no text field, Alt+Arrow moves its row
         const target = event.target as Element;
-        if (!ownClosest(root, target, CELL) && target !== root && !target.matches?.(VIEWPORT)) return false;
+        if (!ownClosest(root, target, CELL_SELECTOR) && target !== root && !target.matches?.(VIEWPORT)) return false;
         const interaction = this.host.provider('interaction');
         const at = interaction?.focusedCell();
         const row = at ? this.host.provider('query')?.renderedRowAt(at.rowIndex) : undefined;

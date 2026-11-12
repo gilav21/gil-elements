@@ -202,6 +202,46 @@ describe('row drag: indicators and cleanup', () => {
         expect(syntheticDrag(cellOf(rowEl(table, 3)), 'dragover', at(rowEl(table, 3), 0.75)).defaultPrevented).toBe(false);
     });
 
+    it('ends a drag whose source row a render removed (its dragend never reaches the root): the next pointer event clears it, with no listener left behind', async () => {
+        const table = await mountDrag();
+        const added = new Map<EventListenerOrEventListenerObject, string>();
+        const { addEventListener: add, removeEventListener: remove } = document;
+        document.addEventListener = function (this: Document, type: string, fn: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) {
+            added.set(fn, type);
+            add.call(this, type, fn, options);
+        } as typeof add;
+        document.removeEventListener = function (this: Document, type: string, fn: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions) {
+            added.delete(fn);
+            remove.call(this, type, fn, options);
+        } as typeof remove;
+        try {
+            await dragOver(table, 0, 2, 0.75);
+            expect([...added.values()]).toEqual(expect.arrayContaining(['dragend', 'pointermove']));
+            const source = rowEl(table, 0);
+            table.data = (table.data as SampleRow[]).slice(1); // the source row leaves the DOM
+            await settle(table);
+            expect(source.isConnected).toBe(false);
+            source.dispatchEvent(new DragEvent('dragend', { bubbles: true, composed: true })); // dispatched to the removed node: the root never hears it
+            expect(table.provider('rowDrag')?.isDragging()).toBe(true);
+            document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true })); // the first pointer event after a native drag
+            await settle(table);
+            expect(table.provider('rowDrag')?.isDragging()).toBe(false);
+            expect(edge(table)).toBeNull();
+            expect(table.querySelector('[data-dragging]')).toBeNull();
+            expect([...added.values()]).toEqual([]); // the drag's document listeners are gone
+            // a new drag starts clean, also over a drag whose end was never heard at all
+            await dragOver(table, 0, 2, 0.75);
+            await dragOver(table, 1, 3, 0.75);
+            expect([...added.values()].filter((type) => type === 'pointermove')).toHaveLength(1);
+            syntheticDrag(q(table, VIEWPORT), 'dragend');
+            await settle(table);
+            expect([...added.values()]).toEqual([]);
+        } finally {
+            document.addEventListener = add;
+            document.removeEventListener = remove;
+        }
+    });
+
     it('a drag from another table is ignored', async () => {
         const one = await mountDrag();
         const two = await mountDrag();
@@ -463,6 +503,25 @@ describe('row drag: keyboard (Alt+ArrowUp / Alt+ArrowDown) and moveRow', () => {
         expect(kids(table, 'a')).toEqual(['a2', 'a1']);
     });
 
+    it('moves the row from its selection checkbox too: a checkbox is no text field (the one text-field rule the range and clipboard keys share)', async () => {
+        const table = await mountDrag({ enableRowSelection: true });
+        const box = table.querySelector<HTMLElement>('[data-row-index="1"] [data-column="_selection"] ge-checkbox');
+        expect(box).not.toBeNull();
+        box!.focus();
+        await settle(table);
+        await press('{Alt>}{ArrowDown}{/Alt}');
+        await settle(table);
+        expect(ids(table)).toEqual(['r0', 'r2', 'r1', 'r3', 'r4', 'r5']);
+        // a text field in a cell keeps Alt+Arrow (the caret's own keys)
+        const input = document.createElement('input');
+        cellOf(rowEl(table, 3)).append(input);
+        input.focus();
+        await press('{Alt>}{ArrowDown}{/Alt}');
+        await settle(table);
+        expect(ids(table)).toEqual(['r0', 'r2', 'r1', 'r3', 'r4', 'r5']);
+        input.remove();
+    });
+
     it('moveRow() does the same, and is false when nothing moved or the table is detached', async () => {
         const table = await mountDrag();
         const rows = table.data as SampleRow[];
@@ -538,6 +597,35 @@ describe('cell flash', () => {
         await settle(table);
         expect(rowById(table, 'r1500')).not.toBeNull();
         expect(qa(table, '[data-flash]')).toHaveLength(0);
+    });
+
+    it('flashes a change on page 2 (the snapshot follows what is drawn: paging, sorting, filtering)', async () => {
+        const table = (await mountTable<SampleRow>({ data: makeRows(20), enableCellFlash: true, cellFlashDuration: 2000, paginationState: { pageIndex: 0, pageSize: 5 } })) as Table;
+        table.paginationState = { pageIndex: 1, pageSize: 5 };
+        await settle(table);
+        expect(rowById(table, 'r6')).not.toBeNull();
+        await update(table, (rows) => (rows[6]!.age = 49));
+        expect(flashOf(table, 'r6', 'age')).toBe('up');
+        // a sort is no change: nothing more flashes
+        const before = qa(table, '[data-flash]').length;
+        table.sortState = { column: 'name', direction: 'desc' } as never;
+        await settle(table);
+        expect(qa(table, '[data-flash]').length).toBeLessThanOrEqual(before);
+    });
+
+    it('restarts the fade when a flashing cell changes again (the keyframes name alternates)', async () => {
+        const table = (await mountTable<SampleRow>({ data: makeRows(3), enableCellFlash: true, cellFlashDuration: 3000 })) as Table;
+        const cell = (): HTMLElement => table.querySelector<HTMLElement>('[data-row-id="r0"] [data-column="age"]')!;
+        await update(table, (rows) => (rows[0]!.age = 40));
+        expect(getComputedStyle(cell()).animationName).toBe('ge-dt-flash');
+        await update(table, (rows) => (rows[0]!.age = 45)); // up again: the same data-flash value
+        expect(flashOf(table, 'r0', 'age')).toBe('up');
+        expect(getComputedStyle(cell()).animationName).toBe('ge-dt-flash-again');
+        await update(table, (rows) => (rows[0]!.age = 49));
+        expect(getComputedStyle(cell()).animationName).toBe('ge-dt-flash');
+        // a cell that did not change again keeps its animation
+        await update(table, (rows) => (rows[1]!.name = 'x'));
+        expect(getComputedStyle(cell()).animationName).toBe('ge-dt-flash');
     });
 
     it('animates the tint normally; under reduced motion the tint and the marker stay without animation', async () => {
