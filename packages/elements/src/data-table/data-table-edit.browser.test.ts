@@ -769,6 +769,33 @@ describe('E5 editor kinds', () => {
     });
 });
 
+describe('round 16: the first control of a custom editor', () => {
+    it('a custom editor whose first control is a ge-select takes the focus on it (the grid FOCUSABLE rule)', async () => {
+        await import('../select/define.js');
+        const editRenderer = (): HTMLElement => {
+            const box = document.createElement('div');
+            const skipped = Object.assign(document.createElement('span'), { tabIndex: -1, textContent: 'hint' });
+            const select = Object.assign(document.createElement('ge-select'), { options: ['a', 'b'] }) as HTMLElement;
+            box.append(skipped, select);
+            return box;
+        };
+        const table = await mount({ columns: editColumns({ name: { editRenderer } }) });
+        await startEditingAt(table, 1, 'name');
+        await frames(6);
+        const select = cellAt(table, 1, 'name')!.querySelector('ge-select')!;
+        expect(table.editingCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        expect(composedContainsFocus(select)).toBe(true); // its trigger's button, not the tabindex=-1 span and not the cell
+    });
+});
+
+/** `el` is or holds (through open shadow roots) the element with the focus. */
+function composedContainsFocus(el: Element): boolean {
+    let active = document.activeElement;
+    while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+    for (let at: Node | null = active; at; at = at.parentNode ?? (at as ShadowRoot).host ?? null) if (at === el) return true;
+    return false;
+}
+
 describe('E6 editing inside the grid', () => {
     it('Space and the arrows inside an editor neither select the row nor move the focus', async () => {
         const table = await mount({ enableRowSelection: true });

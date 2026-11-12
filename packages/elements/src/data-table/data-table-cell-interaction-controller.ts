@@ -1,11 +1,11 @@
 import { html, type TemplateResult } from 'lit';
 import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
-import { type CellAddress, cellAddressOf, CELL_CONTROLS, composedContains, controlInPath, type DataTableCoreHost, isTextFieldKey, VIEWPORT, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, CELL_CONTROLS, composedContains, controlInPath, type DataTableCoreHost, FOCUSABLE, isTextFieldKey, VIEWPORT, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
 import { reportOncePer } from './data-table-warn.js';
 import { mergeSessionServices } from './data-table-session-service.js';
-import { CONTROLS_SELECTOR, INTERACTIVE_TAGS } from '../shared/interactive-tags.js';
+import { CONTROLS_SELECTOR } from '../shared/interactive-tags.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { RangeSession } from './data-table-range-session.js';
@@ -48,8 +48,6 @@ interface Press {
 const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= box.left - slop && x <= box.right + slop && y >= box.top - slop && y <= box.bottom + slop;
 
 const CELL = '[data-slot="table-cell"]';
-/** What the browser focuses by itself when it is pressed (or tapped): native controls, anything with a tabindex, an editable region, and the library's own controls (their inside may be a closed root). */
-const FOCUSABLE = `button, input, select, textarea, summary, a[href], [tabindex], [contenteditable]:not([contenteditable="false"]), ${INTERACTIVE_TAGS.join(', ')}`;
 /** A touch press with no pointer event for this long is taken as lost (its release was swallowed). */
 const STALE_TOUCH_MS = 2000;
 /** The message every session failure is reported under (`reportOncePer`, or a plain `console.error`). */

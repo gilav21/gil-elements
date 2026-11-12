@@ -21,7 +21,7 @@
  * | disposables                     | all (listeners, timers, observers)                                          |
  * | requestRender, afterRender      | all that draw; Virtual and Resize measure after a paint                     |
  */
-import { CONTROLS_SELECTOR, NATIVE_CONTROLS, ROLES_SELECTOR } from '../shared/interactive-tags.js';
+import { CONTROLS_SELECTOR, INTERACTIVE_TAGS, NATIVE_CONTROLS, ROLES_SELECTOR } from '../shared/interactive-tags.js';
 import type { Disposables, TopicBus } from '../shared/registry.js';
 import type { DataTableLocale } from './data-table.locales.js';
 import type { DataTableEventMap } from './data-table-events.js';
@@ -74,6 +74,12 @@ export const VIEWPORT = '[data-slot="data-table-viewport"]';
 
 /** A field whose keys are its own (typing, its undo, Enter in it): the grid's key handlers never act on an event from one. */
 export const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
+
+/**
+ * What the browser (or a library control) focuses itself: the native controls, `summary`, a link with `href`, any `[tabindex]`, an editable region and
+ * the library's interactive tags (a closed root's host stands for its inside). ONE rule for the grid's tap focus and an editor's first control.
+ */
+export const FOCUSABLE = `button, input, select, textarea, summary, a[href], [tabindex], [contenteditable]:not([contenteditable="false"]), ${INTERACTIVE_TAGS.join(', ')}`;
 
 /**
  * The key belongs to a text field (typing, its undo, Enter or Alt+Shift+Arrow in it), so no grid key handler acts on it: the deepest node of the

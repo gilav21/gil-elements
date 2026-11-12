@@ -32,7 +32,7 @@ import {
     writeBackDate,
 } from './data-table-edit.js';
 // isTextFieldKey: a key typed in a text field is the field's own (its undo, Enter in a filter input): the history and edit-start keys never take it (B1).
-import { type CellAddress, cellAddressOf, composedContains, controlInPath, isTextFieldKey, ownClosest, ownElements, ownsTarget, requireProvider, VIEWPORT } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, composedContains, controlInPath, FOCUSABLE, isTextFieldKey, ownClosest, ownElements, ownsTarget, requireProvider, VIEWPORT } from './data-table-host.js';
 import { lazyElement } from './data-table-lazy.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
@@ -59,7 +59,31 @@ const DATE_PICKER = lazyElement('ge-date-picker', () => import('../date-picker/d
 
 /** What takes the focus when an editor opens: the built-in input or select, or a custom editor's own `[data-edit-input]`. */
 const EDIT_INPUT = '[data-edit-input]';
-const FOCUSABLE = 'input, select, textarea, button, [tabindex]:not([tabindex="-1"]), [contenteditable]:not([contenteditable="false"])';
+
+/** The element that really holds the focus, through open shadow roots. */
+function deepActiveElement(): Element | null {
+    let active = document.activeElement;
+    while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
+    return active;
+}
+
+/** Frames an editor's first control is given to draw the part that takes the focus. */
+const FOCUS_ATTEMPTS = 4;
+
+/**
+ * Focuses `target`; a library control whose host takes no focus itself (`ge-select`: its trigger, in its shadow root, does) is focused at the first
+ * element of its open shadow root that takes it. A focus call on what cannot take focus is a no-op, so the candidates are simply tried in order.
+ * True when the focus is inside `target`.
+ */
+function focusInto(target: HTMLElement): boolean {
+    target.focus({ preventScroll: true });
+    if (composedContains(target, deepActiveElement())) return true;
+    for (const el of target.shadowRoot?.querySelectorAll<HTMLElement>('*') ?? []) {
+        el.focus({ preventScroll: true });
+        if (composedContains(target, deepActiveElement())) return true;
+    }
+    return false;
+}
 
 let uid = 0;
 
@@ -466,9 +490,29 @@ export class EditSession<T> implements CellSession {
         }
         const target = this.editorTarget(cell, open.kind);
         if (!target) return;
-        target.focus({ preventScroll: true });
+        focusInto(target);
+        if (!isBuiltInKind(open.kind)) void this.keepEditorFocus(open);
         // A text editor's caret goes to the end of its value (as F2 does in a spreadsheet); a number input has no selection to set.
         if (target instanceof HTMLInputElement && target.type === 'text') target.setSelectionRange(target.value.length, target.value.length);
+    }
+
+    /**
+     * A custom editor's first control may draw the part that takes the focus later, or be drawn again (a renderer that builds a new `ge-select` on
+     * the render after the open: the focused one is removed and the focus falls back to the cell). For a few frames, while this editor is open and the focus is on its cell
+     * or nowhere (never when the user moved it elsewhere), the control is focused again.
+     */
+    private async keepEditorFocus(open: OpenEditor<T>): Promise<void> {
+        for (let frame = 0; frame < FOCUS_ATTEMPTS; frame++) {
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            if (this.open !== open) return;
+            // Found again each time: a renderer may draw a new control on a render.
+            const cell = this.host.cellAt(open.at.rowIndex, open.at.columnKey);
+            const target = this.editorTarget(cell, open.kind);
+            const active = deepActiveElement();
+            if (!target || composedContains(target, active)) continue;
+            if (active && active !== document.body && active !== cell) return;
+            focusInto(target);
+        }
     }
 
     /** The element of the open editor that takes focus. */
@@ -482,7 +526,8 @@ export class EditSession<T> implements CellSession {
         if (own) return own.shadowRoot?.querySelector<HTMLElement>(EDIT_INPUT) ?? own;
         const component = cell.querySelector<HTMLElement>('[data-slot="cell-component"]');
         if (component) return component.shadowRoot?.querySelector<HTMLElement>(EDIT_INPUT) ?? component;
-        return cell.querySelector<HTMLElement>(FOCUSABLE);
+        // The grid's one FOCUSABLE rule (a library control such as `ge-select` too), skipping what is kept out of the tab order on purpose.
+        return [...cell.querySelectorAll<HTMLElement>(FOCUSABLE)].find((el) => el.getAttribute('tabindex') !== '-1') ?? null;
     }
 
     // ---- what the editor view calls -----------------------------------------------------------------------------------
