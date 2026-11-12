@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AddonSet, type DataTableAddon, type DataTableAddonHost, createAddonHost, defineAddon, parseAddonIds, resolveAddonLocale } from './data-table-addon-kit.js';
 import { createAddonsService } from './data-table-registry.js';
 import { resolveAddonLocale as shared } from '../shared/addon-locale.js';
 import type { DataTableLocale } from './data-table.locales.js';
+
+afterEach(() => vi.restoreAllMocks());
 
 function fakeHost() {
     const listeners = new Set<() => void>();
@@ -99,8 +101,8 @@ describe('AddonSet', () => {
             made.set(id, a);
             return a;
         };
-        const warn = vi.fn();
-        const set = new AddonSet(host, made, warn);
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const set = new AddonSet(host, made);
         return { set, addon, log, warn };
     }
 

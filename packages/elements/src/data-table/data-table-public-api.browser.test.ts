@@ -181,6 +181,20 @@ describe('copy with the feature off', () => {
     });
 });
 
+describe('a read-only assignment in TWO tables', () => {
+    it('warns for each table (once each): one table\'s warning never silences the other\'s', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const first = await mountTable();
+        const second = await mountTable();
+        for (const table of [first, second]) {
+            (table as unknown as Record<string, unknown>)['editingCell'] = null;
+            (table as unknown as Record<string, unknown>)['editingCell'] = null;
+        }
+        expect(warn.mock.calls.filter((call) => String(call[0]).includes('editingCell is read-only'))).toHaveLength(2);
+        warn.mockRestore();
+    });
+});
+
 describe('paste with the feature off', () => {
     it('answers "ignored" while enable-clipboard-paste is off, and "unavailable" with the flag on and no real paste yet', async () => {
         const off = await mountTable({ enableClipboardPaste: false });

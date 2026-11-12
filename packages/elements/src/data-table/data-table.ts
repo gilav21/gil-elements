@@ -13,9 +13,10 @@ import { rangeModeOn, rangeSelectionDrawn, sanitizeCellRange, warnBadRange } fro
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
 import { resetIconElement } from './data-table-icons.js';
 import { neutralRowDrag } from './data-table-row-drag-controller.js';
+import { neutralClipboard } from './data-table-clipboard-controller.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
-import type { ClipboardResult, DataTableConfig, DataTableProviders, RowDragService } from './data-table-providers.js';
+import type { ClipboardResult, ClipboardService, DataTableConfig, DataTableProviders, RowDragService } from './data-table-providers.js';
 import { changeAdvancedFilterOf, memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
 import { buildView, type DataTableViewHost } from './data-table-view.js';
@@ -36,11 +37,10 @@ import { defaultGetRowId } from './data-table.utils.js';
 import './sub/data-table-column-header.js';
 import './sub/data-table-pager.js';
 import { css } from './data-table-styles.js';
-import { warnOnce, reportOncePer } from './data-table-warn.js';
+import { reportOncePer, warnOncePer } from './data-table-warn.js';
 
 /** State the element reads out of its services and does not accept back (Angular: signals). */
 const READ_ONLY_STATE = ['editingCell', 'cellEditError'] as const;
-const ignoreReadOnly = (name: string): void => warnOnce(`read-only:${name}`, `[ge-data-table] ${name} is read-only: the assignment was ignored.`);
 
 type Mutable<O> = { -readonly [K in keyof O]: O[K] };
 
@@ -214,6 +214,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         emit: (...event) => this.emit(event[0], event[1] as never),
     });
     /** A `cellRange` assigned before the first connect, until the range session adopts it (no controller is assembled before the first connect). */
+    /** The step 0 clipboard answers, for a call while no `clipboard` service is provided (detached); built once. */
+    private neutralClip: ClipboardService<T> | undefined;
     private earlyRange: CellRange | null | undefined;
     private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
@@ -240,7 +242,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         for (const name of READ_ONLY_STATE) {
             if (Object.hasOwn(this, name)) {
                 delete (this as Record<string, unknown>)[name];
-                ignoreReadOnly(name);
+                this.ignoreReadOnly(name);
             }
         }
         Object.assign(this, Object.fromEntries(Object.entries(INPUTS).map(([name, [, value]]) => [name, value])));
@@ -514,9 +516,14 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return this.provider('interaction')?.editingCell?.() ?? null;
     }
 
+    /** A read-only state was assigned: ignored, with a one-time warning PER TABLE (one table's mistake never silences another's). */
+    private ignoreReadOnly(name: string): void {
+        warnOncePer(this, `read-only:${name}`, `[ge-data-table] ${name} is read-only: the assignment was ignored.`);
+    }
+
     /** Read-only (Angular exposes it as a signal): a property binding or an assignment is ignored with a one-time warning, it does not throw. */
     set editingCell(_value: EditingCell | null) {
-        ignoreReadOnly('editingCell');
+        this.ignoreReadOnly('editingCell');
     }
 
     /** The validation error shown on the open editor, or null. */
@@ -526,7 +533,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Read-only, like `editingCell`. */
     set cellEditError(_value: CellEditError | null) {
-        ignoreReadOnly('cellEditError');
+        this.ignoreReadOnly('cellEditError');
     }
 
     /** Clears the advanced filter tree (the column and global filters stay). */
@@ -588,7 +595,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The `copy*ToClipboard` methods resolve to what happened: `status` is `done`, `empty`, `denied` (the browser refused), `unavailable` (no clipboard) or `ignored` (the feature is off). */
     private copyToClipboard(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<ClipboardResult> {
-        return this.provider('clipboard')?.copy(scope, row) ?? Promise.resolve({ status: this.enableCopy ? 'unavailable' : 'ignored' }); // no service (detached): the same answers as the step 0 service
+        return (this.provider('clipboard') ?? (this.neutralClip ??= neutralClipboard<T>(() => this))).copy(scope, row); // no service (detached): the same answers as the step 0 service
     }
 
     copyCellToClipboard(): Promise<ClipboardResult> {

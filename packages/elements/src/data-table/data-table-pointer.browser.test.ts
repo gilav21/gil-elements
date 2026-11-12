@@ -2235,23 +2235,29 @@ describe('a TOUCH press whose release was swallowed', () => {
         return event;
     };
 
-const swallowed = (table: GeDataTable, claimed: boolean): { key: (stamp: number) => KeyboardEvent; cell: HTMLElement } => {
+// Times are performance.now() at HANDLER time: a controlled clock stands in for it.
+    let clock = 0;
+    let nowSpy: { mockRestore(): void } | undefined;
+    afterEach(() => nowSpy?.mockRestore());
+    const swallowed = (table: GeDataTable, claimed: boolean): { key: (time: number) => KeyboardEvent; cell: HTMLElement } => {
         if (claimed) hooks.onPointerDown = () => true;
+        clock = 1000;
+        nowSpy = vi.spyOn(performance, 'now').mockImplementation(() => clock);
         const cell = cellAt(table, 1, 'name')!;
         const swallow = (event: Event): void => event.stopImmediatePropagation();
         window.addEventListener('pointerup', swallow, true);
         try {
-            cell.dispatchEvent(at('pointerdown', 541, cell, 1000));
-            cell.dispatchEvent(at('pointerup', 541, cell, 1100));
+            cell.dispatchEvent(at('pointerdown', 541, cell));
+            clock = 1100;
+            cell.dispatchEvent(at('pointerup', 541, cell));
         } finally {
             window.removeEventListener('pointerup', swallow, true);
         }
         return {
             cell,
-            key: (stamp) => {
-                const event = new KeyboardEvent('keydown', { key: 'Shift', bubbles: true, composed: true });
-                Object.defineProperty(event, 'timeStamp', { value: stamp });
-                return event;
+            key: (time) => {
+                clock = time;
+                return new KeyboardEvent('keydown', { key: 'Shift', bubbles: true, composed: true });
             },
         };
     };
@@ -2272,7 +2278,8 @@ const swallowed = (table: GeDataTable, claimed: boolean): { key: (stamp: number)
         hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
         const { key, cell } = swallowed(table, true);
         document.body.dispatchEvent(key(4000)); // 3 s of stillness
-        cell.dispatchEvent(at('pointerdown', 546, cell, 5000)); // a second finger
+        clock = 5000;
+        cell.dispatchEvent(at('pointerdown', 546, cell)); // a second finger
         expect(presses(table).has(541)).toBe(true);
         expect(log).toEqual([]);
         document.dispatchEvent(pointer('pointerup', 546, { pointerType: 'touch', over: cell }));
@@ -2815,6 +2822,81 @@ describe('controls seen through the composed path', () => {
         inner.dispatchEvent(pointer('pointerup', 643, { over: host }));
         expect(downs).toEqual([]);
         expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+    });
+});
+
+describe('a tap whose events carry old timestamps (main-thread jank)', () => {
+    it('is still the press\'s own: the freshness is measured when the handlers ran, not by the hardware time of the event (a 2 s old timeStamp, then the viewport focus at once)', async () => {
+        const table = await mountTable();
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        const cell = cellAt(table, 1, 'name')!;
+        const span = document.createElement('span');
+        cell.append(span);
+        const old = (type: string): PointerEvent => {
+            const event = pointer(type, 701, { pointerType: 'touch', over: span });
+            Object.defineProperty(event, 'timeStamp', { value: performance.now() - 2000 });
+            return event;
+        };
+        span.dispatchEvent(old('pointerdown'));
+        span.dispatchEvent(old('pointerup'));
+        (document.activeElement as HTMLElement).blur();
+        viewport.focus();
+        await frames(2);
+        expect(document.activeElement).toBe(viewport); // not handed to a cell
+    });
+});
+
+describe('document listeners of an open press', () => {
+    it('pointerup / pointercancel are heard on the document only while a press is open (only pointerdown stays permanent)', async () => {
+        const table = await mountTable();
+        const net = { pointerup: 0, pointercancel: 0 };
+        const add = vi.spyOn(Document.prototype, 'addEventListener').mockImplementation(function (this: Document, type: string, ...rest: unknown[]) {
+            if (type in net) net[type as keyof typeof net]++;
+            return EventTarget.prototype.addEventListener.call(this, type, ...(rest as [EventListenerOrEventListenerObject, AddEventListenerOptions]));
+        });
+        const remove = vi.spyOn(Document.prototype, 'removeEventListener').mockImplementation(function (this: Document, type: string, ...rest: unknown[]) {
+            if (type in net) net[type as keyof typeof net]--;
+            return EventTarget.prototype.removeEventListener.call(this, type, ...(rest as [EventListenerOrEventListenerObject, EventListenerOptions]));
+        });
+        const controller = (table as unknown as { assembled: { controllers: Record<string, unknown>[] } }).assembled.controllers.find((c) => 'tapPending' in c)!;
+        const heard = vi.spyOn(controller as unknown as { closeUnheard(event: Event): void }, 'closeUnheard');
+        try {
+            document.dispatchEvent(pointer('pointerup', 702)); // idle: nobody listens
+            expect(heard).not.toHaveBeenCalled();
+            const cell = cellAt(table, 1, 'name')!;
+            cell.dispatchEvent(pointer('pointerdown', 702, { over: cell }));
+            expect(net).toEqual({ pointerup: 1, pointercancel: 1 }); // watched while the press is open
+            cell.dispatchEvent(pointer('pointerup', 702, { over: cell }));
+            expect(net).toEqual({ pointerup: 0, pointercancel: 0 }); // and gone with the last press
+        } finally {
+            add.mockRestore();
+            remove.mockRestore();
+            heard.mockRestore();
+        }
+    });
+});
+
+describe('a renderOverlay that fails after a reconnect', () => {
+    it('is reported again per attachment (non-fatal: the session goes on)', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        (RangeSession.prototype as unknown as { renderOverlay?: () => unknown }).renderOverlay = () => {
+            throw new Error('overlay');
+        };
+        try {
+            const table = await mountTable();
+            const parent = table.parentElement!;
+            table.requestUpdate();
+            await settle(table);
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(['overlay']); // once for the attachment, not per render
+            table.remove();
+            parent.append(table);
+            await settle(table);
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(['overlay', 'overlay']);
+            expect(table.querySelector('[data-slot="table-row"][data-kind="data"]')).not.toBeNull();
+        } finally {
+            delete (RangeSession.prototype as unknown as { renderOverlay?: unknown }).renderOverlay;
+            error.mockRestore();
+        }
     });
 });
 

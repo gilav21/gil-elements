@@ -3,6 +3,26 @@ import { lazyPart } from './data-table-lazy.js';
 import type { ClipboardService } from './data-table-providers.js';
 import type { PastePart } from './lazy/clipboard.js';
 
+/** The two feature flags the step 0 answers depend on (the element and the controller's `host.config` both have them). */
+interface ClipboardFlags {
+    readonly enableCopy: boolean;
+    readonly enableClipboardPaste: boolean;
+}
+
+/**
+ * The step 0 `clipboard` service: copy and paste do nothing yet and answer like the element documents, `ignored` while the feature flag is off and `unavailable`
+ * otherwise. ONE rule for the controller's service and the element's fallback while no service is provided (detached), like `neutralRowDrag`. Wave 6 B replaces
+ * the answers HERE, in this module (the controller's own service then does the real work; the element file stays frozen).
+ */
+export function neutralClipboard<T>(flags: () => ClipboardFlags): ClipboardService<T> {
+    const status = (on: boolean): 'unavailable' | 'ignored' => (on ? 'unavailable' : 'ignored');
+    return {
+        copy: () => Promise.resolve({ status: status(flags().enableCopy) }),
+        paste: () => Promise.resolve({ status: status(flags().enableClipboardPaste) }),
+        pasteText: () => ({ status: status(flags().enableClipboardPaste) }),
+    };
+}
+
 /**
  * Copy (eager) and paste (a lazy part) of cells (wave 6, package B owns this file). Joint step 0: it provides an inert `clipboard`
  * service; the paste part loads when `enable-clipboard-paste` is on and does nothing yet.
@@ -13,14 +33,7 @@ export class ClipboardController<T> {
 
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 
-    private readonly service: ClipboardService<T> = {
-        // The step 0 copy answers like the element documents: `ignored` while the feature flag is off, `unavailable` otherwise (the real copy is wave 6 B).
-        copy: () => Promise.resolve({ status: this.host.config.enableCopy ? 'unavailable' : 'ignored' }),
-        // Paste answers like copy: `ignored` while `enable-clipboard-paste` is off, `unavailable` otherwise (the real paste is wave 6 B).
-        paste: () => Promise.resolve({ status: this.host.config.enableClipboardPaste ? 'unavailable' : 'ignored' }),
-        pasteText: () => ({ status: this.host.config.enableClipboardPaste ? 'unavailable' : 'ignored' }),
-    };
-
+    private readonly service: ClipboardService<T> = neutralClipboard<T>(() => this.host.config);
     attach(): void {
         this.unprovide = this.host.provide('clipboard', this.service);
     }

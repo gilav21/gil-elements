@@ -4,6 +4,7 @@
  */
 import { resolveAddonLocale } from '../shared/addon-locale.js';
 import { Disposables } from '../shared/registry.js';
+import { warnOncePer } from './data-table-warn.js';
 import type { DataTableLocale } from './data-table.locales.js';
 import type { DataTableTopic } from './data-table-host.js';
 import type { AddonsService, CellActionSlot, DataTableProviders, HeaderActionSlot } from './data-table-providers.js';
@@ -109,12 +110,10 @@ export class AddonSet<T = unknown> {
     private optionsMap: Readonly<Record<string, unknown>> = {};
     private settings: Readonly<Record<string, unknown>> = {};
     private started = false;
-    private readonly warned = new Set<string>();
 
     constructor(
         private readonly host: DataTableAddonHost<T>,
         private readonly registry: ReadonlyMap<string, DataTableAddon<T>>,
-        private readonly warn: (message: string) => void = console.warn,
     ) {}
 
     /** Adds an addon (with options) regardless of the attribute; the returned function removes it. */
@@ -183,10 +182,7 @@ export class AddonSet<T = unknown> {
         for (const id of this.ids) {
             const addon = this.registry.get(id);
             if (addon) wanted.set(id, addon);
-            else if (!this.warned.has(id)) {
-                this.warned.add(id);
-                this.warn(`[ge-data-table] unknown addon "${id}": import its define module first.`);
-            }
+            else warnOncePer(this.registry, `unknown-addon:${id}`, `[ge-data-table] unknown addon "${id}": import its define module first.`); // once per registry and id: the registry owns the report
         }
         for (const [id, bundle] of [...wanted]) {
             if (bundle.covers && this.optionsFor(id, bundle) !== false) for (const covered of bundle.covers) wanted.delete(covered);

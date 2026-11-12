@@ -209,8 +209,6 @@ export class CellInteractionController<T> {
             // it can tell, and clears `within` NOW (the focus guard must not pull the focus back into the grid while that press's own handlers change the
             // data); a press the root then hears (a table in a CLOSED shadow root, invisible to the document's path) restores it, in the same dispatch.
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointerdown', (event) => this.onDocumentDown(event), true),
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.closeUnheard(event), true),
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.closeUnheard(event), true),
             // The window lost focus (alt-tab, a release over an iframe never heard): no pointer is down any more.
             disposables.listen(root.ownerDocument.defaultView ?? window, 'blur', () => {
                 this.within = false;
@@ -505,7 +503,7 @@ export class CellInteractionController<T> {
     private onFocusIn(event: FocusEvent): void {
         this.within = true;
         const target = event.target as Element;
-        if (target.matches(VIEWPORT)) return this.onViewportFocus(event.timeStamp);
+        if (target.matches(VIEWPORT)) return this.onViewportFocus();
         // Focus landed in a cell (a click on its control, a script): the roving cell follows it.
         const at = this.addressOf(target);
         if (at && (at.rowIndex !== this.focused?.rowIndex || at.columnKey !== this.focused.columnKey)) this.adopt(at);
@@ -521,7 +519,7 @@ export class CellInteractionController<T> {
     }
 
     /**
-     * While a press is open (and only then) the document's moves and keys are watched, so no listener costs anything while nothing is pressed. A press whose
+     * While a press is open (and only then) the document's moves, keys and releases are watched, so no listener costs anything while nothing is pressed. A press whose
      * release was swallowed (a window-level capture listener) is closed by the next move of its mouse or pen with no button down (such a pointer is not
      * pressing any more); a moving press stays fresh. A key closes the stale presses (`closeStale`) but never a held one (a Shift during a drag).
      */
@@ -531,10 +529,13 @@ export class CellInteractionController<T> {
             disposables.listen<PointerEvent>(root.ownerDocument, 'pointermove', (event) => {
                 const press = this.presses.get(event.pointerId);
                 if (!press) return;
-                press.seen = event.timeStamp;
+                press.seen = performance.now();
                 if (event.buttons === 0 && !press.touch) this.endPress(event.pointerId, press, null);
             }, true),
-            disposables.listen<KeyboardEvent>(root.ownerDocument, 'keydown', (event) => this.closeStale(event.timeStamp), true),
+            disposables.listen<KeyboardEvent>(root.ownerDocument, 'keydown', () => this.closeStale(), true),
+            // The document hears a release or cancel of an open press (also one the root never hears: an ancestor stops it, or it is outside the table).
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointerup', (event) => this.closeUnheard(event), true),
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointercancel', (event) => this.closeUnheard(event), true),
         ];
         this.unwatchPresses = () => undo.forEach((off) => off());
     }
@@ -548,13 +549,14 @@ export class CellInteractionController<T> {
         for (const [id, press] of [...this.presses]) if (press.touch && id !== event.pointerId) this.endPress(id, press, null);
     }
 
-    /** Ends the UNCLAIMED TOUCH presses that have seen no pointer event for `STALE_TOUCH_MS` before `now`: their release never came. A press being dragged keeps seeing moves. */
-    private closeStale(now: number): void {
+    /** Ends the UNCLAIMED TOUCH presses that have seen no pointer event for `STALE_TOUCH_MS`: their release never came. A press being dragged keeps seeing moves. (Times are `performance.now()` at HANDLER time, not event timestamps: main-thread jank must not make a press look old.) */
+    private closeStale(now = performance.now()): void {
         for (const [id, press] of [...this.presses]) if (press.touch && !press.claimedBy && now - press.seen > STALE_TOUCH_MS) this.endPress(id, press, null);
     }
 
     /** Tab (or a script) put focus on the viewport: hand it to the roving cell, or to the first one. */
-    private onViewportFocus(now: number): void {
+    private onViewportFocus(): void {
+        const now = performance.now();
         this.closeStale(now);
         // A FRESH press (some pointer event within FRESH_PRESS_MS): the focus it causes on the viewport is not a Tab arrival. An older one is a press whose release
         // was lost (swallowed, and no move since): the Tab arrives.
@@ -589,7 +591,7 @@ export class CellInteractionController<T> {
         // A press of the same pointer that is still open (inside this table, outside it, or on a nested table, which records its own) ends
         // the earlier press whose release was lost (a pointerup swallowed over an iframe, alt-tab): its claimant is told, with the REAL pointerup when the release
         // was seen outside a moment ago (the deferred close has not run yet), else with no event. Every press-ending rule that precedes a new pointerdown lives here.
-        this.closeStale(event.timeStamp);
+        this.closeStale();
         this.endOtherTouches(event);
         this.endOpenPress(event.pointerId, this.closing.get(event.pointerId)?.event ?? null);
         this.clearedAt = null;
@@ -653,7 +655,7 @@ export class CellInteractionController<T> {
         const startCell = !own || overlay ? null : this.addressOf(target);
         const view: PointerPress = Object.freeze({ anchor, pressed: target, startCell });
         if (this.presses.size === 0) this.watchPresses(); // the map goes from empty to non-empty: ONE watcher pair
-        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', inViewport: event.pointerType === 'touch' && target !== null && ownClosest(this.host.root, target, VIEWPORT) !== null, seen: event.timeStamp, overlay, clears: !startCell && target !== null && this.clearsFocus(target) });
+        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', inViewport: event.pointerType === 'touch' && target !== null && ownClosest(this.host.root, target, VIEWPORT) !== null, seen: performance.now(), overlay, clears: !startCell && target !== null && this.clearsFocus(target) });
     }
 
     /**
@@ -782,7 +784,7 @@ export class CellInteractionController<T> {
         this.presses.delete(pointerId);
         // Only a TAP in the VIEWPORT (a touch press ended by its pointerup, on the body, header, footer or empty area; the toolbar and pager are outside it) can
         // cause the browser's viewport focus that follows: not a scroll's pointercancel, and not a tap on a control (a sort button, a checkbox takes its own focus).
-        if (event?.type === 'pointerup' && press.touch && press.own && press.inViewport) this.lastPressEnd = event.timeStamp;
+        if (event?.type === 'pointerup' && press.touch && press.own && press.inViewport) this.lastPressEnd = performance.now();
         if (this.presses.size === 0) this.unwatchPresses?.(), (this.unwatchPresses = null);
         this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed
@@ -809,7 +811,7 @@ export class CellInteractionController<T> {
 
     /** What the sessions draw over the grid (the range readout and fill handle); the element calls it after the table, inside the viewport. */
     renderOverlay(): TemplateResult | null {
-        const drawn = this.sessions.map((session) => (this.broken.has(session) ? undefined : this.guarded(() => session.renderOverlay?.(), session, 'renderOverlay')));
+        const drawn = this.sessions.map((session) => (this.broken.has(session) ? undefined : this.guarded(() => session.renderOverlay?.(), session, `renderOverlay:${this.attachment}`)));
         return drawn.some(Boolean) ? html`${drawn}` : null; // Lit draws nothing for an undefined or null entry
     }
 

@@ -58,7 +58,7 @@
  *   the next attach. What it holds as a VALUE is never withdrawn: `services.range` and the `range` provider stay its own, its `range()` /
  *   `setRange()` keep working, and `keepValue()` (the value half of its update, if it has one) keeps being called at every update. Only the
  *   methods that need its live part answer from its `neutral.service` (`NEUTRAL_EDIT`; the range session has none: its `isCellSelected` already answers the focused cell when no part is active) while it is
- *   out. An error in any other callback is reported and the callback answers nothing. A press that ends inside a session's own `onPointerDown`
+ *   out. An error in any other callback is reported and the callback answers nothing (a `renderOverlay` that throws is NON-FATAL: it draws nothing and does not break the session; it is reported once per attachment, under `renderOverlay:${attachment}`). A press that ends inside a session's own `onPointerDown`
  *   (a blur, a detach of the table) is cancelled to it before the call returns, before its detach.
  * - A widget in a cell that manages its own focus (a combobox, a menu button, a custom editor that is not a native control) marks itself, or an
  *   ancestor inside the cell, with `data-table-keeps-focus`: the grid then treats it like a control (it does not move the focus, does not offer the
