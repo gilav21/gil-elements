@@ -1,14 +1,22 @@
 import { type ConfigCheckInput, validateConfig } from './data-table-config-check.js';
 import type { DataTableCoreHost } from './data-table-host.js';
-import { activeSorts } from './data-table-query.js';
+import { activeSorts, sortReordersRows } from './data-table-query.js';
 import { findDuplicateRowIds } from './data-table.utils.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
 
-/** The settings the checks read, compared by value so an unrelated render re-runs nothing (the duplicate-id scan is O(rows)). */
-type Snapshot = Record<string, unknown>;
-
-const sameSnapshot = (a: Snapshot | null, b: Snapshot): boolean => a !== null && Object.keys(b).every((key) => Object.is(a[key], b[key]));
+/**
+ * The settings the checks read, compared by value so an unrelated render re-runs nothing (the duplicate-id scan is O(rows)).
+ * Some keys are present only under a setting, so the key sets are compared too.
+ */
+function sameSnapshot(a: object | null, b: object): boolean {
+    if (a === null) return false;
+    const ka = Object.keys(a);
+    const kb = Object.keys(b);
+    const av = a as Record<string, unknown>;
+    const bv = b as Record<string, unknown>;
+    return ka.length === kb.length && kb.every((key) => key in av && Object.is(av[key], bv[key]));
+}
 
 /**
  * Development warnings about options that conflict or do nothing, and about a table that cannot work as set up (virtual
@@ -17,7 +25,7 @@ const sameSnapshot = (a: Snapshot | null, b: Snapshot): boolean => a !== null &&
  */
 export class DiagnosticsController<T> {
     private readonly printed = new Set<string>();
-    private last: Snapshot | null = null;
+    private last: ConfigCheckInput<T> | null = null;
     private viewportChecked = false;
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
@@ -61,14 +69,14 @@ export class DiagnosticsController<T> {
         // The row-drag checks read these; outside row drag a sort change must not re-run the checks.
         if (config.enableRowDrag) {
             snapshot.localReorder = config.localReorder;
-            // A server sort draws `data` in its own order, so only a LOCAL sort hides a reorder. The same rule the query uses.
+            // Only a sort the table itself applies hides a reorder (a server sort draws `data` in its own order).
             if (config.localReorder) {
-                snapshot.sortActive = config.localSorting && activeSorts(config.enableMultiSort, model.get('sortState'), model.get('multiSortState')).length > 0;
+                const sorts = activeSorts(config.enableMultiSort, model.get('sortState'), model.get('multiSortState'));
+                snapshot.sortActive = sortReordersRows(sorts, config.columns, config.localSorting, !!config.enableSubRows, !!config.enableSubRowSorting);
             }
         }
-        const compared = snapshot as unknown as Snapshot;
-        if (!sameSnapshot(this.last, compared)) {
-            this.last = compared;
+        if (!sameSnapshot(this.last, snapshot)) {
+            this.last = snapshot;
             this.check(snapshot);
         }
         if (virtualActive && !this.viewportChecked) {

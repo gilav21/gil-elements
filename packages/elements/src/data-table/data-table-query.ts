@@ -164,6 +164,16 @@ export function activeSorts(multi: boolean, sortState: SortState, multiSortState
     return sortState.column && sortState.direction ? [sortState] : [];
 }
 
+/**
+ * Whether the table itself reorders the rows by a sort: a local sort, in tree mode only with sub-row sorting, on at least
+ * one known column (`buildSortComparator` skips the others). `sorts` is `activeSorts(...)`.
+ */
+export function sortReordersRows<T>(sorts: readonly SortState[], columns: readonly ColumnDef<T>[], localSorting: boolean, tree: boolean, subRowSorting: boolean): boolean {
+    if (!localSorting || (tree && !subRowSorting) || sorts.length === 0) return false;
+    const byKey = indexColumns(columns);
+    return sorts.some((sort) => byKey.has(sort.column));
+}
+
 function compareValues(a: unknown, b: unknown): number {
     if (a == null && b == null) return 0;
     if (a == null) return -1;

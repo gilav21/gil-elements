@@ -12,10 +12,26 @@ import {
     nextSortChain,
     pagesLocally,
     slicePage,
+    sortReordersRows,
     sortRows,
     type QueryInput,
 } from './data-table-query.js';
 import type { ColumnDef, FilterGroup } from './data-table.types.js';
+
+describe('sortReordersRows', () => {
+    const cols = [{ accessorKey: 'a' }, { accessorKey: 'b' }] as ColumnDef<unknown>[];
+    const asc = [{ column: 'a', direction: 'asc' as const }];
+    it.each([
+        ['a local sort on a known column', asc, true, false, false, true],
+        ['no sorts', [], true, false, false, false],
+        ['a server sort', asc, false, false, false, false],
+        ['tree mode without sub-row sorting', asc, true, true, false, false],
+        ['tree mode with sub-row sorting', asc, true, true, true, true],
+        ['only unknown columns', [{ column: 'zz', direction: 'asc' as const }], true, false, false, false],
+    ])('%s', (_name, sorts, local, tree, sub, expected) => {
+        expect(sortReordersRows(sorts, cols, local, tree, sub)).toBe(expected);
+    });
+});
 
 interface Row {
     id: number;

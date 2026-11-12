@@ -19,7 +19,7 @@ function setup(config: Record<string, unknown>): {
     const data: unknown[] = [];
     let multi: Sort[] = [];
     const base = {
-        columns: [],
+        columns: [{ accessorKey: 'a' }, { accessorKey: 'b' }, { accessorKey: 'c' }],
         getRowId: (row: unknown) => String(row),
         localPagination: true,
         showPagination: true,
@@ -88,11 +88,48 @@ describe('the diagnostics snapshot', () => {
         expect(lastInput()['sortActive']).toBe(expected);
     });
 
-    it('an empty sorted column is not a sort', () => {
+    it.each([
+        ['an empty sorted column', ''],
+        ['a column that is not in the columns', 'removed'],
+    ])('%s is not a sort', (_name, column) => {
         const table = setup({ enableRowDrag: true, localReorder: true });
-        table.sort('', 'asc');
+        table.sort(column, 'asc');
         table.run();
         expect(lastInput()['sortActive']).toBe(false);
+    });
+
+    it.each([
+        ['without sub-row sorting', false, false],
+        ['with sub-row sorting', true, true],
+    ])('in tree mode a sort counts only with sub-row sorting (%s)', (_name, subRowSorting, expected) => {
+        const table = setup({ enableRowDrag: true, localReorder: true, enableSubRows: true, enableSubRowSorting: subRowSorting });
+        table.run();
+        expect(lastInput()['sortActive']).toBe(expected);
+    });
+
+    it('re-runs when the sort is turned back on', () => {
+        const table = setup({ enableRowDrag: true, localReorder: true });
+        table.sort('a', null);
+        table.run();
+        expect(lastInput()['sortActive']).toBe(false);
+        table.sort('a', 'asc');
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(2);
+        expect(lastInput()['sortActive']).toBe(true);
+    });
+
+    it('sortActive appears and disappears with localReorder during row drag, each a re-run', () => {
+        const table = setup({ enableRowDrag: true, localReorder: false });
+        table.run();
+        expect(lastInput()).not.toHaveProperty('sortActive');
+        table.config['localReorder'] = true;
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(2);
+        expect(lastInput()['sortActive']).toBe(true);
+        table.config['localReorder'] = false;
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(3);
+        expect(lastInput()).not.toHaveProperty('sortActive');
     });
 
     it('leaves the sort out without row drag, and localReorder too', () => {
@@ -122,6 +159,7 @@ describe('the diagnostics snapshot', () => {
         expect(validateConfig).toHaveBeenCalledTimes(1);
         table.config['enableRowDrag'] = true;
         table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(2);
         expect(lastInput()['localReorder']).toBe(true);
     });
 
