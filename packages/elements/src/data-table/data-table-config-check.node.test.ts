@@ -28,7 +28,8 @@ describe('validateConfig: wave 6', () => {
             check({ enableRowDrag: true, localReorder: true, groupBy: 'name', ...over }).some((m) => m.includes('enable-row-drag with group-by'));
         expect(grouped({})).toBe(true);
         expect(grouped({ localReorder: false })).toBe(false);
-        expect(grouped({ groupBy: 'missing' })).toBe(false);
+        // A field with no column still groups (getCellValue reads row[key]).
+        expect(grouped({ groupBy: 'team' as never })).toBe(true);
         expect(grouped({ virtualActive: true })).toBe(false);
         expect(grouped({ enableRowDrag: false })).toBe(false);
     });

@@ -169,19 +169,14 @@ function sortCounts(sort: SortState): boolean {
     return !!sort.column && !!sort.direction;
 }
 
-/** The column a sort step orders by, or undefined when the step is skipped. The one rule of `buildSortComparator` and `sortReordersRows`. */
-function sortStepColumn<T>(sort: SortState, byKey: ReadonlyMap<string, ColumnDef<T>>): ColumnDef<T> | undefined {
-    return sortCounts(sort) ? byKey.get(sort.column) : undefined;
-}
-
 /** Whether the table sorts rows itself: local sorting, and in tree mode only with sub-row sorting. The gate the tree and the diagnostics share (the flat path's is plain `localSorting`). */
 export function localSortApplies(localSorting: boolean, tree: boolean, subRowSorting: boolean): boolean {
     return localSorting && (!tree || subRowSorting);
 }
 
 /**
- * Whether the table itself reorders the rows by a sort: `localSortApplies`, and at least one step `buildSortComparator`
- * would not skip (`sortStepColumn`'s rule).
+ * Whether the table itself reorders the rows by a sort: `localSortApplies`, and at least one of the `activeSorts` steps
+ * on a known column (the steps `buildSortComparator` does not skip). Diagnostics only.
  */
 export function sortReordersRows<T>({ multi, sortState, multiSortState, columns, localSorting, tree, subRowSorting }: {
     multi: boolean;
@@ -193,7 +188,7 @@ export function sortReordersRows<T>({ multi, sortState, multiSortState, columns,
     subRowSorting: boolean;
 }): boolean {
     if (!localSortApplies(localSorting, tree, subRowSorting)) return false;
-    // `sortStepColumn`'s rule (a counting step on a known column), without building the column index.
+    // An `activeSorts` step (sortCounts) on a known column, without building arrays or the column index.
     const applies = (sort: SortState): boolean => sortCounts(sort) && columns.some((column) => String(column.accessorKey) === sort.column);
     return multi ? multiSortState.some(applies) : applies(sortState);
 }
@@ -211,8 +206,8 @@ function compareValues(a: unknown, b: unknown): number {
 export function buildSortComparator<T>(sorts: readonly SortState[], columns: readonly ColumnDef<T>[]): (a: T, b: T) => number {
     const byKey = indexColumns(columns);
     const steps = sorts.flatMap((sort) => {
-        const column = sortStepColumn(sort, byKey);
-        return column ? [{ column, sign: sort.direction === 'asc' ? 1 : -1 }] : [];
+        const column = byKey.get(sort.column);
+        return column && sort.direction ? [{ column, sign: sort.direction === 'asc' ? 1 : -1 }] : [];
     });
     return (a, b) => {
         for (const { column, sign } of steps) {

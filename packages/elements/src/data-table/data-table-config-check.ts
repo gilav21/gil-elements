@@ -103,9 +103,8 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     warn(
         c.enableRowDrag &&
             c.localReorder &&
-            isGroupingActive(c.groupBy, !!c.enableSubRows, c.virtualActive) &&
-            c.columns.some((col) => String(col.accessorKey) === c.groupBy),
-        'enable-row-drag with group-by: rows are drawn under their group value, which a drop does not change. A row dropped into another group stays in its own, and groups are ordered by their first row in `data`, so a drop can move a whole group.',
+            isGroupingActive(c.groupBy, !!c.enableSubRows, c.virtualActive),
+        'enable-row-drag with group-by: rows are drawn under their group value, which a drop does not change. A row dropped into another group stays in its own, and groups are ordered by their first row in the drawn order, so a drop can move a whole group.',
     );
     // wave6: end C
     // wave6: A + B (fill handle, paste)
