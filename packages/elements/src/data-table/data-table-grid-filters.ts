@@ -8,7 +8,7 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { live } from 'lit/directives/live.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { computeGridAria } from './data-table-aria.js';
+import type { GridAria } from './data-table-aria.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
 import { chromeIcon } from './data-table-icons.js';
@@ -23,8 +23,11 @@ import { isSpecialColumnKey, specialSlotOf, stringifyValue } from './data-table.
 export interface FiltersView<T> {
     /** The filter trigger of a data column's header, drawn after its sort control; `nothing` for none. */
     trigger(column: EnhancedColumnDef<T>): unknown;
-    /** The floating filter row (`div[table-row][data-kind=filter][role=row]`), the second row of the header rowgroup; `nothing` for none. */
-    row(): unknown;
+    /**
+     * The floating filter row (`div[table-row][data-kind=filter][role=row]`), the second row of the header rowgroup; `nothing` for none. Its row and column
+     * indexes come from the grid's own aria rule (`aria`, the view's: it counts this row, so it is built after this view and passed in).
+     */
+    row(aria: GridAria): unknown;
     /** Header rows drawn above the data: 0 or 1 here, so `headerRows` is `1 + rows` and the first data row is `aria-rowindex` `2 + rows`. */
     rows: number;
 }
@@ -55,9 +58,6 @@ export interface FilterUiService<T> extends FilterService<T> {
 
 /** The step 0 view: no trigger, no floating row. A constant, so a render with nothing to filter allocates no view. */
 const NO_FILTERS: FiltersView<unknown> = Object.freeze({ trigger: () => nothing, row: () => nothing, rows: 0 });
-
-/** The floating row is the SECOND header row: its `aria-rowindex` from the grid's own aria rule (`headerRowIndex(1)`), not a literal. */
-const FLOATING_ROW_INDEX = computeGridAria({ tree: false, headerRows: 2, totalDataRows: 0, columnCount: 0 }).headerRowIndex(1);
 
 const isUiService = <T>(service: FilterService<T> | undefined): service is FilterUiService<T> => typeof (service as Partial<FilterUiService<T>> | undefined)?.panelOpen === 'function';
 
@@ -111,21 +111,22 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
         return html`<ge-input placeholder=${c.header} aria-label=${interpolate(locale.filterColumn, { column: c.header })} .value=${live(service.floatingText(key) ?? stringifyValue(valueOf(key)))} @input=${service.floatingInput(key)}></ge-input>`;
     };
 
-    const cell = (c: EnhancedColumnDef<T>, n: number): TemplateResult => {
+    const cell = (c: EnhancedColumnDef<T>, n: number, aria: GridAria): TemplateResult => {
         const has = service.hasFloating(c);
-        return html`<div data-slot="table-head" role=${has ? 'columnheader' : 'presentation'} aria-colindex=${has ? n + 1 : nothing} data-width=${c._width === 'auto' ? 'auto' : 'fixed'}
+        return html`<div data-slot="table-head" role=${has ? 'columnheader' : 'presentation'} aria-colindex=${has ? aria.colIndex(n) : nothing} data-width=${c._width === 'auto' ? 'auto' : 'fixed'}
             data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(c.accessorKey) ? specialSlotOf(c) : nothing} style=${cellVarsStyle(c, n)}>${has ? control(c) : nothing}</div>`;
     };
 
-    const row = (): TemplateResult => {
+    const row = (aria: GridAria): TemplateResult => {
         const columns = requireProvider(host, 'columns').enhancedColumns();
         const window: BodyWindow = host.provider('virtual')?.window() ?? { start: 0, end: 0, padStart: 0, padEnd: 0, colPadStart: 0, colPadEnd: 0, colStart: 0, colEnd: columns.length, retained: [] };
         const flexible = columns.some((c) => c._width === 'auto');
         // Keyed by column like the header row: a window shift moves a cell (its input and what is typed in it) with its column, never reuses it for another.
-        return html`<div data-slot="table-row" role="row" data-kind="filter" aria-rowindex=${FLOATING_ROW_INDEX}>${repeat(
+        // The SECOND header row: `headerRowIndex(1)` of the grid's aria rule.
+        return html`<div data-slot="table-row" role="row" data-kind="filter" aria-rowindex=${aria.headerRowIndex(1)}>${repeat(
             columnParts(columns, window),
             (p) => ('spacer' in p ? `s:${p.spacer}` : String(p.column.accessorKey)),
-            (p) => ('spacer' in p ? columnSpacer(p.spacer) : cell(p.column, p.n)),
+            (p) => ('spacer' in p ? columnSpacer(p.spacer) : cell(p.column, p.n, aria)),
         )}${flexible ? nothing : html`<div data-slot="table-head" role="presentation"></div>`}</div>`; // no column borders: Angular's floating cells have none (html 763)
     };
 

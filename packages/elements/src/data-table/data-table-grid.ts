@@ -70,7 +70,7 @@ export function renderGrid<T>(v: GridView<T>): TemplateResult {
     return html`<div data-slot="table" role=${v.aria.role} aria-rowcount=${v.aria.rowCount} aria-colcount=${v.aria.colCount} aria-multiselectable=${v.selectable || v.rangeSelectable ? 'true' : nothing} style=${tableStyle}>
         <div data-slot="table-header" role="rowgroup"><div data-slot="table-row" role="row" aria-rowindex=${v.aria.headerRowIndex(0)}>
             ${renderHeadCells(v)}
-        </div>${v.filters.row()}</div>
+        </div>${v.filters.row(v.aria)}</div>
         <div data-slot="table-body" role="rowgroup" style=${bodyStyle || nothing}>
             ${renderRows(v)}
         </div>

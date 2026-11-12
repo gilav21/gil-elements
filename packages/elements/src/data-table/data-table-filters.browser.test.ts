@@ -451,6 +451,16 @@ describe('round 6: floating row index, handlers across a reattach', () => {
         expect(bodyRows(table)[0]!.getAttribute('aria-rowindex')).toBe('3');
     });
 
+    it("each floating cell's aria-colindex is its column's, as the header row and the body cells have it (round 13)", async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn, { accessorKey: 'id', header: 'Id', width: '80px', enableFiltering: true }], enableFloatingFilters: true, enableRowSelection: true });
+        const headIndex = (key: string): string | null =>
+            q(table, `[data-slot="table-header"] > [data-slot="table-row"]:not([data-kind]) > [data-column-id="${key}"]`).getAttribute('aria-colindex');
+        const floating = qa(table, '[data-kind="filter"] > [data-slot="table-head"][role="columnheader"]');
+        expect(floating.map((h) => h.getAttribute('aria-colindex'))).toEqual([headIndex('name'), headIndex('id')]);
+        expect(headIndex('id')).not.toBeNull();
+        expect(floating[0]!.getAttribute('aria-colindex')).toBe(bodyRows(table)[0]!.querySelector('[data-column="name"]')!.getAttribute('aria-colindex'));
+    });
+
     it('new column objects with the same outputs object keep one composed listener: the consumer handler runs once per change (round 9)', async () => {
         const consumer = vi.fn();
         const outputs = { 'filter-change': consumer };
