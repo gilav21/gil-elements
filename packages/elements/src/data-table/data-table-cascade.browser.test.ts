@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { userEvent } from 'vitest/browser';
 import { bodyRows, cellAt, mountTable, send, settle } from './data-table-fixtures.js';
 
 afterEach(async () => {
@@ -40,6 +41,21 @@ describe('the stylesheet cascade after the region files were spliced in', () => 
             expect(alpha(pinned), mark).toBe(1);
             pinned.removeAttribute(mark);
         }
+        // On a selected or hovered row the range tint still wins over the pinned selected / hover colour: it equals the plain tint mix.
+        const probe = document.createElement('div');
+        probe.style.backgroundColor = 'color-mix(in oklab, var(--primary) 15%, var(--ge-dt-cell-bg))';
+        table.append(probe);
+        const tint = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        const row = pinned.closest<HTMLElement>('[data-slot="table-row"]')!;
+        pinned.setAttribute('data-in-range', '');
+        row.setAttribute('data-state', 'selected');
+        expect(getComputedStyle(pinned).backgroundColor, 'selected row').toBe(tint);
+        row.removeAttribute('data-state');
+        await userEvent.hover(pinned);
+        expect(getComputedStyle(pinned).backgroundColor, 'hovered row').toBe(tint);
+        await userEvent.unhover(pinned);
+        pinned.removeAttribute('data-in-range');
         const plain = cellAt(table, 1, 'name')!;
         plain.setAttribute('data-in-range', ''); // an unpinned cell keeps the see-through tint (the row colour shows)
         expect(alpha(plain)).toBeLessThan(1);

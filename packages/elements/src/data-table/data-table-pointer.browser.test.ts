@@ -2319,7 +2319,28 @@ const swallowed = (table: GeDataTable, claimed: boolean): { key: (stamp: number)
     });
 });
 
-describe('a summary, a label and a media control in a cell', () => {
+describe('a label in a cell', () => {
+    it('a styling <label> wrapper is a cell press (focuses the cell); an input inside a label is still the control\'s own', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const cell = cellAt(table, 1, 'name')!;
+        const label = document.createElement('label');
+        label.textContent = 'text';
+        const wrapped = document.createElement('label');
+        const input = document.createElement('input');
+        wrapped.append(input);
+        cell.append(label, wrapped);
+        input.dispatchEvent(pointer('pointerdown', 610, { over: cell }));
+        input.dispatchEvent(pointer('pointerup', 610, { over: cell }));
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' }); // the control's own: no focus move
+        label.dispatchEvent(pointer('pointerdown', 611, { over: cell }));
+        label.dispatchEvent(pointer('pointerup', 611, { over: cell }));
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+    });
+});
+
+describe('a summary and a media control in a cell', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
     });
@@ -2335,14 +2356,12 @@ describe('a summary, a label and a media control in a cell', () => {
         const summary = document.createElement('summary');
         summary.textContent = 'more';
         details.append(summary);
-        const label = document.createElement('label');
-        label.textContent = 'x';
         const video = document.createElement('video');
         video.setAttribute('controls', '');
         const audio = document.createElement('audio');
         audio.setAttribute('controls', '');
-        cell.append(details, label, video, audio);
-        [summary, label, video, audio].forEach((el, i) => {
+        cell.append(details, video, audio);
+        [summary, video, audio].forEach((el, i) => {
             el.dispatchEvent(pointer('pointerdown', 550 + i, { over: cell }));
             el.dispatchEvent(pointer('pointerup', 550 + i, { over: cell }));
         });

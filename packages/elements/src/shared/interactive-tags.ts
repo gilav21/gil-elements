@@ -18,7 +18,7 @@ export const INTERACTIVE_ROLES: readonly string[] = Object.freeze([
     'switch', 'checkbox', 'radio', 'combobox', 'slider', 'spinbutton', 'tab', 'menuitem', 'option', 'textbox', 'listbox', 'searchbox', 'button', 'link',
 ]);
 
-/** The native controls (and what the browser itself makes pressable) whose press is the element's own; a `label` forwards its press to its control, a `summary` toggles its `details`. */
+/** The native controls (and what the browser itself makes pressable) whose press is the element's own; a `summary` toggles its `details`. (Not `label`: a styling wrapper is a cell press, and an input inside a label is a control by itself.) */
 export const NATIVE_CONTROLS: readonly string[] = Object.freeze([
-    'input', 'textarea', 'select', 'button', 'a[href]', 'summary', 'label', 'video[controls]', 'audio[controls]',
+    'input', 'textarea', 'select', 'button', 'a[href]', 'summary', 'video[controls]', 'audio[controls]',
 ]);
