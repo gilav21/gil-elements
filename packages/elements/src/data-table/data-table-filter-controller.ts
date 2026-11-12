@@ -1,6 +1,8 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { chromeIcon } from './data-table-icons.js';
-import { builderColumns, emptyGroup, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
+import { BUILT_IN_FILTER_PANELS, builderColumns, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
+import { memoLast } from './data-table-query.js';
+import type { FilterBuilderLabels } from './data-table.locales.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
@@ -14,7 +16,9 @@ export const FILTER_UI_ANNOUNCE_MS = 500;
 
 const panels = (): Promise<unknown> => import('./lazy/filter-panels.js');
 /** The ready-made panels (one lazy entry defines all three, with `ge-calendar` and `ge-command`): loaded when a trigger carrying one is hovered, focused or opened. */
-const PANELS: ReadonlyMap<string, LazyElement> = new Map(['ge-data-table-date-filter', 'ge-data-table-date-range-filter', 'ge-data-table-multiselect-filter'].map((tag) => [tag, lazyElement(tag, panels)]));
+const PANELS: ReadonlyMap<string, LazyElement> = new Map(BUILT_IN_FILTER_PANELS.map((tag) => [tag, lazyElement(tag, panels)]));
+/** The tree the builder shows while there is no advanced filter: one frozen object (the builder's operations never mutate, they build new trees). */
+const EMPTY_GROUP: FilterGroup = Object.freeze({ type: 'group', combinator: 'and', rules: Object.freeze([]) as unknown as FilterGroup['rules'] });
 const BUILDER = lazyElement('ge-data-table-filter-builder', () => import('./lazy/filter-builder.js'));
 
 interface ColumnHandlers {
@@ -85,19 +89,23 @@ export class FilterUiController<T> {
     renderToolbar(): TemplateResult | null {
         const { config, model, resolvedLocale } = this.host;
         if (!config.enableAdvancedFilter) return null;
-        const labels = { ...EN_FILTER_BUILDER_LABELS, ...resolvedLocale.advancedFilter };
+        const labels = this.builderLabels(resolvedLocale.advancedFilter);
         const group = model.get('advancedFilter');
         const count = countConditions(group);
         return html`<ge-popover @open-change=${this.onBuilderToggle}>
             <ge-popover-trigger><button type="button" data-slot="advanced-filter-trigger" aria-label=${count > 0 ? `${labels.filterButton} (${count})` : labels.filterButton}
                 @pointerenter=${this.prefetchBuilder} @focus=${this.prefetchBuilder}>${chromeIcon('filter', 'xs')}<span data-hide-below="sm">${labels.filterButton}</span>${count > 0 ? html`<span data-slot="data-table-count-badge" aria-hidden="true">${count}</span>` : nothing}</button></ge-popover-trigger>
             <ge-popover-content data-slot="advanced-filter-panel">${this.builderOpen
-                ? html`<div data-slot="advanced-filter-body"><ge-data-table-filter-builder .group=${group ?? emptyGroup()} .columns=${builderColumns(config.columns)} .labels=${labels} .debounce=${config.filterDebounce} @group-change=${this.onGroupChange}></ge-data-table-filter-builder>${count > 0
+                ? html`<div data-slot="advanced-filter-body"><ge-data-table-filter-builder .group=${group ?? EMPTY_GROUP} .columns=${this.builderColumns(config.columns)} .labels=${labels} .debounce=${config.filterDebounce} @group-change=${this.onGroupChange}></ge-data-table-filter-builder>${count > 0
                       ? html`<button type="button" data-slot="advanced-filter-clear" @click=${this.onClear}>${labels.clearFilters}</button>`
                       : nothing}</div>`
                 : nothing}</ge-popover-content>
         </ge-popover>`;
     }
+
+    // The builder's inputs keep their identity while their sources do, so a table render that changes nothing of them does not re-render the builder.
+    private readonly builderColumns = memoLast((columns: readonly ColumnDef<T>[]) => builderColumns(columns));
+    private readonly builderLabels = memoLast((own: Partial<FilterBuilderLabels> | undefined) => ({ ...EN_FILTER_BUILDER_LABELS, ...own }));
 
     private readonly prefetchBuilder = (): void => void BUILDER.load();
 
@@ -110,14 +118,16 @@ export class FilterUiController<T> {
 
     private readonly onGroupChange = (event: CustomEvent<FilterGroup>): void => {
         event.stopPropagation();
-        requireProvider(this.host, 'query').changeAdvancedFilter(event.detail);
+        // `?.`: a builder removed WITH the table flushes its pending value after the table detached; there is nothing left to filter then.
+        this.host.provider('query')?.changeAdvancedFilter(event.detail);
     };
 
     /** "Clear all filters" clears the ADVANCED filter only (Angular cmp 1169, D9). */
     private readonly onClear = (): void => requireProvider(this.host, 'query').changeAdvancedFilter(null);
 
     private prefetch(column: ColumnDef<T>): void {
-        const lazy = column.filterComponent ? PANELS.get(column.filterComponent) : undefined;
+        const builtIn = builtInPanelOf(column.filterComponent); // case-insensitive, like a tag name
+        const lazy = builtIn ? PANELS.get(builtIn) : undefined;
         if (lazy && !lazy.ready() && !lazy.requested()) void lazy.load();
     }
 
@@ -127,7 +137,7 @@ export class FilterUiController<T> {
         // The ready-made panels follow the table's locale (Angular: the injected locale id); a consumer's own component is given only its contract.
         // The id the consumer gave wins over the resolved dictionary's code: a calendar dictionary may exist for a language the table has none for.
         const { locale } = this.host.config;
-        const own = column.filterComponent && PANELS.has(column.filterComponent) ? { locale: typeof locale === 'string' && locale ? locale : this.host.resolvedLocale.code } : {};
+        const own = builtInPanelOf(column.filterComponent) ? { locale: typeof locale === 'string' && locale ? locale : this.host.resolvedLocale.code } : {};
         return { ...own, ...filterInputsOf(column), column, value: Object.hasOwn(filters, key) ? filters[key] : null };
     }
 

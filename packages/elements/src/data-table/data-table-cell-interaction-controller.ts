@@ -1,7 +1,7 @@
 import { html, type TemplateResult } from 'lit';
 import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
-import { type CellAddress, cellAddressOf, composedContains, type DataTableCoreHost, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, composedContains, type DataTableCoreHost, TEXT_FIELD, VIEWPORT, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
 import { reportOncePer } from './data-table-warn.js';
 import { mergeSessionServices } from './data-table-session-service.js';
@@ -11,7 +11,6 @@ import type { CellInteractionService, RangeService } from './data-table-provider
 import { RangeSession } from './data-table-range-session.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 
-const VIEWPORT = '[data-slot="data-table-viewport"]';
 const BODY = '[data-slot="table-body"]';
 /**
  * Every element of the table that sits over its cells marks itself with this attribute. It means "look through me to find where a GESTURE is":
@@ -65,7 +64,6 @@ const SHADOW_CONTROLS = `${NATIVE_CONTROLS.join(', ')}, [contenteditable]:not([c
 const XHTML = 'http://www.w3.org/1999/xhtml';
 /** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS_SELECTOR`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
 const CELL_CONTROLS = `${CONTROLS_SELECTOR}, a, ${ROLES_SELECTOR}`;
-const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
 /** Rows moved by one page key when nothing is drawn to measure. */
 const FALLBACK_PAGE = 10;

@@ -282,6 +282,30 @@ describe('F4 the multiselect panel', () => {
         await closePopover(table);
     });
 
+    it('draws every option when two share a value (unique repeat keys), and keeps drawing them after a re-render', async () => {
+        const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const table = await mount({ columns: [nameColumn, { ...roleColumn, filterComponentInputs: { options: ['Engineer', 'Engineer', 'Designer'] } }] });
+            const panel = (await openPanel(table, 'role', 'ge-data-table-multiselect-filter')) as HTMLElement & { requestUpdate(): void; updateComplete: Promise<boolean> };
+            expect(panel.shadowRoot!.querySelectorAll('ge-command-item')).toHaveLength(3);
+            panel.requestUpdate();
+            await panel.updateComplete;
+            expect(panel.shadowRoot!.querySelectorAll('ge-command-item')).toHaveLength(3);
+            expect(errors).not.toHaveBeenCalled();
+            await closePopover(table);
+        } finally {
+            errors.mockRestore();
+        }
+    });
+
+    it('recognises a built-in panel tag in any case (its locale is passed, its lazy load runs)', async () => {
+        const table = await mount({ locale: 'he', columns: [nameColumn, { ...roleColumn, filterComponent: 'GE-Data-Table-Multiselect-Filter' }] });
+        const panel = (await openPanel(table, 'role', 'ge-data-table-multiselect-filter')) as HTMLElement & { locale?: unknown };
+        expect(panel.localName).toBe('ge-data-table-multiselect-filter');
+        expect(panel.locale).toBe('he');
+        await closePopover(table);
+    });
+
     it('searches by typing, and Select all selects every option whatever the search', async () => {
         const table = await mount();
         const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
@@ -557,6 +581,33 @@ describe('F7 the advanced filter builder', () => {
         expect(trees).toHaveLength(1);
         expect(table.advancedFilter!.rules[0]).toMatchObject({ column: 'name' });
         expect(inner(table, 'select.column option[data-unknown]')).toHaveLength(0);
+        await closePopover(table);
+    });
+
+    it('a value still waiting on the debounce is reported when the popover closes, once', async () => {
+        const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: '' }] };
+        const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 1000 });
+        const trees = record(table, 'advanced-filter-change');
+        await openBuilder(table);
+        await typeText(inner(table, 'input.value')[0]!, 'Bo');
+        await closePopover(table);
+        await settle(table);
+        expect(trees).toHaveLength(1);
+        expect(table.advancedFilter!.rules[0]).toMatchObject({ value: 'Bo' });
+        await new Promise((resolve) => setTimeout(resolve, 1100));
+        expect(trees).toHaveLength(1);
+    });
+
+    it('an unrelated table render does not re-render the open builder (its inputs keep their identity)', async () => {
+        const table = await mount({ enableAdvancedFilter: true });
+        await openBuilder(table);
+        const b = builder(table) as HTMLElement & { render(): unknown };
+        const render = vi.spyOn(b, 'render');
+        table.requestUpdate();
+        await refresh(table);
+        table.sortState = { column: 'name', direction: 'asc' };
+        await refresh(table);
+        expect(render).not.toHaveBeenCalled();
         await closePopover(table);
     });
 

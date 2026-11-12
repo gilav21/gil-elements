@@ -52,8 +52,8 @@ export class GeDataTableFilterBuilder extends UiElement {
 
     override disconnectedCallback(): void {
         super.disconnectedCallback();
-        for (const { timer } of this.pending.values()) clearTimeout(timer);
-        this.pending.clear();
+        // The popover closed (or the table went) while a typed value waited: it is reported now, once, not lost.
+        if (this.pending.size > 0) this.edit((group) => group);
     }
 
     /** A value typed in condition `index`: reported now, or after `debounce` ms of quiet (the last value wins, patched into the tree of THAT moment). */

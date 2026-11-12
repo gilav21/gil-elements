@@ -28,7 +28,8 @@ import {
     reconcileEditor,
     tabTarget,
 } from './data-table-edit.js';
-import { type CellAddress, cellAddressOf, composedContains, ownClosest, ownsTarget, requireProvider } from './data-table-host.js';
+// TEXT_FIELD: a key typed in one is the field's own (its undo, Enter in a filter input): the history and edit-start keys never take it (B1).
+import { type CellAddress, cellAddressOf, composedContains, ownClosest, ownsTarget, requireProvider, TEXT_FIELD, VIEWPORT } from './data-table-host.js';
 import { lazyElement } from './data-table-lazy.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
@@ -54,9 +55,6 @@ export const NEUTRAL_EDIT: Readonly<EditService> = Object.freeze({
 /** The date editor's element: loaded the first time a `editType: 'date'` editor opens (D3, J5), with the calendar it brings. */
 const DATE_PICKER = lazyElement('ge-date-picker', () => import('../date-picker/define.js'));
 
-const VIEWPORT = '[data-slot="data-table-viewport"]';
-/** A key typed in one of these is the field's own (undo of the field's text, Enter in a filter input): the history and edit-start keys never take it (B1). */
-const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 /** What takes the focus when an editor opens: the built-in input or select, or a custom editor's own `[data-edit-input]`. */
 const EDIT_INPUT = '[data-edit-input]';
 const FOCUSABLE = 'input, select, textarea, button, [tabindex]:not([tabindex="-1"]), [contenteditable]:not([contenteditable="false"])';

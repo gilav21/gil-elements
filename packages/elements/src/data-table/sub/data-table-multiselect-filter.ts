@@ -91,7 +91,8 @@ export class GeDataTableMultiselectFilter<O = unknown> extends UiElement {
                     <ge-command-empty>${t.noResultsLabel}</ge-command-empty>
                     ${repeat(
                         this.options,
-                        (option) => this.valueWith(option),
+                        // The value AND the index: two options with the same value (a consumer's duplicate) must not share a key (repeat needs unique keys).
+                        (option, index) => `${index}\u0000${String(this.valueWith(option))}`,
                         (option) => {
                             const label = this.displayWith(option);
                             const on = chosen.has(this.valueWith(option));

@@ -1,5 +1,5 @@
 import type { DataTableCoreHost } from './data-table-host.js';
-import { ownElements, requireProvider } from './data-table-host.js';
+import { ownElements, requireProvider, VIEWPORT } from './data-table-host.js';
 import { isFlagged } from './data-table-expansion.js';
 import type { VirtualService } from './data-table-providers.js';
 import {
@@ -21,7 +21,6 @@ import { pxOf } from './data-table-columns.js';
 import type { BodyWindow, EnhancedColumnDef, FlattenedTreeRow, VirtualRenderRange } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 
-const VIEWPORT = '[data-slot="data-table-viewport"]';
 const BODY = '[data-slot="table-body"]';
 const ROW = '[data-slot="table-row"]';
 

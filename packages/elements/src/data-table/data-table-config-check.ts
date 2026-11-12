@@ -5,6 +5,7 @@
 import { isGroupingActive } from './data-table-group.js';
 import type { ColumnDef } from './data-table.types.js';
 import { defaultGetRowId, findDuplicateRowIds } from './data-table.utils.js';
+import { builtInPanelOf } from './data-table-filters.js';
 
 export interface ConfigCheckInput<T> {
     columns: readonly ColumnDef<T>[];
@@ -110,8 +111,7 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         `Columns [${keys(panelWithoutFlag)}] have a filterComponent but no enableFiltering. The header shows no filter trigger and the column filter is not applied; set enableFiltering.`,
     );
     // Only the three built-in panels report values that are not text; a consumer's own panel may well report text the default match handles.
-    const BUILT_IN_PANELS = ['ge-data-table-date-filter', 'ge-data-table-date-range-filter', 'ge-data-table-multiselect-filter'];
-    const panelWithoutFn = c.columns.filter((col) => col.enableFiltering && BUILT_IN_PANELS.includes(col.filterComponent?.toLowerCase() ?? '') && !col.filterFn);
+    const panelWithoutFn = c.columns.filter((col) => col.enableFiltering && builtInPanelOf(col.filterComponent) !== undefined && !col.filterFn);
     warn(
         panelWithoutFn.length > 0,
         `Columns [${keys(panelWithoutFn)}] have a built-in filter panel but no filterFn. A panel value that is not text (a date, a list) is matched as text and filters every row out; pair the panel with its filter function (dateFilterFn, dateRangeFilterFn, multiselectFilterFn).`,

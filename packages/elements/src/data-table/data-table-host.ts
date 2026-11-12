@@ -68,6 +68,12 @@ export const ownClosest = <E extends Element = Element>(root: Element, target: u
     return match && ownsTarget(root, match) ? match : null;
 };
 
+/** The scroll container of the grid (header, body and footer): the element the grid's key chain listens on. */
+export const VIEWPORT = '[data-slot="data-table-viewport"]';
+
+/** A field whose keys are its own (typing, its undo, Enter in it): the grid's key handlers never act on an event from one. */
+export const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
+
 /** `node` is `ancestor` or inside it, across shadow roots (a component's input in its own root, a focused element in a cell widget). */
 export function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
     if (!ancestor) return false;

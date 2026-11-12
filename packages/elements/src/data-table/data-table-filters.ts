@@ -52,6 +52,17 @@ export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] |
     return filterValue.includes(getValue(row));
 }
 
+// ---- the built-in panels -------------------------------------------------------------------------------------------------------------
+
+/** The tags of the three ready-made panels (defined by the lazy `lazy/filter-panels` entry): ONE list, read by the controller and the config check. */
+export const BUILT_IN_FILTER_PANELS: readonly string[] = Object.freeze(['ge-data-table-date-filter', 'ge-data-table-date-range-filter', 'ge-data-table-multiselect-filter']);
+
+/** `tag` is one of the built-in panels, whatever its case (a tag name is case-insensitive), as the lower-case tag of that list; else undefined. */
+export const builtInPanelOf = (tag: string | undefined): string | undefined => {
+    const lower = tag?.toLowerCase();
+    return lower !== undefined && BUILT_IN_FILTER_PANELS.includes(lower) ? lower : undefined;
+};
+
 // ---- header trigger and floating row ------------------------------------------------------------------------------------------------
 
 /** The column holds a filter value that filters (`!isFilterValueEmpty`): the header's "filtered" state. */
