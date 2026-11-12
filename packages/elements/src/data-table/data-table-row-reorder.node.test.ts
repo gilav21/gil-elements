@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRowReorderEvent, dropEdge, dropIndex, dropPosition, isSelfOrDescendant, neighbourIds, reorderFlat, reorderRows, reorderTree, siblingMove, type TreeAccess } from './data-table-row-reorder.js';
+import { buildRowReorderEvent, dropEdge, dropIndex, dropPosition, isSelfOrDescendant, neighbourIds, reorderFlat, reorderRows, reorderTree, siblingAccess, siblingMove, type TreeAccess } from './data-table-row-reorder.js';
 import type { RowReorderEvent } from './data-table.types.js';
 
 interface NumRow {
@@ -207,7 +207,14 @@ describe('reorderTree (Angular reorderTreeData)', () => {
 });
 
 describe('siblingMove (Alt+Arrow, moveRow)', () => {
-    const flat = (disabled: number[] = []) => Array.from({ length: 5 }, (_, i) => ({ parentId: null, disabled: disabled.includes(i) }));
+    const flat = (disabled: number[] = []) => siblingAccess(Array.from({ length: 5 }, (_, i) => ({ parentId: null, disabled: disabled.includes(i) })));
+
+    it('reads only the rows it walks over (O(distance)), not every drawn row', () => {
+        let reads = 0;
+        const rows = { count: 10_000, parentOf: () => (reads++, null), disabled: () => false };
+        expect(siblingMove(rows, 5000, 'down')).toEqual({ overIndex: 5001, position: 'below' });
+        expect(reads).toBeLessThanOrEqual(2);
+    });
 
     it('steps one drawn row up (above it) or down (below it); null at the ends', () => {
         expect(siblingMove(flat(), 2, 'up')).toEqual({ overIndex: 1, position: 'above' });
@@ -224,14 +231,14 @@ describe('siblingMove (Alt+Arrow, moveRow)', () => {
 
     it('tree: only among the siblings (same parent), over a sibling\'s expanded children', () => {
         // a, a1, a2, b, b1 (b expanded), c
-        const rows = [
+        const rows = siblingAccess([
             { parentId: null, disabled: false },
             { parentId: 'a', disabled: false },
             { parentId: 'a', disabled: false },
             { parentId: null, disabled: false },
             { parentId: 'b', disabled: false },
             { parentId: null, disabled: false },
-        ];
+        ]);
         expect(siblingMove(rows, 2, 'up')).toEqual({ overIndex: 1, position: 'above' });
         expect(siblingMove(rows, 1, 'up')).toBeNull(); // the first child does not leave its parent
         expect(siblingMove(rows, 2, 'down')).toBeNull();

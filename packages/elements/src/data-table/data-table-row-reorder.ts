@@ -172,13 +172,27 @@ export interface SiblingRow {
  * The keyboard move (Alt+ArrowUp / Alt+ArrowDown, `moveRow`): the drawn index of the row to drop next to, and on which side, or null at an end.
  * The neighbour is the next drawn row in that direction with the same parent (every row of a flat table has none), skipping disabled rows.
  */
-export function siblingMove(rows: readonly SiblingRow[], index: number, direction: 'up' | 'down'): { overIndex: number; position: 'above' | 'below' } | null {
-    const self = rows[index];
-    if (!self || self.disabled) return null;
+export function siblingMove(rows: SiblingAccess, index: number, direction: 'up' | 'down'): { overIndex: number; position: 'above' | 'below' } | null {
+    if (index < 0 || index >= rows.count || rows.disabled(index)) return null;
+    const parent = rows.parentOf(index);
     const step = direction === 'up' ? -1 : 1;
-    for (let i = index + step; i >= 0 && i < rows.length; i += step) {
-        const row = rows[i] as SiblingRow;
-        if (row.parentId === self.parentId && !row.disabled) return { overIndex: i, position: direction === 'up' ? 'above' : 'below' };
+    // Only the rows walked over are asked (O(distance), not O(rows)): a table of 10k rows answers a move in a few reads.
+    for (let i = index + step; i >= 0 && i < rows.count; i += step) {
+        if (rows.parentOf(i) === parent && !rows.disabled(i)) return { overIndex: i, position: direction === 'up' ? 'above' : 'below' };
     }
     return null;
 }
+
+/** The drawn rows as `siblingMove` reads them: lazily, one row at a time. */
+export interface SiblingAccess {
+    readonly count: number;
+    parentOf(index: number): string | null;
+    disabled(index: number): boolean;
+}
+
+/** A list of rows as a `SiblingAccess` (tests, small callers). */
+export const siblingAccess = (rows: readonly SiblingRow[]): SiblingAccess => ({
+    count: rows.length,
+    parentOf: (i) => rows[i]?.parentId ?? null,
+    disabled: (i) => rows[i]?.disabled ?? false,
+});

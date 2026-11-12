@@ -6,6 +6,10 @@ import type { CellFlashDirection } from './data-table.types.js';
 
 /** The custom property the flash animation reads its duration from (data-table-drag.css), so `cell-flash-duration` and the animation agree. */
 const FLASH_MS = '--ge-dt-flash-ms';
+/** `cell-flash-duration` when it is unusable (not a finite number, or negative: `cell-flash-duration="abc"`): Angular's default. */
+const DEFAULT_FLASH_MS = 500;
+/** The flash duration in ms: the configured one when it is a finite, non-negative number, else the default. */
+export const flashMs = (duration: unknown): number => (typeof duration === 'number' && Number.isFinite(duration) && duration >= 0 ? duration : DEFAULT_FLASH_MS);
 
 /**
  * Conditional formatting (class rules, style rules, colour scale, data bar, icon set) served as `formatting`, and cell flash (wave 6,
@@ -86,7 +90,7 @@ export class FormattingController<T> {
 
     private start(changes: ReturnType<typeof diffFlashes>, durationMs: number): void {
         if (changes.size === 0) return;
-        const until = performance.now() + Math.max(0, durationMs);
+        const until = performance.now() + flashMs(durationMs);
         const again: [rowId: string, key: string][] = [];
         for (const [rowId, cells] of changes) {
             let held = this.flashes.get(rowId);
@@ -142,10 +146,11 @@ export class FormattingController<T> {
         this.timer = null;
     }
 
-    private writeDuration(ms: number): void {
+    private writeDuration(duration: number): void {
+        const ms = flashMs(duration);
         if (this.writtenMs === ms) return;
         this.writtenMs = ms;
-        this.host.root.style.setProperty(FLASH_MS, `${Math.max(0, ms)}ms`);
+        this.host.root.style.setProperty(FLASH_MS, `${ms}ms`);
     }
 
     /** Flash off (or the table detached): nothing flashes, nothing is remembered, the duration property is taken back. */

@@ -544,6 +544,20 @@ describe('row drag: keyboard (Alt+ArrowUp / Alt+ArrowDown) and moveRow', () => {
         expect(seen.reorders).toHaveLength(1);
     });
 
+    it('tree: announces where the row really is after jumping over a sibling\'s expanded subtree', async () => {
+        const table = await mountTree();
+        await focus(table, 5); // b (expanded: b1 under it)
+        await press('{Alt>}{ArrowUp}{/Alt}'); // b moves above a, over a's whole subtree
+        await settle(table);
+        expect(table.data.map((n) => (n as TreeNode).id)).toEqual(['b', 'a', 'c']);
+        await vi.waitFor(() => expect(q(table, '[data-slot="data-table-announcer"]').textContent).toContain('Row moved to position 1 of 8'));
+        await focus(table, 0); // b again
+        await press('{Alt>}{ArrowDown}{/Alt}'); // b moves below a: a, a1, a1x, a1y, a2, then b at index 5
+        await settle(table);
+        expect(table.data.map((n) => (n as TreeNode).id)).toEqual(['a', 'b', 'c']);
+        await vi.waitFor(() => expect(q(table, '[data-slot="data-table-announcer"]').textContent).toContain('Row moved to position 6 of 8'));
+    });
+
     it('tree: only among siblings', async () => {
         const table = await mountTree();
         await focus(table, 4); // a2
@@ -691,7 +705,30 @@ describe('cell flash', () => {
         expect(marker.borderLeftStyle).toBe('solid');
         await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
         expect(getComputedStyle(cell).animationName).toBe('none');
-        expect(getComputedStyle(cell).backgroundColor).not.toBe('rgba(0, 0, 0, 0)');
+        expect(getComputedStyle(cell).backgroundImage).toContain('gradient');
         expect(getComputedStyle(cell, '::before').borderLeftWidth).toBe('2px');
+    });
+
+    it('under reduced motion the static tint shows on a selected (and pinned) row too: it is a layer over whatever background colour wins', async () => {
+        const table = (await mountTable<SampleRow>({
+            data: makeRows(3),
+            columns: [{ accessorKey: 'name', header: 'Name', pin: 'left' }, { accessorKey: 'age', header: 'Age' }],
+            enableRowSelection: true,
+            rowSelection: { r0: true },
+            enableCellFlash: true,
+            cellFlashDuration: 3000,
+        })) as Table;
+        await send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+        await update(table, (rows) => {
+            rows[0]!.age = 40;
+            rows[0]!.name = 'renamed';
+        });
+        for (const key of ['age', 'name']) {
+            const cell = table.querySelector<HTMLElement>(`[data-row-id="r0"] [data-column="${key}"]`)!;
+            expect(cell.dataset['flash']).toBeDefined();
+            const style = getComputedStyle(cell);
+            expect(style.backgroundImage, key).toContain('gradient');
+            expect(style.backgroundImage, key).not.toBe('none');
+        }
     });
 });

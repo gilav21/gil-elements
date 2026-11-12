@@ -299,7 +299,17 @@ export class RowDragPart<T> {
             if (reorder) model.set('data', reorder.reorderData(model.get('data'), event));
         }
         this.host.emit('row-reorder', event);
-        this.host.announce(interpolate(this.host.resolvedLocale.rowMovedAnnouncement, { position: event.toIndex + 1, total }));
+        // The position said is where the row IS once the reorder is drawn (in a tree, a sibling move jumps over a whole expanded subtree, so `toIndex`
+        // is not it); a row that is not drawn there (the consumer handles the reorder itself) falls back to `toIndex`.
+        const id = String(config.getRowId(event.row));
+        this.host.afterRender(() => {
+            if (!this.attached) return;
+            const drawn = this.host.provider('query')?.renderedRows() ?? [];
+            const at = drawn.findIndex((r) => String(config.getRowId(r)) === id);
+            const position = (at === -1 ? event.toIndex : at) + 1;
+            this.host.announce(interpolate(this.host.resolvedLocale.rowMovedAnnouncement, { position, total: at === -1 ? total : drawn.length }));
+        });
+        this.host.requestRender();
     }
 
     private setOver(over: { index: number; position: RowDragPosition } | null): void {
@@ -341,8 +351,9 @@ export class RowDragPart<T> {
         const index = rows.findIndex((r) => String(config.getRowId(r)) === id);
         if (index === -1) return false;
         const selection = this.host.provider('selection');
-        const line = rows.map((r, i) => ({ parentId: config.enableSubRows ? (query.renderedTreeRowAt(i)?.parentId ?? null) : null, disabled: selection?.isDisabled(r) ?? false }));
-        const step = siblingMove(line, index, direction);
+        const parentOf = this.parentOf();
+        // Read lazily: only the rows the move walks over are asked about (not one object per drawn row).
+        const step = siblingMove({ count: rows.length, parentOf: (i) => parentOf?.(i) ?? null, disabled: (i) => (rows[i] !== undefined && selection?.isDisabled(rows[i] as T)) ?? false }, index, direction);
         const position = step ? this.judge(step.overIndex, step.position, { id, index }) : null;
         const event = step && position ? buildRowReorderEvent({ rows, draggedId: id, overIndex: step.overIndex, position, getRowId: config.getRowId, treeMode: config.rowDragMode === 'tree', parentOf: this.parentOf() }) : null;
         if (!event) return false;

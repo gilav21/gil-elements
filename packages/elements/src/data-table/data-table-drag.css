@@ -88,9 +88,11 @@
         }
     }
     @media (prefers-reduced-motion: reduce) {
+        /* The static tint is a background IMAGE layer: the hover, selected, pinned and range rules set the background COLOUR (with more specificity),
+           and the image is painted over whichever colour wins, so the flash stays visible on a selected or hovered row. */
         ge-data-table [data-slot="table-cell"][data-flash],
         ge-data-table [data-slot="table-cell"][data-flash][data-flash-again] {
             animation: none;
-            background-color: var(--_flash);
+            background-image: linear-gradient(var(--_flash), var(--_flash));
         }
     }

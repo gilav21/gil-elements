@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Disposables, TopicBus } from '../shared/registry.js';
 import { classifyChange, diffFlashes, flashColumns, sameCellValue, snapshotFlash } from './data-table-flash.js';
-import { FormattingController } from './data-table-formatting-controller.js';
+import { flashMs, FormattingController } from './data-table-formatting-controller.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import type { ColumnDef } from './data-table.types.js';
 
@@ -29,18 +29,39 @@ function flashOf(next: NumRow[], columns: ColumnDef<NumRow>[] = COLS, before: Nu
     return diffFlashes(snapshotFlash(before, cols, getId), next, cols, getId);
 }
 
-describe('classifyChange (Angular classifyChange, kept: D15 / AB9)', () => {
+describe('classifyChange (Angular classifyChange, with blanks fixed in review round 4)', () => {
     it('numbers go up or down, anything else is changed', () => {
         expect(classifyChange(30, 999)).toBe('up');
         expect(classifyChange(10, 1)).toBe('down');
+        expect(classifyChange('7', 8)).toBe('up'); // numbers as text are numbers
         expect(classifyChange('Alice', 'Alicia')).toBe('changed');
+        expect(classifyChange(true, false)).toBe('down'); // booleans stay numeric, as in Angular
     });
 
-    it('keeps Angular\'s Number() reading: null -> 5 is up, true -> false is down, "" counts as 0', () => {
-        expect(classifyChange(null, 5)).toBe('up');
-        expect(classifyChange(true, false)).toBe('down');
-        expect(classifyChange('', 3)).toBe('up');
-        expect(classifyChange(undefined, 3)).toBe('changed'); // Number(undefined) is NaN
+    it('a blank side (null, undefined, "") is no number: changed, not up or down; null and undefined alike', () => {
+        expect(classifyChange(null, 5)).toBe('changed');
+        expect(classifyChange(undefined, 5)).toBe('changed');
+        expect(classifyChange('', 3)).toBe('changed');
+        expect(classifyChange(5, null)).toBe('changed');
+        expect(classifyChange(5, undefined)).toBe('changed');
+        expect(classifyChange(null, 0)).toBe('changed'); // Number(null) is 0, but a blank that became 0 is no "down" nor "up"
+        expect(classifyChange('', 0)).toBe('changed');
+    });
+
+    it('two values that read as the same number are changed, never up or down', () => {
+        expect(classifyChange(5, '5')).toBe('changed');
+        expect(classifyChange(1, true)).toBe('changed');
+    });
+});
+
+describe('flashMs (cell-flash-duration guarded)', () => {
+    it('uses the default 500 ms for a duration that is not a finite, non-negative number', () => {
+        expect(flashMs(Number('abc'))).toBe(500);
+        expect(flashMs('abc')).toBe(500);
+        expect(flashMs(-1)).toBe(500);
+        expect(flashMs(Number.POSITIVE_INFINITY)).toBe(500);
+        expect(flashMs(150)).toBe(150);
+        expect(flashMs(0)).toBe(0);
     });
 });
 

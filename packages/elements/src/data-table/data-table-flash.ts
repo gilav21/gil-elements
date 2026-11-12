@@ -14,14 +14,17 @@ export type FlashSnapshot = ReadonlyMap<string, ReadonlyMap<string, unknown>>;
 export type FlashChanges = Map<string, Map<string, CellFlashDirection>>;
 
 /**
- * Angular's rule, kept on purpose (D15, AB9): both values read as finite through `Number()` is a numeric change (`up` / `down`), anything else is
- * `changed`. So `null` -> 5 reads `up` and `true` -> `false` reads `down`.
+ * A numeric change (`up` / `down`) when BOTH values read as numbers (`numberish`: a number, a non-blank string, a boolean) and they differ; anything
+ * else is `changed`. Review round 4 changed Angular's plain `Number()` rule (AB9): a blank side (`null`, `undefined`, `''`, which `Number()` reads as 0)
+ * is no number, so `null` -> 5 and 5 -> `''` read `changed`, and two values that read as the same number are no up or down either. `true` -> `false`
+ * still reads `down` (booleans are numberish).
  */
 export function classifyChange(oldValue: unknown, newValue: unknown): CellFlashDirection {
+    if (!numberish(oldValue) || !numberish(newValue)) return 'changed';
     const before = Number(oldValue);
     const after = Number(newValue);
-    if (Number.isFinite(before) && Number.isFinite(after)) return after > before ? 'up' : 'down';
-    return 'changed';
+    if (!Number.isFinite(before) || !Number.isFinite(after) || before === after) return 'changed';
+    return after > before ? 'up' : 'down';
 }
 
 /** The columns that flash: not opted out (`enableCellFlash: false`) and not a special column (selection, expander, actions); a data key that merely starts with `_` flashes. */
