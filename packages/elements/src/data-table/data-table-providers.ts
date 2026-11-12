@@ -152,9 +152,10 @@ export interface QueryService<T> {
     filterSeq(): number;
     /**
      * wave5: numbers a filter change written outside the query service's own change paths (a restored view state): every announcement of an
-     * older change says nothing. Call it ONCE, right before the write. Returns the new number.
+     * older change says nothing. Call it ONCE, right before the write. Returns the new number. `globalFilter`: the new global text when the
+     * write changes it; its result is then announced like a typed global filter, for this same change.
      */
-    filterChanged(): number;
+    filterChanged(globalFilter?: string): number;
 }
 
 /** Which user action the busy overlay stands for; `loadingVisibility` can silence it per trigger. */

@@ -154,6 +154,26 @@ describe('FilterUiController', () => {
         expect(announce).toHaveBeenCalledTimes(1);
     });
 
+    it('a value left on a column without enableFiltering is no filter "on": clearing the real one says all filters are cleared (round 16)', () => {
+        const { service, announce, model } = fakeHost();
+        model.assign('columnFilters', { ghost: 'x' }); // a key of no filtering column (a removed column, a typo)
+        service.setter('name')('a');
+        service.setter('name')(null);
+        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
+        expect(announce).toHaveBeenCalledWith('All filters cleared, showing all rows');
+    });
+
+    it('announces nothing for a table write that leaves the filters structurally equal (round 16)', () => {
+        const { announce, model } = fakeHost();
+        model.set('columnFilters', { name: 'a' });
+        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
+        expect(announce).toHaveBeenCalledTimes(1);
+        model.set('columnFilters', { name: 'a' }); // a new, equal object (a restore that changed only the sort)
+        model.set('advancedFilter', null);
+        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
+        expect(announce).toHaveBeenCalledTimes(1);
+    });
+
     it('does not announce a filter the consumer set as a property, nor after detach', () => {
         const { controller, model, announce, service } = fakeHost();
         model.assign('columnFilters', { name: 'x' });

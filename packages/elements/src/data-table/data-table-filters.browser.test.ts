@@ -371,22 +371,37 @@ describe('round 8', () => {
 
     it('a restored view state is ONE filter change: an older global announcement says nothing, the restore speaks once (round 15)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn] });
-        const state = table.getViewState()!;
         const spoken: string[] = [];
         new MutationObserver(() => spoken.push(announcer(table))).observe(q(table, '[data-slot="data-table-announcer"]'), { childList: true, characterData: true, subtree: true });
         const seq = table.provider('query')!.filterSeq();
-        table.provider('query')?.changeGlobalFilter('a');
+        table.provider('query')?.changeGlobalFilter('o');
         await new Promise((resolve) => setTimeout(resolve, 100));
+        const state = table.getViewState()!; // the global text stays 'o' in the restore (round 16: a changed one is announced by the global rule)
         expect(table.applyViewState({ ...state, columnFilters: { name: 'Bob' } })).toBe(true);
         expect(table.provider('query')!.filterSeq()).toBe(seq + 2); // the global change, then the restore: one number
         await new Promise((resolve) => setTimeout(resolve, 800));
         await settle(table);
         const said = spoken.filter((s) => s !== '');
-        expect(said).toEqual(['1 row matches the filters']); // not the global filter's 'for "a"'
+        expect(said).toEqual(['1 row matches the filters']); // not the global filter's 'for "o"'
         // A restore that changes no filter numbers nothing.
         const now = table.provider('query')!.filterSeq();
         table.applyViewState({ ...table.getViewState()!, columnFilters: { name: 'Bob' } });
         expect(table.provider('query')!.filterSeq()).toBe(now);
+    });
+
+    it('a restore that changes only the sort announces nothing; one that changes the global text announces its result (round 16)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn], columnFilters: { name: 'o' } });
+        const spoken: string[] = [];
+        new MutationObserver(() => spoken.push(announcer(table))).observe(q(table, '[data-slot="data-table-announcer"]'), { childList: true, characterData: true, subtree: true });
+        const state = table.getViewState()!;
+        table.applyViewState({ ...structuredClone(state), sort: { column: 'name', direction: 'desc' } });
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        await settle(table);
+        expect(spoken.filter((s) => s !== '')).toEqual([]);
+        table.applyViewState({ ...structuredClone(state), globalFilter: 'Bob' });
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        await settle(table);
+        expect(spoken.filter((s) => s !== '')).toEqual(['1 result found for "Bob"']);
     });
 
     it('a cache answering in the same task (loading true, data, loading false) ends the wait at once (round 9)', async () => {

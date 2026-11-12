@@ -216,13 +216,18 @@ export class QueryController<T> {
     }
 
     private applyGlobalFilter(value: string): void {
-        const { model, resolvedLocale: locale } = this.host;
+        const { model } = this.host;
         model.batch(() => {
             model.set('globalFilter', value);
             this.resetPage();
         });
         this.host.emit('filter-change', value);
-        const seq = this.filterChanged(); // a newer filter (also clearing it) drops every announcement of an earlier one
+        this.announceGlobal(value, this.filterChanged()); // a newer filter (also clearing it) drops every announcement of an earlier one
+    }
+
+    /** The global filter's result announcement for the change numbered `seq` (the typed filter, or a restored view state's global text). */
+    private announceGlobal(value: string, seq: number): void {
+        const { resolvedLocale: locale } = this.host;
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             this.cancelAnnounce = undefined;
             if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
@@ -345,7 +350,11 @@ export class QueryController<T> {
         changeAdvancedFilter: (group) => void changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group, () => this.filterChanged()),
         whenCounted: (say, seq) => this.whenCounted(say, seq),
         filterSeq: () => this.seq,
-        filterChanged: () => this.filterChanged(),
+        filterChanged: (global) => {
+            const seq = this.filterChanged();
+            if (global !== undefined) this.announceGlobal(global, seq); // the global text changed too: its result is announced, for this same change
+            return seq;
+        },
         // Server filtering: the held rows are not the matches, so the server's `total`, but only once the ANSWER to the last query arrived (the next
         // `data` from outside): before that, `total` is the previous answer's and `undefined` says "not known yet".
         filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.awaitingRows ? undefined : this.host.config.total),

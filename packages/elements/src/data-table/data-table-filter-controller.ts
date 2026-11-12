@@ -79,6 +79,7 @@ export class FilterUiController<T> {
         // A latched load failure of an earlier attach is retried (a load in flight, e.g. another table's, is left alone).
         for (const lazy of [...PANELS.values(), BUILDER]) lazy.resetIfFailed();
         let last = model.get('columnFilters');
+        let lastAdvanced = model.get('advancedFilter') ?? null;
         this.teardown = [
             this.host.provide('filters', this.service),
             model.subscribe('columnFilters', (filters, origin) => {
@@ -86,11 +87,17 @@ export class FilterUiController<T> {
                 // was restored, a panel wrote it): it was typed against a value that is gone. Other columns' waiting text stays, and an echo (a new
                 // but structurally equal object) changes no column.
                 const changed = [...this.pending.keys()].filter((key) => !sameStructure(last[key], filters[key]));
+                const same = sameStructure(last, filters);
                 last = filters;
                 this.dropPending(changed);
-                if (origin === 'internal') this.scheduleAnnouncement();
+                // Only a table write that CHANGED the filters is announced (a restored view that changed only the sort rewrites an equal object).
+                if (origin === 'internal' && !same) this.scheduleAnnouncement();
             }),
-            model.subscribe('advancedFilter', (_, origin) => origin === 'internal' && this.scheduleAnnouncement()),
+            model.subscribe('advancedFilter', (group, origin) => {
+                const same = sameStructure(lastAdvanced, group ?? null);
+                lastAdvanced = group ?? null;
+                if (origin === 'internal' && !same) this.scheduleAnnouncement();
+            }),
         ];
     }
 
@@ -300,7 +307,11 @@ export class FilterUiController<T> {
             if (!query || seq < query.filterSeq()) return;
             const { model, resolvedLocale: locale } = this.host;
             const filters = model.get('columnFilters');
-            const any = Object.keys(filters).some((key) => isFilterActive(filters, key)) || countConditions(model.get('advancedFilter')) > 0 || model.get('globalFilter').trim() !== '';
+            // A filter "on" is one that filters: a set value on a column with `enableFiltering` (a key of another column is skipped by the pipeline),
+            // an advanced condition, or the global text.
+            const filtering = new Set(this.host.config.columns.filter((c) => c.enableFiltering).map((c) => String(c.accessorKey)));
+            const any =
+                Object.keys(filters).some((key) => filtering.has(key) && isFilterActive(filters, key)) || countConditions(model.get('advancedFilter')) > 0 || model.get('globalFilter').trim() !== '';
             if (!any) return this.host.announce(locale.filtersClearedAnnouncement);
             const say = (count: number): void => this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
             // ONE rule with the global filter: the query service says the count now, or (server filtering) once the query's answer is in, or never
