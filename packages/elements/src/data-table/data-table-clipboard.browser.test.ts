@@ -1,5 +1,6 @@
 import { html } from 'lit';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PastePart } from './lazy/clipboard.js';
 import type { GeDataTable } from './data-table.js';
 import { cellAt, mountTable, q, settle } from './data-table-fixtures.js';
 import { dispatchCopy, dispatchPaste, emulateTouch, type FakeClipboard, fakeClipboard, frames, parkMouse, press, unhandledRejections } from './data-table-input-fixtures.js';
@@ -177,6 +178,74 @@ describe('copy', () => {
         await expect(table.copyCellToClipboard()).resolves.toEqual({ status: 'unavailable' });
     });
 
+    it('answers a native copy aimed outside the table while one of its cells holds the focus (the browser menu, a body target)', async () => {
+        install({ missing: true });
+        const table = await grid();
+        await focusCell(table, 1, 'name');
+        const outside = dispatchCopy(document.body);
+        expect(outside.notPrevented).toBe(false);
+        expect(outside.data.getData('text/plain')).toBe('Bob');
+        // with the focus outside the table, a copy elsewhere is not the table's
+        const button = document.createElement('button');
+        document.body.append(button);
+        button.focus();
+        const away = dispatchCopy(document.body);
+        expect(away.notPrevented).toBe(true);
+        button.remove();
+    });
+
+    it('leaves Ctrl/Cmd+C to a header control or the readout button (only a body cell, or the grid itself, copies)', async () => {
+        const fake = install();
+        const table = await grid({ enableCellRangeSelection: true, enableRangeActions: true });
+        await rangeReady(table);
+        await focusCell(table, 1, 'name');
+        table.cellRange = { startRow: 0, startCol: 'qty', endRow: 1, endCol: 'qty' };
+        await settle(table);
+        // the header's sort button lives in the column header's shadow root: a key there reaches the grid with the column header as its target
+        for (const control of [table.querySelector<HTMLElement>('[data-slot="table-head"] ge-data-table-column-header'), table.querySelector<HTMLElement>('[data-slot="range-chart"]')]) {
+            expect(control).not.toBeNull();
+            const key = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, cancelable: true, composed: true });
+            control!.dispatchEvent(key);
+            expect(key.defaultPrevented).toBe(false);
+        }
+        await frames(2);
+        expect(fake.writes).toEqual([]);
+    });
+
+    it('copies the selected rows of a tree, children included, in the drawn order', async () => {
+        const fake = install();
+        type Node = Row & { children?: Node[] };
+        const tree: Node[] = [
+            { id: 'p', name: 'Parent', qty: 1, ok: true, note: 'p', children: [{ id: 'k', name: 'Kid', qty: 2, ok: false, note: 'k' }] },
+            { id: 'q', name: 'Other', qty: 3, ok: true, note: 'q' },
+        ];
+        const table = await mountTable<Node>({ columns: COLUMNS as ColumnDef<Node>[], data: tree, getRowId: (row: Node) => row.id, enableSubRows: true, subRowDefaultExpanded: true, enableRowSelection: true, rowSelection: { k: true, q: true } });
+        await expect(table.copySelectedToClipboard()).resolves.toEqual({ status: 'done', cells: 12 });
+        expect(fake.text.split('\n')).toEqual(['Name\tQty\tOK\tNote', 'Kid\t2\tfalse\tk', 'Other\t3\ttrue\tq']);
+    });
+
+    it('a stale text selection elsewhere does not stop the grid copy; one over the focused cell does', async () => {
+        const fake = install();
+        const table = await grid();
+        const focused = await focusCell(table, 1, 'name');
+        const selection = document.getSelection()!;
+        const select = (node: Node): void => {
+            selection.removeAllRanges();
+            const range = document.createRange();
+            range.selectNodeContents(node);
+            selection.addRange(range);
+        };
+        select(cellAt(table, 3, 'note')!); // another cell
+        focused.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, cancelable: true, composed: true }));
+        await until(() => fake.writes.length > 0);
+        expect(fake.writes).toEqual(['Bob']);
+        select(focused); // the focused cell itself
+        const key = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, cancelable: true, composed: true });
+        focused.dispatchEvent(key);
+        expect(key.defaultPrevented).toBe(false);
+        selection.removeAllRanges();
+    });
+
     it('the public copy methods write what the scopes say and resolve to the result', async () => {
         const fake = install();
         const table = await grid({ enableRowSelection: true, rowSelection: { d: true }, paginationState: { pageIndex: 0, pageSize: 2 } });
@@ -246,6 +315,33 @@ describe('paste', () => {
         await press('{Control>}v{/Control}');
         await until(() => table.cellRange !== null);
         expect(table.cellRange).toEqual({ startRow: 0, startCol: 'qty', endRow: 1, endCol: 'ok' });
+    });
+
+    it('reads nothing while the paste part is not loaded, and pastes into the focused ROW even when a sort moved it during the read', async () => {
+        const fake = install({ text: '77' });
+        const failing = vi.spyOn(PastePart.prototype, 'attach').mockImplementation(() => {
+            throw new Error('no part');
+        });
+        const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const broken = await grid({ enableClipboardPaste: true });
+            await pasteReady(broken);
+            await focusCell(broken, 0, 'qty');
+            await expect(broken.provider('clipboard')!.paste()).resolves.toEqual({ status: 'ignored' });
+            expect(fake.reads.count).toBe(0); // no clipboard read (no permission prompt) for a paste that cannot happen
+        } finally {
+            failing.mockRestore();
+            errors.mockRestore();
+        }
+        const table = await grid({ enableClipboardPaste: true });
+        await pasteReady(table);
+        await focusCell(table, 1, 'qty'); // Bob
+        const pasting = table.provider('clipboard')!.paste();
+        table.data = [...(table.data as Row[])].reverse(); // during the read: Bob is now drawn at index 2
+        await settle(table);
+        await expect(pasting).resolves.toMatchObject({ status: 'done', cells: 1 });
+        const byId = Object.fromEntries((table.data as Row[]).map((r) => [r.id, r.qty]));
+        expect(byId).toEqual({ a: 1, b: 77, c: 3, d: 4 });
     });
 
     it('a paste that writes no cell (every value refused, or only columns without a setter) emits no cells-paste and keeps the range', async () => {

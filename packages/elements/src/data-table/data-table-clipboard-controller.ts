@@ -1,5 +1,5 @@
-import { CELL_SELECTOR, type CopyScope, type CopySource, copyGrid, gridCells, hasTextSelection, inTextField, keyboardCopyGrid } from './data-table-clipboard-grid.js';
-import { type DataTableCoreHost, ownClosest, ownEvents, requireProvider } from './data-table-host.js';
+import { clipboardEventForGrid, type CopyScope, type CopySource, copyGrid, editorOpen, gridCells, inTextField, keyboardCopyGrid, onGrid, selectsGridText } from './data-table-clipboard-grid.js';
+import { type DataTableCoreHost, ownElements, requireProvider } from './data-table-host.js';
 import { lazyPart } from './data-table-lazy.js';
 import { interpolate } from './data-table.locales.js';
 import type { ClipboardResult, ClipboardService } from './data-table-providers.js';
@@ -19,6 +19,11 @@ interface ClipboardFlags {
 const clipboardApi = (): Clipboard | undefined => (typeof navigator === 'undefined' ? undefined : (navigator as Partial<Navigator>).clipboard);
 const canWrite = (): boolean => typeof clipboardApi()?.writeText === 'function';
 const canRead = (): boolean => typeof clipboardApi()?.readText === 'function';
+
+/** The drawn index of the row with this id (ids compared as strings: a `getRowId` may answer numbers), or -1. */
+function rowIndexOf<T>(rows: readonly T[], id: string, getRowId: (row: T) => string): number {
+    return rows.findIndex((row) => String(getRowId(row)) === id);
+}
 
 /** Whether a copy of `scope` is switched on: `enable-copy`, except the range copy, which Angular's `copyCellRangeToClipboard` does not gate (cmp 4611). */
 const copyOn = (flags: ClipboardFlags, scope: CopyScope): boolean => scope === 'range' || flags.enableCopy;
@@ -69,7 +74,8 @@ export class ClipboardController<T> {
         this.teardown = [
             host.provide('clipboard', this.service),
             host.addKeyHandler(KEY_PRIORITY.clipboard, (event) => this.onKey(event)),
-            disposables.listen<ClipboardEvent>(root, 'copy', ownEvents(root, (event: ClipboardEvent) => this.onNativeCopy(event))),
+            // On the document: the browser's copy may target something outside the table (the body) while the focus is in it (`clipboardEventForGrid`).
+            disposables.listen<ClipboardEvent>(root.ownerDocument, 'copy', (event) => this.onNativeCopy(event)),
         ];
     }
 
@@ -103,6 +109,8 @@ export class ClipboardController<T> {
             // The range counts only while the range part handles ranges (a held value of a mode that is off, or a part still loading, is no range).
             range: range?.active() ? normalizeCellRange(range.range(), navigableKeys) : null,
             drawnRows: () => {
+                // A tree draws its visible nodes flattened (children under their parents): the copy follows that list (`sortedData()` holds the roots only).
+                if (host.config.enableSubRows) return query.renderedRows();
                 // Grouping draws group by group (collapsed groups included): the copy follows the screen, across pages.
                 const groups = query.groupRows();
                 return groups.length > 0 ? groups.flatMap((group) => group.rows) : query.sortedData();
@@ -138,11 +146,27 @@ export class ClipboardController<T> {
         return cells === 1 ? locale.copiedAnnouncementOne : interpolate(locale.copiedAnnouncement, { count: cells });
     }
 
-    /** The browser's own copy (no Async Clipboard API, or its Copy menu entry) on a cell of this table: the grid's copy goes into the event. */
+    /**
+     * Text the user selected over what the grid would copy (the focused cell, the cells in the range): the copy is the browser's. Read from the drawn
+     * cells: only a drawn cell can hold a selection.
+     */
+    private copiesSelectedText(): boolean {
+        const { host } = this;
+        const focused = host.provider('interaction')?.focusedCell();
+        const cells = ownElements(host.root, host.root.querySelectorAll('[data-slot="table-cell"][data-in-range]'));
+        const cell = focused ? host.cellAt(focused.rowIndex, focused.columnKey) : null;
+        if (cell) cells.push(cell);
+        return selectsGridText(host.root, cells);
+    }
+
+    /**
+     * The browser's own copy (no Async Clipboard API, or its Copy menu entry) for this table: on one of its cells, or anywhere outside it while the focus is
+     * inside it (heard on the document). The grid's copy goes into the event.
+     */
     private onNativeCopy(event: ClipboardEvent): void {
         const { host } = this;
-        if (event.defaultPrevented || !host.config.enableCopy || !event.clipboardData || inTextField(host.root, event) || hasTextSelection(host.root)) return;
-        if (!ownClosest(host.root, event.target, CELL_SELECTOR)) return;
+        if (event.defaultPrevented || !host.config.enableCopy || !event.clipboardData || inTextField(host.root, event)) return;
+        if (!clipboardEventForGrid(host.root, event) || this.copiesSelectedText()) return;
         const grid = keyboardCopyGrid(this.source());
         if (!grid) return;
         event.clipboardData.setData('text/plain', toClipboardText(grid));
@@ -152,18 +176,18 @@ export class ClipboardController<T> {
 
     // ---- keys -------------------------------------------------------------------------------------------------------
 
-    /** Ctrl/Cmd+C and Ctrl/Cmd+V (no Shift, no Alt), never from a text field: those are the browser's. */
+    /** Ctrl/Cmd+C and Ctrl/Cmd+V (no Shift, no Alt) on the grid (a body cell, or the viewport or root), never from a text field or a header / readout control. */
     private onKey(event: KeyboardEvent): boolean {
         if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey || !(event.ctrlKey || event.metaKey)) return false;
         const key = event.key.toLowerCase();
-        if ((key !== 'c' && key !== 'v') || inTextField(this.host.root, event)) return false;
+        if ((key !== 'c' && key !== 'v') || !onGrid(this.host.root, event)) return false;
         return key === 'c' ? this.keyCopy(event) : this.keyPaste(event);
     }
 
     /** Angular's precedence (cmp 4571): the range, else the focused cell, else the selected rows. Consumed only when the API can write it. */
     private keyCopy(event: KeyboardEvent): boolean {
         if (!this.host.config.enableCopy || !canWrite()) return false; // no API: the browser's own `copy` event follows and is answered there
-        if (hasTextSelection(this.host.root)) return false; // text selected in the table: the browser copies that text
+        if (this.copiesSelectedText()) return false; // text selected over the focused cell or the range: the browser copies that text
         const grid = keyboardCopyGrid(this.source());
         if (!grid) return false;
         event.preventDefault();
@@ -171,27 +195,31 @@ export class ClipboardController<T> {
         return true;
     }
 
-    private editing(): boolean {
-        return this.host.provider('interaction')?.editingCell?.() != null;
-    }
-
     /** Pastes at the focused cell, read NOW (the focus may move during the await). Not while editing, not without a focused cell. */
     private keyPaste(event: KeyboardEvent): boolean {
         const { host } = this;
-        if (!host.config.enableClipboardPaste || this.editing() || !canRead() || !this.paste.part) return false;
+        if (!host.config.enableClipboardPaste || editorOpen(host) || !canRead() || !this.paste.part) return false;
         if (!host.provider('interaction')?.focusedCell()) return false;
         event.preventDefault();
         void this.pasteFromClipboard();
         return true;
     }
 
-    /** Reads the async clipboard and pastes at the focused cell (read before the await); a refused read is announced, never an unhandled rejection. */
+    /**
+     * Reads the async clipboard and pastes at the focused cell; a refused read is announced, never an unhandled rejection. Nothing is read (no permission
+     * prompt) while the paste part is not loaded. The target is taken NOW, as its row's id: after the await it is found again by that id, so a sort or a
+     * new page that arrived meanwhile does not paste into whichever row now sits at the old index (a row that is gone pastes nothing).
+     */
     private async pasteFromClipboard(): Promise<ClipboardResult> {
         const { host } = this;
         if (!host.config.enableClipboardPaste) return { status: 'ignored' };
         if (!canRead()) return { status: 'unavailable' };
         const at = host.provider('interaction')?.focusedCell() ?? null;
-        if (this.pending || this.editing() || !at) return { status: 'ignored' };
+        if (this.pending || editorOpen(host) || !at || !this.paste.part) return { status: 'ignored' };
+        const query = requireProvider(host, 'query');
+        const row = query.renderedRowAt(at.rowIndex);
+        if (row === undefined) return { status: 'ignored' };
+        const rowId = String(host.config.getRowId(row));
         this.pending = true;
         const attachment = this.attachment;
         let text: string;
@@ -205,6 +233,8 @@ export class ClipboardController<T> {
         }
         if (attachment !== this.attachment) return { status: 'ignored' }; // detached meanwhile: nothing is written into a table that is gone
         this.pending = false;
-        return this.paste.part?.pasteText(text, at) ?? { status: 'ignored' };
+        const rowIndex = rowIndexOf(requireProvider(host, 'query').renderedRows(), rowId, host.config.getRowId);
+        if (rowIndex === -1) return { status: 'ignored' }; // the row left the drawn rows during the read
+        return this.paste.part?.pasteText(text, { rowIndex, columnKey: at.columnKey }) ?? { status: 'ignored' };
     }
 }

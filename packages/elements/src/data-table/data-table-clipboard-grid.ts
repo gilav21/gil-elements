@@ -6,7 +6,7 @@
  * Angular: `copyCellToClipboard`, `copyRowToClipboard`, `copySelectedToClipboard`, `copyCellRangeToClipboard`, `copyAllToClipboard`, `handleCopyKeydown`.
  */
 import { cellText } from './data-table-cells.js';
-import { ownClosest } from './data-table-host.js';
+import { type DataTableCoreHost, ownClosest, ownsTarget } from './data-table-host.js';
 import type { NormalizedRange } from './data-table-range.js';
 import type { ColumnDef } from './data-table.types.js';
 
@@ -103,12 +103,41 @@ export function inTextField(root: Element, event: Event): boolean {
 }
 
 /**
- * The user selected TEXT inside this table (a non-collapsed selection that starts or ends in it): a copy is then the browser's copy of that text, not the
- * grid's (Ctrl/Cmd+C and the native `copy` event alike).
+ * The user selected TEXT over what the grid would copy (a non-collapsed selection that intersects one of `cells`: the focused cell, the cells in the
+ * range): a copy is then the browser's copy of that text, not the grid's (Ctrl/Cmd+C and the native `copy` event alike). A stale selection elsewhere on
+ * the page, or over other cells, does not stop the grid's copy.
  */
-export function hasTextSelection(root: Element): boolean {
+export function selectsGridText(root: Element, cells: readonly Element[]): boolean {
     const selection = root.ownerDocument?.getSelection?.(); // (a host without a document, a node test's, has no selection)
-    if (!selection || selection.isCollapsed || selection.rangeCount === 0) return false;
-    const inside = (node: Node | null): boolean => node !== null && root.contains(node);
-    return inside(selection.anchorNode) || inside(selection.focusNode);
+    if (!selection || selection.isCollapsed || cells.length === 0) return false;
+    for (let i = 0; i < selection.rangeCount; i++) {
+        const range = selection.getRangeAt(i);
+        if (!range.collapsed && cells.some((cell) => range.intersectsNode(cell))) return true;
+    }
+    return false;
 }
+
+const VIEWPORT = '[data-slot="data-table-viewport"]';
+
+/**
+ * A grid key (the clipboard's Ctrl/Cmd+C / V, the range keys, the row move): typed on a body cell of THIS table or on its viewport or root (the roving
+ * focus, a grid with nothing focused), never in a text field. A header control, the readout's button, a toolbar or pager control keep their keys.
+ */
+export function onGrid(root: Element, event: Event): boolean {
+    const target = event.target as Element | null;
+    if (!target || !ownsTarget(root, target) || inTextField(root, event)) return false;
+    return target === root || target.matches?.(VIEWPORT) === true || ownClosest(root, target, CELL_SELECTOR) !== null;
+}
+
+/**
+ * A native `copy` / `paste` event is this table's: it landed on one of its cells, or it landed OUTSIDE the table (the browser's menu, a target the page
+ * chose) while the focus is inside this table. An event inside the table but not on its cells (a header, a nested table) is not.
+ */
+export function clipboardEventForGrid(root: Element, event: Event): boolean {
+    const target = event.target as Node | null;
+    if (ownClosest(root, target, CELL_SELECTOR)) return true;
+    return target !== null && !root.contains(target) && root.matches?.(':focus-within') === true;
+}
+
+/** An editor is open somewhere in the table (the one test the clipboard controller and the paste part share). */
+export const editorOpen = <T>(host: DataTableCoreHost<T>): boolean => host.provider('interaction')?.editingCell?.() != null;

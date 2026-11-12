@@ -34,9 +34,18 @@ function fakeHost(config: Partial<{ enableCopy: boolean; enableClipboardPaste: b
         },
         columns: { enhancedColumns: () => COLUMNS, navigableKeys: () => ['id', 'n'] },
     };
+    // A root the grid-key rule (`onGrid`) recognises as the table itself (a key typed on the grid with the roving focus), with a document to listen on.
+    const root: EventTarget & Record<string, unknown> = Object.assign(new EventTarget(), {
+        ownerDocument: new EventTarget(),
+        closest: (selector: string) => (selector === 'ge-data-table' ? root : null),
+        matches: () => false,
+        contains: () => false,
+        querySelectorAll: () => [],
+    });
     const host = {
         config: { enableCopy: true, enableClipboardPaste: true, loading: false, getRowId: (row: Row) => row.id, enableCellRangeSelection: false, enableFillHandle: false, ...config },
-        root: new EventTarget(),
+        root,
+        cellAt: () => null,
         disposables: new Disposables(),
         model: { get: () => ({}) },
         resolvedLocale: DATA_TABLE_LOCALES.en,
@@ -59,7 +68,7 @@ function fakeHost(config: Partial<{ enableCopy: boolean; enableClipboardPaste: b
         host: host as unknown as DataTableCoreHost<Row>,
         raw: host,
         key: (init: Partial<KeyboardEvent>) => {
-            const event = { key: 'c', ctrlKey: true, metaKey: false, shiftKey: false, altKey: false, isComposing: false, defaultPrevented: false, target: null, composedPath: () => [], preventDefault: vi.fn(), ...init };
+            const event = { key: 'c', ctrlKey: true, metaKey: false, shiftKey: false, altKey: false, isComposing: false, defaultPrevented: false, target: root, composedPath: () => [], preventDefault: vi.fn(), ...init };
             return { consumed: keys?.(event as unknown as KeyboardEvent) ?? false, event };
         },
         service: () => provided.get('clipboard') as ClipboardService<Row>,

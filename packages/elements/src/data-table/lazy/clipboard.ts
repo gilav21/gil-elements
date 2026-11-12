@@ -3,8 +3,8 @@
  * listener. Copy is eager. A build entry (`data-table/lazy/clipboard`), loaded by `lazyPart` when `enable-clipboard-paste` is on. It draws
  * nothing, so its `lazyPart` has no `changed`.
  */
-import { cellAddressOf, type CellAddress, type DataTableCoreHost, ownClosest, ownEvents, requireProvider } from '../data-table-host.js';
-import { CELL_SELECTOR, inTextField } from '../data-table-clipboard-grid.js';
+import { cellAddressOf, type CellAddress, type DataTableCoreHost, ownClosest, requireProvider } from '../data-table-host.js';
+import { CELL_SELECTOR, clipboardEventForGrid, editorOpen, inTextField } from '../data-table-clipboard-grid.js';
 import { pasteAnnouncement, pastedGrid, pasteEvent, planPasteRequests } from '../data-table-paste-apply.js';
 import type { ClipboardResult } from '../data-table-providers.js';
 import { rangeModeOn } from '../data-table-range.js';
@@ -17,7 +17,8 @@ export class PastePart<T> {
     attach(): void {
         const { root, disposables } = this.host;
         // The browser's own Paste (its menu, or Ctrl/Cmd+V when the async clipboard is missing or the key handler left it): the text comes with the event.
-        this.unlisten = disposables.listen<ClipboardEvent>(root, 'paste', ownEvents(root, (event: ClipboardEvent) => this.onNativePaste(event)));
+        // Heard on the document: the event may target something outside the table while the focus is in it (`clipboardEventForGrid`).
+        this.unlisten = disposables.listen<ClipboardEvent>(root.ownerDocument, 'paste', (event) => this.onNativePaste(event));
     }
 
     detach(): void {
@@ -25,16 +26,12 @@ export class PastePart<T> {
         this.unlisten = null;
     }
 
-    private editing(): boolean {
-        return this.host.provider('interaction')?.editingCell?.() != null;
-    }
-
     private onNativePaste(event: ClipboardEvent): void {
         const { host } = this;
-        if (event.defaultPrevented || !host.config.enableClipboardPaste || this.editing() || inTextField(host.root, event)) return;
-        const cell = ownClosest(host.root, event.target, CELL_SELECTOR);
-        const at = host.provider('interaction')?.focusedCell() ?? cellAddressOf(cell);
-        if (!cell || !at) return;
+        if (event.defaultPrevented || !host.config.enableClipboardPaste || editorOpen(host) || inTextField(host.root, event)) return;
+        if (!clipboardEventForGrid(host.root, event)) return;
+        const at = host.provider('interaction')?.focusedCell() ?? cellAddressOf(ownClosest(host.root, event.target, CELL_SELECTOR));
+        if (!at) return;
         event.preventDefault();
         this.pasteText(event.clipboardData?.getData('text/plain') ?? '', at);
     }
