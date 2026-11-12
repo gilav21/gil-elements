@@ -88,6 +88,35 @@ describe('dateRangeFilterFn', () => {
 });
 
 // Ported from sub/data-table-multiselect-filter.component.spec.ts 209-232.
+describe('date filter values of any shape (a saved view restored from JSON, a timestamp, garbage)', () => {
+    const at = (date: unknown) => (row: { date: unknown }) => row.date;
+    const row = { date: '2024-03-10' };
+    const day = new Date(2024, 2, 10);
+
+    it('dateFilterFn reads the filter value like a cell: an ISO string, a date-time string or a timestamp filters', () => {
+        expect(dateFilterFn(row, '2024-03-10', at(0))).toBe(true);
+        expect(dateFilterFn(row, '2024-03-11', at(0))).toBe(false);
+        expect(dateFilterFn(row, JSON.parse(JSON.stringify(day)) as string, at(0))).toBe(true);
+        expect(dateFilterFn(row, day.getTime(), at(0))).toBe(true);
+    });
+
+    it('dateFilterFn treats a value that is not a date as no filter, and never throws', () => {
+        for (const bad of ['not a date', {}, [], true, Number.NaN, new Date('x')]) expect(dateFilterFn(row, bad as never, at(0))).toBe(true);
+    });
+
+    it('dateRangeFilterFn reads JSON-restored ends (ISO strings) and timestamps', () => {
+        const restored = JSON.parse(JSON.stringify({ start: new Date(2024, 2, 1), end: new Date(2024, 2, 10) })) as { start: string; end: string };
+        expect(dateRangeFilterFn(row, restored, at(0))).toBe(true);
+        expect(dateRangeFilterFn({ date: '2024-03-11' }, restored, at(0))).toBe(false);
+        expect(dateRangeFilterFn(row, { start: '2024-03-11', end: null }, at(0))).toBe(false);
+        expect(dateRangeFilterFn(row, { start: null, end: new Date(2024, 2, 10).getTime() }, at(0))).toBe(true);
+    });
+
+    it('dateRangeFilterFn treats a value that is not a range, or a range of non-dates, as no filter, and never throws', () => {
+        for (const bad of ['2024-03-11', 7, true, [], { start: 'x', end: {} }, { from: day }]) expect(dateRangeFilterFn(row, bad as never, at(0))).toBe(true);
+    });
+});
+
 describe('multiselectFilterFn', () => {
     const at = (r: { s: string }): unknown => r.s;
     it('lets every row through for null or an empty list', () => {

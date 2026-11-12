@@ -14,24 +14,36 @@ import { asEditableDate, isFilterValueEmpty, isSpecialColumnKey, stringifyValue 
 export const toDateOnlyTimestamp = (d: Date): number => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 
 /**
- * The date panel's filter: the cell (a `Date`, an ISO date or date-time string, a timestamp) falls on the picked day. No filter value lets
- * every row through; a cell that is not a date never matches. Use it as `filterFn: (row, value) => dateFilterFn(row, value, (r) => r.date)`.
+ * The date panel's filter: the cell (a `Date`, an ISO date or date-time string, a timestamp) falls on the picked day. The filter value is read
+ * the same way (`asEditableDate`), so one restored from JSON (a saved view: an ISO string) or given as a timestamp still filters; no value, or
+ * one that is not a date, lets every row through (never a throw). A cell that is not a date never matches. Use it as
+ * `filterFn: (row, value) => dateFilterFn(row, value, (r) => r.date)`.
  */
-export function dateFilterFn<R>(row: R, filterValue: Date | null | undefined, getValue: (row: R) => unknown): boolean {
-    if (!filterValue) return true;
+export function dateFilterFn<R>(row: R, filterValue: Date | string | number | null | undefined, getValue: (row: R) => unknown): boolean {
+    const day = asEditableDate(filterValue);
+    if (!day) return true;
     const cell = asEditableDate(getValue(row));
     if (!cell) return false;
-    return toDateOnlyTimestamp(cell) === toDateOnlyTimestamp(filterValue);
+    return toDateOnlyTimestamp(cell) === toDateOnlyTimestamp(day);
 }
 
-/** The date-range panel's filter: inclusive at both ends, open-ended when one end is null; an empty range lets every row through. */
-export function dateRangeFilterFn<R>(row: R, filterValue: DataTableDateRange | null | undefined, getValue: (row: R) => unknown): boolean {
-    if (!filterValue || (!filterValue.start && !filterValue.end)) return true;
+/** One end of a range filter value, read like a cell (a `Date`, an ISO string, a timestamp); anything else is an open end. */
+const rangeEnd = (range: unknown, end: 'start' | 'end'): Date | null =>
+    typeof range === 'object' && range !== null ? asEditableDate((range as Record<string, unknown>)[end]) : null;
+
+/**
+ * The date-range panel's filter: inclusive at both ends, open-ended when one end is missing. The ends are read like cells, so a range restored
+ * from JSON (ISO strings) still filters; no range, an empty one, or a value that is not a range lets every row through (never a throw).
+ */
+export function dateRangeFilterFn<R>(row: R, filterValue: DataTableDateRange | { start?: unknown; end?: unknown } | null | undefined, getValue: (row: R) => unknown): boolean {
+    const start = rangeEnd(filterValue, 'start');
+    const end = rangeEnd(filterValue, 'end');
+    if (!start && !end) return true;
     const cell = asEditableDate(getValue(row));
     if (!cell) return false;
     const ts = toDateOnlyTimestamp(cell);
-    if (filterValue.start && ts < toDateOnlyTimestamp(filterValue.start)) return false;
-    return !filterValue.end || ts <= toDateOnlyTimestamp(filterValue.end);
+    if (start && ts < toDateOnlyTimestamp(start)) return false;
+    return !end || ts <= toDateOnlyTimestamp(end);
 }
 
 /** The multiselect panel's filter: the cell value is one of the selected values (by identity); no selection lets every row through. */
