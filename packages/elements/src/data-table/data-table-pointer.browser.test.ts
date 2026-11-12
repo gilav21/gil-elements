@@ -1822,6 +1822,52 @@ describe('a release a window-level capture listener swallowed', () => {
     });
 });
 
+describe('a MOUSE release that was swallowed with no move since', () => {
+    it('does not make the Tab in a pointer arrival: 700 ms later the viewport focus goes to a cell; during a fresh press it does not', async () => {
+        const table = await mountTable();
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        const cell = cellAt(table, 1, 'name')!;
+        const swallow = (event: Event): void => event.stopImmediatePropagation();
+        window.addEventListener('pointerup', swallow, true);
+        try {
+            cell.dispatchEvent(pointer('pointerdown', 561, { over: cell, buttons: 1 }));
+            viewport.focus(); // the press's own viewport focus: fresh
+            await frames(2);
+            expect(document.activeElement).toBe(viewport);
+            cell.dispatchEvent(pointer('pointerup', 561, { over: cell })); // swallowed: the press stays open, silent
+        } finally {
+            window.removeEventListener('pointerup', swallow, true);
+        }
+        (document.activeElement as HTMLElement).blur();
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        viewport.focus(); // what a Tab does
+        await frames(2);
+        expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
+    });
+});
+
+describe('the document listeners of an open press', () => {
+    it('exist only while a press is open: a pointermove or keydown with no press never calls into the controller', async () => {
+        const table = await mountTable();
+        const controller = (table as unknown as { assembled: { controllers: Record<string, unknown>[] } }).assembled.controllers.find((c) => 'tapPending' in c)!;
+        const spy = vi.spyOn(controller as unknown as { closeStale(now: number): void }, 'closeStale');
+        const fire = (buttons: number): void => {
+            document.body.dispatchEvent(pointer('pointermove', 571, { buttons }));
+            document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true, composed: true }));
+        };
+        fire(0);
+        expect(spy).not.toHaveBeenCalled();
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 571, { over: cell, buttons: 1 }));
+        fire(1);
+        expect(spy).toHaveBeenCalled(); // watched while the press is open
+        spy.mockClear();
+        cell.dispatchEvent(pointer('pointerup', 571, { over: cell }));
+        fire(0);
+        expect(spy).not.toHaveBeenCalled(); // and not after it ended
+    });
+});
+
 describe('a press that is still held', () => {
     it('keeps "a pointer is down" through a key (Shift during a drag) and through a move with the button down: the viewport focus is not a Tab arrival', async () => {
         const table = await mountTable();
@@ -2100,32 +2146,48 @@ describe('a TOUCH press whose release was swallowed', () => {
         return event;
     };
 
-    it('is closed after 2 s of silence by the next key (the claimant is told), and Tab in focuses a cell', async () => {
-        const table = await mountTable();
-        const log: string[] = [];
-        hooks.onPointerDown = () => true;
-        hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
+const swallowed = (table: GeDataTable, claimed: boolean): { key: (stamp: number) => KeyboardEvent; cell: HTMLElement } => {
+        if (claimed) hooks.onPointerDown = () => true;
         const cell = cellAt(table, 1, 'name')!;
         const swallow = (event: Event): void => event.stopImmediatePropagation();
         window.addEventListener('pointerup', swallow, true);
-        const down = at('pointerdown', 541, cell, 1000);
         try {
-            cell.dispatchEvent(down);
+            cell.dispatchEvent(at('pointerdown', 541, cell, 1000));
             cell.dispatchEvent(at('pointerup', 541, cell, 1100));
         } finally {
             window.removeEventListener('pointerup', swallow, true);
         }
-        expect(presses(table).size).toBe(1);
-        const key = (stamp: number): KeyboardEvent => {
-            const event = new KeyboardEvent('keydown', { key: 'Shift', bubbles: true, composed: true });
-            Object.defineProperty(event, 'timeStamp', { value: stamp });
-            return event;
+        return {
+            cell,
+            key: (stamp) => {
+                const event = new KeyboardEvent('keydown', { key: 'Shift', bubbles: true, composed: true });
+                Object.defineProperty(event, 'timeStamp', { value: stamp });
+                return event;
+            },
         };
+    };
+
+    it('an UNCLAIMED one is closed after 2 s of silence by the next key', async () => {
+        const table = await mountTable();
+        const { key } = swallowed(table, false);
+        expect(presses(table).size).toBe(1);
         document.body.dispatchEvent(key(2500)); // 1.5 s after its last event: still held
         expect(presses(table).size).toBe(1);
         document.body.dispatchEvent(key(3200)); // 2.2 s: lost
         expect(presses(table).size).toBe(0);
-        expect(log).toEqual(['cancel:null']);
+    });
+
+    it('a CLAIMED one (a long-press gesture of a session) is never closed by silence: not by a key, not by a second finger', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
+        const { key, cell } = swallowed(table, true);
+        document.body.dispatchEvent(key(4000)); // 3 s of stillness
+        cell.dispatchEvent(at('pointerdown', 546, cell, 5000)); // a second finger
+        expect(presses(table).has(541)).toBe(true);
+        expect(log).toEqual([]);
+        document.dispatchEvent(pointer('pointerup', 546, { pointerType: 'touch', over: cell }));
+        presses(table).clear();
     });
 
     it('Tab in after more than 2 s of real silence focuses a cell (the stale press is closed by the viewport focus)', async () => {

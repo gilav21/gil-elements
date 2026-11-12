@@ -32,7 +32,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('the neutral services', () => {
     it('are frozen, so no table (or consumer) can patch the one object every table shares', () => {
-        for (const neutral of [NEUTRAL_RANGE, new RangeSession(rangeContext({ ...off }).context).neutral.service, NEUTRAL_EDIT]) {
+        for (const neutral of [NEUTRAL_RANGE, NEUTRAL_EDIT]) {
             expect(Object.isFrozen(neutral)).toBe(true);
             expect(() => {
                 (neutral as unknown as Record<string, unknown>)['active'] = () => true; // ES modules are strict: assigning to a frozen object throws
@@ -77,11 +77,12 @@ describe('the joint step 0 sessions', () => {
         expect(session.service.isCellSelected(3, 'a')).toBe(true);
     });
 
-    it('answers the focused cell from the NEUTRAL service too (a broken session), like the loading part', () => {
-        const { context } = rangeContext({ ...off }, { focused: { rowIndex: 1, columnKey: 'a' } });
-        const neutral = new RangeSession(context).neutral.service;
-        expect(neutral.isCellSelected(1, 'a')).toBe(true);
-        expect(neutral.isCellSelected(2, 'a')).toBe(false);
+    it('has no neutral override for isCellSelected: with no live part (loading, or a failed session) its own service answers the focused cell', () => {
+        const { context } = rangeContext({ enableCellRangeSelection: true, enableFillHandle: false }, { focused: { rowIndex: 1, columnKey: 'a' } });
+        const session = new RangeSession(context);
+        expect(session.neutral).toEqual({});
+        expect(session.service.isCellSelected(1, 'a')).toBe(true);
+        expect(session.service.isCellSelected(2, 'a')).toBe(false);
     });
 
     it('asks the host to render when a range is set', () => {

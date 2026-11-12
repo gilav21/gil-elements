@@ -531,7 +531,11 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Clears the advanced filter tree (the column and global filters stay). */
     clearAdvancedFilter(): void {
-        this.provider('query')?.changeAdvancedFilter(null); // the query controller writes the model with the page reset; inert while detached, as on main
+        // The query controller writes the model with the page reset; with no query provider (before the first connect, or detached) the value is written
+        // directly (no page to reset without a query), so it is cleared when the table attaches.
+        const query = this.provider('query');
+        if (query) query.changeAdvancedFilter(null);
+        else this.model.set('advancedFilter', null);
     }
 
     // ---- range, fill, clipboard and row drag (wave 6) ---------------------------------------------------------

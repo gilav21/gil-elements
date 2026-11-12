@@ -44,12 +44,18 @@ export const iconElement = lazyElement('ge-icon', () => import('../icon/define.j
 export function ensureIconElement(): void {
     // Called for every icon cell at every render: defined, latched-failed or already requested answers at once, with no promise allocated (the memoised
     // import is in flight or done; a definition that arrives later is seen by `ready()`).
-    if (iconElement.requested() || iconElement.ready() || iconElement.failed()) return;
+    if (iconElement.requested() || iconElement.ready()) return; // (a failed load is still `requested`: a latched failure answers at once)
     void iconElement.load();
 }
 
-/** Forgets a latched load failure: the next `ensureIconElement()` imports again (called when a table attaches). */
-export const resetIconElement = (): void => iconElement.resetIfFailed();
+let retried = false;
+
+/** Forgets a latched load failure so the next `ensureIconElement()` imports again (called when a table attaches), at most ONCE per page: a chunk that keeps failing is not re-imported (and re-reported) at every connect. */
+export const resetIconElement = (): void => {
+    if (retried) return;
+    retried = iconElement.failed();
+    iconElement.resetIfFailed();
+};
 
 /** A glyph's markup as `ge-icon` stores it, for the test that keeps the two equal. */
 export const chromeGlyphMarkup = (name: ChromeIconName): string => GLYPHS[name].strings.join('');

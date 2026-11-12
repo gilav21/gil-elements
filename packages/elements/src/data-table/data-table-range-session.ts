@@ -62,13 +62,8 @@ export class RangeSession<T> implements CellSession {
 
     constructor(protected readonly context: InteractionContext<T>) {}
 
-    /** While it is broken `isCellSelected` answers like the loading part does: the focused cell. Its VALUE methods (`cellRange`) are never neutral. */
-    readonly neutral = { service: Object.freeze({ isCellSelected: (rowIndex: number, columnKey: string) => this.isFocused(rowIndex, columnKey) }) };
-
-    private isFocused(rowIndex: number, columnKey: string): boolean {
-        const focused = this.context.focused();
-        return focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
-    }
+    /** No neutral answers: while the shell is broken `isCellSelected` is answered by its own `service`, which reports the focused cell when no part is active (as while the part loads). */
+    readonly neutral = {};
 
     // wave 6: the methods below that answer "nothing" delegate to `this.lazy.part` once the part implements them.
     readonly rangeService: RangeService = {
@@ -111,7 +106,8 @@ export class RangeSession<T> implements CellSession {
         cellRange: () => this.rangeService.range(),
         isCellSelected: (rowIndex, columnKey) => {
             if (this.rangeService.active() && this.rangeService.range()) return this.rangeService.isInRange(rowIndex, columnKey);
-            return this.isFocused(rowIndex, columnKey);
+            const focused = this.context.focused();
+            return focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
         },
     };
 

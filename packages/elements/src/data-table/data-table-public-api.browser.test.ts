@@ -130,6 +130,31 @@ describe('clearAdvancedFilter with no filter set', () => {
     });
 });
 
+describe('clearAdvancedFilter with no query provider', () => {
+    it('before the first connect the model is written directly: the filter is null when the table attaches', async () => {
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        table.model.set('advancedFilter', { type: 'group', combinator: 'and', rules: [] });
+        table.clearAdvancedFilter();
+        expect(table.model.get('advancedFilter')).toBeNull();
+        table.model.set('advancedFilter', { type: 'group', combinator: 'and', rules: [] });
+        const attached = await mountTable();
+        attached.model.set('advancedFilter', { type: 'group', combinator: 'and', rules: [] });
+        attached.remove(); // detached: no query provider
+        attached.clearAdvancedFilter();
+        expect(attached.model.get('advancedFilter')).toBeNull();
+    });
+
+    it('a write through the query service marks the filtering trigger, as every filter write does (the loading controller watches the model key)', async () => {
+        const table = await mountTable();
+        table.model.set('advancedFilter', { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'equals', value: 'odd' }] });
+        await settle(table);
+        table.setLoadingTrigger('initial');
+        table.clearAdvancedFilter();
+        await settle(table);
+        expect(table.provider('loading')!.trigger()).toBe('filtering');
+    });
+});
+
 describe('moveRow on a detached table', () => {
     it('is inert (false, no throw): it needs the live grid', async () => {
         const table = await mountTable();

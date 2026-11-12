@@ -52,6 +52,8 @@ const CONTROLS = `${NATIVE_CONTROLS.join(", ")}, [role="checkbox"], ${INTERACTIV
 const CELL = '[data-slot="table-cell"]';
 /** A touch press with no pointer event for this long is taken as lost (its release was swallowed). */
 const STALE_TOUCH_MS = 2000;
+/** A viewport focus within this long of a press's last pointer event is that press's own (a real press focuses the viewport at its pointerdown, within the same event). */
+const FRESH_PRESS_MS = 500;
 /** A press on this element clears the focus: it is the body outside any cell (a group row, the stretch row); the toolbar, header, pager and detail rows do not. */
 const clearsFocus = (target: Element): boolean => target.closest(BODY) !== null && target.closest('[data-kind="detail"]') === null;
 /** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
@@ -111,6 +113,8 @@ export class CellInteractionController<T> {
      * (a release outside), or by `detach()`.
      */
     private readonly presses = new Map<number, Press>();
+    /** Removes the document listeners of `watchPresses`: set while a press is open. */
+    private unwatchPresses: (() => void) | null = null;
     /** The tap the capture listener decided on, for the bubble listener of the SAME event (by identity); dropped when used, at the next pointerdown and at detach. */
     private tapPending: { event: PointerEvent; press: Press } | null = null;
     /** The pointerup / pointercancel the document saw for a press the root did not hear, until the deferred close handles it (the same pointer may press again first). */
@@ -210,16 +214,6 @@ export class CellInteractionController<T> {
                 this.within = false;
                 this.cancelPresses();
             }),
-            // A press whose release was swallowed (a window-level capture listener) is closed by the next move of its mouse or pen with no button down (such a
-            // pointer is not pressing any more); a moving press stays fresh. A TOUCH has no such move: one idle for STALE_TOUCH_MS is closed by the next key,
-            // pointerdown or viewport focus (`closeStale`). A key never ends a held press. The early exit makes the hot move event cost one lookup.
-            disposables.listen<PointerEvent>(root.ownerDocument, 'pointermove', (event) => {
-                const press = this.presses.get(event.pointerId);
-                if (!press) return;
-                press.seen = event.timeStamp;
-                if (event.buttons === 0 && !press.touch) this.endPress(event.pointerId, press, null);
-            }, true),
-            disposables.listen<KeyboardEvent>(root.ownerDocument, 'keydown', (event) => this.closeStale(event.timeStamp), true),
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => this.onFocusIn(event))),
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
             disposables.add(() => this.observer?.disconnect()),
@@ -522,15 +516,36 @@ export class CellInteractionController<T> {
         if (event.relatedTarget instanceof Node && !this.host.root.contains(event.relatedTarget)) this.within = false;
     }
 
-    /** Ends the TOUCH presses that have seen no pointer event for `STALE_TOUCH_MS` before `now`: their release never came. A press being dragged keeps seeing moves. */
+/**
+     * While a press is open (and only then) the document's moves and keys are watched, so no listener costs anything while nothing is pressed. A press whose
+     * release was swallowed (a window-level capture listener) is closed by the next move of its mouse or pen with no button down (such a pointer is not
+     * pressing any more); a moving press stays fresh. A key closes the stale presses (`closeStale`) but never a held one (a Shift during a drag).
+     */
+    private watchPresses(): void {
+        const { root, disposables } = this.host;
+        const undo = [
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointermove', (event) => {
+                const press = this.presses.get(event.pointerId);
+                if (!press) return;
+                press.seen = event.timeStamp;
+                if (event.buttons === 0 && !press.touch) this.endPress(event.pointerId, press, null);
+            }, true),
+            disposables.listen<KeyboardEvent>(root.ownerDocument, 'keydown', (event) => this.closeStale(event.timeStamp), true),
+        ];
+        this.unwatchPresses = () => undo.forEach((off) => off());
+    }
+
+    /** Ends the UNCLAIMED TOUCH presses that have seen no pointer event for `STALE_TOUCH_MS` before `now`: their release never came. A press being dragged keeps seeing moves. */
     private closeStale(now: number): void {
-        for (const [id, press] of [...this.presses]) if (press.touch && now - press.seen > STALE_TOUCH_MS) this.endPress(id, press, null);
+        for (const [id, press] of [...this.presses]) if (press.touch && !press.claimedBy && now - press.seen > STALE_TOUCH_MS) this.endPress(id, press, null);
     }
 
     /** Tab (or a script) put focus on the viewport: hand it to the roving cell, or to the first one. */
     private onViewportFocus(now: number): void {
         this.closeStale(now);
-        if (this.presses.size > 0) return; // a pointer is down: the focus it causes on the viewport is not a Tab arrival
+        // A FRESH press (some pointer event within FRESH_PRESS_MS): the focus it causes on the viewport is not a Tab arrival. An older one is a press whose release
+        // was lost (swallowed, and no move since): the Tab arrives.
+        for (const press of this.presses.values()) if (now - press.seen <= FRESH_PRESS_MS) return;
         const keys = requireProvider(this.host, 'columns').focusableKeys();
         const first = keys[0];
         // A drawn roving cell never leaves the viewport tabbable, so a viewport focus here means it is not on screen (or none exists).
@@ -618,6 +633,7 @@ export class CellInteractionController<T> {
         const startCell = !own || overlay ? null : this.addressOf(target);
         const view: PointerPress = Object.freeze({ anchor, pressed: target, startCell });
         this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', seen: event.timeStamp, overlay, clears: !startCell && target !== null && clearsFocus(target) });
+        if (this.presses.size === 1) this.watchPresses();
     }
 
     /**
@@ -662,7 +678,7 @@ export class CellInteractionController<T> {
         if (claimedBy) {
             if (this.broken.has(claimedBy)) return; // a failed session is never called (its presses are ended when it fails)
             // Every claimant gets exactly ONE end callback: its pointerup, or, when it has none, the cancel.
-            if (claimedBy.onPointerUp) this.guarded(() => claimedBy.onPointerUp?.(event, cellAddressOf(cell), info));
+            if (claimedBy.onPointerUp) this.guarded(() => claimedBy.onPointerUp?.(event, this.addressOf(cell), info));
             else this.notifyCancel(press, event);
             return;
         }
@@ -743,6 +759,7 @@ export class CellInteractionController<T> {
      */
     private endPress(pointerId: number, press: Press, event: PointerEvent | null, notify = true): void {
         this.presses.delete(pointerId);
+        if (this.presses.size === 0) this.unwatchPresses?.(), (this.unwatchPresses = null);
         this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed
         this.closing.delete(pointerId);

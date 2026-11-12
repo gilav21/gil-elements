@@ -55,7 +55,7 @@
  *   again, not even for the presses it claimed, which just end), detached, and left out of its LIFECYCLE (pointer, `hostUpdate`, overlay) until
  *   the next attach. What it holds as a VALUE is never withdrawn: `services.range` and the `range` provider stay its own, its `range()` /
  *   `setRange()` keep working, and `keepValue()` (the value half of its update, if it has one) keeps being called at every update. Only the
- *   methods that need its live part answer from its `neutral.service` (`NEUTRAL_EDIT`, `RangeSession.neutral`: `isCellSelected` answers the focused cell, like the loading part) while it is
+ *   methods that need its live part answer from its `neutral.service` (`NEUTRAL_EDIT`; the range session has none: its `isCellSelected` already answers the focused cell when no part is active) while it is
  *   out. An error in any other callback is reported and the callback answers nothing. A press that ends inside a session's own `onPointerDown`
  *   (a blur, a detach of the table) is cancelled to it before the call returns, before its detach.
  * - A widget in a cell that manages its own focus (a combobox, a menu button, a custom editor that is not a native control) marks itself, or an
