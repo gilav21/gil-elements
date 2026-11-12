@@ -267,7 +267,18 @@ async function renderJob(browser, theme, group, side) {
                 // editors open, `focus()` does nothing, so every editor of the page stays open and none is focused (as Angular's static render shows them).
                 const editing = document.querySelectorAll('ge-data-table[data-edit]');
                 const realFocus = HTMLElement.prototype.focus;
-                if (editing.length > 0) HTMLElement.prototype.focus = function () {};
+                // The tables whose editor has made its own focus attempt (the stub records it, from inside a shadow root too), so the real `focus()`
+                // is put back only once every editor has tried: no late focus can land after it and commit an editor.
+                const tried = new Set();
+                const tableOf = (node) => {
+                    for (let at = node; at; at = at.parentNode ?? at.host ?? null) if (at.matches?.('ge-data-table[data-edit]')) return at;
+                    return null;
+                };
+                if (editing.length > 0)
+                    HTMLElement.prototype.focus = function () {
+                        const table = tableOf(this);
+                        if (table) tried.add(table);
+                    };
                 try {
                 for (const target of editing) {
                     if (target.dataset.props) Object.assign(target, JSON.parse(target.dataset.props));
@@ -292,8 +303,9 @@ async function renderJob(browser, theme, group, side) {
                         await target.updateComplete;
                     }
                 }
-                // The editors focus one frame after their render: wait it out before `focus()` works again.
-                if (editing.length > 0) for (let i = 0; i < 3; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
+                // The editors focus after their render (a date editor once its lazy picker is defined): wait until each has tried, capped at 120 frames
+                // (deterministic: the cap is only reached when an editor never focuses, and the frames are counted, not timed).
+                for (let frame = 0; editing.length > 0 && tried.size < editing.length && frame < 120; frame++) await new Promise((resolve) => requestAnimationFrame(resolve));
                 } finally {
                     HTMLElement.prototype.focus = realFocus;
                 }
