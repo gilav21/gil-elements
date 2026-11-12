@@ -918,6 +918,31 @@ describe('review round 2', () => {
         expect(input.value).toBe('fooz');
     });
 
+    it('a text editor on a number cell commits a number for numeric text, the text otherwise (round 4)', async () => {
+        const values: unknown[] = [];
+        const table = await mount({ columns: editColumns({ age: { editType: 'text', valueSetter: (row, v) => (values.push(v), { ...row, age: v as number }) } }) });
+        const edits = record(table, 'cell-edit');
+        await startEditingAt(table, 0, 'age'); // 41
+        const input = openEditor(table) as HTMLInputElement;
+        expect(input.type).toBe('text');
+        await userEvent.clear(input);
+        await userEvent.type(input, ' 41 ');
+        await press('{Enter}');
+        await settle(table);
+        expect(edits).toHaveLength(0); // the same number: unchanged
+        await startEditingAt(table, 0, 'age');
+        await userEvent.clear(openEditor(table)!);
+        await userEvent.type(openEditor(table)!, '12');
+        await press('{Enter}');
+        await settle(table);
+        await startEditingAt(table, 1, 'age');
+        await userEvent.clear(openEditor(table)!);
+        await userEvent.type(openEditor(table)!, 'n/a');
+        await press('{Enter}');
+        await settle(table);
+        expect(values).toEqual([12, 'n/a']);
+    });
+
     it('setEditValue replaces unreadable number text: the value then commits', async () => {
         const table = await mount();
         await startEditingAt(table, 0, 'age');

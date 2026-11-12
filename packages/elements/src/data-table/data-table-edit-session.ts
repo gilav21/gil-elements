@@ -27,6 +27,7 @@ import {
     moveError,
     reconcileEditor,
     tabTarget,
+    textDraftFor,
     writeBackDate,
 } from './data-table-edit.js';
 // TEXT_FIELD: a key typed in one is the field's own (its undo, Enter in a filter input): the history and edit-start keys never take it (B1).
@@ -418,7 +419,8 @@ export class EditSession<T> implements CellSession {
         if (this.open !== open) return;
         open.badInput = open.kind === 'number' && badInput;
         open.shown = raw; // what the input holds now: the `live` value binding then leaves it (and the caret) alone
-        this.setValue(open, coerceDraft(open.kind, raw, open.column.editOptions), false);
+        const draft = open.kind === 'text' ? textDraftFor(String(raw), open.original) : coerceDraft(open.kind, raw, open.column.editOptions);
+        this.setValue(open, draft, false);
     }
 
     /**

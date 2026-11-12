@@ -12,7 +12,7 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { live } from 'lit/directives/live.js';
 import { componentCell } from './data-table-component-cell.js';
 import { editSessionOf, type EditSession, type OpenEditor } from './data-table-edit-session.js';
-import { optionIndexOf } from './data-table-edit.js';
+import { isBuiltInKind, optionIndexOf } from './data-table-edit.js';
 import type { DataTableViewHost } from './data-table-view.js';
 import type { ComponentOutputs, EnhancedColumnDef } from './data-table.types.js';
 import { asEditableDate } from './data-table.utils.js';
@@ -114,7 +114,7 @@ function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overl
                     session.input(open, input.value, input.validity.badInput);
                 }} />`;
     }
-    const builtIn = kind !== 'component' && kind !== 'renderer';
+    const builtIn = isBuiltInKind(kind);
     return html`<div data-slot="data-table-cell-editor" data-kind=${kind} ?data-invalid=${invalid} @focusout=${builtIn ? (event: FocusEvent) => session.leave(open, event) : nothing}>${editor}${invalid
         ? html`<p id=${open.errorId} data-slot="cell-edit-error" role="alert" ?data-overlay=${overlay}>${message}</p>`
         : nothing}</div>`;

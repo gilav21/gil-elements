@@ -13,6 +13,7 @@ import {
     reconcileEditor,
     sameEditValue,
     tabTarget,
+    textDraftFor,
     writeBackDate,
 } from './data-table-edit.js';
 import { validateConfig } from './data-table-config-check.js';
@@ -211,6 +212,30 @@ describe('the editing config check (wave 5 B block of validateConfig)', () => {
         expect(check([{ accessorKey: 'a', header: 'A', editable: true, editType: 'select', editOptions: [{ label: 'x', value: 1 }], valueSetter: setter }])).toEqual([]);
         expect(check([{ accessorKey: 'a', header: 'A', editable: true, editType: 'select', editComponent: 'x-ed', valueSetter: setter }])).toEqual([]);
         expect(check([{ accessorKey: 'a', header: 'A', editType: 'select' }])).toEqual([]);
+    });
+});
+
+describe('textDraftFor: a text editor on a number cell (round 4)', () => {
+    it('gives a number for text that reads as a finite number, trimmed', () => {
+        expect(textDraftFor('42', 7)).toBe(42);
+        expect(textDraftFor(' -3.5 ', 7)).toBe(-3.5);
+        expect(textDraftFor('1e3', 7)).toBe(1000);
+    });
+
+    it('keeps any other text a string', () => {
+        expect(textDraftFor('', 7)).toBe('');
+        expect(textDraftFor('  ', 7)).toBe('  ');
+        expect(textDraftFor('12abc', 7)).toBe('12abc');
+        expect(textDraftFor('Infinity', 7)).toBe('Infinity');
+    });
+
+    it('leaves the text alone for a cell that did not hold a number', () => {
+        expect(textDraftFor('42', '41')).toBe('42');
+        expect(textDraftFor('42', null)).toBe('42');
+    });
+
+    it('retyping the same number is unchanged', () => {
+        expect(decideCommit(textDraftFor('7', 7), 7, null, { rowIndex: 0, columnKey: 'n' })).toEqual({ action: 'cancel' });
     });
 });
 

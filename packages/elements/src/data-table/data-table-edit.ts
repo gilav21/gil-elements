@@ -4,6 +4,7 @@
  * `data-table-edit-session.ts` applies them, node tests pin them.
  */
 import type { CellEditError, ColumnDef, EditingCell } from './data-table.types.js';
+import { dateOnlyParts, toLocalDateString, type Ymd } from './data-table.utils.js';
 
 /** The editor a column opens, in Angular's precedence (html 207-290): a component, a renderer, then `editType`, else a text input. */
 export type EditKind = 'component' | 'renderer' | 'checkbox' | 'date' | 'select' | 'number' | 'text';
@@ -36,10 +37,6 @@ export const commitsOnEnter = (kind: EditKind): boolean => kind === 'text' || ki
  */
 export const commitsOnBlur = (kind: EditKind): boolean => kind === 'text' || kind === 'number' || kind === 'select';
 
-const pad = (n: number): string => String(n).padStart(2, '0');
-/** `YYYY-MM-DD` of a date in the LOCAL calendar. */
-const localDay = (d: Date): string => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 /** An ISO date-time: the date part, then the rest (the time and any offset), kept as written. */
 const DATE_TIME = /^(\d{4}-\d{2}-\d{2})([T ].+)$/;
 
@@ -58,16 +55,16 @@ export function writeBackDate(picked: Date | null, previous: unknown): unknown {
     if (typeof previous === 'number') return (Number.isFinite(previous) ? onPickedDay(new Date(previous)) : picked).getTime();
     if (previous instanceof Date) return Number.isNaN(previous.getTime()) ? new Date(picked) : onPickedDay(previous);
     if (typeof previous === 'string') {
-        const dateTime = DATE_ONLY.test(previous) ? null : DATE_TIME.exec(previous);
+        const dateTime = dateOnlyParts(previous) ? null : DATE_TIME.exec(previous);
         const shown = dateTime ? new Date(previous) : null;
-        if (!dateTime || !shown || Number.isNaN(shown.getTime())) return localDay(picked);
+        if (!dateTime || !shown || Number.isNaN(shown.getTime())) return toLocalDateString(picked);
         // The editor showed the instant's LOCAL day; the string's date part may be another day (a `Z` time near midnight). Moving the written
         // date by the days the user moved keeps the string's own calendar, time and offset exact.
         const midnight = (d: Date): number => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
         const days = Math.round((midnight(picked) - midnight(shown)) / 86_400_000);
-        const [y, m, d] = (dateTime[1] as string).split('-').map(Number) as [number, number, number];
-        const moved = new Date(Date.UTC(y, m - 1, d + days));
-        return `${moved.getUTCFullYear()}-${pad(moved.getUTCMonth() + 1)}-${pad(moved.getUTCDate())}${dateTime[2]}`;
+        // The written date as a LOCAL calendar day only to do the day arithmetic (a whole-day move is the same in any zone), then written back.
+        const written = dateOnlyParts(dateTime[1] as string) as Ymd;
+        return `${toLocalDateString(new Date(written.y, written.m - 1, written.d + days))}${dateTime[2]}`;
     }
     return new Date(picked);
 }
@@ -96,6 +93,18 @@ export function coerceDraft(kind: EditKind, raw: unknown, options?: readonly { r
         default:
             return raw;
     }
+}
+
+/**
+ * The draft of a TEXT editor on a cell that held a number: the text as a number when it reads as a finite one (trimmed, `' 42 '` is 42), so a
+ * numeric column stays numeric and retyping the same number is "unchanged"; any other text stays a string (the validator decides). A cell that
+ * did not hold a number gets the text as typed.
+ */
+export function textDraftFor(raw: string, original: unknown): unknown {
+    if (typeof original !== 'number') return raw;
+    const trimmed = raw.trim();
+    const n = Number(trimmed);
+    return trimmed !== '' && Number.isFinite(n) ? n : raw;
 }
 
 /** The index of the option that holds `value` (the select draws it selected), -1 for none. Strict first, then by string, as a native select compares. */
