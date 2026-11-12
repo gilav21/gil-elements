@@ -96,6 +96,13 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     );
 
     // ---- wave 5 (filters and editing): package A and B add their `warn(...)` calls here, each in its own marked block -------------------
+    // wave5: package B (editing) begin
+    const selectWithoutOptions = c.columns.filter((col) => col.editable && col.editType === 'select' && !col.editComponent && !col.editRenderer && !col.editOptions?.length);
+    warn(
+        selectWithoutOptions.length > 0,
+        `Columns [${keys(selectWithoutOptions)}] have editType 'select' but no editOptions. The editor has nothing to pick from (without the list it is a text input); give the options.`,
+    );
+    // wave5: package B (editing) end
     // wave5: package A (filters). Reads only `columns` (already in the snapshot).
     const panelWithoutFlag = c.columns.filter((col) => col.filterComponent && !col.enableFiltering);
     warn(

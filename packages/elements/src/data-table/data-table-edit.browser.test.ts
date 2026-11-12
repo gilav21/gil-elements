@@ -3,6 +3,7 @@
  * the interaction with the grid and the history keys, with real input (CDP mouse and touch, `userEvent` keys). Ports the Angular spec
  * cases of data-table.component.spec 1047-1266, 3452-3606, 4241-4297, 4559-4642 and 6949-7080 that need the element.
  */
+import axe from 'axe-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { axTree, cellAt, makeRows, mountTable, q, type SampleRow, settle } from './data-table-fixtures.js';
@@ -724,6 +725,40 @@ describe('E7 history keys', () => {
         await press('{Control>}z{/Control}');
         await settle(table);
         expect(announced(table)).toBe('Edit undone. 1 changes skipped: their rows or columns no longer exist');
+    });
+});
+
+describe('axe', () => {
+    const rows = ROWS.map((r) => ({ ...r, active: true, born: '2020-01-15', role: 'b' }));
+    const extra: ColumnDef<SampleRow>[] = [
+        { accessorKey: 'active', header: 'Active', editable: true, editType: 'checkbox', valueSetter: (row, v) => ({ ...row, active: v }) },
+        { accessorKey: 'born', header: 'Born', width: '220px', editable: true, editType: 'date', valueSetter: (row, v) => ({ ...row, born: v }) },
+        { accessorKey: 'role', header: 'Role', editable: true, editType: 'select', editOptions: [{ label: 'A', value: 'a' }, { label: 'B', value: 'b' }], valueSetter: (row, v) => ({ ...row, role: v }) },
+    ];
+    const violations = async (table: Element): Promise<string[]> => (await axe.run(table)).violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
+
+    afterEach(() => withTheme('light'));
+
+    it.each(['light', 'dark'])('passes with each editor open, with and without its error (%s)', async (mode) => {
+        withTheme(mode);
+        const table = await mount({ data: rows, columns: editColumns({ name: { editValidator: (v) => v !== 'x' || 'Not x' } }, extra) });
+        expect(await violations(table)).toEqual([]); // editable cells, nothing open
+        for (const key of ['name', 'age', 'active', 'born', 'role']) {
+            await startEditingAt(table, 0, key);
+            if (key === 'born') await whenDefined('ge-date-picker');
+            await settle(table);
+            expect(await violations(table)).toEqual([]);
+        }
+        await startEditingAt(table, 0, 'name');
+        table.provider('interaction')?.setEditValue?.('x');
+        table.commitEdit();
+        await settle(table);
+        expect(editError(table)).not.toBeNull();
+        // KNOWN, not this wave's: in dark mode the theme's `--destructive` (oklch 0.55) on `--background` is under 4.5:1 for 12 px text; every
+        // error text of the library (ge-field's error, alerts) uses the same token, as Angular does. Reported to the lead as a token question.
+        const result = await axe.run(table);
+        const failing = result.violations.flatMap((v) => v.nodes.map((n) => `${v.id}: ${n.target.join(' ')}`));
+        expect(failing.filter((f) => !(mode === 'dark' && f.startsWith('color-contrast:') && f.includes('-edit-error')))).toEqual([]);
     });
 });
 

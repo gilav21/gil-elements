@@ -7,19 +7,22 @@
     ge-data-table [data-slot="table-cell"][data-editable] {
         touch-action: manipulation;
     }
-    /* The editor stacks its error message UNDER the input, so the row grows with it (D19). */
+    /*
+     * The editor lays its control out as the cell would (a centred flex row: Angular draws it straight in the cell) and WRAPS its error
+     * message onto a line of its own, UNDER the input, so the row grows with it (D19).
+     */
     ge-data-table [data-slot="data-table-cell-editor"] {
         position: relative;
         display: flex;
         flex: 1 1 auto;
-        flex-direction: column;
-        justify-content: center;
+        flex-wrap: wrap;
+        align-items: center;
         min-width: 0;
-        align-self: stretch;
         white-space: normal;
     }
-    ge-data-table [data-slot="data-table-cell-editor"][data-kind="checkbox"] {
-        align-items: flex-start;
+    /* With no message the control sits straight in the cell, as Angular draws it (the wrapper has no box). */
+    ge-data-table [data-slot="data-table-cell-editor"]:not([data-invalid]) {
+        display: contents;
     }
     /* html 251-275: `w-full h-full bg-background border-0 outline-none text-sm px-1`, the text input also `select-text`. */
     ge-data-table [data-slot="data-table-cell-editor"] > input[data-edit-input],
@@ -50,6 +53,7 @@
     }
     /* html 278-285: `mt-0.5 px-1 text-xs text-destructive`. */
     ge-data-table [data-slot="cell-edit-error"] {
+        flex-basis: 100%;
         margin-top: 0.125rem;
         margin-bottom: 0;
         padding-inline: 0.25rem;

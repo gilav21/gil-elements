@@ -263,7 +263,13 @@ async function renderJob(browser, theme, group, side) {
                 // `data-edit` is `rowIndex,columnKey` of a ge-data-table: that cell's editor is opened, as a double click would. The hook THROWS (with the case id) when the editor does not open: at joint step 0 `startEditing` is inert and always answers false, so NO parity case may use `data-edit` before wave 5 B makes editing real.
                 // `data-edit-error` is a message: the column then refuses every value with it and the edited draft is committed, so the editor shows its error state.
                 // It runs BEFORE the animation wait below, so a transition the open editor starts is awaited too; the table gets its `data-props` first, there, and the generic `data-props` loop skips it.
-                for (const target of document.querySelectorAll('ge-data-table[data-edit]')) {
+                // An open editor takes DOM focus after its render, and an editor that loses it to the NEXT case's editor commits and closes: while the
+                // editors open, `focus()` does nothing, so every editor of the page stays open and none is focused (as Angular's static render shows them).
+                const editing = document.querySelectorAll('ge-data-table[data-edit]');
+                const realFocus = HTMLElement.prototype.focus;
+                if (editing.length > 0) HTMLElement.prototype.focus = function () {};
+                try {
+                for (const target of editing) {
                     if (target.dataset.props) Object.assign(target, JSON.parse(target.dataset.props));
                     await target.updateComplete;
                     const comma = target.dataset.edit.indexOf(','); // the row index has no comma, a column key may
@@ -285,6 +291,11 @@ async function renderJob(browser, theme, group, side) {
                         target.commitEdit();
                         await target.updateComplete;
                     }
+                }
+                // The editors focus one frame after their render: wait it out before `focus()` works again.
+                if (editing.length > 0) for (let i = 0; i < 3; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
+                } finally {
+                    HTMLElement.prototype.focus = realFocus;
                 }
                 // An infinite animation (a spinner, a marquee) never finishes, so waiting on it would hang the run.
                 await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));
