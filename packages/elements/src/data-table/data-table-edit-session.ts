@@ -32,7 +32,7 @@ import {
     writeBackDate,
 } from './data-table-edit.js';
 // TEXT_FIELD: a key typed in one is the field's own (its undo, Enter in a filter input): the history and edit-start keys never take it (B1).
-import { type CellAddress, cellAddressOf, composedContains, ownClosest, ownsTarget, requireProvider, TEXT_FIELD, VIEWPORT } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, composedContains, ownClosest, ownElements, ownsTarget, requireProvider, TEXT_FIELD, VIEWPORT } from './data-table-host.js';
 import { lazyElement } from './data-table-lazy.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
@@ -210,6 +210,13 @@ export class EditSession<T> implements CellSession {
 
     /** The virtual window the last update saw (rows and columns drawn): a shift can move the editor's row in the DOM. */
     private lastWindow = '';
+
+    /** The drawn cell of the record with this id in this column (this table's own, not a nested one's), or null when it is not drawn. */
+    private cellOfRecord(rowId: string, columnKey: string): HTMLElement | null {
+        const { root } = this.host;
+        const selector = `[data-slot="table-row"][data-row-id="${CSS.escape(rowId)}"] > [data-slot="table-cell"][data-column="${CSS.escape(columnKey)}"]`;
+        return ownElements(root, root.querySelectorAll<HTMLElement>(selector))[0] ?? null;
+    }
 
     /** The column behind a key, as the grid draws it. */
     private columnOf(key: string): EnhancedColumnDef<T> | undefined {
@@ -574,7 +581,8 @@ export class EditSession<T> implements CellSession {
         const rows = query.renderedRows();
         const next = tabTarget(event.shiftKey, open.at.rowIndex, keys.indexOf(open.at.columnKey), keys.length, this.context.rowCount());
         const nextRow = next ? rows[next.row] : undefined;
-        const cell = this.host.cellAt(open.at.rowIndex, open.at.columnKey);
+        // The edited RECORD's own cell in the DOM as drawn now (by row id: the drawn index may already name another record), taken before the commit.
+        const cell = this.cellOfRecord(open.rowId, open.at.columnKey);
         const result = this.commit(false);
         if (result === 'rejected') {
             event.preventDefault();
@@ -583,8 +591,8 @@ export class EditSession<T> implements CellSession {
         if (!next) {
             // The edge of the grid: the key is not prevented, so the browser moves the focus on. Shift+Tab from the input would land on its own
             // cell (the roving tab stop, the input's container) and need a second press; the cell takes the focus FIRST, synchronously, so the
-            // default Shift+Tab starts from it and leaves the grid's cells in one press.
-            if (event.shiftKey) cell?.focus({ preventScroll: true });
+            // default Shift+Tab starts from it and leaves the grid's cells in one press. No such cell drawn: the viewport takes it instead.
+            if (event.shiftKey) (cell ?? this.host.root.querySelector<HTMLElement>(VIEWPORT))?.focus({ preventScroll: true });
             return;
         }
         event.preventDefault();

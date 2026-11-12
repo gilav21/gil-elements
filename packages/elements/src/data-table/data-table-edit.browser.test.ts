@@ -225,6 +225,23 @@ describe('E1 opening an editor', () => {
         expect(active?.closest?.('[data-slot="table-body"]') ?? null).toBeNull(); // not the edited cell, not any body cell
     });
 
+    it('Shift+Tab at the edge with a re-sorting commit focuses the edited RECORD cell (by id), then leaves the cells (round 12)', async () => {
+        const table = await mount({ columns: editColumns().filter((c) => c.accessorKey !== 'id'), sortState: { column: 'name', direction: 'asc' } });
+        await startEditingAt(table, 0, 'name'); // Alice: the first cell of the grid
+        const focused: Element[] = [];
+        table.addEventListener('focusin', (e) => focused.push(e.target as Element));
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.clear(input);
+        await userEvent.type(input, 'Zoe'); // the commit moves the record to the end
+        await press('{Shift>}{Tab}{/Shift}');
+        await settle(table);
+        expect(names(table)).toEqual(['Bob', 'Carol', 'Dave', 'Zoe']);
+        // The cell that took the focus on the way is the edited record's (Zoe, id b), never the one drawn at its old index.
+        const cell = focused.find((el) => el.matches('[data-slot="table-cell"]'));
+        if (cell) expect(cell.closest('[data-row-id]')?.getAttribute('data-row-id')).toBe('b');
+        expect(deepActive()?.closest?.('[data-slot="table-body"]') ?? null).toBeNull();
+    });
+
     it('"already open" means the same record, not the same index: rows moved before the editor followed (round 10)', async () => {
         const table = await mount();
         await startEditingAt(table, 0, 'name'); // Carol (a)

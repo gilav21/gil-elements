@@ -10,7 +10,7 @@ import {
     isSpecialColumnKey,
     parseNlFilterSpec,
     stringifyValue,
-    toEditedDateValue,
+    isoDateTime,
     toLocalDateString,
 } from './data-table.utils.js';
 
@@ -186,12 +186,14 @@ describe('date helpers', () => {
         expect(toLocalDateString(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
     });
 
-    it('writes back in the shape found', () => {
-        const d = new Date(2026, 2, 4);
-        expect(toEditedDateValue(d, '2026-01-01')).toBe('2026-03-04');
-        expect(toEditedDateValue(d, new Date())).toBe(d);
-        expect(toEditedDateValue(d, undefined)).toBe(d);
-        expect(toEditedDateValue(null, 'x')).toBeNull();
+    // (The write-back in the cell's own shape is writeBackDate in data-table-edit.ts, node-tested there; toEditedDateValue was removed in wave 5.)
+
+    it('reads a space-separated date-time like its T form (Safari reads the space form as Invalid Date)', () => {
+        expect(isoDateTime('2024-01-03 10:20')).toBe('2024-01-03T10:20');
+        expect(isoDateTime('2024-01-03 10:20:30')).toBe('2024-01-03T10:20:30');
+        expect(isoDateTime('2024-01-03T10:20')).toBe('2024-01-03T10:20');
+        expect(isoDateTime('soon')).toBe('soon');
+        expect(asEditableDate('2024-01-03 10:20')?.getTime()).toBe(new Date('2024-01-03T10:20').getTime());
     });
 
     it('parses only strictly date-only strings', () => {

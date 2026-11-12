@@ -214,26 +214,23 @@ export function asEditableDate(value: unknown): Date | null {
         if (ymd) return localDay(ymd);
     }
     if (typeof value === 'string' || typeof value === 'number') {
-        const parsed = new Date(value);
+        const parsed = new Date(typeof value === 'string' ? isoDateTime(value) : value);
         return Number.isNaN(parsed.getTime()) ? null : parsed;
     }
     return null;
 }
+
+/**
+ * wave5: `YYYY-MM-DD HH:mm[:ss...]` (a space before the time) as `YYYY-MM-DDTHH:mm...`, the form every engine parses (Safari reads the space
+ * form as Invalid Date). Any other string is returned as it is. ONE rule for the date editor's display and its write-back.
+ */
+export const isoDateTime = (value: string): string => value.replace(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/, '$1T$2');
 
 /** A date as `YYYY-MM-DD` in the LOCAL calendar (`toISOString` converts to UTC and is a day off east of Greenwich). */
 export function toLocalDateString(date: Date): string {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${date.getFullYear()}-${month}-${day}`;
-}
-
-/**
- * Writes a picked date back in the shape the cell already held: strings stay ISO strings. With nothing to go on (an
- * empty cell) a `Date` is returned.
- */
-export function toEditedDateValue(picked: Date | null, previous: unknown): unknown {
-    if (picked === null) return null;
-    return typeof previous === 'string' ? toLocalDateString(picked) : picked;
 }
 
 /** Same keys, same values (by identity). */

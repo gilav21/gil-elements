@@ -4,7 +4,7 @@
  * `data-table-edit-session.ts` applies them, node tests pin them.
  */
 import type { CellEditError, ColumnDef, EditingCell } from './data-table.types.js';
-import { dateOnlyParts, toLocalDateString, type Ymd } from './data-table.utils.js';
+import { asEditableDate, dateOnlyParts, toLocalDateString, type Ymd } from './data-table.utils.js';
 import { toDateOnlyTimestamp } from './data-table-filters.js';
 
 /** The editor a column opens, in Angular's precedence (html 207-290): a component, a renderer, then `editType`, else a text input. */
@@ -59,8 +59,8 @@ export function writeBackDate(picked: Date | null, previous: unknown): unknown {
         const dateTime = dateOnlyParts(previous) ? null : DATE_TIME.exec(previous);
         // `YYYY-MM-DD HH:mm[:ss]` (a space, not `T`): parsed with the `T` so every engine reads the time (Safari answers Invalid Date for the
         // space form); the string written back keeps its own separator (only the date part is replaced).
-        const shown = dateTime ? new Date(`${dateTime[1]}${(dateTime[2] as string).replace(/^ /, 'T')}`) : null;
-        if (!dateTime || !shown || Number.isNaN(shown.getTime())) return toLocalDateString(picked);
+        const shown = dateTime ? asEditableDate(previous) : null; // the one parser (a space form read with its T), as the editor displayed it
+        if (!dateTime || !shown) return toLocalDateString(picked);
         // The editor showed the instant's LOCAL day; the string's date part may be another day (a `Z` time near midnight). Moving the written
         // date by the days the user moved keeps the string's own calendar, time and offset exact.
         const days = Math.round((toDateOnlyTimestamp(picked) - toDateOnlyTimestamp(shown)) / 86_400_000);
@@ -133,8 +133,8 @@ const isEmptyText = (value: unknown): boolean => value === '' || value === null 
 
 export function decideCommit(draft: unknown, stored: unknown, error: CellEditError | null, at: EditingCell, kind?: EditKind): { action: 'cancel' } | { action: 'write'; report: boolean } {
     if (sameEditValue(draft, stored)) return { action: 'cancel' };
-    // A TEXT editor shows an empty cell (null, undefined) as '': typing then deleting leaves it as it was (not for a number: 0 is a value).
-    if (kind === 'text' && isEmptyText(draft) && isEmptyText(stored)) return { action: 'cancel' };
+    // A text or number editor shows an empty cell (null, undefined, '') as an empty field: typing then deleting leaves it as it was. 0 is a value.
+    if ((kind === 'text' || kind === 'number') && isEmptyText(draft) && isEmptyText(stored)) return { action: 'cancel' };
     const reported = error !== null && error.rowIndex === at.rowIndex && error.columnKey === at.columnKey && sameEditValue(error.value, draft);
     return { action: 'write', report: !reported };
 }
