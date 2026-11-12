@@ -805,6 +805,41 @@ describe('what a session registered before its attach threw', () => {
     });
 });
 
+describe('a session failing in two callbacks', () => {
+    it('reports each callback once: an earlier renderOverlay failure does not hide a later keepValue failure', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        let failHost = false;
+        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            if (failHost) throw new Error('host');
+        });
+        const keep = vi.spyOn(RangeSession.prototype, 'keepValue').mockImplementation(() => {
+            throw new Error('keep');
+        });
+        (RangeSession.prototype as unknown as { renderOverlay?: () => unknown }).renderOverlay = () => {
+            throw new Error('overlay');
+        };
+        try {
+            const table = await mountTable();
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toContain('overlay');
+            failHost = true;
+            table.requestUpdate();
+            await settle(table); // hostUpdate throws: the session is failed
+            error.mockClear();
+            table.requestUpdate();
+            await settle(table); // now only its keepValue runs: it fails and is reported, though renderOverlay was reported before
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(['keep']);
+            table.requestUpdate();
+            await settle(table);
+            expect(error).toHaveBeenCalledTimes(1); // and only once
+        } finally {
+            delete (RangeSession.prototype as unknown as { renderOverlay?: unknown }).renderOverlay;
+            update.mockRestore();
+            keep.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
 describe('sessions that throw in hostUpdate or renderOverlay', () => {
     it('are reported and skipped for that call: the grid still renders and the other session still updates', async () => {
         const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -1462,6 +1497,27 @@ describe('a press on the cell itself', () => {
 describe('the plain rule: a press point outside the cell\'s box is not that cell', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('allows 1 px at a fractional edge: a press on content at the FLOORED coordinate of a cell whose left edge is fractional is the cell\'s own press', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const child = document.createElement('span');
+        cell.append(child);
+        const downs: unknown[] = [];
+        hooks.onPointerDown = (_event, at) => (downs.push(at), true);
+        const real = cell.getBoundingClientRect();
+        const left = Math.floor(real.left) + 0.6; // the integer pointer coordinate is 0.6 px left of the edge
+        const box = new DOMRect(left, real.top, real.width, real.height);
+        const event = pointer('pointerdown', 641, { clientX: Math.floor(left), clientY: real.top + real.height / 2 });
+        const spy = vi.spyOn(cell, 'getBoundingClientRect').mockReturnValue(box);
+        try {
+            child.dispatchEvent(event);
+        } finally {
+            spy.mockRestore();
+        }
+        expect(downs).toEqual([{ rowIndex: 1, columnKey: 'name' }]);
+        document.dispatchEvent(pointer('pointerup', 641, { clientX: Math.floor(left), clientY: real.top + real.height / 2 }));
     });
 
     it('reads no computed style at all, and a press on the cell itself reads no rect', async () => {

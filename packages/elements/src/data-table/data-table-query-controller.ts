@@ -287,7 +287,7 @@ export class QueryController<T> {
         changeColumnFilter: () => undefined,
         changeAdvancedFilter: (group) => {
             const { model } = this.host;
-            if (model.get('advancedFilter') === group) return;
+            if ((model.get('advancedFilter') ?? null) === (group ?? null)) return;
             // Like `applyGlobalFilter`: the model change and the page reset in ONE batch, so `page-change` fires before the model's `advanced-filter-change`.
             model.batch(() => {
                 model.set('advancedFilter', group);

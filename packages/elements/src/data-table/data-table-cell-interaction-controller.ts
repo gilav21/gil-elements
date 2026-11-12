@@ -35,6 +35,7 @@ interface Press {
     readonly overlay: boolean;
 }
 
+
 /** Whether the point is in the box, or within `slop` px of it. */
 const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= box.left - slop && x <= box.right + slop && y >= box.top - slop && y <= box.bottom + slop;
 
@@ -44,7 +45,7 @@ function floatsOut(el: Element, x: number, y: number): boolean {
     if (!host || el === host) return false;
     // The plain rule: the point is outside the cell's box, so whatever is under it (a popover, a menu, a translated or transformed item) is not that cell. No style
     // is read; the cheap early-outs above (no cell, the cell itself) read no rect either.
-    return !inside(host.getBoundingClientRect(), x, y);
+    return !inside(host.getBoundingClientRect(), x, y, 1); // 1 px: fractional column edges meet integer pointer coordinates (Safari, Firefox), so the edge pixel is in the cell
 }
 
 /**
@@ -102,8 +103,9 @@ export class CellInteractionController<T> {
     readonly services: { readonly range: RangeService };
     /** Sessions that FAILED (their `attach()` or a `hostUpdate()` threw): detached at once and skipped by everything after, until the next attach. */
     private readonly broken = new Set<CellSession>();
-    /** The sessions whose `renderOverlay` failure was already reported: it runs at every render and reports its first failure only (cleared at detach). */
+    /** The (session, callback) pairs whose failure was already reported: a callback that runs at every render (`renderOverlay`: `reported`, `keepValue`: `reportedKeep`) reports its first failure only, each on its own set (cleared at detach). */
     private readonly reported = new Set<CellSession>();
+    private readonly reportedKeep = new Set<CellSession>();
     /**
      * The presses in progress, one per pointer id (several fingers are several presses; a pointerdown never overwrites another pointer's):
      * the roving cell at its pointerdown, so both ends of one press see the same anchor, and the session that claimed it, which alone gets its
@@ -247,6 +249,7 @@ export class CellInteractionController<T> {
         this.captured.clear(); // captures of pointers that had no press
         // (`closing` is empty here: `cancelPresses` above ended every press through `endPress`, which cancels and drops its pending look)
         this.reported.clear();
+        this.reportedKeep.clear();
         this.attachment++;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
     }
@@ -254,20 +257,18 @@ export class CellInteractionController<T> {
     /** Before every render: the focused cell follows its row (when a node or group moved it), the data (clamped to the rows that exist) and the layout. */
     hostUpdate(): void {
         this.reconcile();
+        // A FAILED session stops its lifecycle but not its value: `keepValue` (guarded, reported once per session) keeps its value rules running. It runs BEFORE
+        // the live sessions' updates, so a session that fails in THIS update (its `hostUpdate` is where its value rules threw) is not run twice nor reported twice.
+        for (const session of this.broken) this.guarded(() => session.keepValue?.(), session, this.reportedKeep);
         // A session whose `hostUpdate` throws is failed like one whose attach threw (reported once, left out from now on, withdrawn): it would throw at every
         // render. The others, and the rest of the update, still run.
-        const failedNow = new Set<CellSession>();
         this.eachBackwards((session) => {
             try {
                 session.hostUpdate?.();
             } catch (error) {
-                failedNow.add(session);
                 this.fail(session, error);
             }
         });
-        // A FAILED session stops its lifecycle but not its value: `keepValue` (guarded, reported once per session) keeps its value rules running. A session that
-        // failed in THIS update already ran them (its `hostUpdate` is where they threw): not twice, not reported twice.
-        for (const session of this.broken) if (!failedNow.has(session)) this.guarded(() => session.keepValue?.(), session);
     }
 
     private reconcile(): void {
@@ -803,12 +804,12 @@ export class CellInteractionController<T> {
      * Runs a session callback (a pointer handler, a cancel, a detach); one that throws is reported and answers nothing, so no press is ever broken by it.
      * A callback that runs at every render (`renderOverlay`) passes its session and reports its FIRST failure only.
      */
-    private guarded<R>(call: () => R, every?: CellSession): R | undefined {
+    private guarded<R>(call: () => R, every?: CellSession, seen = this.reported): R | undefined {
         try {
             return call();
         } catch (error) {
-            if (!every || !this.reported.has(every)) this.report(error);
-            if (every) this.reported.add(every);
+            if (!every || !seen.has(every)) this.report(error);
+            if (every) seen.add(every);
             return undefined;
         }
     }

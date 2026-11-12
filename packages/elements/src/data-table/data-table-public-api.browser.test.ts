@@ -118,6 +118,26 @@ describe('a controller that throws while drawing', () => {
     });
 });
 
+describe('clearAdvancedFilter with no filter set', () => {
+    it('emits nothing when the model has none (undefined and null are the same "no filter")', async () => {
+        const table = await mountTable();
+        expect(table.model.get('advancedFilter') ?? null).toBeNull();
+        const events: unknown[] = [];
+        table.addEventListener('advanced-filter-change', (event) => events.push((event as CustomEvent).detail));
+        table.clearAdvancedFilter();
+        await settle(table);
+        expect(events).toEqual([]);
+    });
+});
+
+describe('moveRow on a detached table', () => {
+    it('is inert (false, no throw): it needs the live grid', async () => {
+        const table = await mountTable();
+        table.remove();
+        expect(table.moveRow(table.data[1]!, 'up')).toBe(false);
+    });
+});
+
 describe('clearAdvancedFilter', () => {
     it('writes the model through the query service: the filter is cleared (one advanced-filter-change) and the page resets BEFORE it, like applyGlobalFilter', async () => {
         const table = await mountTable({ data: Array.from({ length: 30 }, (_, i) => ({ id: `r${i}`, name: i % 2 ? 'odd' : 'even', age: i })), paginationState: { pageIndex: 1, pageSize: 5 } });

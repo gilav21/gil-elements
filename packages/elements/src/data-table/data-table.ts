@@ -561,8 +561,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     }
 
     /**
-     * How an element method reaches a service, by what it needs. VALUE-holding services (the range VALUE `cellRange`, row-drag `reorderData` /
-     * `moveRow`) use `serviceOf(key)`: the controller's own (`services`, which outlives a disconnect: the controllers are built once and kept), so
+     * How an element method reaches a service, by what it needs. VALUE-holding services (the range VALUE `cellRange`, row-drag `reorderData`, pure on data)
+     * use `serviceOf(key)`: the controller's own (`services`, which outlives a disconnect: the controllers are built once and kept), so
      * a detached table keeps its value and answers pure questions. Everything that needs the LIVE grid (focus, editing, the clipboard's reads of the
      * query and columns, `fillDownTo`, the queries) uses `provider(key)`, which is cleared at disconnect: such a call is inert or null while detached
      * (as on main) instead of reaching controller code that requires providers that are gone. `serviceOf` is undefined before the first connect (and for a
@@ -617,9 +617,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return (this.serviceOf('rowDrag') as RowDragService<T> | undefined) ?? neutralRowDrag<T>();
     }
 
-    /** Moves a row one step up or down (the keyboard and button alternative to dragging); false when nothing moved. */
+    /** Moves a row one step up or down (the keyboard and button alternative to dragging); false when nothing moved (and while the table is detached). */
     moveRow(row: T, direction: 'up' | 'down'): boolean {
-        return this.rowDrag().moveRow(row, direction);
+        return this.provider('rowDrag')?.moveRow(row, direction) ?? false; // needs the live grid (drawn rows, emits row-reorder): inert while detached
     }
 
     // ---- lifecycle --------------------------------------------------------------------------------------------

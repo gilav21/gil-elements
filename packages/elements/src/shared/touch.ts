@@ -208,7 +208,7 @@ function trackContextTouch(): {
             lastTouchAt = Date.now();
             const finger = event.touches[0];
             const multiTouch = event.touches.length !== 1 || !finger;
-            const strayed = !!finger && !!origin && Math.hypot(finger.clientX - origin.x, finger.clientY - origin.y) > CONTEXT_SLOP_PX;
+            const strayed = !!finger && !!origin && !withinTouchSlop(finger.clientX - origin.x, finger.clientY - origin.y);
             if (multiTouch || strayed) travelled = true;
         },
         // A draggable target may be picked up by the browser instead; that hold is a drag, not a press.
@@ -236,9 +236,6 @@ function trackContextTouch(): {
  * a window the menu opens twice on one platform and not at all on the other.
  */
 const SAME_GESTURE_MS = 700;
-
-/** How far a finger may travel and still count as held: the 10px `onLongPress` allows. */
-const CONTEXT_SLOP_PX = 10;
 
 /** Gestures an inner target already answered; ancestors skip them. */
 const claimedGestures = new WeakSet<Event>();

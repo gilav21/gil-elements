@@ -33,8 +33,6 @@ export const NEUTRAL_RANGE: Readonly<RangeService> = Object.freeze({
     fillHandleCell: () => null,
     gestureActive: () => false,
 });
-/** The range session's methods of the `interaction` service that need the LIVE part, neutral (while it is broken `isCellSelected` answers false, not the focused cell). Its VALUE methods (`cellRange`) are never neutral. */
-export const NEUTRAL_RANGE_CELL: Readonly<Pick<CellInteractionService, 'isCellSelected'>> = Object.freeze({ isCellSelected: () => false });
 
 export class RangeSession<T> implements CellSession {
     /** The range while no part is attached; see the header. */
@@ -64,7 +62,13 @@ export class RangeSession<T> implements CellSession {
 
     constructor(protected readonly context: InteractionContext<T>) {}
 
-    readonly neutral = { service: NEUTRAL_RANGE_CELL };
+    /** While it is broken `isCellSelected` answers like the loading part does: the focused cell. Its VALUE methods (`cellRange`) are never neutral. */
+    readonly neutral = { service: Object.freeze({ isCellSelected: (rowIndex: number, columnKey: string) => this.isFocused(rowIndex, columnKey) }) };
+
+    private isFocused(rowIndex: number, columnKey: string): boolean {
+        const focused = this.context.focused();
+        return focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
+    }
 
     // wave 6: the methods below that answer "nothing" delegate to `this.lazy.part` once the part implements them.
     readonly rangeService: RangeService = {
@@ -106,8 +110,7 @@ export class RangeSession<T> implements CellSession {
         cellRange: () => this.rangeService.range(),
         isCellSelected: (rowIndex, columnKey) => {
             if (this.rangeService.active() && this.rangeService.range()) return this.rangeService.isInRange(rowIndex, columnKey);
-            const focused = this.context.focused();
-            return focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
+            return this.isFocused(rowIndex, columnKey);
         },
     };
 

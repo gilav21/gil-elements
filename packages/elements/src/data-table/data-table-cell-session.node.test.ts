@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InteractionContext } from './data-table-cell-session.js';
 import { EditSession, NEUTRAL_EDIT } from './data-table-edit-session.js';
 import { resetBadRangeWarning } from './data-table-range.js';
-import { NEUTRAL_RANGE, NEUTRAL_RANGE_CELL, RangeSession } from './data-table-range-session.js';
+import { NEUTRAL_RANGE, RangeSession } from './data-table-range-session.js';
 import { RangePart } from './lazy/range.js';
 
 const DIRECTORY = new URL('.', import.meta.url);
@@ -32,7 +32,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe('the neutral services', () => {
     it('are frozen, so no table (or consumer) can patch the one object every table shares', () => {
-        for (const neutral of [NEUTRAL_RANGE, NEUTRAL_RANGE_CELL, NEUTRAL_EDIT]) {
+        for (const neutral of [NEUTRAL_RANGE, new RangeSession(rangeContext({ ...off }).context).neutral.service, NEUTRAL_EDIT]) {
             expect(Object.isFrozen(neutral)).toBe(true);
             expect(() => {
                 (neutral as unknown as Record<string, unknown>)['active'] = () => true; // ES modules are strict: assigning to a frozen object throws
@@ -75,6 +75,13 @@ describe('the joint step 0 sessions', () => {
         vi.spyOn(session.rangeService, 'isInRange').mockImplementation((r) => r >= 3 && r <= 4);
         expect(session.service.isCellSelected(1, 'a')).toBe(false); // the focused cell is not selected once a range exists elsewhere
         expect(session.service.isCellSelected(3, 'a')).toBe(true);
+    });
+
+    it('answers the focused cell from the NEUTRAL service too (a broken session), like the loading part', () => {
+        const { context } = rangeContext({ ...off }, { focused: { rowIndex: 1, columnKey: 'a' } });
+        const neutral = new RangeSession(context).neutral.service;
+        expect(neutral.isCellSelected(1, 'a')).toBe(true);
+        expect(neutral.isCellSelected(2, 'a')).toBe(false);
     });
 
     it('asks the host to render when a range is set', () => {
