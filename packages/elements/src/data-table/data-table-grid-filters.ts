@@ -6,6 +6,7 @@
  * (a stub) draws no trigger and no row.
  */
 import { html, nothing, type TemplateResult } from 'lit';
+import { repeat } from 'lit/directives/repeat.js';
 import { computeGridAria } from './data-table-aria.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
@@ -102,7 +103,12 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
         const columns = requireProvider(host, 'columns').enhancedColumns();
         const window: BodyWindow = host.provider('virtual')?.window() ?? { start: 0, end: 0, padStart: 0, padEnd: 0, colPadStart: 0, colPadEnd: 0, colStart: 0, colEnd: columns.length, retained: [] };
         const flexible = columns.some((c) => c._width === 'auto');
-        return html`<div data-slot="table-row" role="row" data-kind="filter" aria-rowindex=${FLOATING_ROW_INDEX}>${columnParts(columns, window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : cell(p.column, p.n)))}${flexible ? nothing : html`<div data-slot="table-head" role="presentation"></div>`}</div>`; // no column borders: Angular's floating cells have none (html 763)
+        // Keyed by column like the header row: a window shift moves a cell (its input and what is typed in it) with its column, never reuses it for another.
+        return html`<div data-slot="table-row" role="row" data-kind="filter" aria-rowindex=${FLOATING_ROW_INDEX}>${repeat(
+            columnParts(columns, window),
+            (p) => ('spacer' in p ? `s:${p.spacer}` : String(p.column.accessorKey)),
+            (p) => ('spacer' in p ? columnSpacer(p.spacer) : cell(p.column, p.n)),
+        )}${flexible ? nothing : html`<div data-slot="table-head" role="presentation"></div>`}</div>`; // no column borders: Angular's floating cells have none (html 763)
     };
 
     return { trigger, row, rows: 1 };

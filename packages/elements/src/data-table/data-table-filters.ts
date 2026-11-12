@@ -57,10 +57,12 @@ export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] |
 /**
  * Two column filter values that filter the same: the same primitive (`Object.is`), dates of the same instant, arrays with the same members in the
  * same order, plain objects (a date range) with the same keys and equal values, and "no filter" in any spelling (`null`, `undefined`, an absent
- * key). A write of an equal value is a no-op: no new object, no page reset, no event.
+ * key, `''`, `[]`, an empty range: the `isFilterValueEmpty` rule). A write of an equal value is a no-op: no new object, no page reset, no event.
  */
 export function sameFilterValue(a: unknown, b: unknown): boolean {
-    if (a == null || b == null) return a == null && b == null;
+    // "No filter" in any spelling (`isFilterValueEmpty`: null, undefined, '', [], an empty range): typing then deleting is no change.
+    const emptyA = isFilterValueEmpty(a);
+    if (emptyA || isFilterValueEmpty(b)) return emptyA && isFilterValueEmpty(b);
     if (Object.is(a, b)) return true;
     if (a instanceof Date || b instanceof Date) return a instanceof Date && b instanceof Date && a.getTime() === b.getTime();
     if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameFilterValue(v, b[i]));
@@ -160,6 +162,9 @@ export const asText = (value: unknown): string => stringifyValue(value);
 
 /** The empty AND group the builder shows while no advanced filter is set. */
 export const emptyGroup = (): FilterGroup => ({ type: 'group', combinator: 'and', rules: [] });
+
+/** The tree the builder shows while there is no advanced filter: ONE frozen object (the tree operations never mutate, they build new trees). */
+export const EMPTY_GROUP: FilterGroup = Object.freeze({ type: 'group', combinator: 'and', rules: Object.freeze([]) as unknown as FilterGroup['rules'] }) as FilterGroup;
 
 /** The columns the builder offers: the consumer's columns, special ones left out. */
 export const builderColumns = <T>(columns: readonly ColumnDef<T>[]): FilterBuilderColumn[] =>

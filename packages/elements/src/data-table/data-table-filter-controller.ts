@@ -1,6 +1,6 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { chromeIcon } from './data-table-icons.js';
-import { BUILT_IN_FILTER_PANELS, builderColumns, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
+import { BUILT_IN_FILTER_PANELS, builderColumns, EMPTY_GROUP, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
@@ -14,8 +14,6 @@ export const FILTER_UI_ANNOUNCE_MS = 500;
 const panels = (): Promise<unknown> => import('./lazy/filter-panels.js');
 /** The ready-made panels (one lazy entry defines all three, with `ge-calendar` and `ge-command`): loaded when a trigger carrying one is hovered, focused or opened. */
 const PANELS: ReadonlyMap<string, LazyElement> = new Map(BUILT_IN_FILTER_PANELS.map((tag) => [tag, lazyElement(tag, panels)]));
-/** The tree the builder shows while there is no advanced filter: one frozen object (the builder's operations never mutate, they build new trees). */
-const EMPTY_GROUP: FilterGroup = Object.freeze({ type: 'group', combinator: 'and', rules: Object.freeze([]) as unknown as FilterGroup['rules'] });
 const BUILDER = lazyElement('ge-data-table-filter-builder', () => import('./lazy/filter-builder.js'));
 
 interface ColumnHandlers {
@@ -43,6 +41,13 @@ export class FilterUiController<T> {
     private cancelAnnounce: (() => void) | undefined;
     /** The pending debounced floating-input writes, by column key. */
     private readonly pending = new Map<string, () => void>();
+    /** Set while the controller writes a column filter itself: a `columnFilters` change seen then is ours, not an outside reset. */
+    private writing = false;
+
+    private dropPending(): void {
+        for (const cancel of this.pending.values()) cancel();
+        this.pending.clear();
+    }
     /** Stable per-column handlers, so the component listeners and the input's `@input` are not re-bound at every render; dropped at detach. */
     private readonly handlers = new Map<string, ColumnHandlers>();
 
@@ -70,7 +75,12 @@ export class FilterUiController<T> {
         for (const lazy of [...PANELS.values(), BUILDER]) lazy.resetIfFailed();
         this.teardown = [
             this.host.provide('filters', this.service),
-            model.subscribe('columnFilters', (_, origin) => origin === 'internal' && this.scheduleAnnouncement()),
+            model.subscribe('columnFilters', (_, origin) => {
+                // A change that is not our own write (the consumer reset the filters, a view was restored) drops the floating writes still
+                // waiting on their debounce: they were typed against the filters that are gone.
+                if (!this.writing) this.dropPending();
+                if (origin === 'internal') this.scheduleAnnouncement();
+            }),
             model.subscribe('advancedFilter', (_, origin) => origin === 'internal' && this.scheduleAnnouncement()),
         ];
     }
@@ -80,8 +90,7 @@ export class FilterUiController<T> {
         this.teardown = [];
         this.cancelAnnounce?.();
         this.cancelAnnounce = undefined;
-        for (const cancel of this.pending.values()) cancel();
-        this.pending.clear();
+        this.dropPending();
         this.handlers.clear();
         this.openColumn = null;
         this.builderOpen = false;
@@ -177,7 +186,12 @@ export class FilterUiController<T> {
         const set = (value: unknown): void => {
             this.pending.get(key)?.();
             this.pending.delete(key);
-            this.host.provider('query')?.changeColumnFilter(key, value);
+            this.writing = true;
+            try {
+                this.host.provider('query')?.changeColumnFilter(key, value);
+            } finally {
+                this.writing = false;
+            }
         };
         const change = (event: Event): void => {
             // The panel's event bubbles and is composed: stopped here, so it never reaches a listener of the table's own (global) `filter-change` (D4).
@@ -197,7 +211,7 @@ export class FilterUiController<T> {
                     key,
                     this.host.disposables.timeout(() => {
                         this.pending.delete(key);
-                        this.host.provider('query')?.changeColumnFilter(key, value);
+                        set(value);
                     }, debounce),
                 );
             },
@@ -226,11 +240,8 @@ export class FilterUiController<T> {
             if (!any) return this.host.announce(locale.filtersClearedAnnouncement);
             const say = (count: number): void => this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
             // ONE rule with the global filter: the query service says the count now, or (server filtering) once the query's answer is in, or never
-            // (no total); a newer filter change drops a waiting one. A query provider of the older shape: the count in hand, if any.
-            const query = this.host.provider('query');
-            if (query?.whenCounted) return query.whenCounted(say);
-            const count = query?.filteredCount();
-            if (count !== undefined) say(count);
+            // (no total); a newer filter change drops a waiting one.
+            this.host.provider('query')?.whenCounted(say);
         }, FILTER_UI_ANNOUNCE_MS);
     }
 }

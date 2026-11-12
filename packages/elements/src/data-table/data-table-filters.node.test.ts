@@ -276,7 +276,12 @@ describe('sameFilterValue (round 6: an equal write is a no-op)', () => {
     it('treats every "no filter" spelling as equal', () => {
         expect(sameFilterValue(null, undefined)).toBe(true);
         expect(sameFilterValue(undefined, null)).toBe(true);
-        expect(sameFilterValue(null, '')).toBe(false);
+        // Round 7: '' (and [], an empty range) is "no filter" too, the isFilterValueEmpty rule.
+        expect(sameFilterValue(null, '')).toBe(true);
+        expect(sameFilterValue('', undefined)).toBe(true);
+        expect(sameFilterValue([], null)).toBe(true);
+        expect(sameFilterValue({ start: null, end: null }, '')).toBe(true);
+        expect(sameFilterValue('', 'a')).toBe(false);
     });
 
     it('compares primitives, dates by instant, arrays by member, ranges by key', () => {

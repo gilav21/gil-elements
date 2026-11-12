@@ -20,6 +20,11 @@ function fakeHost(config: Partial<Record<string, unknown>> = {}) {
         changeColumnFilter: vi.fn((key: string, value: unknown) => model.set('columnFilters', { ...model.get('columnFilters'), [key]: value })),
         changeAdvancedFilter: vi.fn((group: FilterGroup | null) => model.set('advancedFilter', group)),
         filteredCount: vi.fn(() => 3 as number | undefined),
+        // The query service's one count rule, reduced to "now, if there is a count" (the waiting half is the query controller's, browser-tested).
+        whenCounted: (say: (count: number) => void): void => {
+            const count = query.filteredCount();
+            if (count !== undefined) say(count);
+        },
     };
     const columns: ColumnDef<Row>[] = [{ accessorKey: 'name', header: 'Name', enableFiltering: true }];
     const disposables = new Disposables();

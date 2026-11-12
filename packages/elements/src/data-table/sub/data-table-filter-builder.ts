@@ -3,7 +3,7 @@ import { live } from 'lit/directives/live.js';
 import { chromeIcon } from '../data-table-icons.js';
 import { UiElement } from '@gilav21/elements-base';
 import '../../button/define.js';
-import { addCondition, addGroup, asText, emptyGroup, type FilterBuilderColumn, needsValue, OPERATOR_ORDER, patchCondition, removeRule, setCombinator, updateRule } from '../data-table-filters.js';
+import { addCondition, addGroup, asText, EMPTY_GROUP, type FilterBuilderColumn, needsValue, OPERATOR_ORDER, patchCondition, removeRule, setCombinator, updateRule } from '../data-table-filters.js';
 import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels } from '../data-table.locales.js';
 import type { FilterCondition, FilterGroup, FilterOperator } from '../data-table.types.js';
 import css from './data-table-filter-builder.css?inline';
@@ -63,7 +63,7 @@ export class GeDataTableFilterBuilder extends UiElement {
 
     constructor() {
         super();
-        this.group = emptyGroup();
+        this.group = EMPTY_GROUP;
         this.columns = [];
         this.labels = EN_FILTER_BUILDER_LABELS;
         this.debounce = 0;
@@ -112,7 +112,7 @@ export class GeDataTableFilterBuilder extends UiElement {
         if (root !== this) return root.edit(at, change);
         clearTimeout(this.timer);
         this.timer = undefined;
-        let tree = this.group ?? emptyGroup();
+        let tree = this.group ?? EMPTY_GROUP;
         for (const { path, value } of this.pending.values()) {
             const index = path.at(-1) as number;
             tree = updateAt(tree, path.slice(0, -1), (group) => patchCondition(group, index, { value }));
@@ -164,7 +164,7 @@ ${chromeIcon('x', 'xs')}</button>
 
     protected override render() {
         const l = { ...EN_FILTER_BUILDER_LABELS, ...this.labels };
-        const group = this.group ?? emptyGroup();
+        const group = this.group ?? EMPTY_GROUP;
         const and = group.combinator === 'and';
         return html`<div part="base" class="group" data-slot="filter-group" role="group" aria-label=${l.groupLabel ?? 'Group'}>
             <div class="header">

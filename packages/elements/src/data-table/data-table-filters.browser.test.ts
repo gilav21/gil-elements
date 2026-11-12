@@ -2,9 +2,9 @@ import axe from 'axe-core';
 import { html } from 'lit';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
-import { axTree, bodyRows, cellAt, headCell, mountTable, q, qa, settle } from './data-table-fixtures.js';
+import { axTree, bodyRows, cellAt, headCell, makeColumns, makeRows, mountTable, q, qa, type SampleRow, settle } from './data-table-fixtures.js';
 import { dateFilterFn, dateRangeFilterFn, multiselectFilterFn } from './data-table-filters.js';
-import { emulateTouch, frames, mouseDrag, openPopover, parkMouse, press, touchLongPressDrag, typeText, whenDefined, withRtl, withTheme } from './data-table-input-fixtures.js';
+import { emulateTouch, frames, mouseDrag, openPopover, parkMouse, press, scrollGrid, touchLongPressDrag, typeText, whenDefined, withRtl, withTheme } from './data-table-input-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 import { DATA_TABLE_LOCALES } from './data-table.locales.js';
 import type { ColumnDef, DataTableDateRange, FilterGroup } from './data-table.types.js';
@@ -283,6 +283,58 @@ describe('a press inside an open header panel never drags its column (round 5)',
         } finally {
             await emulateTouch(false);
         }
+    });
+});
+
+describe('round 7: pending floating writes', () => {
+    it('a reset of the filters from outside within the debounce drops the waiting write', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, filterDebounce: 250 });
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'Al');
+        table.columnFilters = {};
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        await settle(table);
+        expect(table.columnFilters).toEqual({});
+        expect(names(table)).toHaveLength(4);
+    });
+
+    it('typing then deleting within the debounce is no change: no event, no page reset', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, filterDebounce: 200, paginationState: { pageIndex: 1, pageSize: 2 } }, { 'show-pagination': 'true' });
+        const changes = record(table, 'column-filters-change');
+        const pages = record(table, 'page-change');
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'x');
+        await press('{Backspace}');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await settle(table);
+        expect(changes).toHaveLength(0);
+        expect(pages).toHaveLength(0);
+        expect(table.paginationState.pageIndex).toBe(1);
+    });
+});
+
+describe('round 7: the floating row under a column window', () => {
+    it('keys its cells by column: a window shift keeps the text typed in column 12 in column 12', async () => {
+        const columns = makeColumns(30).map((c) => ({ ...c, enableFiltering: true }));
+        const table = await mountTable<SampleRow>(
+            { columns, data: makeRows(50, { columns: 30 }), enableVirtualScroll: true, virtualRowHeight: 36, enableFloatingFilters: true, filterDebounce: 60000, showPagination: false, showToolbar: false },
+            {},
+            { width: 600, height: 400 },
+        );
+        const inputOf = (key: string): HTMLInputElement | null => {
+            const index = columns.findIndex((c) => c.accessorKey === key);
+            const head = qa(table, '[data-kind="filter"] > [data-slot="table-head"]').find((h) => h.getAttribute('aria-colindex') === String(index + 1));
+            return head?.querySelector('ge-input')?.shadowRoot?.querySelector('input') ?? null;
+        };
+        await scrollGrid(table, { left: 150 * 10 });
+        await settle(table);
+        const input = inputOf('c12')!;
+        await typeText(input, 'ab');
+        await scrollGrid(table, { left: 150 * 10 + 400 });
+        await settle(table);
+        expect(inputOf('c12')).toBe(input);
+        expect(inputOf('c12')!.value).toBe('ab');
+        expect(table.columnFilters).toEqual({});
     });
 });
 
