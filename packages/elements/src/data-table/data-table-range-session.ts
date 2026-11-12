@@ -44,23 +44,17 @@ export class RangeSession<T> implements CellSession {
     private assignedSince = false;
     /** A range flag was on at the last update. */
     private wasOn = false;
-    /** The part the held range was handed to (set right after its attach): a part is read only once it is this one, so its attach sees the held range, not its empty one. */
-    private handedTo: RangePart<T> | null = null;
 
     /** Loaded when a range flag is on at an update (not at the first gesture), detached when it turns off or the table detaches. */
     private readonly lazy = lazyPart<RangePart<T>>(() =>
         import('./lazy/range.js').then((m) => {
             return new m.RangePart(this.context);
         }),
-        // The ONE handover, right after the part attaches (it is `lazy.part` from the moment it attaches): the range held NOW goes to it (a `setRange` between
-        // the part's construction and its attach reached `held` only, and the next update would have read the part's stale value back), and the arrival is drawn.
-        // The part reads `context` / the shell for anything it needs in `attach()`; its own range is set after it.
+        // The ONE handover, right BEFORE the part attaches (the same callback; it is `lazy.part` already): the range held NOW goes to it (a `setRange` between the
+        // part's construction and its attach reached `held` only), so the part never runs, not even in its `attach()`, without the held range. The arrival is drawn.
         {
-            changed: () => {
-                this.handedTo = this.lazy.part; // from now on the part is asked; until then (during its attach) the held range answers
-                this.setPartRange(this.held);
-                this.context.host.requestRender();
-            },
+            beforeAttach: (part) => part.setRange(this.held),
+            changed: () => this.context.host.requestRender(),
         },
     );
 
@@ -124,8 +118,7 @@ export class RangeSession<T> implements CellSession {
     private live(): CellRange | null {
         // Every call into the part goes through `callPart`: one that throws is reported once and answers the held value / "inactive" / a no-op, so a render
         // or a detach is never broken (a detach would otherwise skip the part's disposal).
-        const part = this.lazy.part === this.handedTo ? this.lazy.part : null; // a part still attaching has not been handed the range yet: the held one answers
-        return callPart(part, this.context.host, 'range-part-getRange', (p) => p.getRange(), this.held);
+        return callPart(this.lazy.part, this.context.host, 'range-part-getRange', (part) => part.getRange(), this.held);
     }
 
     private setPartRange(range: CellRange | null): void {

@@ -387,18 +387,18 @@ describe('the range held by the shell', () => {
         expect(session.rangeService.range()).toEqual({ ...range, endRow: 4 });
     });
 
-    it('hands the range held NOW to the part right after it attaches: a range set after the part was built but before it attached is not overwritten by the stale one of the part at the next update', async () => {
+    it('a range set DURING the attach of the part reaches the part (setRange hands it on), so the next update does not read a stale value back', async () => {
         const { session } = make();
         session.rangeService.setRange(range); // the part is built with this one ...
         const target = { ...range, endRow: 4 };
         const attach = vi.spyOn(RangePart.prototype, 'attach').mockImplementation(() => {
-            (session as unknown as { held: unknown }).held = target; // ... and a setRange that reached `held` only lands before its attach completes
+            session.rangeService.setRange(target); // ... and a setRange made while it attaches goes to the part itself
         });
         try {
             session.hostUpdate();
             const loaded = (): unknown => (session as unknown as { lazy: { part: unknown } }).lazy.part;
             await vi.waitFor(() => expect(loaded()).not.toBeNull());
-            expect(session.rangeService.range()).toEqual(target); // the part was told right after attach
+            expect(session.rangeService.range()).toEqual(target); // the part holds it
             session.hostUpdate();
             expect(session.rangeService.range()).toEqual(target); // and the update did not read the stale value back
         } finally {

@@ -181,6 +181,19 @@ describe('copy with the feature off', () => {
     });
 });
 
+describe('paste with the feature off', () => {
+    it('answers "ignored" while enable-clipboard-paste is off, and "unavailable" with the flag on and no real paste yet', async () => {
+        const off = await mountTable({ enableClipboardPaste: false });
+        const service = off.provider('clipboard')!;
+        expect(await service.paste()).toEqual({ status: 'ignored' });
+        expect(service.pasteText('x')).toEqual({ status: 'ignored' });
+        const on = await mountTable({ enableClipboardPaste: true });
+        const live = on.provider('clipboard')!;
+        expect(await live.paste()).toEqual({ status: 'unavailable' });
+        expect(live.pasteText('x')).toEqual({ status: 'unavailable' });
+    });
+});
+
 describe('moveRow on a detached table', () => {
     it('is inert (false, no throw): it needs the live grid', async () => {
         const table = await mountTable();

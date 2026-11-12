@@ -171,6 +171,28 @@ describe('lazyPart', () => {
         expect(lazy.part).toBe(instance);
     });
 
+it('calls beforeAttach synchronously right before attach, with the part already visible as lazy.part; a beforeAttach that throws fails the attach (detached, latched, reported)', async () => {
+        const order: string[] = [];
+        const instance = part();
+        instance.attach.mockImplementation(() => void order.push('attach'));
+        let lazy: ReturnType<typeof lazyPart<ReturnType<typeof part>>>;
+        lazy = lazyPart(() => Promise.resolve(instance), {
+            beforeAttach: (p) => void order.push(p === lazy.part ? 'before(visible)' : 'before'),
+        });
+        lazy.sync(true);
+        await flush();
+        expect(order).toEqual(['before(visible)', 'attach']);
+        const onError = vi.fn();
+        const broken = part();
+        const failing = lazyPart(() => Promise.resolve(broken), { onError, beforeAttach: () => { throw new Error('no range'); } });
+        failing.sync(true);
+        await flush();
+        expect(broken.attach).not.toHaveBeenCalled();
+        expect(broken.detach).toHaveBeenCalled();
+        expect(failing.part).toBeNull();
+        expect(onError).toHaveBeenCalledTimes(1);
+    });
+
     it('does nothing while the flag is off', async () => {
         const create = vi.fn(() => Promise.resolve(part()));
         const lazy = lazyPart(create);

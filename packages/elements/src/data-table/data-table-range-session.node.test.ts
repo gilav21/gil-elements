@@ -120,8 +120,8 @@ describe('RangeSession column validation by value', () => {
     });
 });
 
-describe('RangeSession hands the held range to its part once, after the part attached', () => {
-    it('one setRange on the part, ordered after attach (not again before it)', async () => {
+describe('RangeSession hands the held range to its part once, right BEFORE the part attaches', () => {
+    it('one setRange on the part, ordered BEFORE attach (the part never runs without it)', async () => {
         const setRange = vi.spyOn(RangePart.prototype, 'setRange');
         const attach = vi.spyOn(RangePart.prototype, 'attach');
         try {
@@ -132,7 +132,7 @@ describe('RangeSession hands the held range to its part once, after the part att
             await new Promise((resolve) => setTimeout(resolve, 20));
             expect(attach).toHaveBeenCalledTimes(1);
             expect(setRange).toHaveBeenCalledTimes(1);
-            expect(setRange.mock.invocationCallOrder[0]).toBeGreaterThan(attach.mock.invocationCallOrder[0]!);
+            expect(setRange.mock.invocationCallOrder[0]).toBeLessThan(attach.mock.invocationCallOrder[0]!);
             expect(setRange).toHaveBeenCalledWith(mine);
             range.detach();
         } finally {

@@ -66,18 +66,27 @@ export class ColumnDragController<T> {
 
     // ---- pointer ----------------------------------------------------------------------------------------------
 
-    /** The press is a VALUE control's own only when it sits INSIDE the pressed header (a match above the header, in a wrapper, never counts). */
-    private ownPressIn(head: Element, own: Element | null): boolean {
-        return own !== null && head.contains(own);
+/**
+     * The draggable header of THIS table that a press path starts in, or null when the press is a VALUE control's own. The path is walked from the deepest node up
+     * to that header (a consumer header component's OPEN shadow root included; a closed root stops at its host, where the tag list applies) and never above it: an
+     * editable wrapper around the table is no control of the header. ONE rule for the mouse press and the touch long press.
+     */
+    private pressedHead(path: readonly EventTarget[]): HTMLElement | null {
+        const head = path.find((node): node is HTMLElement => node instanceof HTMLElement && node.matches(DRAGGABLE_HEAD) && ownsTarget(this.host.root, node));
+        if (!head) return null;
+        for (const node of path) {
+            if (node === head) return head;
+            if (node instanceof Element && node.matches(OWN_PRESS)) return null;
+        }
+        return head;
     }
 
     private readonly onDown = (event: PointerEvent): void => {
         // Touch waits for a long press (below); a second pointer never starts a drag.
         if (event.pointerType === 'touch' || event.button !== 0 || this.pending || this.drag) return;
-        const target = event.target as Element;
-        const head = ownClosest<HTMLElement>(this.host.root, target, DRAGGABLE_HEAD);
+        const head = this.pressedHead(event.composedPath());
         const key = head?.dataset['columnId'];
-        if (!head || key === undefined || this.ownPressIn(head, ownClosest(this.host.root, target, OWN_PRESS)) || !this.groupOf(key)) return;
+        if (key === undefined || !this.groupOf(key)) return;
         this.pending = { key, x: event.clientX, y: event.clientY, pointerId: event.pointerId };
         const view = this.host.root.ownerDocument.defaultView ?? window;
         this.stops = [
@@ -185,12 +194,10 @@ export class ColumnDragController<T> {
     // ---- touch: a long press picks the header up ----------------------------------------------------------------
 
     private readonly onLongPress = (event: TouchEvent, path: readonly EventTarget[]): void => {
-        // The press path from the deepest node up to THIS table's own header cell, never beyond it (an editable wrapper around the table is no control of the header).
-        const head = path.find((node): node is HTMLElement => node instanceof HTMLElement && node.matches(DRAGGABLE_HEAD) && ownsTarget(this.host.root, node));
+        const head = this.pressedHead(path);
         const key = head?.getAttribute('data-column-id');
         const touch = event.touches[0];
-        const inside = path.slice(0, head ? path.indexOf(head) : 0);
-        if (!head || key == null || inside.some((node) => node instanceof Element && node.matches(OWN_PRESS)) || !touch || this.drag || !this.groupOf(key)) return;
+        if (!head || key == null || !touch || this.drag || !this.groupOf(key)) return;
         this.begin(key);
         this.update(touch.clientX, touch.clientY);
         // Non-passive `touchmove` on the window: once the header is picked up the finger moves the column, not the page.

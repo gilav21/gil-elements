@@ -35,6 +35,8 @@ interface Press {
     readonly own: boolean;
     /** A touch press: it is closed when it has been idle for `STALE_TOUCH_MS` (its release was swallowed and no move says so). */
     readonly touch: boolean;
+    /** The press began inside this table's VIEWPORT (decided at the pointerdown, so a node a renderer replaced before the pointerup does not matter); touch presses only. */
+    readonly inViewport: boolean;
     /** The `timeStamp` of the last pointer event of this press (its down, its moves). */
     seen: number;
     /** The press began on a `data-pointer-transparent` overlay (the fill handle, a readout): offered to the sessions at its pointerdown (`pressed` = the overlay, `at` and the start cell null) so one can claim it; unclaimed it does nothing (no focus, no tap focus, no pointerup offer). */
@@ -651,7 +653,7 @@ export class CellInteractionController<T> {
         const startCell = !own || overlay ? null : this.addressOf(target);
         const view: PointerPress = Object.freeze({ anchor, pressed: target, startCell });
         if (this.presses.size === 0) this.watchPresses(); // the map goes from empty to non-empty: ONE watcher pair
-        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', seen: event.timeStamp, overlay, clears: !startCell && target !== null && this.clearsFocus(target) });
+        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', inViewport: event.pointerType === 'touch' && target !== null && ownClosest(this.host.root, target, VIEWPORT) !== null, seen: event.timeStamp, overlay, clears: !startCell && target !== null && this.clearsFocus(target) });
     }
 
     /**
@@ -780,7 +782,7 @@ export class CellInteractionController<T> {
         this.presses.delete(pointerId);
         // Only a TAP in the VIEWPORT (a touch press ended by its pointerup, on the body, header, footer or empty area; the toolbar and pager are outside it) can
         // cause the browser's viewport focus that follows: not a scroll's pointercancel, and not a tap on a control (a sort button, a checkbox takes its own focus).
-        if (event?.type === 'pointerup' && press.touch && press.own && press.view.pressed && ownClosest(this.host.root, press.view.pressed, VIEWPORT)) this.lastPressEnd = event.timeStamp;
+        if (event?.type === 'pointerup' && press.touch && press.own && press.inViewport) this.lastPressEnd = event.timeStamp;
         if (this.presses.size === 0) this.unwatchPresses?.(), (this.unwatchPresses = null);
         this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed

@@ -44,6 +44,6 @@ export const ROLES_SELECTOR = INTERACTIVE_ROLES.map((role) => `[role="${role}"]`
  */
 export const VALUE_CONTROLS_SELECTOR = [
     'input', 'textarea', 'select', '[contenteditable]:not([contenteditable="false"])', '[data-table-keeps-focus]',
-    '[role="checkbox"]', '[role="slider"]', '[role="spinbutton"]', '[role="textbox"]', '[role="searchbox"]', '[role="combobox"]', '[role="listbox"]',
+    '[role="checkbox"]', '[role="switch"]', '[role="radio"]', '[role="option"]', '[role="slider"]', '[role="spinbutton"]', '[role="textbox"]', '[role="searchbox"]', '[role="combobox"]', '[role="listbox"]',
     ...VALUE_TAGS,
 ].join(', ');

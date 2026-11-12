@@ -16,8 +16,9 @@ export class ClipboardController<T> {
     private readonly service: ClipboardService<T> = {
         // The step 0 copy answers like the element documents: `ignored` while the feature flag is off, `unavailable` otherwise (the real copy is wave 6 B).
         copy: () => Promise.resolve({ status: this.host.config.enableCopy ? 'unavailable' : 'ignored' }),
-        paste: () => Promise.resolve({ status: 'unavailable' }),
-        pasteText: () => ({ status: 'unavailable' }),
+        // Paste answers like copy: `ignored` while `enable-clipboard-paste` is off, `unavailable` otherwise (the real paste is wave 6 B).
+        paste: () => Promise.resolve({ status: this.host.config.enableClipboardPaste ? 'unavailable' : 'ignored' }),
+        pasteText: () => ({ status: this.host.config.enableClipboardPaste ? 'unavailable' : 'ignored' }),
     };
 
     attach(): void {

@@ -130,7 +130,7 @@ export interface LazyPart<P extends LazyPartInstance> {
  * `create` imports the module and builds the part (`() => import('./lazy/x.js').then((m) => new m.XPart(context))`); the part is
  * attached here, after the flag is checked again, never inside `create`.
  */
-export interface LazyPartOptions {
+export interface LazyPartOptions<P = unknown> {
     /** A load or an attach failed (default: `console.error`); it is latched, see `lazyPart`. */
     onError?: (error: unknown) => void;
     /**
@@ -139,11 +139,13 @@ export interface LazyPartOptions {
      * (`sync(false)`, `dispose()`) does not ask: those run inside an update or a detach.
      */
     changed?: () => void;
+    /** Called synchronously right before `part.attach()`, in the same callback (the part is already `lazy.part`): hand the part what it must have from its first line, so it never runs without it. A throw fails the attach. */
+    beforeAttach?: (part: P) => void;
 }
 
 export function lazyPart<P extends LazyPartInstance>(
     create: () => Promise<P>,
-    { onError = (error) => console.error('[ge-data-table] a lazy part failed to load:', error), changed }: LazyPartOptions = {},
+    { onError = (error) => console.error('[ge-data-table] a lazy part failed to load:', error), changed, beforeAttach }: LazyPartOptions<P> = {},
 ): LazyPart<P> {
     let current: P | null = null;
     let wanted = false;
@@ -197,6 +199,7 @@ export function lazyPart<P extends LazyPartInstance>(
                     if (mine !== generation) return;
                     current = part; // visible while it attaches: its own setup may call back into the shell that reads it
                     try {
+                        beforeAttach?.(part);
                         part.attach();
                     } catch (error) {
                         // A `sync(false)` / `dispose()` from inside the attach already detached this part and moved on: its failure is stale (no second detach, no latch).

@@ -2655,6 +2655,58 @@ describe('column drag from a header: value controls own their press, buttons do 
         expect(dragged(slider, 672)).toBe(false);
     });
 
+    it('a consumer header component with an <input> in its OPEN shadow root: a mouse drag or a touch long-press from the input does not move the column; an action control (ge-file-upload) stays draggable on both', async () => {
+        const table = await mountTable({ enableColumnReorder: true }, {}, { width: 700, height: 400 });
+        const head = table.querySelector<HTMLElement>('[data-slot="table-head"][data-draggable]')!;
+        head.style.position = 'relative';
+        const place = (el: HTMLElement, left: number): void => {
+            el.style.cssText = `position:absolute;top:2px;left:${left}px;width:24px;height:20px;display:block`;
+            head.append(el);
+        };
+        const widget = document.createElement('x-header-widget');
+        const input = document.createElement('input');
+        widget.attachShadow({ mode: 'open' }).append(input);
+        place(widget, 2);
+        const upload = document.createElement('ge-file-upload');
+        place(upload, 30);
+        const second = table.querySelectorAll<HTMLElement>('[data-slot="table-head"]')[1]!;
+        const dx = second.getBoundingClientRect().width * 2;
+        const before = order(table);
+        // mouse: from the input nothing starts (the user selects text), from the action control the header drags
+        const box = head.getBoundingClientRect();
+        const mouse = (el: Element, id: number): boolean => {
+            el.dispatchEvent(pointer('pointerdown', id, { clientX: box.left + 3, clientY: box.top + 3 }));
+            document.dispatchEvent(pointer('pointermove', id, { clientX: box.left + 60, clientY: box.top + 3, buttons: 1 }));
+            const started = table.querySelector('[data-dragging], [data-table-dragging]') !== null;
+            document.dispatchEvent(pointer('pointerup', id, { clientX: box.left + 60, clientY: box.top + 3 }));
+            return started;
+        };
+        expect(mouse(input, 681)).toBe(false);
+        await frames(2);
+        expect(mouse(upload, 682)).toBe(true);
+        await frames(2);
+        // touch: a long press on the input leaves the column alone; on the action control it picks it up
+        await touchLongPressDrag(input, { dx, dy: 0 });
+        await settle(table);
+        expect(order(table)).toEqual(before);
+        await touchLongPressDrag(upload, { dx, dy: 0 });
+        await settle(table);
+        expect(order(table)).not.toEqual(before);
+    });
+
+    it('a role=switch element in a header is not a drag start (it toggles on click like a checkbox)', async () => {
+        const table = await mountTable({ enableColumnReorder: true });
+        const head = table.querySelector<HTMLElement>('[data-slot="table-head"][data-draggable]')!;
+        const box = head.getBoundingClientRect();
+        const toggle = document.createElement('div');
+        toggle.setAttribute('role', 'switch');
+        head.append(toggle);
+        toggle.dispatchEvent(pointer('pointerdown', 683, { clientX: box.left + 3, clientY: box.top + 3 }));
+        document.dispatchEvent(pointer('pointermove', 683, { clientX: box.left + 60, clientY: box.top + 3, buttons: 1 }));
+        expect(table.querySelector('[data-dragging], [data-table-dragging]')).toBeNull();
+        document.dispatchEvent(pointer('pointerup', 683, { clientX: box.left + 60, clientY: box.top + 3 }));
+    });
+
     it('an editable wrapper AROUND the table does not block header drags (mouse)', async () => {
         const region = document.createElement('div');
         region.setAttribute('contenteditable', 'true');
@@ -2763,6 +2815,23 @@ describe('controls seen through the composed path', () => {
         inner.dispatchEvent(pointer('pointerup', 643, { over: host }));
         expect(downs).toEqual([]);
         expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+    });
+});
+
+describe('a touch tap whose pressed element a renderer replaced before the pointerup', () => {
+    it('still counts as a tap in the viewport (decided at the pointerdown): the viewport focus right after it is the tap\'s own, no jump to a cell', async () => {
+        const table = await mountTable({ columns: makeColumns(3), data: makeRows(6, { columns: 3, groups: 3 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 1000 }, showToolbar: false });
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        const group = table.querySelector<HTMLElement>('[data-kind="group"]')!;
+        const box = group.getBoundingClientRect();
+        const at = { pointerType: 'touch', clientX: box.left + 5, clientY: box.top + 5 };
+        group.dispatchEvent(pointer('pointerdown', 691, at));
+        group.remove(); // the row re-renders mid-tap: the pressed node is gone before the pointerup
+        document.dispatchEvent(pointer('pointerup', 691, at));
+        (document.activeElement as HTMLElement).blur();
+        viewport.focus();
+        await frames(2);
+        expect(document.activeElement).toBe(viewport);
     });
 });
 
