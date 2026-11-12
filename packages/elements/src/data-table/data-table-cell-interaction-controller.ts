@@ -108,7 +108,7 @@ export class CellInteractionController<T> {
     private readonly sessions: readonly CellSession[];
     private readonly service: CellInteractionService;
     /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. Undefined while the range session is failed. */
-    readonly services: { readonly range: RangeService | undefined; readonly interaction: CellInteractionService };
+    readonly services: { readonly range: RangeService | undefined };
     /** Sessions that FAILED (their `attach()` or a `hostUpdate()` threw): detached at once and skipped by everything after, until the next attach. */
     private readonly broken = new Set<CellSession>();
     /** The sessions whose `renderOverlay` failure was already reported: it runs at every render and reports its first failure only (cleared at detach). */
@@ -150,9 +150,6 @@ export class CellInteractionController<T> {
         this.services = {
             get range(): RangeService | undefined {
                 return controller.broken.has(controller.range) ? undefined : controller.range.rangeService;
-            },
-            get interaction(): CellInteractionService {
-                return controller.service; // the merged service outlives a disconnect (the element's focus and edit methods read it here)
             },
         };
         // The merged `interaction` service is a PLAIN object built once: for every key a session declares (on its `service` or its `neutral.service`) ONE

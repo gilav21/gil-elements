@@ -76,16 +76,18 @@ describe('lazy parts and the render', () => {
         }
     });
 
-    it('reaches the controller-owned services the same way while detached: fillDownTo and copy*ToClipboard go to the controller\'s service, like cellRange and reorderData', async () => {
+
+    it('splits detached behaviour by what a method needs: the VALUE (cellRange, reorderData) is kept, the LIVE grid (fillDownTo, copy*) is inert: nothing throws', async () => {
         const table = await mountTable({ enableCellRangeSelection: true });
-        const clipboard = table.provider('clipboard') as unknown as { copy: (scope: string) => Promise<unknown> };
-        clipboard.copy = (scope) => Promise.resolve({ status: 'done', cells: scope === 'all' ? 7 : 1 });
-        table.cellRange = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
-        table.remove(); // detached: the provider entries are gone, the controller services are not
+        const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
+        table.cellRange = range;
+        table.remove(); // detached: the provider entries are gone, the controllers are kept
         expect(table.provider('clipboard')).toBeUndefined();
-        expect(await table.copyAllToClipboard()).toEqual({ status: 'done', cells: 7 });
-        expect(table.cellRange).toEqual({ startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' });
-        expect(table.fillDownTo(1)).toBe(false); // the controller's range service answers (the shell), not a missing provider
+        expect(await table.copyAllToClipboard()).toEqual({ status: 'unavailable' }); // resolves, no throw
+        expect(table.fillDownTo(1)).toBe(false);
+        expect(() => table.openRangeChart()).not.toThrow();
+        expect(table.cellRange).toEqual(range); // the held VALUE survives a disconnect
+        expect(table.reorderData([1, 2], {} as never)).toEqual([1, 2]);
     });
 
     it('forwards reorderData and moveRow to the controller\'s row-drag service (also after a disconnect), and only the neutral service copies', async () => {

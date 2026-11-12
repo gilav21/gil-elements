@@ -443,11 +443,11 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The cell that holds the roving tab stop, as `{ rowIndex, columnKey }` (the drawn row index), or null. */
     get focusedCell(): CellAddress | null {
-        return this.serviceOf('interaction')?.focusedCell() ?? null;
+        return this.provider('interaction')?.focusedCell() ?? null;
     }
 
     focusCell(rowIndex: number, columnKey: string): void {
-        this.serviceOf('interaction')?.focusCell(rowIndex, columnKey);
+        this.provider('interaction')?.focusCell(rowIndex, columnKey);
     }
 
     autoSizeColumn(columnKey: string): void {
@@ -478,17 +478,17 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Opens an editor on the cell of `row` and column `columnKey`; false when none opened (not editable, a disabled row, no such row). */
     startEditing(row: T, columnKey: string): boolean {
-        return this.serviceOf('interaction')?.startEditing?.(row, columnKey) ?? false;
+        return this.provider('interaction')?.startEditing?.(row, columnKey) ?? false;
     }
 
     /** Commits the open editor's draft; does nothing with none open. */
     commitEdit(): void {
-        this.serviceOf('interaction')?.commitEdit?.();
+        this.provider('interaction')?.commitEdit?.();
     }
 
     /** Drops the open editor's draft without an event. */
     cancelEdit(): void {
-        this.serviceOf('interaction')?.cancelEdit?.();
+        this.provider('interaction')?.cancelEdit?.();
     }
 
     /** Undoes the last edit step (needs `enable-edit-history`); `stale` lists the entries whose row or column is gone. */
@@ -507,7 +507,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The cell whose editor is open, or null. */
     get editingCell(): EditingCell | null {
-        return this.serviceOf('interaction')?.editingCell?.() ?? null;
+        return this.provider('interaction')?.editingCell?.() ?? null;
     }
 
     /** Read-only (Angular exposes it as a signal): a property binding or an assignment is ignored with a one-time warning, it does not throw. */
@@ -517,7 +517,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The validation error shown on the open editor, or null. */
     get cellEditError(): CellEditError | null {
-        return this.serviceOf('interaction')?.cellEditError?.() ?? null;
+        return this.provider('interaction')?.cellEditError?.() ?? null;
     }
 
     /** Read-only, like `editingCell`. */
@@ -527,16 +527,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Clears the advanced filter tree (the column and global filters stay). */
     clearAdvancedFilter(): void {
-        // Writes the model directly (the `advancedFilter` key already filters the rows, and the model emits `advanced-filter-change`), with the same page
-        // reset the other filter paths do; wave 5 A may route it through its filter service later.
-        if (this.store.get('advancedFilter') === null) return;
-        const page = this.store.get('paginationState');
-        const next = { ...page, pageIndex: 0 };
-        this.store.batch(() => {
-            this.store.set('advancedFilter', null);
-            if (page.pageIndex !== 0) this.store.set('paginationState', next);
-        });
-        if (page.pageIndex !== 0) this.emit('page-change', next);
+        this.provider('query')?.changeAdvancedFilter(null); // the query controller writes the model with the page reset; inert while detached, as on main
     }
 
     // ---- range, fill, clipboard and row drag (wave 6) ---------------------------------------------------------
@@ -546,15 +537,16 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * value assigned before the table is attached waits for the range service.
      */
     get cellRange(): CellRange | null {
-        const service = this.rangeService();
+        const service = this.serviceOf('range');
         if (service) return service.range();
         return this.earlyRange !== undefined && rangeModeOn(this) ? this.earlyRange : null;
     }
 
     set cellRange(range: CellRange | null) {
-        const service = this.rangeService();
+        const service = this.serviceOf('range');
         if (service) {
             service.setRange(range); // the session checks the value and asks for the render
+            this.earlyRange = undefined; // a value held from an earlier gap (a failed session, before the first connect) must not overwrite this newer one at a reconnect
             return;
         }
         // No REAL range service exists (before the first connect nothing is assembled; a custom plan may have no cell-interaction controller; the range
@@ -566,17 +558,12 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     }
 
     /**
-     * The REAL range service once the controllers exist (the first connect built them; they are kept across reconnects, and the range session owns the
-     * value from then on). Undefined without one, uniformly: not built yet, no controller provides it, or the range session failed (the controller
-     * withdraws it while the session is out).
-     */
-    private rangeService(): DataTableProviders<T>['range'] | undefined {
-        return this.serviceOf('range');
-    }
-
-    /**
-     * The ONE way an element method reaches a controller-owned service: the controller's own (`services`, which outlives a disconnect), never the
-     * provider entry (cleared at disconnect). So a detached table answers like an attached one; undefined before the first connect.
+     * How an element method reaches a service, by what it needs. VALUE-holding services (the range VALUE `cellRange`, row-drag `reorderData` /
+     * `moveRow`) use `serviceOf(key)`: the controller's own (`services`, which outlives a disconnect: the controllers are built once and kept), so
+     * a detached table keeps its value and answers pure questions. Everything that needs the LIVE grid (focus, editing, the clipboard's reads of the
+     * query and columns, `fillDownTo`, the queries) uses `provider(key)`, which is cleared at disconnect: such a call is inert or null while detached
+     * (as on main) instead of reaching controller code that requires providers that are gone. `serviceOf` is undefined before the first connect and,
+     * for `range`, while the range session is failed (the controller withdraws it).
      */
     private serviceOf<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined {
         return this.built?.service(key);
@@ -584,17 +571,17 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
     fillDownTo(targetEndRow: number): boolean {
-        return this.rangeService()?.fillDownTo(targetEndRow) ?? false;
+        return this.provider('range')?.fillDownTo(targetEndRow) ?? false;
     }
 
     /** Fires `range-chart-open` with the selected range as a chart payload, when there is one. */
     openRangeChart(): void {
-        this.rangeService()?.openChart();
+        this.provider('range')?.openChart();
     }
 
     /** The `copy*ToClipboard` methods resolve to what happened: `status` is `done`, `empty`, `denied` (the browser refused), `unavailable` (no clipboard) or `ignored` (the feature is off). */
     private copyToClipboard(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<ClipboardResult> {
-        return this.serviceOf('clipboard')?.copy(scope, row) ?? Promise.resolve({ status: 'unavailable' });
+        return this.provider('clipboard')?.copy(scope, row) ?? Promise.resolve({ status: 'unavailable' });
     }
 
     copyCellToClipboard(): Promise<ClipboardResult> {
@@ -749,7 +736,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * that would request a render while rendering). While there is none it stays a held value.
      */
     private handOverEarlyRange(): void {
-        const range = this.rangeService();
+        const range = this.serviceOf('range');
         if (this.earlyRange !== undefined && range) {
             range.setRange(this.earlyRange);
             this.earlyRange = undefined;
@@ -849,7 +836,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             <div data-slot="data-table-toolbar-start">
                 <div data-slot="data-table-filter"><ge-input placeholder=${locale.filterPlaceholder} aria-label=${locale.filterPlaceholder} .value=${this.store.get('globalFilter')}
                     @input=${(event: Event) => query.changeGlobalFilter((event.currentTarget as HTMLInputElement).value)}></ge-input></div>
-                ${this.assembled?.controllers.map((c) => c.renderToolbar?.())}
+                ${this.renderParts('renderToolbar')}
                 ${this.nodes('toolbar-start')}
             </div>
             <div data-slot="data-table-toolbar-end">
@@ -883,6 +870,18 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             : nothing}${busy === null ? nothing : html`<div data-slot="data-table-loader" data-kind="busy" role="status">${box(busy)}</div>`}`;
     }
 
+    /** What each controller draws in the toolbar or over the grid: one that throws is reported once (per controller and slot) and draws nothing, never a broken render. */
+    private renderParts(slot: 'renderToolbar' | 'renderOverlay'): unknown[] {
+        return (this.assembled?.controllers ?? []).map((controller, index) => {
+            try {
+                return controller[slot]?.();
+            } catch (error) {
+                warnOnce(`controller-${index}-${slot}`, `[ge-data-table] a controller threw in ${slot}; it draws nothing:`, error);
+                return undefined;
+            }
+        });
+    }
+
     protected override render(): unknown {
         if (isServer) return nothing;
         const locale = this.resolvedLocale;
@@ -892,7 +891,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return html`<output data-slot="data-table-announcer" aria-live="polite" aria-atomic="true">${this.announcement}</output>
             ${this.showToolbar ? this.renderToolbar(locale) : nothing}
             <div data-slot="data-table-viewport" tabindex=${grid.viewportTabbable ? '0' : '-1'} @keydown=${(event: KeyboardEvent) => ownsTarget(this, event.target) && void this.keyHandlers.run(event)}>
-                ${this.renderOverlays(locale)}${renderGrid(grid)}${this.assembled?.controllers.map((c) => c.renderOverlay?.())}
+                ${this.renderOverlays(locale)}${renderGrid(grid)}${this.renderParts('renderOverlay')}
             </div>
             ${this.slotted.has('footer') ? html`<div data-slot="data-table-footer-slot">${this.nodes('footer')}</div>` : nothing}
             ${this.showPagination

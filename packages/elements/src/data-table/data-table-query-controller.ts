@@ -282,9 +282,18 @@ export class QueryController<T> {
             if (debounce > 0) this.cancelFilter = this.host.disposables.timeout(() => this.applyGlobalFilter(value), debounce);
             else this.applyGlobalFilter(value);
         },
-        // wave 5, package A (filters) implements these three; joint step 0 leaves them inert. They are the only part of this file wave 5 edits.
+        // wave 5, package A (filters) implements the column filter and the count; joint step 0 leaves them inert. They are the only part of this file wave 5
+        // edits. The ADVANCED filter is real already (the `advancedFilter` model key filters the rows): wave 5 A builds on it (announcement, builder UI).
         changeColumnFilter: () => undefined,
-        changeAdvancedFilter: () => undefined,
+        changeAdvancedFilter: (group) => {
+            const { model } = this.host;
+            if (model.get('advancedFilter') === group) return;
+            // Like `applyGlobalFilter`: the model change and the page reset in ONE batch, so `page-change` fires before the model's `advanced-filter-change`.
+            model.batch(() => {
+                model.set('advancedFilter', group);
+                this.resetPage();
+            });
+        },
         filteredCount: () => undefined,
     };
 
