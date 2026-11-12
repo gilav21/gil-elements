@@ -92,7 +92,9 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
         const prefetch = (): void => service.prefetch(c);
         // The panel sits inside the head cell (DOM-wise): `data-table-keeps-focus` makes every press in it the panel's own, so the column drag
         // (its OWN_PRESS already matches the attribute) never starts from a panel, whatever controls a consumer's panel holds.
-        return html`<ge-popover close-on-scroll @open-change=${service.onPanelToggle(key)}>
+        // No `close-on-scroll`: it would close on the table's own scrolls too (a filter that shrinks the rows clamps the viewport's scroll). The filter-ui
+        // controller closes it on a scroll outside the table, or once the trigger scrolls out of the viewport.
+        return html`<ge-popover @open-change=${service.onPanelToggle(key)}>
             <ge-popover-trigger><button type="button" data-slot="data-table-filter-trigger" ?data-active=${active} aria-label=${interpolate(active ? locale.filterColumnActive : locale.filterColumn, { column: c.header })}
                 @pointerenter=${prefetch} @focus=${prefetch}>${chromeIcon('filter', 'sm', undefined, active)}</button></ge-popover-trigger>
             <ge-popover-content data-slot="data-table-filter-panel" data-table-keeps-focus strategy="fixed" align="end">${open && c.filterComponent ? componentCell(c.filterComponent, service.panelInputs(c), service.panelOutputs(c)) : nothing}</ge-popover-content>

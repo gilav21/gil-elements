@@ -572,6 +572,26 @@ describe('date panels given a filter restored from JSON (ISO strings)', () => {
 describe('F4 the multiselect panel', () => {
     const optionRow = (panel: Element, label: string): HTMLElement => panel.shadowRoot!.querySelector<HTMLElement>(`ge-command-item[value="${label}"]`)!;
 
+    it("stays open when a pick shrinks the rows of a scrolled table (its own scroll); a page scroll closes it (round 14)", async () => {
+        const data: Row[] = Array.from({ length: 40 }, (_, i) => ({ id: String(i), name: `N${i}`, role: i === 0 ? 'Manager' : 'Engineer', day: dayOf(1) }));
+        const table = (await mountTable<Row>({ columns: [nameColumn, roleColumn], data, showPagination: false }, {}, { width: 600, height: 300 })) as Table;
+        const viewport = q(table, '[data-slot="data-table-viewport"]');
+        await scrollGrid(table, { top: 5000 });
+        expect(viewport.scrollTop).toBeGreaterThan(0);
+        const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
+        const popover = trigger(table, 'role').closest('ge-popover') as HTMLElement & { open: boolean };
+        await frames(2); // the watch is armed after the opening task
+        await userEvent.click(optionRow(panel, 'Manager'));
+        await settle(table);
+        await frames(2);
+        expect(names(table)).toEqual(['N0']);
+        expect(viewport.scrollTop).toBe(0); // the table's own scroll, clamped by the shorter body
+        expect(popover.open).toBe(true);
+        document.dispatchEvent(new Event('scroll'));
+        await settle(table);
+        expect(popover.open).toBe(false);
+    });
+
     it('toggles options in click order, keeps them when reopened, and clears to null', async () => {
         const table = await mount();
         const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');

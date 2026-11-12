@@ -3,7 +3,10 @@ import { ref } from 'lit/directives/ref.js';
 import { chromeIcon } from './data-table-icons.js';
 import { BUILT_IN_FILTER_PANELS, builderColumns, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
-import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
+import { composedContains, type DataTableCoreHost, requireProvider, VIEWPORT } from './data-table-host.js';
+
+/** The header panel's `ge-popover` as the scroll watch uses it. */
+type PanelPopover = HTMLElement & { hide(): void };
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
 import { countConditions, memoLast } from './data-table-query.js';
 import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels, interpolate } from './data-table.locales.js';
@@ -96,6 +99,7 @@ export class FilterUiController<T> {
         this.cancelAnnounce = undefined;
         this.dropPending();
         this.handlers.clear();
+        this.stopScrollWatch();
         this.openColumn = null;
         this.builderOpen = false;
     }
@@ -232,14 +236,52 @@ export class FilterUiController<T> {
                 if (event.target !== event.currentTarget) return; // a popover inside the panel (a month select)
                 if (event.detail) {
                     this.openColumn = key;
+                    this.watchScroll(event.currentTarget as PanelPopover);
                     const column = this.host.provider('columns')?.enhancedColumns().find((c) => String(c.accessorKey) === key);
                     if (column) this.prefetch(column);
-                } else if (this.openColumn === key) this.openColumn = null;
+                } else if (this.openColumn === key) {
+                    this.openColumn = null;
+                    this.stopScrollWatch();
+                }
                 this.host.requestRender();
             },
         };
         this.handlers.set(key, handlers);
         return handlers;
+    }
+
+    private stopScroll: (() => void) | undefined;
+
+    private stopScrollWatch(): void {
+        this.stopScroll?.();
+        this.stopScroll = undefined;
+    }
+
+    /**
+     * The open header panel closes on a scroll OUTSIDE the table (the page, an ancestor scroller: its anchor moved away), not on one of the table's own
+     * (`close-on-scroll` would close it on both). A scroll of the table's viewport moves the trigger, and the fixed panel follows it; only when it scrolls
+     * the trigger out of the viewport's box does the panel close. The scroll inside the panel itself (an option list) is the table's too.
+     * Armed after this task, like the popover's own watch: the scroll a click-to-open causes does not close it at once.
+     */
+    private watchScroll(popover: PanelPopover): void {
+        this.stopScrollWatch();
+        const onScroll = (event: Event): void => {
+            const target = event.composedPath()[0] as Node | undefined;
+            if (target instanceof Node && composedContains(this.host.root, target)) {
+                const viewport = this.host.root.querySelector<HTMLElement>(VIEWPORT);
+                const trigger = popover.querySelector('[data-slot="data-table-filter-trigger"]'); // the button (`ge-popover-trigger` draws no box of its own)
+                if (!viewport || !trigger) return;
+                const box = viewport.getBoundingClientRect();
+                const at = trigger.getBoundingClientRect();
+                if (at.right > box.left && at.left < box.right && at.bottom > box.top && at.top < box.bottom) return;
+            }
+            popover.hide();
+        };
+        const timer = setTimeout(() => {
+            globalThis.addEventListener('scroll', onScroll, { capture: true, passive: true });
+            this.stopScroll = () => globalThis.removeEventListener('scroll', onScroll, { capture: true });
+        }, 0);
+        this.stopScroll = () => clearTimeout(timer);
     }
 
     /** One polite message once the column and advanced filter edits have settled: the rows that match now, or that every filter is cleared (D7). */
