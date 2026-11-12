@@ -145,6 +145,30 @@ describe('E1 opening an editor', () => {
         expect(edits.map((e) => e.detail.newValue)).toEqual(['Carolxyz']);
     });
 
+    it('Shift+Tab in the first editable cell leaves the grid cells in ONE press (round 10)', async () => {
+        const table = await mount({ columns: editColumns({ id: { editable: false } }).filter((c) => c.accessorKey !== 'id') }); // name is the first column
+        await startEditingAt(table, 0, 'name');
+        await userEvent.type(openEditor(table)!, '!');
+        await press('{Shift>}{Tab}{/Shift}');
+        await settle(table);
+        expect(table.data[0]!.name).toBe('Carol!');
+        expect(table.editingCell).toBeNull();
+        const active = deepActive();
+        expect(active?.closest?.('[data-slot="table-body"]') ?? null).toBeNull(); // not the edited cell, not any body cell
+    });
+
+    it('"already open" means the same record, not the same index: rows moved before the editor followed (round 10)', async () => {
+        const table = await mount();
+        await startEditingAt(table, 0, 'name'); // Carol (a)
+        table.data = [...table.data].reverse(); // no render yet: the editor still says row 0
+        const dave = table.provider('query')!.renderedRowAt(0)!; // row 0 is Dave now
+        expect(dave.id).toBe('d');
+        expect(table.startEditing(dave, 'name')).toBe(true);
+        await settle(table);
+        const at = table.editingCell!;
+        expect(table.provider('query')!.renderedRowAt(at.rowIndex)!.id).toBe('d');
+    });
+
     it('a rejected open editor stays, with its error, and the other cell does not open: by API and by double click (round 9)', async () => {
         const table = await mount({ columns: editColumns({ name: { editValidator: (v) => !String(v).endsWith('!') || 'No shouting' } }) });
         const errors = record(table, 'edit-error');

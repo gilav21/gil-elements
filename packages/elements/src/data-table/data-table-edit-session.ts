@@ -291,9 +291,10 @@ export class EditSession<T> implements CellSession {
         let row = query.renderedRowAt(rowIndex);
         if (row === undefined || this.isDisabled(row)) return false;
         const current = this.open;
-        if (current && (current.at.rowIndex !== rowIndex || current.at.columnKey !== columnKey)) {
+        const id = String(host.config.getRowId(row));
+        // "Already open" is the same RECORD and column (an index can name another row after the rows moved and before the editor followed).
+        if (current && (current.rowId !== id || current.at.columnKey !== columnKey)) {
             // The open editor is left first (its commit may re-sort the rows: the asked RECORD is found again by id after it).
-            const id = String(host.config.getRowId(row));
             if (!this.leaveForAnother(current)) return false;
             rowIndex = indexOfRowId(query.renderedRows(), id, (r) => host.config.getRowId(r));
             row = rowIndex === -1 ? undefined : query.renderedRowAt(rowIndex);
@@ -304,7 +305,7 @@ export class EditSession<T> implements CellSession {
         const value = query.cellValue(row, columnKey, column);
         const open: OpenEditor<T> = {
             at: { rowIndex, columnKey },
-            rowId: String(host.config.getRowId(row)),
+            rowId: id,
             column,
             kind: editKindOf(column),
             original: value,
@@ -560,12 +561,19 @@ export class EditSession<T> implements CellSession {
         const rows = query.renderedRows();
         const next = tabTarget(event.shiftKey, open.at.rowIndex, keys.indexOf(open.at.columnKey), keys.length, this.context.rowCount());
         const nextRow = next ? rows[next.row] : undefined;
+        const cell = this.host.cellAt(open.at.rowIndex, open.at.columnKey);
         const result = this.commit(false);
         if (result === 'rejected') {
             event.preventDefault();
             return;
         }
-        if (!next) return;
+        if (!next) {
+            // The edge of the grid: the key is not prevented, so the browser moves the focus on. Shift+Tab from the input would land on its own
+            // cell (the roving tab stop, the input's container) and need a second press; the cell takes the focus FIRST, synchronously, so the
+            // default Shift+Tab starts from it and leaves the grid's cells in one press.
+            if (event.shiftKey) cell?.focus({ preventScroll: true });
+            return;
+        }
         event.preventDefault();
         const key = keys[next.col] as string;
         // The target is a RECORD: only when the commit changed the drawn rows (a re-sort, a re-filter) is it looked up again, by id.
