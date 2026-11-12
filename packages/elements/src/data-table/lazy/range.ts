@@ -22,6 +22,7 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { startAutoScroll, type AutoScrollController } from '../../shared/auto-scroll.js';
 import { onLongPress } from '../../shared/touch.js';
 import type { InteractionContext, PointerPress } from '../data-table-cell-session.js';
+import { CELL_SELECTOR, inTextField } from '../data-table-clipboard-grid.js';
 import { buildFillValues } from '../data-table-fill.js';
 import { fillOutcome, type FillInput, planFill, repeatFirst } from '../data-table-fill-apply.js';
 import { type CellAddress, cellAddressOf, ownClosest, ownsTarget } from '../data-table-host.js';
@@ -45,12 +46,10 @@ import { KEY_PRIORITY } from '../data-table-registry.js';
 import type { CellRange, ColumnDef, RangeAggregateStats, RangeChartPayload } from '../data-table.types.js';
 import { isSpecialColumnKey } from '../data-table.utils.js';
 
-const CELL = '[data-slot="table-cell"]';
 const VIEWPORT = '[data-slot="data-table-viewport"]';
 const OVERLAY = '[data-pointer-transparent]';
 const HANDLE = '[data-slot="fill-handle"]';
 const ROW = '[data-row-index]';
-const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 /** What a long press on a cell never starts a range on (Angular's mousedown list, plus the explicit opt-out). */
 const TOUCH_CONTROLS = 'input, textarea, select, button, a, [data-table-keeps-focus], ge-checkbox, ge-input, ge-button';
 /** The range announcement waits for the selection to stop changing (a drag across ten cells is one announcement, with the final size). */
@@ -99,6 +98,8 @@ export class RangePart<T> {
     private off: (() => void)[] = [];
     private cancelAnnounce: (() => void) | null = null;
     private handleFrame: number | null = null;
+    /** What placed the handle when it was last measured (`followHandle`): the same inputs need no new measure. */
+    private handleInputs: readonly unknown[] | null = null;
     /** The keys of the last update: a range whose column LEAVES the layout is dropped (a programmatic range on a hidden column is only not drawn). */
     private layout: readonly string[] | null = null;
     /** `navigableKeys()` builds a new array per call: memoised by the enhanced columns (a memoised array) it is derived from. */
@@ -133,6 +134,9 @@ export class RangePart<T> {
             disposables.listen(root, 'scroll', (event) => this.onScroll(event), { capture: true, passive: true }),
             disposables.add(onLongPress(root, (event, path) => this.onLongPress(event, path))),
         ];
+        // A page resize moves the handle with no render (a flexible column). (A host with no window, a node test's, has none to listen to.)
+        const view = root.ownerDocument?.defaultView;
+        if (view) this.off.push(disposables.listen(view, 'resize', () => this.measureSoon(), { passive: true }));
     }
 
     detach(): void {
@@ -143,6 +147,7 @@ export class RangePart<T> {
         if (this.handleFrame !== null) cancelAnimationFrame(this.handleFrame);
         this.handleFrame = null;
         this.handleAt = null;
+        this.handleInputs = null;
         for (const off of this.off) off();
         this.off = [];
     }
@@ -159,7 +164,47 @@ export class RangePart<T> {
                 this.context.host.topics.emit('cell');
             }
         }
-        if (this.context.host.config.enableFillHandle) this.context.afterRender(() => this.measureHandle());
+        this.followHandle();
+    }
+
+    /**
+     * The handle is measured after a render only when what places it may have changed: its cell, the drawn rows (data, page, sort, window), the columns
+     * (order, widths, pins, visibility) or the direction. An unrelated render (a hover, an announcement) reads no layout. A scroll or a resize of the
+     * page measures it in the next frame (`onScroll`, the window's `resize`).
+     */
+    private followHandle(): void {
+        const { host } = this.context;
+        const cell = this.fillHandleCell();
+        if (!cell) {
+            // No handle: nothing to measure (the render of this update draws none, `renderOverlay` asks `fillHandleCell` too).
+            this.handleInputs = null;
+            this.handleAt = null;
+            return;
+        }
+        const virtual = host.provider('virtual');
+        const window = virtual?.active() ? virtual.window() : null;
+        const inputs = [
+            cell.rowIndex,
+            cell.columnKey,
+            host.provider('query')?.renderedRows(),
+            host.provider('columns')?.enhancedColumns(),
+            window?.start,
+            window?.end,
+            host.root.getAttribute('dir'),
+            host.config.columns,
+        ] as const;
+        const last = this.handleInputs;
+        if (last?.every((value, i) => value === inputs[i])) return;
+        this.handleInputs = inputs;
+        this.context.afterRender(() => this.measureHandle());
+    }
+
+    private measureSoon(): void {
+        if (!this.context.host.config.enableFillHandle || !this.handleAt) return;
+        this.handleFrame ??= requestAnimationFrame(() => {
+            this.handleFrame = null;
+            this.measureHandle();
+        });
     }
 
     renderOverlay(): TemplateResult | null {
@@ -415,10 +460,7 @@ export class RangePart<T> {
         if (!target?.matches?.(VIEWPORT) || !ownsTarget(this.context.host.root, target)) return;
         const drag = this.drag;
         if (drag) this.track(drag); // auto-scroll moved the cells under a still pointer
-        if (this.context.host.config.enableFillHandle && this.handleAt) this.handleFrame ??= requestAnimationFrame(() => {
-            this.handleFrame = null;
-            this.measureHandle();
-        });
+        this.measureSoon(); // a pinned (sticky) cell moved with the scroll
     }
 
     /** The first element of THIS table at a point, looking through its overlays (the handle under the finger, the readout). */
@@ -430,7 +472,7 @@ export class RangePart<T> {
             if (!root.contains(el)) return NO_HIT;
             if (!ownsTarget(root, el)) return NO_HIT; // a nested table
             if (ownClosest(root, el, OVERLAY)) continue;
-            const address = cellAddressOf(ownClosest(root, el, CELL));
+            const address = cellAddressOf(ownClosest(root, el, CELL_SELECTOR));
             const rowIndex = Number(ownClosest(root, el, ROW)?.getAttribute('data-row-index') ?? Number.NaN);
             return { cell: address && !isSpecialColumnKey(address.columnKey) ? address : null, row: Number.isInteger(rowIndex) ? rowIndex : null };
         }
@@ -458,8 +500,8 @@ export class RangePart<T> {
         const { root } = this.context.host;
         const target = event.target as Element | null;
         if (!target || !ownsTarget(root, target)) return false;
-        if (ownClosest(root, target, TEXT_FIELD) || (event.composedPath()[0] as Element | undefined)?.matches?.(TEXT_FIELD)) return false;
-        return target === root || target.matches(VIEWPORT) || ownClosest(root, target, CELL) !== null;
+        if (inTextField(root, event)) return false; // the one text-field rule (clipboard, row move and range share it)
+        return target === root || target.matches(VIEWPORT) || ownClosest(root, target, CELL_SELECTOR) !== null;
     }
 
     private onEscape(event: KeyboardEvent): boolean {

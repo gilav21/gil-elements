@@ -311,6 +311,29 @@ describe('the fill handle', () => {
         expect(Math.abs(at.y - want.y)).toBeLessThanOrEqual(1);
     });
 
+    it('is not measured again by an unrelated render, only when what places it changed', async () => {
+        const table = await mountRange({ enableFillHandle: true });
+        table.cellRange = { startRow: 1, startCol: 'score', endRow: 2, endCol: 'label' };
+        await settle(table);
+        await vi.waitFor(() => expect(handle(table)).not.toBeNull());
+        await settle(table);
+        const corner = cell(table, 2, 'label');
+        const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect');
+        const measured = (): number => spy.mock.contexts.filter((el) => el === corner).length;
+        try {
+            table.requestUpdate(); // a render that changes nothing the handle depends on
+            await settle(table);
+            await settle(table);
+            expect(measured()).toBe(0);
+            table.cellRange = { startRow: 1, startCol: 'score', endRow: 3, endCol: 'label' }; // its cell moves
+            await settle(table);
+            await settle(table);
+            expect(spy.mock.contexts.some((el) => el === cell(table, 3, 'label'))).toBe(true);
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
     it('is hidden with no focus and no range, with the flag off, and follows the focused cell', async () => {
         const table = await mountRange({ enableFillHandle: true });
         expect(handle(table)).toBeNull();
