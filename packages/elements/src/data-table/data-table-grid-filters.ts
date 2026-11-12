@@ -40,8 +40,8 @@ export interface FilterUiService<T> extends FilterService<T> {
     panelOpen(columnKey: string): boolean;
     /** The popover's `open-change` of a column trigger. */
     onPanelToggle(columnKey: string): (event: CustomEvent<boolean>) => void;
-    /** Starts loading the lazy panel a column uses (hover and focus of its trigger). */
-    prefetch(column: ColumnDef<T>): void;
+    /** The column's stable handler that starts loading the lazy panel it uses (hover and focus of its trigger): not re-bound on every render. */
+    prefetch(columnKey: string): () => void;
     /** The properties of the column's filter component: `filterComponentInputs`, then `column` and `value` (the current filter, D2). */
     panelInputs(column: ColumnDef<T>): Record<string, unknown>;
     /** `filterComponentOutputs`, its own `filter-change` composed with the table's (consumer first); stable per column, so listeners are not re-added. */
@@ -89,7 +89,7 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
         const key = String(c.accessorKey);
         const active = service.isActive(key);
         const open = service.panelOpen(key);
-        const prefetch = (): void => service.prefetch(c);
+        const prefetch = service.prefetch(key);
         // The panel sits inside the head cell (DOM-wise): `data-table-keeps-focus` makes every press in it the panel's own, so the column drag
         // (its OWN_PRESS already matches the attribute) never starts from a panel, whatever controls a consumer's panel holds.
         // No `close-on-scroll`: it would close on the table's own scrolls too (a filter that shrinks the rows clamps the viewport's scroll). The filter-ui

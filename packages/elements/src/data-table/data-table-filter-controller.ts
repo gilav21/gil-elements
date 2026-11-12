@@ -22,6 +22,8 @@ interface ColumnHandlers {
     change: (event: Event) => void;
     input: (event: Event) => void;
     toggle: (event: CustomEvent<boolean>) => void;
+    /** The trigger's hover and focus: starts loading the column's lazy panel. */
+    prefetch: () => void;
     /** The header panel's listeners, kept for the consumer's `filterComponentOutputs` OBJECT (the cache key; the column object may be rebuilt every render). */
     panel?: { readonly own: object | null; readonly outputs: ComponentOutputs };
     /** The floating component's listeners: only the table's `filter-change`. */
@@ -63,7 +65,7 @@ export class FilterUiController<T> {
         hasTrigger: (column) => hasFilterTrigger(column),
         panelOpen: (key) => this.openColumn === key,
         onPanelToggle: (key) => this.handlersOf(key).toggle,
-        prefetch: (column) => this.prefetch(column),
+        prefetch: (key) => this.handlersOf(key).prefetch,
         panelInputs: (column) => this.panelInputs(column),
         panelOutputs: (column) => this.panelOutputs(column),
         floatingOutputs: (column) => this.handlersOf(String(column.accessorKey)).floating,
@@ -215,9 +217,15 @@ export class FilterUiController<T> {
             event.stopPropagation();
             set((event as CustomEvent).detail ?? null);
         };
+        // The column as drawn now, read when the handler runs (the handler outlives a column object rebuilt by a render).
+        const prefetch = (): void => {
+            const column = this.host.provider('columns')?.enhancedColumns().find((c) => String(c.accessorKey) === key);
+            if (column) this.prefetch(column);
+        };
         handlers = {
             set,
             change,
+            prefetch,
             floating: { 'filter-change': change },
             input: (event) => {
                 const value = (event.currentTarget as HTMLInputElement).value;
@@ -235,8 +243,7 @@ export class FilterUiController<T> {
                 if (event.detail) {
                     this.openColumn = key;
                     this.watchScroll(event.currentTarget as PanelPopover);
-                    const column = this.host.provider('columns')?.enhancedColumns().find((c) => String(c.accessorKey) === key);
-                    if (column) this.prefetch(column);
+                    prefetch();
                 } else if (this.openColumn === key) {
                     this.openColumn = null;
                     this.stopScrollWatch();

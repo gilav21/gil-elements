@@ -165,6 +165,13 @@ describe('FilterUiController', () => {
         expect(announce).not.toHaveBeenCalled();
     });
 
+    it('hands one stable prefetch handler per column (round 15)', () => {
+        const { service } = fakeHost();
+        expect(service.prefetch('name')).toBe(service.prefetch('name'));
+        expect(service.prefetch('name')).not.toBe(service.prefetch('other'));
+        expect(() => service.prefetch('name')()).not.toThrow();
+    });
+
     it('tracks the open panel from its own popover only, and asks for a render', () => {
         const { service, requestRender } = fakeHost();
         const popover = {};
