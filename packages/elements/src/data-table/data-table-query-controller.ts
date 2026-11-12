@@ -20,6 +20,8 @@ import type { ColumnDef, DataTableDisplayRow, DataTableQuery, FlattenedTreeRow, 
 import { getCellValue, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
 
 const FILTER_ANNOUNCE_MS = 500;
+/** Server mode: how long the count waits for a query's answer it can see (new `data`, a changed `total`) before it trusts the `total` in hand. */
+const ANSWER_WAIT_MS = 2000;
 
 /** The memo graph filter -> sort -> page, the server-mode `query` event, and the header and pager gestures. */
 export class QueryController<T> {
@@ -36,6 +38,9 @@ export class QueryController<T> {
     /** The announcement waiting for those rows (one: a newer filter replaces it). */
     private onRows: (() => void) | null = null;
     private unsubscribeData: (() => void) | undefined;
+    /** `config.total` when the last query was sent: a different one is its answer. */
+    private totalAtQuery: number | undefined;
+    private cancelAnswerWait: (() => void) | undefined;
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
 
@@ -341,21 +346,39 @@ export class QueryController<T> {
             if (this.lastQuery && sameQuery(this.lastQuery, next)) return;
             this.lastQuery = next;
             this.awaitingRows = true;
+            this.totalAtQuery = this.host.config.total;
+            this.cancelAnswerWait?.();
+            // The fallback: a consumer that answers in a way the table cannot see (rows mutated in place, the same total) is taken as answered.
+            this.cancelAnswerWait = this.host.disposables.timeout(() => this.answered(), ANSWER_WAIT_MS);
             this.host.emit('query', next);
         });
         // The answer's rows (a `data` set from outside) end the wait; `total` is read a tick later, so a consumer may set it after `data`.
         this.unsubscribeData = this.host.model.subscribe('data', (_, origin) => {
-            if (origin === 'internal' || !this.awaitingRows) return;
-            this.awaitingRows = false;
-            const waiting = this.onRows;
-            this.onRows = null;
-            if (waiting) this.host.disposables.timeout(waiting, 0);
+            if (origin !== 'internal') this.answered();
         });
+    }
+
+    /**
+     * The answer to the last query is in (its `data`, a changed `total`, or the `ANSWER_WAIT_MS` fallback): `filteredCount` answers the total
+     * again, a waiting announcement is spoken a tick later (the consumer may set `total` after `data`), and the table renders, so a controller
+     * that waits for the count in its own update sees it.
+     */
+    private answered(): void {
+        if (!this.awaitingRows) return;
+        this.awaitingRows = false;
+        this.cancelAnswerWait?.();
+        this.cancelAnswerWait = undefined;
+        const waiting = this.onRows;
+        this.onRows = null;
+        if (waiting) this.host.disposables.timeout(waiting, 0);
+        this.host.requestRender();
     }
 
     detach(): void {
         this.unsubscribe?.();
         this.unsubscribeData?.();
+        this.cancelAnswerWait?.();
+        this.cancelAnswerWait = undefined;
         this.onRows = null;
         this.awaitingRows = false;
         this.unprovide?.();
@@ -365,6 +388,8 @@ export class QueryController<T> {
     }
 
     hostUpdate(): void {
+        // A changed `total` is an answer too (rows mutated in place keep the same `data` array).
+        if (this.awaitingRows && this.host.config.total !== this.totalAtQuery) this.answered();
         this.clampPage();
         const next = this.displayRows();
         if (next !== this.lastRows) {

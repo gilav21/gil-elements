@@ -772,6 +772,36 @@ describe('F9 result announcements (D7)', () => {
         expect(announcer(table)).toBe('3 rows match the filters');
         expect(table.provider('query')?.filteredCount()).toBe(3);
     });
+
+    it('server filtering: an answer that mutates the rows in place and changes only the total is an answer too (round 3)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
+        table.addEventListener('query', () =>
+            setTimeout(() => {
+                table.data.splice(1); // the same array, rows dropped in place
+                table.total = 1;
+            }, 800),
+        );
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'q');
+        await new Promise((resolve) => setTimeout(resolve, 650));
+        await settle(table);
+        expect(announcer(table)).toBe('');
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        await settle(table);
+        expect(announcer(table)).toBe('1 row matches the filters');
+    });
+
+    it('server filtering: an answer the table cannot see is trusted after the wait, with the total in hand', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 4 });
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'q');
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await settle(table);
+        expect(announcer(table)).toBe('');
+        await new Promise((resolve) => setTimeout(resolve, 1300));
+        await settle(table);
+        expect(announcer(table)).toBe('4 rows match the filters');
+    });
 });
 
 describe('the lazy panels and the leak rules', () => {

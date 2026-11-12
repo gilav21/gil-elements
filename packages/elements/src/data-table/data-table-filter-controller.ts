@@ -78,6 +78,7 @@ export class FilterUiController<T> {
         this.teardown = [];
         this.cancelAnnounce?.();
         this.cancelAnnounce = undefined;
+        this.awaitingCount = null;
         for (const cancel of this.pending.values()) cancel();
         this.pending.clear();
         this.handlers.clear();
@@ -186,6 +187,7 @@ export class FilterUiController<T> {
     /** One polite message once the column and advanced filter edits have settled: the rows that match now, or that every filter is cleared (D7). */
     private scheduleAnnouncement(): void {
         this.cancelAnnounce?.();
+        this.awaitingCount = null;
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             this.cancelAnnounce = undefined;
             const { model, resolvedLocale: locale } = this.host;
@@ -198,18 +200,17 @@ export class FilterUiController<T> {
                 this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
                 return true;
             };
-            // Server filtering: no count until the answer's rows arrive (`filteredCount`, the same rule as the global filter): try once more then.
+            // Server filtering: no count until the query's answer is in (`filteredCount`, the same rule as the global filter). The query controller
+            // renders the table when it is (new data, a changed total, or its wait ran out): the update after that speaks.
             if (say() || this.host.config.localFiltering) return;
-            const off = this.host.model.subscribe('data', (_, origin) => {
-                if (origin === 'internal') return;
-                stop();
-                this.cancelAnnounce = this.host.disposables.timeout(() => void say(), 0);
-            });
-            const stop = (): void => {
-                off();
-                if (this.cancelAnnounce === stop) this.cancelAnnounce = undefined;
-            };
-            this.cancelAnnounce = stop;
+            this.awaitingCount = say;
         }, FILTER_UI_ANNOUNCE_MS);
+    }
+
+    /** The announcement that waits for a server count: tried at every update until it speaks; a newer one or a detach replaces it. */
+    private awaitingCount: (() => boolean) | null = null;
+
+    hostUpdate(): void {
+        if (this.awaitingCount?.()) this.awaitingCount = null;
     }
 }
