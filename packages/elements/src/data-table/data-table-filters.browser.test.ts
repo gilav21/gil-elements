@@ -609,6 +609,18 @@ describe('F4 the multiselect panel', () => {
         await closePopover(table);
     });
 
+    it('Alt+Shift+Arrow typed in the panel search input is the input own: no column move (round 12)', async () => {
+        const table = await mount({ enableColumnReorder: true });
+        const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
+        const input = shadow(panel.shadowRoot!.querySelector('ge-command-input'), 'input') as HTMLInputElement;
+        await typeText(input, 'Eng');
+        await press('{Alt>}{Shift>}{ArrowLeft}{/Shift}{/Alt}');
+        await settle(table);
+        expect(table.columnOrder).toEqual([]);
+        expect(input.value).toBe('Eng');
+        await closePopover(table);
+    });
+
     it("an option's select-item stays inside the panel (round 11)", async () => {
         const table = await mount();
         const heard = vi.fn();
