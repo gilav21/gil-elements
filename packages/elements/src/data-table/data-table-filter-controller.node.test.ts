@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Disposables } from '../shared/registry.js';
-import { FILTER_UI_ANNOUNCE_MS, FilterUiController } from './data-table-filter-controller.js';
+import { FilterUiController } from './data-table-filter-controller.js';
+import { FILTER_ANNOUNCE_MS as FILTER_UI_ANNOUNCE_MS } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import { ModelStore } from './data-table-model.js';

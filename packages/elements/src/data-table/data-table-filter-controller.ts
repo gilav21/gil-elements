@@ -1,6 +1,6 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { chromeIcon } from './data-table-icons.js';
-import { BUILT_IN_FILTER_PANELS, builderColumns, EMPTY_GROUP, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
+import { BUILT_IN_FILTER_PANELS, builderColumns, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
@@ -9,8 +9,6 @@ import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels, interpolate } from 
 import type { ColumnDef, ComponentOutputs, FilterGroup } from './data-table.types.js';
 
 
-/** How long the result announcement of a column or advanced filter waits for the edits to settle (D7). */
-export const FILTER_UI_ANNOUNCE_MS = 500;
 const panels = (): Promise<unknown> => import('./lazy/filter-panels.js');
 /** The ready-made panels (one lazy entry defines all three, with `ge-calendar` and `ge-command`): loaded when a trigger carrying one is hovered, focused or opened. */
 const PANELS: ReadonlyMap<string, LazyElement> = new Map(BUILT_IN_FILTER_PANELS.map((tag) => [tag, lazyElement(tag, panels)]));
@@ -246,6 +244,6 @@ export class FilterUiController<T> {
             // ONE rule with the global filter: the query service says the count now, or (server filtering) once the query's answer is in, or never
             // (no total); a newer filter change drops a waiting one.
             query.whenCounted(say, seq);
-        }, FILTER_UI_ANNOUNCE_MS);
+        }, FILTER_ANNOUNCE_MS);
     }
 }

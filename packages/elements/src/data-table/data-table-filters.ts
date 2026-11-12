@@ -52,6 +52,9 @@ export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] |
     return filterValue.includes(getValue(row));
 }
 
+/** How long a filter result announcement waits for the edits to settle (D7): ONE value for the global filter and the column / advanced filters. */
+export const FILTER_ANNOUNCE_MS = 500;
+
 // ---- filter value equality -----------------------------------------------------------------------------------------------------------
 
 /**

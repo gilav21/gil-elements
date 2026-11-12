@@ -13,14 +13,13 @@ import {
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
-import { sameFilterValue } from './data-table-filters.js';
+import { FILTER_ANNOUNCE_MS, sameFilterValue } from './data-table-filters.js';
 import { buildGroupedDisplayRows, isGroupingActive, partitionIntoGroups, renumberDataRows, type RowGroup } from './data-table-group.js';
 import { buildTreeIndex, filterTree, flattenTree, sortTree } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
 import type { ColumnDef, DataTableDisplayRow, DataTableQuery, FlattenedTreeRow, PaginationState, SortDirection, SortState } from './data-table.types.js';
 import { getCellValue, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
 
-const FILTER_ANNOUNCE_MS = 500;
 /** Server mode: how long the count waits for a query's answer it can see (new `data`, a changed `total`) before it trusts the `total` in hand. */
 const ANSWER_WAIT_MS = 2000;
 
@@ -339,12 +338,9 @@ export class QueryController<T> {
                 this.resetPage();
             });
         },
-        changeAdvancedFilter: (group) => {
-            // An unchanged tree is no filter change (the same no-op rule as `changeAdvancedFilterOf`): a waiting announcement stays.
-            if ((this.host.model.get('advancedFilter') ?? null) === (group ?? null)) return;
-            this.filterChanged();
-            changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group);
-        },
+        // ONE no-op rule (`changeAdvancedFilterOf`): an unchanged tree is no filter change and a waiting announcement stays; a change is numbered
+        // right before its write.
+        changeAdvancedFilter: (group) => void changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group, () => this.filterChanged()),
         whenCounted: (say, seq) => this.whenCounted(say, seq),
         filterSeq: () => this.seq,
         // Server filtering: the held rows are not the matches, so the server's `total`, but only once the ANSWER to the last query arrived (the next
