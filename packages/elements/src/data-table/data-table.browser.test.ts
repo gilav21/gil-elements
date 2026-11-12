@@ -916,11 +916,17 @@ describe('ge-data-table review fixes', () => {
             await new Promise((resolve) => setTimeout(resolve, 650));
             await settle(table);
         };
-        const withTotal = await mountTable({ data: many(10), localFiltering: false, localPagination: false, total: 77 });
+        // Wave 5 review round 2: the count is the ANSWER's total, so nothing is said until the rows of the query arrive (the old total is stale).
+        const withTotal = await mountTable({ data: many(10), localFiltering: false, localPagination: false, total: 500 });
+        withTotal.addEventListener('query', () => setTimeout(() => Object.assign(withTotal, { data: many(10), total: 77 }), 800));
         await type(withTotal, 'x');
+        expect(announcement(withTotal)).toBe('');
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await settle(withTotal);
         expect(announcement(withTotal)).toBe('77 results found for "x"');
 
         const without = await mountTable({ data: many(10), localFiltering: false, localPagination: false });
+        without.addEventListener('query', () => setTimeout(() => (without.data = many(10)), 0));
         await type(without, 'x');
         expect(announcement(without)).toBe('');
     });

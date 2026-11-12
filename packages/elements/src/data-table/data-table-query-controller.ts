@@ -30,6 +30,12 @@ export class QueryController<T> {
     private lastRows: readonly DataTableDisplayRow<T>[] | null = null;
     private cancelFilter: (() => void) | undefined;
     private cancelAnnounce: (() => void) | undefined;
+    // wave5: server filtering waits for the answer before it counts (see `filteredCount`, `whenCounted`)
+    /** A `query` was sent (server mode) and its rows have not arrived: `config.total` is still the previous answer's. */
+    private awaitingRows = false;
+    /** The announcement waiting for those rows (one: a newer filter replaces it). */
+    private onRows: (() => void) | null = null;
+    private unsubscribeData: (() => void) | undefined;
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
 
@@ -206,11 +212,23 @@ export class QueryController<T> {
         this.cancelAnnounce?.();
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
-            // Server filtering: the held rows are not the matches, so use the server's total or say nothing.
-            const count = this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total;
-            if (count === undefined) return;
-            this.host.announce(interpolate(count === 1 ? locale.filterResultAnnouncement : locale.filterResultsAnnouncement, { count, value }));
+            // ONE rule with the column and advanced filter announcement: `filteredCount` (server filtering: the total of the ANSWER, so wait for it).
+            this.whenCounted((count) => this.host.announce(interpolate(count === 1 ? locale.filterResultAnnouncement : locale.filterResultsAnnouncement, { count, value })));
         }, FILTER_ANNOUNCE_MS);
+    }
+
+    /**
+     * Calls `say` with the filtered count: now, or (server filtering, the request still unanswered) once the answer's rows arrive. No count
+     * (server filtering without `total`) says nothing. A newer call replaces a waiting one.
+     */
+    private whenCounted(say: (count: number) => void): void {
+        this.onRows = null;
+        const now = (): void => {
+            const count = this.service.filteredCount();
+            if (count !== undefined) say(count);
+        };
+        if (this.host.config.localFiltering || !this.awaitingRows) now();
+        else this.onRows = now;
     }
 
     private readonly service: QueryService<T> = {
@@ -292,8 +310,9 @@ export class QueryController<T> {
             });
         },
         changeAdvancedFilter: (group) => changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group),
-        // Server filtering: the held rows are not the matches, so the server's total (or nothing), like the global announcement.
-        filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total),
+        // Server filtering: the held rows are not the matches, so the server's `total`, but only once the ANSWER to the last query arrived (the next
+        // `data` from outside): before that, `total` is the previous answer's and `undefined` says "not known yet".
+        filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.awaitingRows ? undefined : this.host.config.total),
     };
 
     private visibleDataColumns(): ColumnDef<T>[] {
@@ -321,12 +340,24 @@ export class QueryController<T> {
             const next = this.currentQuery();
             if (this.lastQuery && sameQuery(this.lastQuery, next)) return;
             this.lastQuery = next;
+            this.awaitingRows = true;
             this.host.emit('query', next);
+        });
+        // The answer's rows (a `data` set from outside) end the wait; `total` is read a tick later, so a consumer may set it after `data`.
+        this.unsubscribeData = this.host.model.subscribe('data', (_, origin) => {
+            if (origin === 'internal' || !this.awaitingRows) return;
+            this.awaitingRows = false;
+            const waiting = this.onRows;
+            this.onRows = null;
+            if (waiting) this.host.disposables.timeout(waiting, 0);
         });
     }
 
     detach(): void {
         this.unsubscribe?.();
+        this.unsubscribeData?.();
+        this.onRows = null;
+        this.awaitingRows = false;
         this.unprovide?.();
         this.cancelFilter?.();
         this.cancelAnnounce?.();

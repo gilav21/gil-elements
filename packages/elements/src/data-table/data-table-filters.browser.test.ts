@@ -706,6 +706,21 @@ describe('F9 result announcements (D7)', () => {
         const live = (await axTree()).find((n) => (n.properties ?? []).some((p) => p.name === 'live' && p.value.value === 'polite'));
         expect(live).toBeDefined();
     });
+
+    it('server filtering announces the ANSWER total once its rows arrive, never the total from before the request', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
+        table.addEventListener('query', () => setTimeout(() => Object.assign(table, { data: [...table.data], total: 3 }), 900));
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'x');
+        await new Promise((resolve) => setTimeout(resolve, 650));
+        await settle(table);
+        expect(announcer(table)).toBe(''); // the 500 in hand is the previous answer's
+        expect(table.provider('query')?.filteredCount()).toBeUndefined();
+        await new Promise((resolve) => setTimeout(resolve, 450));
+        await settle(table);
+        expect(announcer(table)).toBe('3 rows match the filters');
+        expect(table.provider('query')?.filteredCount()).toBe(3);
+    });
 });
 
 describe('the lazy panels and the leak rules', () => {

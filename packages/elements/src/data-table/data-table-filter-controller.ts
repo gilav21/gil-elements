@@ -182,9 +182,24 @@ export class FilterUiController<T> {
             const filters = model.get('columnFilters');
             const any = Object.keys(filters).some((key) => isFilterActive(filters, key)) || countConditions(model.get('advancedFilter')) > 0 || model.get('globalFilter').trim() !== '';
             if (!any) return this.host.announce(locale.filtersClearedAnnouncement);
-            const count = this.host.provider('query')?.filteredCount();
-            if (count === undefined) return;
-            this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
+            const say = (): boolean => {
+                const count = this.host.provider('query')?.filteredCount();
+                if (count === undefined) return false;
+                this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
+                return true;
+            };
+            // Server filtering: no count until the answer's rows arrive (`filteredCount`, the same rule as the global filter): try once more then.
+            if (say() || this.host.config.localFiltering) return;
+            const off = this.host.model.subscribe('data', (_, origin) => {
+                if (origin === 'internal') return;
+                stop();
+                this.cancelAnnounce = this.host.disposables.timeout(() => void say(), 0);
+            });
+            const stop = (): void => {
+                off();
+                if (this.cancelAnnounce === stop) this.cancelAnnounce = undefined;
+            };
+            this.cancelAnnounce = stop;
         }, FILTER_UI_ANNOUNCE_MS);
     }
 }
