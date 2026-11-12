@@ -67,7 +67,7 @@ function flashOffKeys(columns: readonly { accessorKey: unknown; enableCellFlash?
     return keys;
 }
 
-export function stateView<T>(host: DataTableViewHost<T>): StateView {
+export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolean): StateView {
     const { config } = host;
     const range = host.provider('range');
     const interaction = host.provider('interaction');
@@ -75,7 +75,7 @@ export function stateView<T>(host: DataTableViewHost<T>): StateView {
     const rowDrag = host.provider('rowDrag');
     // Range mode is drawn (`aria-selected`, `aria-multiselectable`) only once the range part is loaded and handles ranges: not while it loads,
     // and not after a load that failed (the same rule as `rowDrag.active()` for draggable rows).
-    const rangeActive = host.rangeActive ?? range?.active() ?? false; // once per update: the element reads the part in `syncHost` and the view reuses it
+    const rangeActive = rangeActiveNow ?? range?.active() ?? false; // once per update: the element reads the part in `syncHost` and passes it in
     // What is DRAWN of a range follows range mode (selection OR fill handle: the fill source is visible); what is CLAIMED to assistive technology
     // (`aria-selected`, `aria-multiselectable`) follows the SELECTION flag alone, like `data-range-selection`: a fill-handle-only grid is not multiselectable.
     const rangeMode = rangeModeOn(config) && rangeActive;

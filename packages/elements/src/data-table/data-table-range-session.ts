@@ -45,8 +45,6 @@ export class RangeSession<T> implements CellSession {
     private assignedSince = false;
     /** A range flag was on at the last update. */
     private wasOn = false;
-    /** `held` was assigned while a range flag was on, or adopted by an update that saw it on: the turn-off clears it. */
-    private heldInMode = false;
 
     /** Loaded when a range flag is on at an update (not at the first gesture), detached when it turns off or the table detaches. */
     private readonly lazy = lazyPart<RangePart<T>>(() =>
@@ -86,7 +84,6 @@ export class RangeSession<T> implements CellSession {
             const changed = !sameRange(this.seen, next); // by VALUE against the copy: an in-place edit followed by the same object again is a change
             this.held = next;
             this.seen = next && { ...next };
-            this.heldInMode = this.rangeOn(); // assigned while range mode was off, it is not part of the mode that a later turn-off ends
             this.assignedSince = true; // and one assigned since the last update survives a turn-off that update sees
             this.setPartRange(next);
             // `data-in-range`, `aria-selected` and the readout read the range at render, and only in range mode: an equal value, or a value held while the mode is off, draws nothing new
@@ -162,7 +159,6 @@ export class RangeSession<T> implements CellSession {
         const on = this.rangeOn();
         if (on) {
             this.held = this.live();
-            this.heldInMode = true; // what is held now belongs to range mode (a later turn-off ends it)
             this.validateColumns();
             // The SHELL trims the ROWS of the range, always, once they are known: with or without a part, so a data set that shrinks never leaves a
             // range past its rows (one place, the part need not do it). A changed range is written back to the part. The columns are not checked here:
@@ -184,8 +180,7 @@ export class RangeSession<T> implements CellSession {
             // Only a value that was held in the mode AND was not assigned in this same tick: the update sees the turn-off and the assignment together,
             // in either order (`cellRange = r; enableCellRangeSelection = false` or the reverse), and an assignment made in the tick of the turn-off
             // is not part of the mode that ends: it waits for the next time the mode is on.
-            if (this.heldInMode && !this.assignedSince) this.held = null;
-            this.heldInMode = false;
+            if (!this.assignedSince) this.held = null;
         }
         // (off and never on: a value assigned before the mode was switched on waits in `held`)
         this.wasOn = on;

@@ -29,11 +29,9 @@ export interface DataTableViewHost<T> extends DataTableCoreHost<T> {
     isDisabled(row: T): boolean;
     /** The consumer's children of a named slot, as the table holds them. */
     slottedNodes(name: string): readonly Node[] | undefined;
-    /** The range part handles ranges, read once per update by the element; absent (a fake host): the state view asks the range service itself. */
-    readonly rangeActive?: boolean;
 }
 
-export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
+export function buildView<T>(host: DataTableViewHost<T>, rangeActive?: boolean): GridView<T> {
     const footer = host.provider('footer');
     const columns = columnsView(host);
     const win = windowView(host);
@@ -43,7 +41,7 @@ export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
     return {
         ...columns,
         ...rows,
-        ...stateView(host),
+        ...stateView(host, rangeActive),
         filters,
         edit: editView(host),
         focusedCell: win.focusedCell,

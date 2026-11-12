@@ -1699,6 +1699,33 @@ describe('a touch tap on a cell', () => {
     });
 });
 
+describe('a press in a NESTED table outside its own cells', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('on its header text is a cell-table press like in a non-nested table: the outer cell above the whole table is not "its cell", and the climb stops at its own root', async () => {
+        const nested = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(nested, { columns: [{ accessorKey: 'name', header: 'Name' }], data: [{ name: 'inner' }], showToolbar: false, showPagination: false });
+        const table = await mountTable({
+            columns: [
+                { accessorKey: 'name', header: 'Name', width: '300px', cellRenderer: ({ rowIndex, value }) => (rowIndex === 0 ? nested : String(value)) },
+                { accessorKey: 'age', header: 'Age', width: '120px' },
+            ],
+        });
+        await settle(nested);
+        const downs: PointerPress[] = [];
+        hooks.onPointerDown = (_event, _at, press) => void downs.push(press);
+        // the nested table's header cell: a press there is outside the nested table's DATA cells
+        const head = nested.querySelector<HTMLElement>('[data-slot="table-head"]')!;
+        const text = head.querySelector<HTMLElement>('*') ?? head;
+        const box = head.getBoundingClientRect();
+        text.dispatchEvent(pointer('pointerdown', 511, { clientX: box.left + 3, clientY: box.top + 3 }));
+        expect(downs).toHaveLength(1); // offered, not bypassed as a "control" (the outer cell's tabindex / the viewport above the nested root)
+        expect(table).toBeDefined();
+    });
+});
+
 describe('one release path for every press', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

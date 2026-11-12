@@ -108,7 +108,7 @@ export class CellInteractionController<T> {
     private readonly sessions: readonly CellSession[];
     private readonly service: CellInteractionService;
     /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. Undefined while the range session is failed. */
-    readonly services: { readonly range: RangeService | undefined };
+    readonly services: { readonly range: RangeService | undefined; readonly interaction: CellInteractionService };
     /** Sessions that FAILED (their `attach()` or a `hostUpdate()` threw): detached at once and skipped by everything after, until the next attach. */
     private readonly broken = new Set<CellSession>();
     /** The sessions whose `renderOverlay` failure was already reported: it runs at every render and reports its first failure only (cleared at detach). */
@@ -150,6 +150,9 @@ export class CellInteractionController<T> {
         this.services = {
             get range(): RangeService | undefined {
                 return controller.broken.has(controller.range) ? undefined : controller.range.rangeService;
+            },
+            get interaction(): CellInteractionService {
+                return controller.service; // the merged service outlives a disconnect (the element's focus and edit methods read it here)
             },
         };
         // The merged `interaction` service is a PLAIN object built once: for every key a session declares (on its `service` or its `neutral.service`) ONE
@@ -818,7 +821,10 @@ export class CellInteractionController<T> {
      * nested table, a link around the table) do not count. The one answer for the press, the offer and the focus.
      */
     private controlOf(target: Element | null): Element | null {
-        const cell = target?.closest(CELL) ?? null;
+        // The nearest cell counts only when THIS table owns it: in a nested table, a press outside the nested table's own cells (its header, its toolbar) finds
+        // the OUTER table's cell above the whole table, and the walk must neither stop there nor use the in-cell rules.
+        const nearest = target?.closest(CELL) ?? null;
+        const cell = nearest && this.host.root.contains(nearest) ? nearest : null;
         // Inside a cell anything the content makes focusable or interactive counts (an anchor used as a button, a custom focusable widget); outside a
         // cell only the native controls do (the viewport and the rows have a tabindex of their own).
         const selector = cell ? CELL_CONTROLS : CONTROLS;

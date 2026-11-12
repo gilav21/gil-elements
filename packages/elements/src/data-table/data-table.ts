@@ -443,11 +443,11 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The cell that holds the roving tab stop, as `{ rowIndex, columnKey }` (the drawn row index), or null. */
     get focusedCell(): CellAddress | null {
-        return this.provider('interaction')?.focusedCell() ?? null;
+        return this.serviceOf('interaction')?.focusedCell() ?? null;
     }
 
     focusCell(rowIndex: number, columnKey: string): void {
-        this.provider('interaction')?.focusCell(rowIndex, columnKey);
+        this.serviceOf('interaction')?.focusCell(rowIndex, columnKey);
     }
 
     autoSizeColumn(columnKey: string): void {
@@ -478,17 +478,17 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Opens an editor on the cell of `row` and column `columnKey`; false when none opened (not editable, a disabled row, no such row). */
     startEditing(row: T, columnKey: string): boolean {
-        return this.provider('interaction')?.startEditing?.(row, columnKey) ?? false;
+        return this.serviceOf('interaction')?.startEditing?.(row, columnKey) ?? false;
     }
 
     /** Commits the open editor's draft; does nothing with none open. */
     commitEdit(): void {
-        this.provider('interaction')?.commitEdit?.();
+        this.serviceOf('interaction')?.commitEdit?.();
     }
 
     /** Drops the open editor's draft without an event. */
     cancelEdit(): void {
-        this.provider('interaction')?.cancelEdit?.();
+        this.serviceOf('interaction')?.cancelEdit?.();
     }
 
     /** Undoes the last edit step (needs `enable-edit-history`); `stale` lists the entries whose row or column is gone. */
@@ -507,7 +507,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The cell whose editor is open, or null. */
     get editingCell(): EditingCell | null {
-        return this.provider('interaction')?.editingCell?.() ?? null;
+        return this.serviceOf('interaction')?.editingCell?.() ?? null;
     }
 
     /** Read-only (Angular exposes it as a signal): a property binding or an assignment is ignored with a one-time warning, it does not throw. */
@@ -517,7 +517,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The validation error shown on the open editor, or null. */
     get cellEditError(): CellEditError | null {
-        return this.provider('interaction')?.cellEditError?.() ?? null;
+        return this.serviceOf('interaction')?.cellEditError?.() ?? null;
     }
 
     /** Read-only, like `editingCell`. */
@@ -527,7 +527,16 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Clears the advanced filter tree (the column and global filters stay). */
     clearAdvancedFilter(): void {
-        this.provider('query')?.changeAdvancedFilter(null);
+        // Writes the model directly (the `advancedFilter` key already filters the rows, and the model emits `advanced-filter-change`), with the same page
+        // reset the other filter paths do; wave 5 A may route it through its filter service later.
+        if (this.store.get('advancedFilter') === null) return;
+        const page = this.store.get('paginationState');
+        const next = { ...page, pageIndex: 0 };
+        this.store.batch(() => {
+            this.store.set('advancedFilter', null);
+            if (page.pageIndex !== 0) this.store.set('paginationState', next);
+        });
+        if (page.pageIndex !== 0) this.emit('page-change', next);
     }
 
     // ---- range, fill, clipboard and row drag (wave 6) ---------------------------------------------------------
@@ -562,7 +571,15 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * withdraws it while the session is out).
      */
     private rangeService(): DataTableProviders<T>['range'] | undefined {
-        return this.built?.service('range');
+        return this.serviceOf('range');
+    }
+
+    /**
+     * The ONE way an element method reaches a controller-owned service: the controller's own (`services`, which outlives a disconnect), never the
+     * provider entry (cleared at disconnect). So a detached table answers like an attached one; undefined before the first connect.
+     */
+    private serviceOf<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined {
+        return this.built?.service(key);
     }
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
@@ -575,14 +592,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.rangeService()?.openChart();
     }
 
-    /** The clipboard service of the controller (it outlives a disconnect, like `rowDrag` and the range service); the provider entry only before the controllers exist. */
-    private clipboardService(): DataTableProviders<T>['clipboard'] | undefined {
-        return this.built?.service('clipboard') ?? this.provider('clipboard');
-    }
-
     /** The `copy*ToClipboard` methods resolve to what happened: `status` is `done`, `empty`, `denied` (the browser refused), `unavailable` (no clipboard) or `ignored` (the feature is off). */
     private copyToClipboard(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<ClipboardResult> {
-        return this.clipboardService()?.copy(scope, row) ?? Promise.resolve({ status: 'unavailable' });
+        return this.serviceOf('clipboard')?.copy(scope, row) ?? Promise.resolve({ status: 'unavailable' });
     }
 
     copyCellToClipboard(): Promise<ClipboardResult> {
@@ -612,7 +624,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The row-drag service: the controller's, which outlives a disconnect; the neutral one (its only copy fallback) before the controllers exist. */
     private rowDrag(): RowDragService<T> {
-        return (this.built?.service('rowDrag') as RowDragService<T> | undefined) ?? neutralRowDrag<T>();
+        return (this.serviceOf('rowDrag') as RowDragService<T> | undefined) ?? neutralRowDrag<T>();
     }
 
     /** Moves a row one step up or down (the keyboard and button alternative to dragging); false when nothing moved. */
@@ -755,8 +767,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         }
     }
 
-    /** Whether the range part handles ranges, read ONCE per update (`syncHost`, before the render) so the part is asked once; the state view reads it. */
-    rangeActive = false;
+    /** Whether the range part handles ranges, read ONCE per update (`syncHost`, before the render) so the part is asked once; passed to the view, not public API. */
+    private rangeActive = false;
 
     private syncHost(): void {
         this.rangeActive = this.provider('range')?.active() ?? false;
@@ -875,7 +887,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         if (isServer) return nothing;
         const locale = this.resolvedLocale;
         if (this.skeleton) return renderSkeleton(this.skeletonRows, locale.loading);
-        const grid = buildView(this);
+        const grid = buildView(this, this.rangeActive);
         const query = requireProvider(this, 'query');
         return html`<output data-slot="data-table-announcer" aria-live="polite" aria-atomic="true">${this.announcement}</output>
             ${this.showToolbar ? this.renderToolbar(locale) : nothing}
