@@ -12,28 +12,28 @@ import css from './data-table-filters-panels.css?inline';
  * the current filter as `value` on every render and listens for `filter-change`.
  *
  * @fires filter-change - The picked day (`Date`; Today is local midnight), or `null` for Clear.
- * @attr {string} title - Optional heading above the buttons.
+ * @attr {string} heading - Optional heading above the buttons (Angular's `title` input; not `title`, which is the global tooltip attribute).
  * @attr {string} locale - Calendar dictionary id (`en`, `he`, ...); the property also takes a dictionary. Labels and direction follow it.
  */
 export class GeDataTableDateFilter extends UiElement {
     static override readonly styles = [UiElement.styles, unsafeCSS(css)];
     static override readonly properties = {
         value: { attribute: false },
-        title: {},
+        heading: {},
         locale: {},
         selected: { state: true },
     };
 
     /** The current filter, re-supplied by the table: mirrored into the calendar, which the panel also updates itself (it works uncontrolled). */
     declare value: Date | string | number | null;
-    declare title: string;
+    declare heading: string;
     declare locale: string | CalendarLocale | undefined;
     declare selected: Date | null;
 
     constructor() {
         super();
         this.value = null;
-        this.title = '';
+        this.heading = '';
         this.locale = undefined;
         this.selected = null;
     }
@@ -63,7 +63,7 @@ export class GeDataTableDateFilter extends UiElement {
     protected override render() {
         const locale = resolveCalendarLocale(this.locale);
         return html`<div part="base" data-slot="date-filter" dir=${locale.rtl ? 'rtl' : nothing}>
-            ${this.title ? html`<div class="title"><span>${this.title}</span></div>` : nothing}
+            ${this.heading ? html`<div class="title"><span>${this.heading}</span></div>` : nothing}
             <div class="actions">
                 <ge-button variant="outline" size="sm" @click=${this.today}>${locale.todayLabel ?? 'Today'}</ge-button>
                 <ge-button variant="ghost" size="sm" @click=${this.clear}>${locale.clearLabel ?? 'Clear'}</ge-button>

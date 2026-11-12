@@ -79,7 +79,11 @@ export class GeDataTableFilterBuilder extends UiElement {
     /** The tree this builder reported last: a `group` fed back that is NOT it was replaced from outside (Clear all, a restored view). */
     private lastEmitted: FilterGroup | null = null;
 
+    /** The labels with every English default filled in: merged ONCE when `labels` changes (not per row), and handed down to nested builders. */
+    private l: Required<FilterBuilderLabels> = EN_FILTER_BUILDER_LABELS as Required<FilterBuilderLabels>;
+
     protected override willUpdate(changed: PropertyValues<this>): void {
+        if (changed.has('labels')) this.l = { ...EN_FILTER_BUILDER_LABELS, ...this.labels } as Required<FilterBuilderLabels>;
         // A tree replaced from outside makes the waiting values meaningless (their paths name another tree's conditions): they are dropped.
         if (!this.owner && changed.has('group') && this.group !== this.lastEmitted && this.pending.size > 0) {
             clearTimeout(this.timer);
@@ -133,21 +137,21 @@ export class GeDataTableFilterBuilder extends UiElement {
     }
 
     private condition(rule: FilterCondition, index: number) {
-        const l = { ...EN_FILTER_BUILDER_LABELS, ...this.labels };
+        const { l } = this;
         const value = (event: Event): string => (event.target as HTMLInputElement | HTMLSelectElement).value;
         const known = this.columns.some((c) => c.key === rule.column);
         // The rows are drawn by index, so a row is REUSED for another rule (remove condition 0: row 0 now shows condition 1). Each select's
         // `.value` is therefore bound with `live` against the DOM, so it shows the model's choice and not the one the reused row last had.
         return html`<div class="condition" data-slot="filter-condition">
-            <select class="column" aria-label=${l.columnLabel ?? 'Column'} .value=${live(known ? rule.column : '')} @change=${(e: Event) => this.edit(this.path, (g) => patchCondition(g, index, { column: value(e) }))}>
+            <select class="column" aria-label=${l.columnLabel} .value=${live(known ? rule.column : '')} @change=${(e: Event) => this.edit(this.path, (g) => patchCondition(g, index, { column: value(e) }))}>
                 ${known ? nothing : html`<option value="" disabled selected data-unknown>${rule.column || '(unknown column)'}</option>`}
                 ${this.columns.map((c) => html`<option value=${c.key} ?selected=${c.key === rule.column}>${c.header}</option>`)}
             </select>
-            <select class="operator" aria-label=${l.operatorLabel ?? 'Operator'} .value=${live(rule.operator)} @change=${(e: Event) => this.edit(this.path, (g) => patchCondition(g, index, { operator: value(e) as FilterOperator }))}>
+            <select class="operator" aria-label=${l.operatorLabel} .value=${live(rule.operator)} @change=${(e: Event) => this.edit(this.path, (g) => patchCondition(g, index, { operator: value(e) as FilterOperator }))}>
                 ${OPERATOR_ORDER.map((op) => html`<option value=${op} ?selected=${op === rule.operator}>${l.operators[op]}</option>`)}
             </select>
             ${needsValue(rule.operator)
-                ? html`<input type="text" class="value" placeholder=${l.valuePlaceholder} aria-label=${l.valueLabel ?? 'Value'} .value=${live(this.shownValue([...this.path, index], rule))} @input=${(e: Event) => this.typed([...this.path, index], value(e))} />`
+                ? html`<input type="text" class="value" placeholder=${l.valuePlaceholder} aria-label=${l.valueLabel} .value=${live(this.shownValue([...this.path, index], rule))} @input=${(e: Event) => this.typed([...this.path, index], value(e))} />`
                 : nothing}
             <button type="button" class="remove" aria-label=${l.removeCondition} @click=${() => this.edit(this.path, (g) => removeRule(g, index))}>
 ${chromeIcon('x', 'xs')}</button>
@@ -155,18 +159,18 @@ ${chromeIcon('x', 'xs')}</button>
     }
 
     private subgroup(rule: FilterGroup, index: number) {
-        const l = { ...EN_FILTER_BUILDER_LABELS, ...this.labels };
+        const { l } = this;
         return html`<div class="subgroup" data-slot="filter-subgroup">
-            <ge-data-table-filter-builder .group=${rule} .columns=${this.columns} .labels=${this.labels} .owner=${this.root} .path=${[...this.path, index]}></ge-data-table-filter-builder>
+            <ge-data-table-filter-builder .group=${rule} .columns=${this.columns} .labels=${l} .owner=${this.root} .path=${[...this.path, index]}></ge-data-table-filter-builder>
             <button type="button" class="remove-group" @click=${() => this.edit(this.path, (g) => removeRule(g, index))}>${l.removeGroup}</button>
         </div>`;
     }
 
     protected override render() {
-        const l = { ...EN_FILTER_BUILDER_LABELS, ...this.labels };
+        const { l } = this;
         const group = this.group ?? EMPTY_GROUP;
         const and = group.combinator === 'and';
-        return html`<div part="base" class="group" data-slot="filter-group" role="group" aria-label=${l.groupLabel ?? 'Group'}>
+        return html`<div part="base" class="group" data-slot="filter-group" role="group" aria-label=${l.groupLabel}>
             <div class="header">
                 <div class="combinator">
                     <button type="button" aria-pressed=${and ? 'true' : 'false'} ?data-active=${and} @click=${() => this.edit(this.path, (g) => setCombinator(g, 'and'))}>${l.and}</button>

@@ -15,7 +15,7 @@ import css from './data-table-filters-panels.css?inline';
  *
  * @fires filter-change - The selected values (`valueWith` of the options) in selection order, or `null` when none is selected.
  * @attr {string} placeholder - The search field's placeholder; defaults to the locale's `searchPlaceholder`.
- * @attr {string} title - Optional heading; with it a badge shows the number selected.
+ * @attr {string} heading - Optional heading; with it a badge shows the number selected (Angular's `title` input; not `title`, which is the global tooltip attribute).
  * @attr {string} locale - Data-table dictionary id; the property also takes a dictionary.
  */
 export class GeDataTableMultiselectFilter<O = unknown> extends UiElement {
@@ -26,7 +26,7 @@ export class GeDataTableMultiselectFilter<O = unknown> extends UiElement {
         displayWith: { attribute: false },
         valueWith: { attribute: false },
         placeholder: {},
-        title: {},
+        heading: {},
         locale: {},
         selected: { state: true },
     };
@@ -40,7 +40,7 @@ export class GeDataTableMultiselectFilter<O = unknown> extends UiElement {
     /** An option's value: what is reported and compared with the cell (by identity: project objects to a primitive key). */
     declare valueWith: (option: O) => unknown;
     declare placeholder: string | undefined;
-    declare title: string;
+    declare heading: string;
     declare locale: string | DataTableLocale | undefined;
     declare selected: unknown[];
 
@@ -51,7 +51,7 @@ export class GeDataTableMultiselectFilter<O = unknown> extends UiElement {
         this.displayWith = String;
         this.valueWith = (option) => option;
         this.placeholder = undefined;
-        this.title = '';
+        this.heading = '';
         this.locale = undefined;
         this.selected = [];
     }
@@ -77,8 +77,8 @@ export class GeDataTableMultiselectFilter<O = unknown> extends UiElement {
         const t = resolveDataTableLocale(this.locale);
         const chosen = new Set(this.selected);
         return html`<div part="base" data-slot="multiselect-filter">
-            ${this.title
-                ? html`<div class="title"><span>${this.title}</span>${this.selected.length > 0 ? html`<span class="badge">${this.selected.length}</span>` : nothing}</div>`
+            ${this.heading
+                ? html`<div class="title"><span>${this.heading}</span>${this.selected.length > 0 ? html`<span class="badge">${this.selected.length}</span>` : nothing}</div>`
                 : nothing}
             <ge-command dir=${t.rtl ? 'rtl' : nothing} @state-change=${(event: Event) => event.stopPropagation()}>
                 <ge-command-input placeholder=${this.placeholder ?? t.searchPlaceholder}></ge-command-input>
@@ -87,7 +87,7 @@ export class GeDataTableMultiselectFilter<O = unknown> extends UiElement {
                     <ge-button variant="ghost" size="sm" @click=${this.clearAll}>${t.clearAll}</ge-button>
                 </div>
                 <ge-command-separator></ge-command-separator>
-                <ge-command-list aria-label=${this.title || this.placeholder || t.searchPlaceholder}>
+                <ge-command-list aria-label=${this.heading || this.placeholder || t.searchPlaceholder}>
                     <ge-command-empty>${t.noResultsLabel}</ge-command-empty>
                     ${repeat(
                         this.options,

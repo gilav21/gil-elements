@@ -518,6 +518,23 @@ describe('F4 the multiselect panel', () => {
         await closePopover(table);
     });
 
+    it('takes its heading from `heading` (round 8); `title` stays the global tooltip attribute and draws no heading', async () => {
+        const table = await mount({ columns: [nameColumn, { ...roleColumn, filterComponentInputs: { ...(roleColumn.filterComponentInputs as object), heading: 'Pick roles' } }] });
+        const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
+        expect(panel.shadowRoot!.querySelector('.title')?.textContent).toContain('Pick roles');
+        expect(panel.shadowRoot!.querySelector('ge-command-list')?.getAttribute('aria-label')).toBe('Pick roles');
+        await closePopover(table);
+        const plain = document.createElement('ge-data-table-multiselect-filter') as HTMLElement & { updateComplete: Promise<boolean> };
+        plain.setAttribute('title', 'Tooltip only');
+        document.body.append(plain);
+        try {
+            await plain.updateComplete;
+            expect(plain.shadowRoot!.querySelector('.title')).toBeNull();
+        } finally {
+            plain.remove();
+        }
+    });
+
     it('gets the RESOLVED table dictionary, so a custom locale object labels it (round 4)', async () => {
         const table = await mount({ locale: { ...DATA_TABLE_LOCALES.en, code: 'xx', selectAllRows: 'Pick every one', clearAll: 'Wipe' } });
         const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');

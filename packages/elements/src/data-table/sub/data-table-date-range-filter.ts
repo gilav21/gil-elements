@@ -16,7 +16,7 @@ const EMPTY: DataTableDateRange = Object.freeze({ start: null, end: null }) as D
  * kept in the panel, silent); a preset is reported at once, by reference.
  *
  * @fires filter-change - The complete range `{ start, end }`, or `null` for Clear.
- * @attr {string} title - Optional heading above the buttons.
+ * @attr {string} heading - Optional heading above the buttons (Angular's `title` input; not `title`, which is the global tooltip attribute).
  * @attr {string} locale - Calendar dictionary id; labels, the built-in presets and direction follow it.
  */
 export class GeDataTableDateRangeFilter extends UiElement {
@@ -24,7 +24,7 @@ export class GeDataTableDateRangeFilter extends UiElement {
     static override readonly properties = {
         value: { attribute: false },
         presets: { attribute: false },
-        title: {},
+        heading: {},
         locale: {},
         selected: { state: true },
     };
@@ -32,7 +32,7 @@ export class GeDataTableDateRangeFilter extends UiElement {
     declare value: DataTableDateRange | null;
     /** Replaces the built-in quick ranges; an empty list keeps them. */
     declare presets: DateRangePreset[];
-    declare title: string;
+    declare heading: string;
     declare locale: string | CalendarLocale | undefined;
     declare selected: DataTableDateRange;
 
@@ -40,7 +40,7 @@ export class GeDataTableDateRangeFilter extends UiElement {
         super();
         this.value = null;
         this.presets = [];
-        this.title = '';
+        this.heading = '';
         this.locale = undefined;
         this.selected = EMPTY;
     }
@@ -81,7 +81,7 @@ export class GeDataTableDateRangeFilter extends UiElement {
         const locale = resolveCalendarLocale(this.locale);
         const presets = this.presets.length > 0 ? this.presets : defaultDateRangePresets(locale);
         return html`<div part="base" data-slot="date-range-filter" dir=${locale.rtl ? 'rtl' : nothing}>
-            ${this.title ? html`<div class="title"><span>${this.title}</span></div>` : nothing}
+            ${this.heading ? html`<div class="title"><span>${this.heading}</span></div>` : nothing}
             <div class="actions">
                 ${presets.map((preset) => html`<ge-button variant="outline" size="sm" @click=${() => this.apply(preset)}>${preset.label}</ge-button>`)}
                 <ge-button variant="ghost" size="sm" @click=${this.clear}>${locale.clearLabel ?? 'Clear'}</ge-button>
