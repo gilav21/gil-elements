@@ -2056,6 +2056,150 @@ describe('a touch tap on a cell', () => {
     });
 });
 
+describe('a nested table in an outer cell with the same column key', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('does not take the OUTER cell for its own: a press on its header has no start cell and focuses nothing; a press on its body cell is measured against its own cells', async () => {
+        const nested = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(nested, { columns: [{ accessorKey: 'name', header: 'Name' }], data: [{ name: 'inner' }], showToolbar: false, showPagination: false });
+        const table = await mountTable({
+            columns: [
+                { accessorKey: 'name', header: 'Name', width: '300px', cellRenderer: ({ rowIndex, value }) => (rowIndex === 0 ? nested : String(value)) },
+                { accessorKey: 'age', header: 'Age', width: '120px' },
+            ],
+        });
+        await settle(nested);
+        const starts: unknown[] = [];
+        hooks.onPointerDown = (_event, at, press) => void starts.push({ at, start: press.startCell });
+        const head = nested.querySelector<HTMLElement>('[data-slot="table-head"]')!;
+        const box = head.getBoundingClientRect();
+        head.dispatchEvent(pointer('pointerdown', 531, { clientX: box.left + 3, clientY: box.top + 3 }));
+        head.dispatchEvent(pointer('pointerup', 531, { clientX: box.left + 3, clientY: box.top + 3 }));
+        expect(starts).toEqual([{ at: null, start: null }]); // offered, with no cell: the OUTER cell (row 0, name) is not this table's
+        expect(nested.focusedCell).toBeNull();
+        const inner = nested.querySelector<HTMLElement>('[data-slot="table-body"] [data-slot="table-cell"]')!;
+        const innerBox = inner.getBoundingClientRect();
+        inner.dispatchEvent(pointer('pointerdown', 532, { clientX: innerBox.left + 3, clientY: innerBox.top + 3 }));
+        inner.dispatchEvent(pointer('pointerup', 532, { clientX: innerBox.left + 3, clientY: innerBox.top + 3 }));
+        expect(nested.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        expect(table.focusedCell).toBeNull(); // the outer table never saw the inner presses
+    });
+});
+
+describe('a TOUCH press whose release was swallowed', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+    const presses = (table: GeDataTable): Map<number, unknown> =>
+        (table as unknown as { assembled: { controllers: Record<string, unknown>[] } }).assembled.controllers.find((c) => 'presses' in c)!['presses'] as Map<number, unknown>;
+    const at = (type: string, id: number, over: Element, stamp?: number): PointerEvent => {
+        const event = pointer(type, id, { pointerType: 'touch', over });
+        if (stamp !== undefined) Object.defineProperty(event, 'timeStamp', { value: stamp });
+        return event;
+    };
+
+    it('is closed after 2 s of silence by the next key (the claimant is told), and Tab in focuses a cell', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        hooks.onPointerDown = () => true;
+        hooks.onPointerCancel = (event) => void log.push(`cancel:${event === null ? 'null' : event.type}`);
+        const cell = cellAt(table, 1, 'name')!;
+        const swallow = (event: Event): void => event.stopImmediatePropagation();
+        window.addEventListener('pointerup', swallow, true);
+        const down = at('pointerdown', 541, cell, 1000);
+        try {
+            cell.dispatchEvent(down);
+            cell.dispatchEvent(at('pointerup', 541, cell, 1100));
+        } finally {
+            window.removeEventListener('pointerup', swallow, true);
+        }
+        expect(presses(table).size).toBe(1);
+        const key = (stamp: number): KeyboardEvent => {
+            const event = new KeyboardEvent('keydown', { key: 'Shift', bubbles: true, composed: true });
+            Object.defineProperty(event, 'timeStamp', { value: stamp });
+            return event;
+        };
+        document.body.dispatchEvent(key(2500)); // 1.5 s after its last event: still held
+        expect(presses(table).size).toBe(1);
+        document.body.dispatchEvent(key(3200)); // 2.2 s: lost
+        expect(presses(table).size).toBe(0);
+        expect(log).toEqual(['cancel:null']);
+    });
+
+    it('Tab in after more than 2 s of real silence focuses a cell (the stale press is closed by the viewport focus)', async () => {
+        const table = await mountTable();
+        const swallow = (event: Event): void => event.stopImmediatePropagation();
+        window.addEventListener('pointerup', swallow, true);
+        const cell = cellAt(table, 1, 'name')!;
+        try {
+            cell.dispatchEvent(pointer('pointerdown', 542, { pointerType: 'touch', over: cell }));
+            cell.dispatchEvent(pointer('pointerup', 542, { pointerType: 'touch', over: cell }));
+        } finally {
+            window.removeEventListener('pointerup', swallow, true);
+        }
+        expect(presses(table).size).toBe(1);
+        await new Promise((resolve) => setTimeout(resolve, 2100));
+        table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!.focus();
+        await frames(2);
+        expect(presses(table).size).toBe(0);
+        expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
+    });
+
+    it('is NOT closed while its moves keep it fresh, nor is a held mouse press by a Shift', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(at('pointerdown', 543, cell, 1000));
+        const move = pointer('pointermove', 543, { pointerType: 'touch', buttons: 1 });
+        Object.defineProperty(move, 'timeStamp', { value: 2900 });
+        document.body.dispatchEvent(move);
+        const key = new KeyboardEvent('keydown', { key: 'Shift', bubbles: true, composed: true });
+        Object.defineProperty(key, 'timeStamp', { value: 3900 }); // 1 s after the last move
+        document.body.dispatchEvent(key);
+        expect(presses(table).size).toBe(1);
+        cell.dispatchEvent(pointer('pointerdown', 544, { over: cell, buttons: 1 })); // a held mouse press
+        const late = new KeyboardEvent('keydown', { key: 'Shift', bubbles: true, composed: true });
+        Object.defineProperty(late, 'timeStamp', { value: 99999 });
+        document.body.dispatchEvent(late);
+        expect(presses(table).has(544)).toBe(true); // only touch presses go stale by silence; a mouse is closed by a move with no button
+        document.dispatchEvent(pointer('pointerup', 543, { pointerType: 'touch', over: cell }));
+        document.dispatchEvent(pointer('pointerup', 544, { over: cell }));
+    });
+});
+
+describe('a summary, a label and a media control in a cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('are the control\'s own: no offer, no focus move', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const cell = cellAt(table, 1, 'name')!;
+        const details = document.createElement('details');
+        const summary = document.createElement('summary');
+        summary.textContent = 'more';
+        details.append(summary);
+        const label = document.createElement('label');
+        label.textContent = 'x';
+        const video = document.createElement('video');
+        video.setAttribute('controls', '');
+        const audio = document.createElement('audio');
+        audio.setAttribute('controls', '');
+        cell.append(details, label, video, audio);
+        [summary, label, video, audio].forEach((el, i) => {
+            el.dispatchEvent(pointer('pointerdown', 550 + i, { over: cell }));
+            el.dispatchEvent(pointer('pointerup', 550 + i, { over: cell }));
+        });
+        expect(downs).toEqual([]);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+    });
+});
+
 describe('a press in a NESTED table outside its own cells', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
