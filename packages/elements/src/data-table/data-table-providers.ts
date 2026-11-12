@@ -150,6 +150,11 @@ export interface QueryService<T> {
      * for (taken right after that change) and passes it to `whenCounted`: one for an OLDER change than the latest is dropped, never a newer one.
      */
     filterSeq(): number;
+    /**
+     * wave5: numbers a filter change written outside the query service's own change paths (a restored view state): every announcement of an
+     * older change says nothing. Call it ONCE, right before the write. Returns the new number.
+     */
+    filterChanged(): number;
 }
 
 /** Which user action the busy overlay stands for; `loadingVisibility` can silence it per trigger. */

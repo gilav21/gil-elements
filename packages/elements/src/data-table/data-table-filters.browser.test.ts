@@ -369,6 +369,26 @@ describe('round 8', () => {
         expect(said[0]).toMatch(/for "a"/); // the global announcement's text
     });
 
+    it('a restored view state is ONE filter change: an older global announcement says nothing, the restore speaks once (round 15)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn] });
+        const state = table.getViewState()!;
+        const spoken: string[] = [];
+        new MutationObserver(() => spoken.push(announcer(table))).observe(q(table, '[data-slot="data-table-announcer"]'), { childList: true, characterData: true, subtree: true });
+        const seq = table.provider('query')!.filterSeq();
+        table.provider('query')?.changeGlobalFilter('a');
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        expect(table.applyViewState({ ...state, columnFilters: { name: 'Bob' } })).toBe(true);
+        expect(table.provider('query')!.filterSeq()).toBe(seq + 2); // the global change, then the restore: one number
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        await settle(table);
+        const said = spoken.filter((s) => s !== '');
+        expect(said).toEqual(['1 row matches the filters']); // not the global filter's 'for "a"'
+        // A restore that changes no filter numbers nothing.
+        const now = table.provider('query')!.filterSeq();
+        table.applyViewState({ ...table.getViewState()!, columnFilters: { name: 'Bob' } });
+        expect(table.provider('query')!.filterSeq()).toBe(now);
+    });
+
     it('a cache answering in the same task (loading true, data, loading false) ends the wait at once (round 9)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
         table.addEventListener('query', () => {

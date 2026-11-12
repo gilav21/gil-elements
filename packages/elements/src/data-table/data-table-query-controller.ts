@@ -345,6 +345,7 @@ export class QueryController<T> {
         changeAdvancedFilter: (group) => void changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group, () => this.filterChanged()),
         whenCounted: (say, seq) => this.whenCounted(say, seq),
         filterSeq: () => this.seq,
+        filterChanged: () => this.filterChanged(),
         // Server filtering: the held rows are not the matches, so the server's `total`, but only once the ANSWER to the last query arrived (the next
         // `data` from outside): before that, `total` is the previous answer's and `undefined` says "not known yet".
         filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.awaitingRows ? undefined : this.host.config.total),
