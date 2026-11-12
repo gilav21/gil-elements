@@ -1071,6 +1071,23 @@ describe('F7 the advanced filter builder', () => {
         await closePopover(table);
     });
 
+    it('a parent edit that leaves a nested group alone does not re-render its builder (round 12)', async () => {
+        const group: FilterGroup = {
+            type: 'group',
+            combinator: 'and',
+            rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'a' }, { type: 'group', combinator: 'or', rules: [{ type: 'condition', column: 'role', operator: 'contains', value: 'E' }] }],
+        };
+        const table = await mount({ enableAdvancedFilter: true, advancedFilter: group });
+        await openBuilder(table);
+        const nested = inner(table, 'ge-data-table-filter-builder')[0] as HTMLElement & { render(): unknown };
+        const render = vi.spyOn(nested, 'render');
+        await userEvent.click(byText(table, 'OR')); // the top group's combinator: a new top tree, the nested rule object is unchanged
+        await refresh(table);
+        expect(table.advancedFilter!.combinator).toBe('or');
+        expect(render).not.toHaveBeenCalled();
+        await closePopover(table);
+    });
+
     describe('nested groups and the debounce (round 4)', () => {
         const cond = (column: string, value: string): FilterGroup['rules'][number] => ({ type: 'condition', column, operator: 'contains', value });
         const nestedInputs = (table: Table, at: number): HTMLInputElement[] => {

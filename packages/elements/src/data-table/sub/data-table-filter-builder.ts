@@ -71,6 +71,15 @@ export class GeDataTableFilterBuilder extends UiElement {
         this.path = [];
     }
 
+    /** The path arrays handed to nested builders, one per rule index, kept while this builder's own path is the same: a parent render that changes
+     * nothing of a nested group passes it the SAME path (and its own rule object), so the nested builder does not re-render. */
+    private childPaths: { base: readonly number[]; paths: (readonly number[])[] } = { base: [], paths: [] };
+
+    private childPath(index: number): readonly number[] {
+        if (this.childPaths.base !== this.path) this.childPaths = { base: this.path, paths: [] };
+        return (this.childPaths.paths[index] ??= [...this.path, index]);
+    }
+
     /** The top-level builder: the one that holds the tree, the pending values and the event. */
     private get root(): GeDataTableFilterBuilder {
         return this.owner ?? this;
@@ -161,7 +170,7 @@ ${chromeIcon('x', 'xs')}</button>
     private subgroup(rule: FilterGroup, index: number) {
         const { l } = this;
         return html`<div class="subgroup" data-slot="filter-subgroup">
-            <ge-data-table-filter-builder .group=${rule} .columns=${this.columns} .labels=${l} .owner=${this.root} .path=${[...this.path, index]}></ge-data-table-filter-builder>
+            <ge-data-table-filter-builder .group=${rule} .columns=${this.columns} .labels=${l} .owner=${this.root} .path=${this.childPath(index)}></ge-data-table-filter-builder>
             <button type="button" class="remove-group" @click=${() => this.edit(this.path, (g) => removeRule(g, index))}>${l.removeGroup}</button>
         </div>`;
     }

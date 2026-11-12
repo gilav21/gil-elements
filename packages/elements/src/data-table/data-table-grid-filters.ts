@@ -61,15 +61,24 @@ const FLOATING_ROW_INDEX = computeGridAria({ tree: false, headerRows: 2, totalDa
 
 const isUiService = <T>(service: FilterService<T> | undefined): service is FilterUiService<T> => typeof (service as Partial<FilterUiService<T>> | undefined)?.panelOpen === 'function';
 
+/** Whether any column draws a header trigger, and whether any asks for the floating row: per (columns array, service), so a render recomputes nothing. */
+const flagsByColumns = new WeakMap<object, { service: object; anyTrigger: boolean; anyFloating: boolean }>();
+
+function columnFlags<T>(columns: readonly EnhancedColumnDef<T>[], service: FilterUiService<T>): { anyTrigger: boolean; anyFloating: boolean } {
+    const cached = flagsByColumns.get(columns);
+    if (cached?.service === service) return cached;
+    const flags = { service, anyTrigger: columns.some((c) => service.hasTrigger(c)), anyFloating: service.hasAnyFloating() };
+    flagsByColumns.set(columns, flags);
+    return flags;
+}
+
 export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
     const service = host.provider('filters');
     if (!isUiService(service)) return NO_FILTERS as FiltersView<T>;
     const { config, resolvedLocale: locale } = host;
-    const floating = config.enableFloatingFilters && service.hasAnyFloating();
-    // The columns as drawn (enhanced): what the header actually shows a trigger on.
-    const anyTrigger = requireProvider(host, 'columns')
-        .enhancedColumns()
-        .some((c) => service.hasTrigger(c));
+    // The columns as drawn (enhanced): what the header actually shows a trigger on. Both "any" questions are answered once per columns array.
+    const { anyTrigger, anyFloating } = columnFlags(requireProvider(host, 'columns').enhancedColumns(), service);
+    const floating = config.enableFloatingFilters && anyFloating;
     if (!floating && !anyTrigger) return NO_FILTERS as FiltersView<T>;
     const filters = host.model.get('columnFilters');
     // `null` for no filter, as the header panel gets it (the floating component and renderer see the same value for "none").
