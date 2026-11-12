@@ -73,6 +73,7 @@ export const specialSlotOf = (column: { accessorKey: PropertyKey }): string => S
 export function isFilterValueEmpty(value: unknown): boolean {
     if (value === undefined || value === null || value === '') return true;
     if (Array.isArray(value)) return value.length === 0;
+    if (value instanceof Set) return value.size === 0; // wave5: a Set is a multiselect selection too (multiselectFilterFn reads it)
     if (value instanceof Date) return false;
     if (typeof value === 'object') {
         // wave5: a PLAIN object whose only keys are `start` / `end` (any subset, `{}` too) with no end set (null, undefined, '') is a range that filters
