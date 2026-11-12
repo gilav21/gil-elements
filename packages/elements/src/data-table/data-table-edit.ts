@@ -150,6 +150,11 @@ export function tabTarget(shift: boolean, rowIndex: number, colIndex: number, co
     return rowIndex < rowCount - 1 ? { row: rowIndex + 1, col: 0 } : null;
 }
 
+/** Where the row with this id is in `rows` (ids compared as strings: `getRowId` may answer numbers), -1 when it is not there. ONE scan. */
+export function indexOfRowId<T>(rows: readonly T[], id: string, getId: (row: T) => string): number {
+    return rows.findIndex((row) => String(getId(row)) === id);
+}
+
 /** What the open editor does after the rows changed: stay, move to its row's new index, or be dropped (its row is not drawn any more). */
 export type EditorReconcile = { kind: 'keep' } | { kind: 'move'; rowIndex: number } | { kind: 'drop' };
 
@@ -164,7 +169,7 @@ export function reconcileEditor<T>(at: EditingCell, rowId: string, rows: readonl
     if (rows.length === 0) return { kind: 'drop' };
     const here = rows[at.rowIndex];
     if (here !== undefined && String(getId(here)) === rowId) return { kind: 'keep' };
-    const moved = rows.findIndex((row) => String(getId(row)) === rowId);
+    const moved = indexOfRowId(rows, rowId, getId);
     return moved === -1 ? { kind: 'drop' } : { kind: 'move', rowIndex: moved };
 }
 

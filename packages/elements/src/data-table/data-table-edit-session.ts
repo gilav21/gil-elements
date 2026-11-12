@@ -26,6 +26,7 @@ import {
     isBuiltInKind,
     moveError,
     reconcileEditor,
+    indexOfRowId,
     tabTarget,
     textDraftFor,
     writeBackDate,
@@ -259,11 +260,22 @@ export class EditSession<T> implements CellSession {
         const query = requireProvider(host, 'query');
         const rows = query.renderedRows();
         let index = rows.indexOf(row);
-        if (index === -1 && row != null) {
-            const id = String(host.config.getRowId(row));
-            index = rows.findIndex((r) => String(host.config.getRowId(r)) === id);
-        }
+        if (index === -1 && row != null) index = indexOfRowId(rows, String(host.config.getRowId(row)), (r) => host.config.getRowId(r));
         return index !== -1 && this.startAt(index, columnKey);
+    }
+
+    /**
+     * Another cell asks for the editor while one is open: the open one is LEFT first, as if the focus left it (a text, number or select editor and a
+     * consumer's component or renderer commit their draft; a checkbox or date one cancels). False when that commit is rejected: the open editor
+     * stays with its error and the new one does not open.
+     */
+    private leaveForAnother(open: OpenEditor<T>): boolean {
+        const commits = commitsOnBlur(open.kind) || !isBuiltInKind(open.kind);
+        if (!commits) {
+            this.close(false);
+            return true;
+        }
+        return this.commit(false) !== 'rejected';
     }
 
     /**
@@ -276,8 +288,19 @@ export class EditSession<T> implements CellSession {
         const column = this.columnOf(columnKey);
         if (!column?.editable) return false;
         const query = requireProvider(host, 'query');
-        const row = query.renderedRowAt(rowIndex);
+        let row = query.renderedRowAt(rowIndex);
         if (row === undefined || this.isDisabled(row)) return false;
+        const current = this.open;
+        if (current && (current.at.rowIndex !== rowIndex || current.at.columnKey !== columnKey)) {
+            // The open editor is left first (its commit may re-sort the rows: the asked RECORD is found again by id after it).
+            const id = String(host.config.getRowId(row));
+            if (!this.leaveForAnother(current)) return false;
+            rowIndex = indexOfRowId(query.renderedRows(), id, (r) => host.config.getRowId(r));
+            row = rowIndex === -1 ? undefined : query.renderedRowAt(rowIndex);
+            if (row === undefined) return false;
+        } else if (current) {
+            return true; // that cell's editor is already open
+        }
         const value = query.cellValue(row, columnKey, column);
         const open: OpenEditor<T> = {
             at: { rowIndex, columnKey },
@@ -373,7 +396,7 @@ export class EditSession<T> implements CellSession {
     private indexOfRow(rowId: string, fallback: number): number {
         const { host } = this;
         const rows = requireProvider(host, 'query').renderedRows();
-        const index = rows.findIndex((row) => String(host.config.getRowId(row)) === rowId);
+        const index = indexOfRowId(rows, rowId, (row) => host.config.getRowId(row));
         return index !== -1 ? index : Math.max(0, Math.min(fallback, rows.length - 1));
     }
 
@@ -457,7 +480,7 @@ export class EditSession<T> implements CellSession {
         if (this.open !== open) return;
         const value = open.kind === 'date' ? writeBackDate(raw instanceof Date ? raw : null, open.original) : coerceDraft(open.kind, raw, open.column.editOptions);
         // The control keeps showing the DRAFT (a keyboard-moved select option; a picked date the validator refused).
-        if (open.kind === 'select' || open.kind === 'date') open.shown = value;
+        if (open.kind === 'select' || open.kind === 'date' || open.kind === 'checkbox') open.shown = value;
         this.setValue(open, value, false);
         if (commitNow) this.commit();
     }

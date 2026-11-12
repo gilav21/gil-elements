@@ -95,7 +95,8 @@ function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overl
             });
             break;
         case 'checkbox':
-            editor = html`<ge-checkbox data-edit-input .checked=${!!open.shown} aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
+            // `.checked` with `live`: the shown draft (a tick the validator refused stays ticked) and a `setEditValue` always reach the box.
+            editor = html`<ge-checkbox data-edit-input .checked=${live(!!open.shown)} aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
                 @change=${(event: Event) => session.change(open, (event.target as { checked?: boolean }).checked)}></ge-checkbox>`;
             break;
         case 'date':

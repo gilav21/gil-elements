@@ -134,15 +134,43 @@ describe('E1 opening an editor', () => {
         }
     });
 
-    it('replaces an open editor without committing it', async () => {
-        const edits = record(await mount(), 'cell-edit');
-        const table = document.querySelector('ge-data-table') as Table;
+    it('opening another cell first commits the open editor, as leaving it would (round 9)', async () => {
+        const table = await mount();
+        const edits = record<CellEditEvent<SampleRow>>(table, 'cell-edit');
         await startEditingAt(table, 0, 'name');
         await userEvent.type(openEditor(table)!, 'xyz');
-        await startEditingAt(table, 1, 'name');
+        expect(await startEditingAt(table, 1, 'name')).toBe(true);
         expect(table.editingCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        expect(table.data[0]!.name).toBe('Carolxyz');
+        expect(edits.map((e) => e.detail.newValue)).toEqual(['Carolxyz']);
+    });
+
+    it('a rejected open editor stays, with its error, and the other cell does not open: by API and by double click (round 9)', async () => {
+        const table = await mount({ columns: editColumns({ name: { editValidator: (v) => !String(v).endsWith('!') || 'No shouting' } }) });
+        const errors = record(table, 'edit-error');
+        await startEditingAt(table, 0, 'name');
+        await userEvent.type(openEditor(table)!, '!');
+        expect(await startEditingAt(table, 2, 'name')).toBe(false);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        expect(editError(table)?.textContent?.trim()).toBe('No shouting');
+        expect(errors).toHaveLength(1);
+        await mouseDblClick(cellAt(table, 3, 'age')!);
+        await settle(table);
+        expect(table.editingCell?.rowIndex).toBe(0);
         expect(table.data[0]!.name).toBe('Carol');
-        expect(edits).toHaveLength(0);
+    });
+
+    it('opening another cell after a re-sorting commit opens the cell of the asked RECORD (round 9)', async () => {
+        const table = await mount({ sortState: { column: 'name', direction: 'asc' } }); // Alice, Bob, Carol, Dave
+        await startEditingAt(table, 0, 'name');
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.clear(input);
+        await userEvent.type(input, 'Zoe'); // Alice -> Zoe: moves to the end on commit
+        const bob = table.provider('query')!.renderedRowAt(1)!;
+        expect(table.startEditing(bob, 'age')).toBe(true);
+        await settle(table);
+        expect(names(table)).toEqual(['Bob', 'Carol', 'Dave', 'Zoe']);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'age' }); // Bob is now row 0
     });
 });
 
@@ -935,6 +963,21 @@ describe('review round 2', () => {
         expect(button.getAttribute('aria-description')).toBe('Not that day');
         const node = (await axTree()).find((n) => n.properties?.some((p) => p.name === 'invalid' && p.value.value === 'true') && n.role?.value === 'button');
         expect((node as { description?: { value?: string } } | undefined)?.description?.value).toBe('Not that day');
+    });
+
+    it('a checkbox tick the validator refuses stays ticked; setEditValue(false) then unticks it (round 9)', async () => {
+        const rows = ROWS.map((r) => ({ ...r, active: false }));
+        const active: ColumnDef<SampleRow> = { accessorKey: 'active', header: 'Active', editable: true, editType: 'checkbox', editValidator: (v) => v !== true || 'Not now', valueSetter: (row, v) => ({ ...row, active: v }) };
+        const table = await mount({ data: rows, columns: editColumns({}, [active]) });
+        await startEditingAt(table, 0, 'active');
+        const box = openEditor(table) as HTMLElement & { checked: boolean };
+        await press(' ');
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'active' });
+        expect(box.checked).toBe(true);
+        table.provider('interaction')?.setEditValue?.(false);
+        await settle(table);
+        expect(box.checked).toBe(false);
     });
 
     it('a text editor on an empty (null) cell: type, delete, Enter fires no cell-edit (round 8)', async () => {
