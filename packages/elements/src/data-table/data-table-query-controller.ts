@@ -5,6 +5,7 @@ import {
     activeSorts,
     changeAdvancedFilterOf,
     createQueryPipeline,
+    localSortApplies,
     memoLast,
     nextSortChain,
     pagesLocally,
@@ -109,7 +110,7 @@ export class QueryController<T> {
         if (!config.enableSubRows) return { roots: [], visible: [], page: [] };
         const filtered = this.filteredTree(model.get('data'), config.columns, model.get('globalFilter'), config.globalFilterFn, model.get('columnFilters'), config.subRowFilterMode, config.localFiltering, config.getChildren, config.setChildren);
         const sortKey = this.sorts().map((s) => `${s.column}:${s.direction}`).join('|');
-        const roots = this.sortedTree(filtered, sortKey, config.columns, config.localSorting && config.enableSubRowSorting, config.getChildren, config.setChildren);
+        const roots = this.sortedTree(filtered, sortKey, config.columns, localSortApplies(config.localSorting, true, config.enableSubRowSorting), config.getChildren, config.setChildren);
         const visible = this.visibleTree(roots, model.get('subRowExpandedRows'), config.getRowId, config.getChildren, config.subRowDefaultExpanded ? -1 : 0);
         return { roots, visible, page: this.pagedTree(visible, roots, model.get('paginationState'), this.pagesLocally(), config.subRowsPaginated, config.getRowId) };
     }

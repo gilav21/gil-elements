@@ -1,13 +1,14 @@
-import { type ConfigCheckInput, validateConfig } from './data-table-config-check.js';
+import { type ConfigCheckInput, ROW_DRAG_SORT_WARNING, scansRowIds, validateConfig } from './data-table-config-check.js';
 import type { DataTableCoreHost } from './data-table-host.js';
+import { sortReordersRows } from './data-table-query.js';
 import { findDuplicateRowIds } from './data-table.utils.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
 
-/** The settings the checks read, compared by value so an unrelated render re-runs nothing (the duplicate-id scan is O(rows)). */
-type Snapshot = Record<string, unknown>;
-
-const sameSnapshot = (a: Snapshot | null, b: Snapshot): boolean => a !== null && Object.keys(b).every((key) => Object.is(a[key], b[key]));
+/** The settings the checks read, compared by value so an unrelated render re-runs nothing (the duplicate-id scan is O(rows)). Every key is always set. */
+function sameSnapshot<S extends object>(a: S | null, b: S): boolean {
+    return a !== null && (Object.keys(b) as (keyof S)[]).every((key) => Object.is(a[key], b[key]));
+}
 
 /**
  * Development warnings about options that conflict or do nothing, and about a table that cannot work as set up (virtual
@@ -16,7 +17,7 @@ const sameSnapshot = (a: Snapshot | null, b: Snapshot): boolean => a !== null &&
  */
 export class DiagnosticsController<T> {
     private readonly printed = new Set<string>();
-    private last: Snapshot | null = null;
+    private last: ConfigCheckInput<T> | null = null;
     private viewportChecked = false;
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
@@ -34,7 +35,7 @@ export class DiagnosticsController<T> {
     hostUpdate(): void {
         const { config, model } = this.host;
         const virtualActive = this.host.provider('virtual')?.active() ?? false;
-        const snapshot: Snapshot = {
+        const snapshot: ConfigCheckInput<T> = {
             columns: config.columns,
             data: model.get('data'),
             getRowId: config.getRowId,
@@ -53,13 +54,31 @@ export class DiagnosticsController<T> {
             enableRowSelection: config.enableRowSelection,
             enableRowDrag: config.enableRowDrag,
             enableEditHistory: config.enableEditHistory,
-            // Only what a check reads is here: each re-run costs the O(rows) id scan. The wave 5 and wave 6 checks (data-table-config-check.ts) add
-            // their inputs with their code: the fill handle, paste and `localReorder` flags, and the sort fields (only while `enableRowDrag &&
-            // localReorder`) of the row-drag-with-sort check.
+            // Only what a check reads is here: each re-run costs the O(rows) id scan.
+            enableFillHandle: config.enableFillHandle,
+            enableClipboardPaste: config.enableClipboardPaste,
+            localReorder: config.localReorder,
         };
         if (!sameSnapshot(this.last, snapshot)) {
             this.last = snapshot;
-            this.check(snapshot as unknown as ConfigCheckInput<T>);
+            this.check(snapshot);
+        }
+        // Outside the snapshot: a sort click must not re-run the O(rows) checks. Skipped once printed.
+        if (
+            !this.printed.has(ROW_DRAG_SORT_WARNING) &&
+            config.enableRowDrag &&
+            config.localReorder &&
+            sortReordersRows({
+                multi: config.enableMultiSort,
+                sortState: model.get('sortState'),
+                multiSortState: model.get('multiSortState'),
+                columns: config.columns,
+                localSorting: config.localSorting,
+                tree: config.enableSubRows,
+                subRowSorting: config.enableSubRowSorting,
+            })
+        ) {
+            this.warn(ROW_DRAG_SORT_WARNING);
         }
         if (virtualActive && !this.viewportChecked) {
             this.viewportChecked = true;
@@ -82,8 +101,8 @@ export class DiagnosticsController<T> {
         if (virtualActive && enableRowExpansion && !virtualVariableRowHeight) {
             this.warn('[ge-data-table] enable-row-expansion with virtual scroll: a detail row has no fixed height, so row heights are measured (as with virtual-variable-row-height) and the window uses them.');
         }
-        // `validateConfig` already reports shared ids for the features that act on them; rows are KEYED by id either way.
-        if (data && data.length > 1 && !warnings.some((m) => m.includes('row id(s) are shared'))) {
+        // Rows are keyed by id even without a feature that needs ids; `validateConfig` already scanned them when one does.
+        if (data && data.length > 1 && !scansRowIds(input)) {
             const dupes = findDuplicateRowIds(data, (getRowId ?? this.host.config.getRowId) as (row: T) => string);
             if (dupes.length > 0) {
                 this.warn(`[ge-data-table] ${dupes.length} row id(s) are shared by more than one row (e.g. ${dupes.slice(0, 3).map((d) => JSON.stringify(d)).join(', ')}). Rows are keyed by id, so rows sharing one are drawn and updated wrongly; provide a unique getRowId.`);

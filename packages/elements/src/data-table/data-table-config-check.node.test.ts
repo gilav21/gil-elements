@@ -17,6 +17,24 @@ const ok: ConfigCheckInput<Row> = {
 };
 const check = (over: Partial<ConfigCheckInput<Row>>) => validateConfig({ ...ok, ...over });
 
+describe('validateConfig: wave 6', () => {
+    it.each(['enableFillHandle', 'enableClipboardPaste'] as const)('warns when %s is on and no column has a valueSetter', (flag) => {
+        expect(check({ [flag]: true }).some((m) => m.includes('no column has a valueSetter'))).toBe(true);
+        const withSetter = { columns: [{ accessorKey: 'name' as const, header: 'N', valueSetter: (row: Row) => row }] };
+        expect(check({ [flag]: true, ...withSetter }).some((m) => m.includes('no column has a valueSetter'))).toBe(false);
+    });
+    it('warns about row drag with an active group-by, not with one the table ignores', () => {
+        const grouped = (over: Partial<ConfigCheckInput<Row>>) =>
+            check({ enableRowDrag: true, localReorder: true, groupBy: 'name', ...over }).some((m) => m.includes('enable-row-drag with group-by'));
+        expect(grouped({})).toBe(true);
+        expect(grouped({ localReorder: false })).toBe(false);
+        // A field with no column still groups (getCellValue reads row[key]).
+        expect(grouped({ groupBy: 'team' as never })).toBe(true);
+        expect(grouped({ virtualActive: true })).toBe(false);
+        expect(grouped({ enableRowDrag: false })).toBe(false);
+    });
+});
+
 describe('validateConfig', () => {
     it('is silent for a sane configuration', () => {
         expect(validateConfig(ok)).toEqual([]);

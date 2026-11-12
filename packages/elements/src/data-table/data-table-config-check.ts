@@ -2,6 +2,7 @@
  * Development diagnostics: conflicting or ineffective option combinations, as plain messages. The caller decides
  * whether and how to print them (dev builds only, once per change).
  */
+import { isGroupingActive } from './data-table-group.js';
 import type { ColumnDef } from './data-table.types.js';
 import { defaultGetRowId, findDuplicateRowIds } from './data-table.utils.js';
 
@@ -28,8 +29,23 @@ export interface ConfigCheckInput<T> {
     enableRowDrag?: boolean;
     /** Undo/redo of edits; they find a row again by its id. */
     enableEditHistory?: boolean;
-    // The waves add the inputs of their checks here and in the diagnostics snapshot together with the check (`enableFillHandle`,
-    // `enableClipboardPaste`, `localReorder`, `sortState`, `multiSortState`): nothing reads them yet.
+    /** Wave 6 checks: fill and paste write through value setters. */
+    enableFillHandle?: boolean;
+    enableClipboardPaste?: boolean;
+    /** Row drag writes `data` itself (the group-by warning applies only then). */
+    localReorder?: boolean;
+}
+
+/**
+ * wave6: C. Row drag with local reorder while the table sorts the rows itself (`sortReordersRows`): a drop reorders `data`
+ * but the sorted order is drawn, so the row does not move. Grouping has its own warning in `validateConfig`.
+ */
+export const ROW_DRAG_SORT_WARNING = `[ge-data-table] enable-row-drag with local-reorder is on while the table is sorted. A drop reorders \`data\`, but the table keeps drawing the sorted order, so the row does not appear to move. Clear the sort while dragging; with a server sort (local-sorting=false), or in tree mode without enable-sub-row-sorting, the table draws \`data\` as given.`;
+
+/** Whether `validateConfig` scans the row ids for duplicates (so the diagnostics need not scan them again). */
+export function scansRowIds<T>(c: ConfigCheckInput<T>): c is ConfigCheckInput<T> & { data: readonly T[] } {
+    const needsIdentity = c.enableRowSelection || c.enableRowDrag || c.enableCellFlash || c.enableSubRows || c.columns.some((col) => col.editable);
+    return !!needsIdentity && !!c.data && c.data.length > 1;
 }
 
 const PREFIX = '[ge-data-table]';
@@ -81,8 +97,22 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
 
     // ---- wave 5 (filters and editing): package A and B add their `warn(...)` calls here, each in its own marked block -------------------
     // ---- wave 6 (spreadsheet and drag): packages A, B and C add theirs here, each in its own marked block -----------------------------
-    // Planned for wave 6: fill handle or paste with no column that has a `valueSetter`; enable-row-drag with an active sort or group-by while
-    // `localReorder` is on (the drop reorders `data` but the table keeps drawing its own order). The flash + default getRowId warning is above.
+    // The flash + default getRowId warning is above; the row-drag-with-sort warning is `ROW_DRAG_SORT_WARNING`, checked per render by
+    // `DiagnosticsController.hostUpdate` (a sort click must not re-run these checks).
+    // wave6: C (row drag)
+    warn(
+        c.enableRowDrag &&
+            c.localReorder &&
+            isGroupingActive(c.groupBy, !!c.enableSubRows, c.virtualActive),
+        'enable-row-drag with group-by: rows are drawn under their group value, which a drop does not change. A row dropped into another group stays in its own, and groups are ordered by their first row in the drawn order, so a drop can move a whole group.',
+    );
+    // wave6: end C
+    // wave6: A + B (fill handle, paste)
+    warn(
+        (c.enableFillHandle || c.enableClipboardPaste) && !c.columns.some((col) => col.valueSetter),
+        'enable-fill-handle or enable-clipboard-paste is on but no column has a valueSetter. Fill and paste write cells through value setters, so nothing will be written.',
+    );
+    // wave6: end A + B
 
     const noSetter = c.columns.filter((col) => col.editable && !col.valueSetter);
     warn(
@@ -109,8 +139,7 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         `Columns [${keys(multiple)}] have more than one rendering strategy (component, cellRenderer, cell). Only one is used (component, then cellRenderer, then cell); remove the unused ones.`,
     );
 
-    const needsIdentity = c.enableRowSelection || c.enableRowDrag || c.enableCellFlash || c.enableSubRows || c.columns.some((col) => col.editable);
-    if (needsIdentity && c.data && dataLength > 1) {
+    if (scansRowIds(c)) {
         const getId = (c.getRowId ?? defaultGetRowId) as (row: T) => string;
         const dupes = findDuplicateRowIds(c.data, getId);
         warn(

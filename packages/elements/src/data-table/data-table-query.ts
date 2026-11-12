@@ -160,8 +160,37 @@ export function filterRows<T>(rows: T[], f: RowFilters<T>): T[] {
  * are dropped.
  */
 export function activeSorts(multi: boolean, sortState: SortState, multiSortState: readonly SortState[]): SortState[] {
-    if (multi) return multiSortState.filter((sort) => !!sort.column && !!sort.direction);
-    return sortState.column && sortState.direction ? [sortState] : [];
+    if (multi) return multiSortState.filter(sortCounts);
+    return sortCounts(sortState) ? [sortState] : [];
+}
+
+/** A sort entry counts when it names a column and a direction (the rule of `activeSorts`). */
+function sortCounts(sort: SortState): boolean {
+    return !!sort.column && !!sort.direction;
+}
+
+/** Whether the table sorts rows itself: local sorting, and in tree mode only with sub-row sorting. The gate the tree and the diagnostics share (the flat path's is plain `localSorting`). */
+export function localSortApplies(localSorting: boolean, tree: boolean, subRowSorting: boolean): boolean {
+    return localSorting && (!tree || subRowSorting);
+}
+
+/**
+ * Whether the table itself reorders the rows by a sort: `localSortApplies`, and at least one of the `activeSorts` steps
+ * on a known column (the steps `buildSortComparator` does not skip). Diagnostics only.
+ */
+export function sortReordersRows<T>({ multi, sortState, multiSortState, columns, localSorting, tree, subRowSorting }: {
+    multi: boolean;
+    sortState: SortState;
+    multiSortState: readonly SortState[];
+    columns: readonly ColumnDef<T>[];
+    localSorting: boolean;
+    tree: boolean;
+    subRowSorting: boolean;
+}): boolean {
+    if (!localSortApplies(localSorting, tree, subRowSorting)) return false;
+    // An `activeSorts` step (sortCounts) on a known column, without building arrays or the column index.
+    const applies = (sort: SortState): boolean => sortCounts(sort) && columns.some((column) => String(column.accessorKey) === sort.column);
+    return multi ? multiSortState.some(applies) : applies(sortState);
 }
 
 function compareValues(a: unknown, b: unknown): number {

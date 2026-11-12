@@ -12,10 +12,43 @@ import {
     nextSortChain,
     pagesLocally,
     slicePage,
+    localSortApplies,
+    sortReordersRows,
     sortRows,
     type QueryInput,
 } from './data-table-query.js';
 import type { ColumnDef, FilterGroup } from './data-table.types.js';
+
+describe('localSortApplies / sortReordersRows', () => {
+    const cols = [{ accessorKey: 'a' }, { accessorKey: 'b' }] as ColumnDef<unknown>[];
+    const asc = { column: 'a', direction: 'asc' as const };
+    const none = { column: '', direction: null };
+    it.each([
+        [true, false, false, true],
+        [false, false, true, false],
+        [true, true, false, false],
+        [true, true, true, true],
+        [false, true, true, false],
+    ])('localSortApplies(local %s, tree %s, sub %s) is %s', (local, tree, sub, expected) => {
+        expect(localSortApplies(local, tree, sub)).toBe(expected);
+    });
+    it.each([
+        ['a local single sort on a known column', false, asc, [], true, true],
+        ['no sort', false, none, [], true, false],
+        ['a server sort', false, asc, [], false, false],
+        ['an unknown column', false, { column: 'zz', direction: 'asc' as const }, [], true, false],
+        ['multi: the chain, not the single sort', true, asc, [], true, false],
+        ['multi: a known chain entry', true, none, [{ column: 'b', direction: 'desc' as const }], true, true],
+    ])('%s', (_name, multi, single, chain, local, expected) => {
+        expect(sortReordersRows({ multi, sortState: single, multiSortState: chain, columns: cols, localSorting: local, tree: false, subRowSorting: false })).toBe(expected);
+    });
+    it.each([
+        [false, false],
+        [true, true],
+    ])('in tree mode it needs sub-row sorting (sub %s -> %s)', (sub, expected) => {
+        expect(sortReordersRows({ multi: false, sortState: asc, multiSortState: [], columns: cols, localSorting: true, tree: true, subRowSorting: sub })).toBe(expected);
+    });
+});
 
 interface Row {
     id: number;
