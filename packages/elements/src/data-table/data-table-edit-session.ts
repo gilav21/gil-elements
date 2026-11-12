@@ -298,7 +298,11 @@ export class EditSession<T> implements CellSession {
 
     /**
      * Opens the editor on the cell at a drawn index (Angular `startEditing`, cmp 4778): only on an `editable` data column of an enabled row.
-     * The draft is the cell value; an editor open elsewhere is REPLACED, not committed; the input takes the focus after the render.
+     * The draft is the cell value; the input takes the focus after the render. The same record and column already open: nothing to do (true).
+     * COMMIT FIRST: an editor open on another cell is LEFT before this one opens (`leaveForAnother`: a text, number or select editor and a
+     * consumer's component or renderer commit their draft, a checkbox or date editor cancels). A rejected commit keeps that editor open with its
+     * error, and this one does not open (false). Its write may re-sort, re-filter or lock rows, so the asked RECORD is then found again by id and
+     * checked again (still drawn, still enabled). Angular replaces the open editor and drops its draft: a deviation.
      */
     private startAt(rowIndex: number, columnKey: string): boolean {
         if (!this.attached || isSpecialColumnKey(columnKey)) return false;
@@ -556,7 +560,8 @@ export class EditSession<T> implements CellSession {
             this.cancel();
         } else if (event.key === 'Enter' && commitsOnEnter(open.kind) && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
             event.preventDefault();
-            this.commit();
+            // The auto-repeat of the Enter that opened the editor (still held) commits nothing: only a fresh press does.
+            if (!event.repeat) this.commit();
         } else if (event.key === 'Tab' && !event.altKey && !event.ctrlKey && !event.metaKey) {
             this.onTab(event, open);
         }
@@ -628,7 +633,8 @@ export class EditSession<T> implements CellSession {
      */
     private onStartKey(event: KeyboardEvent): boolean {
         if ((event.key !== 'Enter' && event.key !== 'F2') || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return false;
-        if (this.context.hasOpenEditor()) return false;
+        // A held key's auto-repeat starts nothing: the Enter that just committed an editor, still held, must not reopen it on every repeat.
+        if (event.repeat || this.context.hasOpenEditor()) return false;
         const target = event.composedPath()[0] as Element | undefined;
         if (!target || !ownsTarget(this.host.root, target)) return false;
         let at: CellAddress | null = null;

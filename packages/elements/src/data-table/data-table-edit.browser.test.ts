@@ -68,6 +68,28 @@ describe('E1 opening an editor', () => {
         expect(deepActive()).toBe(editorIn(table, 2, 'age'));
     });
 
+    it("a held key's auto-repeat neither opens an editor (Enter, F2) nor commits one (Enter) (round 14)", async () => {
+        const table = await mount();
+        const first = names(table)[0];
+        await focusCell(table, 0, 'name');
+        const repeat = (target: Element, key: string): boolean => target.dispatchEvent(new KeyboardEvent('keydown', { key, repeat: true, bubbles: true, composed: true, cancelable: true }));
+        repeat(cellAt(table, 0, 'name')!, 'Enter');
+        repeat(cellAt(table, 0, 'name')!, 'F2');
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        await press('{Enter}');
+        await settle(table);
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.type(input, 'X');
+        repeat(input, 'Enter');
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        await press('{Enter}');
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        expect(names(table)).toContain(`${first}X`);
+    });
+
     it('Enter and F2 on a focused data cell still open it with row selection and detail rows on (no row-control handler swallows them)', async () => {
         const table = await mount({ enableRowSelection: true, enableRowExpansion: true, renderDetail: () => 'detail' });
         await focusCell(table, 1, 'name');
