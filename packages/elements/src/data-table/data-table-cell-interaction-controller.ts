@@ -61,6 +61,9 @@ const FRESH_PRESS_MS = 500;
 export const hasPosition = (event: Pick<PointerEvent, 'isTrusted' | 'clientX' | 'clientY' | 'screenX' | 'screenY'>): boolean =>
     event.isTrusted || event.clientX !== 0 || event.clientY !== 0 || event.screenX !== 0 || event.screenY !== 0;
 /** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
+/** Inside a shadow root of a consumer component (not this table's own tree): only the real form controls count; its roles, bare anchors (SVG included) and tags are its own business. */
+const SHADOW_CONTROLS = `${NATIVE_CONTROLS.join(', ')}, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]`;
+const XHTML = 'http://www.w3.org/1999/xhtml';
 const CELL_CONTROLS = `${CONTROLS}, a, ${INTERACTIVE_ROLES.map((role) => `[role="${role}"]`).join(', ')}`;
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
@@ -580,12 +583,13 @@ export class CellInteractionController<T> {
 
     /** The document hears every press first: one whose composed path does not include the root clears `within` now (the root restores it for a press it hears). */
     private onDocumentDown(event: PointerEvent): void {
-        // A press of the same pointer that does NOT reach this table's `recordPress` (outside the table, or on a nested table, which records its own) ends
-        // the earlier press whose release was lost (a pointerup swallowed over an iframe): its claimant is told, and "a pointer is down" ends.
+        // A press of the same pointer that is still open (inside this table, outside it, or on a nested table, which records its own) ends
+        // the earlier press whose release was lost (a pointerup swallowed over an iframe, alt-tab): its claimant is told, with the REAL pointerup when the release
+        // was seen outside a moment ago (the deferred close has not run yet), else with no event. Every press-ending rule that precedes a new pointerdown lives here.
         this.closeStale(event.timeStamp);
         this.endOtherTouches(event);
         const open = this.presses.get(event.pointerId);
-        if (open && !ownsTarget(this.host.root, event.target)) this.endPress(event.pointerId, open, this.closing.get(event.pointerId)?.event ?? null);
+        if (open) this.endPress(event.pointerId, open, this.closing.get(event.pointerId)?.event ?? null);
         this.clearedAt = null;
         if (!this.within || event.composedPath().includes(this.host.root)) return; // nothing to clear (the path is built only when `within` is set)
         this.clearedAt = event.timeStamp;
@@ -629,12 +633,8 @@ export class CellInteractionController<T> {
     private recordPress(event: PointerEvent): void {
         // The anchor is read BEFORE the offer: a claimant that moves the focus in its onPointerDown must not change the anchor of its own press.
         const anchor = this.focused;
-        // The same pointer already has an open press (its pointerup was lost: a release over an iframe, alt-tab): that one ends first, its claimant is told.
-        // Released outside a moment ago (the deferred close has not run yet): with the REAL pointerup. Otherwise the old press ended without an event
-        // (like at detach and window blur); the new pointerdown is not its end.
-        this.endOtherTouches(event);
-        const lost = this.presses.get(event.pointerId);
-        if (lost) this.endPress(event.pointerId, lost, this.closing.get(event.pointerId)?.event ?? null);
+        // (A press of the same pointer that was still open, and the other fingers' presses, were ended by `onDocumentDown`, which hears every pointerdown before
+        // this root does: the root only ever hears an event the document heard.)
         const path = event.composedPath(); // once per event: a path is built at every call
         const target = this.targetOf(path);
         // A press that begins on an overlay is OFFERED (see `overlay` below) but is never a cell press: it has no start cell, and only the RELEASE of a gesture is looked through it.
@@ -777,8 +777,8 @@ export class CellInteractionController<T> {
     private endPress(pointerId: number, press: Press, event: PointerEvent | null, notify = true): void {
         this.presses.delete(pointerId);
         // Only a TAP in the VIEWPORT (a touch press ended by its pointerup, on the body, header, footer or empty area; the toolbar and pager are outside it) can
-        // cause the browser's viewport focus that follows: not a scroll's pointercancel.
-        if (event?.type === 'pointerup' && press.touch && press.view.pressed && ownClosest(this.host.root, press.view.pressed, VIEWPORT)) this.lastPressEnd = event.timeStamp;
+        // cause the browser's viewport focus that follows: not a scroll's pointercancel, and not a tap on a control (a sort button, a checkbox takes its own focus).
+        if (event?.type === 'pointerup' && press.touch && press.own && press.view.pressed && ownClosest(this.host.root, press.view.pressed, VIEWPORT)) this.lastPressEnd = event.timeStamp;
         if (this.presses.size === 0) this.unwatchPresses?.(), (this.unwatchPresses = null);
         this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed
@@ -958,9 +958,12 @@ export class CellInteractionController<T> {
         const selector = cell ? CELL_CONTROLS : CONTROLS;
         const stop = cell ?? this.host.root;
         if (target === null) return null;
+        const tree = this.host.root.getRootNode();
         for (const node of path) {
             if (node === stop) break;
-            if (node instanceof Element && node.matches(selector)) return node;
+            if (!(node instanceof Element)) continue;
+            // This table's own tree: the full rules. Inside a shadow root of a cell widget: real HTML form controls only.
+            if (node.getRootNode() === tree ? node.matches(selector) : node.namespaceURI === XHTML && node.matches(SHADOW_CONTROLS)) return node;
         }
         return null;
     }

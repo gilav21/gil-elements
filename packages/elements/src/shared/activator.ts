@@ -3,7 +3,11 @@ import { UiElement } from '@gilav21/elements-base';
 import { findParent } from './compound.js';
 import css from './activator.css?inline';
 
-/** What counts as a control the user can already reach and operate on its own. */
+/**
+ * What counts as a control the user can already reach and operate on its own: the activator decides whether a popover trigger needs its own focusable wrapper.
+ * NOT the same question as `INTERACTIVE_TAGS` / `NATIVE_CONTROLS` in `interactive-tags.ts` (what OWNS a press inside a data-table cell: form controls and
+ * widgets, with `[tabindex]` deliberately excluded); the two lists differ on purpose and are not merged.
+ */
 export const INTERACTIVE = 'button, a[href], input, select, textarea, [role="button"], [tabindex], ge-button, ge-toggle';
 
 /**

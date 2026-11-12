@@ -1829,7 +1829,7 @@ describe('the viewport focus a touch tap causes AFTER its pointerup', () => {
         await settle(table);
         const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
         const cell = cellAt(table, 1, 'name')!;
-        const button = document.createElement('button');
+        const button = document.createElement('span'); // a plain element: a tap on a control takes its own focus (and is no "viewport tap")
         cell.append(button);
         button.dispatchEvent(pointer('pointerdown', 591, { pointerType: 'touch', over: button }));
         button.dispatchEvent(pointer('pointerup', 591, { pointerType: 'touch', over: button })); // the press ends
@@ -2565,6 +2565,30 @@ describe('controls seen through the composed path', () => {
         expect(downs).toEqual(['down']); // not a control: a cell press
     });
 
+    it('inside the shadow root of a consumer widget only real form controls count: an SVG anchor and a role=option wrapper are a cell press', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const host = document.createElement('x-consumer-widget');
+        const root = host.attachShadow({ mode: 'open' });
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        const anchor = document.createElementNS('http://www.w3.org/2000/svg', 'a');
+        const wrapper = document.createElement('div');
+        wrapper.setAttribute('role', 'option');
+        const inner = document.createElement('span');
+        wrapper.append(inner);
+        svg.append(anchor);
+        root.append(svg, wrapper);
+        cellAt(table, 1, 'name')!.append(host);
+        for (const [id, el] of [[644, anchor], [645, inner]] as const) {
+            el.dispatchEvent(pointer('pointerdown', id, { over: host }));
+            el.dispatchEvent(pointer('pointerup', id, { over: host }));
+        }
+        expect(downs).toEqual(['down', 'down']); // both are cell presses
+    });
+
     it('a library control with a CLOSED shadow root still counts (the path stops at its host, which is in the list)', async () => {
         const table = await mountTable();
         table.focusCell(0, 'name');
@@ -2632,6 +2656,14 @@ describe('the viewport focus after a touch press', () => {
     it('after a scroll (pointercancel) is a Tab arrival: it goes to the roving cell', async () => {
         const { table, focusViewport, tap } = await setup();
         tap(cellAt(table, 1, 'name')!, 621, 'pointercancel');
+        expect(await focusViewport()).toBe(true);
+    });
+
+    it('after a tap on a header CONTROL (the select-all checkbox) is a Tab arrival: the control took its own focus, so it goes to the roving cell', async () => {
+        const { table, focusViewport, tap } = await setup({ enableRowSelection: true });
+        const sort = table.querySelector<HTMLElement>('[data-slot="table-head"] ge-checkbox')!;
+        expect(sort).not.toBeNull();
+        tap(sort, 624);
         expect(await focusViewport()).toBe(true);
     });
 

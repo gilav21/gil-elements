@@ -172,6 +172,7 @@ export class RangeSession<T> implements CellSession {
     }
 
     /**
+     * KNOWN LIMITATION: the turn-off rule needs an update to observe the mode OFF; an off-then-on toggle made while the table is detached (or within one tick) does not drop the range.
      * The VALUE rules of the shell (columns, rows, the turn-off rule, the value copy), which never stop: the controller keeps calling this for a session that
      * FAILED, so its range value keeps behaving like a healthy session's (the one place of the turn-off rule).
      */

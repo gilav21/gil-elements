@@ -3,6 +3,8 @@
  * control in a shadow root, so a press on them is retargeted to the host and no `input` / `button` selector can see it. A press on one of these inside a
  * data-table cell belongs to the control (it keeps its focus and its click); anything that is not here and not a native control is a cell press.
  * ONE place: a new interactive control is added here (the node test fails for every form-associated element missing from it).
+ * Not the activator's `INTERACTIVE` (shared/activator.ts): that decides what can already trigger a popover (so it includes `[tabindex]`); this decides what owns a press in a
+ * data-table cell (`[tabindex]` is excluded: a component cell sets it for keyboard reasons). Different questions, so the lists are not merged.
  */
 export const INTERACTIVE_TAGS: readonly string[] = Object.freeze([
     // form-associated controls
