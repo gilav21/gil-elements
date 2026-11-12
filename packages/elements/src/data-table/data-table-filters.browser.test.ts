@@ -580,6 +580,39 @@ describe('F8 keys typed in a floating filter input stay the input own (B1)', () 
         expect(edits).toHaveLength(0);
         expect(table.contains(document.activeElement) && document.activeElement!.closest('[data-kind="filter"]')).toBeTruthy();
     });
+
+    it('with an edit to undo, Ctrl+Z in the floating input is the input own undo (its text), not a data undo; Enter there opens nothing', async () => {
+        const table = await mount({
+            columns: [{ ...nameColumn, enableFiltering: true, editable: true, valueSetter: (row: Row, value: unknown) => ({ ...row, name: String(value) }) }],
+            enableFloatingFilters: true,
+            enableEditHistory: true,
+        });
+        const undos = record(table, 'edit-undo');
+        // One real edit, so the history has something a wrongly routed Ctrl+Z would undo.
+        table.focusCell(0, 'name');
+        await settle(table);
+        await press('{Enter}');
+        await settle(table);
+        const editor = table.querySelector<HTMLInputElement>('[data-editing] input[data-edit-input]')!;
+        await userEvent.type(editor, '!');
+        await press('{Enter}');
+        await settle(table);
+        const edited = table.data[0]!.name;
+        expect(edited.endsWith('!')).toBe(true);
+        expect(table.canUndo).toBe(true);
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input') as HTMLInputElement;
+        await typeText(input, 'xy');
+        expect(input.value).toBe('xy');
+        await press('{Control>}z{/Control}');
+        await settle(table);
+        expect(input.value).not.toBe('xy'); // the field's own undo ran
+        expect(undos).toHaveLength(0);
+        expect(table.data[0]!.name).toBe(edited);
+        expect(table.canUndo).toBe(true);
+        await press('{Enter}');
+        await settle(table);
+        expect(table.editingCell ?? null).toBeNull();
+    });
 });
 
 describe('F9 result announcements (D7)', () => {

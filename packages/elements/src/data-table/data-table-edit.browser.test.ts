@@ -53,6 +53,7 @@ describe('E1 opening an editor', () => {
     it('opens with Enter and with F2 on the focused cell', async () => {
         const table = await mount();
         await focusCell(table, 0, 'name');
+        expect(deepActive()).toBe(cellAt(table, 0, 'name')); // the cell holds REAL DOM focus: the key reaches the grid from the cell itself
         await press('{Enter}');
         await settle(table);
         expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'name' });
@@ -60,10 +61,26 @@ describe('E1 opening an editor', () => {
         await settle(table);
         expect(table.editingCell).toBeNull();
         await focusCell(table, 2, 'age');
+        expect(deepActive()).toBe(cellAt(table, 2, 'age'));
         await press('{F2}');
         await settle(table);
         expect(table.editingCell).toEqual({ rowIndex: 2, columnKey: 'age' });
         expect(deepActive()).toBe(editorIn(table, 2, 'age'));
+    });
+
+    it('Enter and F2 on a focused data cell still open it with row selection and detail rows on (no row-control handler swallows them)', async () => {
+        const table = await mount({ enableRowSelection: true, enableRowExpansion: true, renderDetail: () => 'detail' });
+        await focusCell(table, 1, 'name');
+        expect(deepActive()).toBe(cellAt(table, 1, 'name'));
+        await press('{Enter}');
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        expect(table.rowSelection).toEqual({});
+        await press('{Escape}');
+        await settle(table);
+        await press('{F2}');
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 1, columnKey: 'name' });
     });
 
     it('does not open on a column that is not editable, on a disabled row, or on a special column', async () => {
