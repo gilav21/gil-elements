@@ -182,7 +182,7 @@ export class AddonSet<T = unknown> {
         for (const id of this.ids) {
             const addon = this.registry.get(id);
             if (addon) wanted.set(id, addon);
-            else warnOncePer(this.registry, `unknown-addon:${id}`, `[ge-data-table] unknown addon "${id}": import its define module first.`); // once per registry and id: the registry owns the report
+            else warnOncePer(this, `unknown-addon:${id}`, `[ge-data-table] unknown addon "${id}": import its define module first.`); // once per set (one table) and id: another table with the same typo warns for itself
         }
         for (const [id, bundle] of [...wanted]) {
             if (bundle.covers && this.optionsFor(id, bundle) !== false) for (const covered of bundle.covers) wanted.delete(covered);

@@ -1,6 +1,6 @@
 import { isSecondaryTouch } from '../shared/touch.js';
 import { columnCells, HEAD_SELECTOR as HEAD } from './data-table-columns.js';
-import { type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
+import { type DataTableCoreHost, ownClosest, ownEvents, requireProvider } from './data-table-host.js';
 import type { ResizeService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { columnMinWidthPx, rootFontPx } from './data-table-virtual.js';
@@ -142,9 +142,9 @@ export class ResizeController<T> {
 
     private readonly onDown = (event: PointerEvent): void => {
         if (this.drag && isSecondaryTouch(event)) return this.cancel();
-        const handle = (event.target as Element).closest?.<HTMLElement>(HANDLE);
+        const handle = ownClosest<HTMLElement>(this.host.root, event.target, HANDLE);
         if (!handle || event.button !== 0 || this.drag || isSecondaryTouch(event)) return;
-        const head = handle.closest<HTMLElement>(HEAD);
+        const head = ownClosest<HTMLElement>(this.host.root, handle, HEAD);
         const key = head?.dataset['columnId'];
         const found = key === undefined ? null : this.column(key);
         const table = this.table();
@@ -331,15 +331,15 @@ export class ResizeController<T> {
     // ---- keyboard ---------------------------------------------------------------------------------------------
 
     private handleKey(event: KeyboardEvent): boolean {
-        const handle = (event.target as Element).closest?.<HTMLElement>(HANDLE);
+        const handle = ownClosest<HTMLElement>(this.host.root, event.target, HANDLE);
         if (!handle || event.altKey || event.ctrlKey || event.metaKey) return false;
-        const key = handle.closest<HTMLElement>(HEAD)?.dataset['columnId'];
+        const key = ownClosest<HTMLElement>(this.host.root, handle, HEAD)?.dataset['columnId'];
         const found = key === undefined ? null : this.column(key);
         if (key === undefined || !found) return false;
         const rtl = handle.ownerDocument.defaultView?.getComputedStyle(this.host.root).direction === 'rtl';
         const step = event.shiftKey ? KEY_STEP_LARGE : KEY_STEP;
         const floor = columnMinWidthPx(found.column, this.rootFontPx());
-        const current = Math.round(handle.closest(HEAD)?.getBoundingClientRect().width ?? floor);
+        const current = Math.round(ownClosest(this.host.root, handle, HEAD)?.getBoundingClientRect().width ?? floor);
         let next: number;
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
             // Read again when the run is over (a pause) or the geometry may have changed (see `keyed`'s resets).
@@ -382,8 +382,8 @@ export class ResizeController<T> {
         this.teardown.push(
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, this.onDown)),
             disposables.listen<MouseEvent>(root, 'dblclick', ownEvents(root, (event: MouseEvent) => {
-                const handle = (event.target as Element).closest?.<HTMLElement>(HANDLE);
-                const key = handle?.closest<HTMLElement>(HEAD)?.dataset['columnId'];
+                const handle = ownClosest<HTMLElement>(this.host.root, event.target, HANDLE);
+                const key = ownClosest<HTMLElement>(this.host.root, handle, HEAD)?.dataset['columnId'];
                 if (key === undefined) return;
                 event.preventDefault();
                 // A double tap already fitted the column; the browser's own `dblclick` for it must not fit it twice.
@@ -397,8 +397,8 @@ export class ResizeController<T> {
             this.host.topics.on('columns', () => this.keyed && this.layoutOf(this.keyed.key) !== this.keyed.layout && (this.keyed = null)),
             // The separator's value is the measured width when it takes focus: a `rem`, `%` or `auto` width has no px string to render.
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => {
-                const handle = (event.target as Element).closest?.<HTMLElement>(HANDLE);
-                const width = handle?.closest(HEAD)?.getBoundingClientRect().width;
+                const handle = ownClosest<HTMLElement>(this.host.root, event.target, HANDLE);
+                const width = ownClosest(this.host.root, handle, HEAD)?.getBoundingClientRect().width;
                 if (handle && width) handle.setAttribute('aria-valuenow', String(Math.round(width)));
             })),
         );

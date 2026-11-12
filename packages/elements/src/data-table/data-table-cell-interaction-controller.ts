@@ -4,6 +4,7 @@ import { EditSession } from './data-table-edit-session.js';
 import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
 import { reportOncePer } from './data-table-warn.js';
+import { mergeSessionServices } from './data-table-session-service.js';
 import { CONTROLS_SELECTOR, NATIVE_CONTROLS, ROLES_SELECTOR } from '../shared/interactive-tags.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
@@ -37,7 +38,7 @@ interface Press {
     readonly touch: boolean;
     /** The press began inside this table's VIEWPORT (decided at the pointerdown, so a node a renderer replaced before the pointerup does not matter); touch presses only. */
     readonly inViewport: boolean;
-    /** The `timeStamp` of the last pointer event of this press (its down, its moves). */
+    /** `performance.now()` at HANDLER time of the last pointer event of this press (its down, its moves); not the event's own `timeStamp`. */
     seen: number;
     /** The press began on a `data-pointer-transparent` overlay (the fill handle, a readout): offered to the sessions at its pointerdown (`pressed` = the overlay, `at` and the start cell null) so one can claim it; unclaimed it does nothing (no focus, no tap focus, no pointerup offer). */
     readonly overlay: boolean;
@@ -116,7 +117,7 @@ export class CellInteractionController<T> {
     private readonly presses = new Map<number, Press>();
     /** Removes the document listeners of `watchPresses`: set while a press is open. */
     private unwatchPresses: (() => void) | null = null;
-    /** The `timeStamp` of the last event that ended a TOUCH press: a viewport focus right after it is that tap's own. */
+    /** `performance.now()` at handler time of the last event that ended a TOUCH press: a viewport focus right after it is that tap's own. */
     private lastPressEnd = -Infinity;
     /** The tap the capture listener decided on, for the bubble listener of the SAME event (by identity); dropped when used, at the next pointerdown and at detach. */
     private tapPending: { event: PointerEvent; press: Press } | null = null;
@@ -154,19 +155,7 @@ export class CellInteractionController<T> {
             focusedCell: () => this.focused,
             focusCell: (rowIndex: number, columnKey: string) => this.focusCell(rowIndex, columnKey, true),
         };
-        for (const session of this.sessions) {
-            for (const key of new Set([...Object.keys(session.service ?? {}), ...Object.keys(session.neutral?.service ?? {})])) {
-                if (key in service) continue; // the first session that declares a key owns it
-                service[key] = (...args: unknown[]): unknown => {
-                    // A broken session answers NEUTRALLY only for the methods its `neutral.service` lists (the ones that need its live part); the rest (its VALUE
-                    // methods) keep going to the session.
-                    const neutral = this.broken.has(session) ? (session.neutral?.service as Record<string, unknown> | undefined) : undefined;
-                    const source = neutral && key in neutral ? neutral : (session.service as Record<string, unknown> | undefined);
-                    const method = source?.[key];
-                    return typeof method === 'function' ? method.apply(source, args) : undefined;
-                };
-            }
-        }
+        mergeSessionServices(this.sessions, (session) => this.broken.has(session as CellSession), service);
         this.service = service as unknown as CellInteractionService;
     }
 
@@ -405,7 +394,7 @@ export class CellInteractionController<T> {
     /** The toggle of the header of group `key` that this table draws, or the first group toggle it draws when no key is asked for. */
     private groupToggle(key?: string): HTMLElement | undefined {
         const toggles = ownElements(this.host.root, this.host.root.querySelectorAll<HTMLElement>('[data-kind="group"] [data-toggle]'));
-        return key === undefined ? toggles[0] : toggles.find((toggle) => toggle.closest('[data-kind="group"]')?.getAttribute('data-group-key') === key);
+        return key === undefined ? toggles[0] : toggles.find((toggle) => ownClosest(this.host.root, toggle, '[data-kind="group"]')?.getAttribute('data-group-key') === key);
     }
 
     // ---- state ------------------------------------------------------------------------------------------------------
@@ -785,7 +774,10 @@ export class CellInteractionController<T> {
         // Only a TAP in the VIEWPORT (a touch press ended by its pointerup, on the body, header, footer or empty area; the toolbar and pager are outside it) can
         // cause the browser's viewport focus that follows: not a scroll's pointercancel, and not a tap on a control (a sort button, a checkbox takes its own focus).
         if (event?.type === 'pointerup' && press.touch && press.own && press.inViewport) this.lastPressEnd = performance.now();
-        if (this.presses.size === 0) this.unwatchPresses?.(), (this.unwatchPresses = null);
+        if (this.presses.size === 0) {
+            this.unwatchPresses?.();
+            this.unwatchPresses = null;
+        }
         this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed
         this.closing.delete(pointerId);
@@ -927,8 +919,7 @@ export class CellInteractionController<T> {
 
     /** The cell `el` is in, only when THIS table owns it: a table nested in an outer cell sees the OUTER cell above its whole body (its header, toolbar, pager), which is not its cell. */
     private cellOf(el: Element | null | undefined): Element | null {
-        const cell = el?.closest(CELL) ?? null;
-        return cell && ownsTarget(this.host.root, cell) ? cell : null;
+        return ownClosest(this.host.root, el, CELL);
     }
 
     private addressOf(el: Element | null | undefined): CellAddress | null {

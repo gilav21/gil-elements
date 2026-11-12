@@ -115,6 +115,20 @@ describe('AddonSet', () => {
         expect(log).toEqual(['start export {"formats":["csv"]}']);
     });
 
+it('warns once per TABLE (set) and id, though two tables share one registry: each table with the same typo warns for itself', () => {
+        const { host } = fakeHost();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const registry = new Map<string, DataTableAddon>();
+        const first = new AddonSet(host, registry);
+        const second = new AddonSet(host, registry);
+        for (const set of [first, second]) {
+            set.start();
+            set.configure('typo', {});
+            set.sync();
+        }
+        expect(warn.mock.calls.filter((call) => String(call[0]).includes('unknown addon "typo"'))).toHaveLength(2);
+    });
+
     it('warns about an unknown id, and starts it once its module registers', () => {
         const { set, addon, log, warn } = setup();
         set.start();

@@ -3,6 +3,10 @@ import { mountTable, settle } from './data-table-fixtures.js';
 import { KEY_PRIORITY, type CellAddress, type ClipboardResult, type GeDataTable, type HistoryResult, type StaleChange } from './index.js';
 import { KEY_PRIORITY as registry } from './data-table-registry.js';
 
+/** The first controller that draws in `slot` (the lists are built once at assembly). */
+const drawing = (table: unknown, slot: 'renderToolbar' | 'renderOverlay'): Record<string, () => unknown> =>
+    (table as { assembled: { drawing(slot: string): readonly (readonly [number, Record<string, () => unknown>])[] } }).assembled.drawing(slot)[0]![1];
+
 describe('the types of the public methods', () => {
     it('are exported from the index: undoEdit / redoEdit return a HistoryResult, focusedCell a CellAddress, copy a ClipboardResult (a type-level check: it compiles)', () => {
         const history: HistoryResult = { done: false, stale: [] satisfies readonly StaleChange[] };
@@ -53,7 +57,7 @@ describe('a failure of the same kind in TWO tables', () => {
         const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const tables = [await mountTable(), await mountTable()];
         for (const table of tables) {
-            const controller = (table as unknown as { assembled: { controllers: Record<string, () => unknown>[] } }).assembled.controllers[0]!;
+            const controller = drawing(table, 'renderOverlay');
             controller['renderOverlay'] = () => {
                 throw new Error('overlay failed');
             };
@@ -99,14 +103,13 @@ describe('a controller that throws while drawing', () => {
     it('is reported once and draws nothing (toolbar and overlay alike): the table still renders', async () => {
         const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const table = await mountTable();
-        const controller = (table as unknown as { assembled: { controllers: Record<string, () => unknown>[] } }).assembled.controllers[0]!;
-        controller['renderToolbar'] = () => {
+        // Only the controllers that DRAW in a slot are asked (found once at assembly): patch the first of each.
+        drawing(table, 'renderToolbar')['renderToolbar'] = () => {
             throw new Error('toolbar failed');
         };
-        controller['renderOverlay'] = () => {
+        drawing(table, 'renderOverlay')['renderOverlay'] = () => {
             throw new Error('overlay failed');
         };
-        table.requestUpdate();
         await settle(table);
         table.requestUpdate();
         await settle(table);

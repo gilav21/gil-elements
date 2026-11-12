@@ -10,7 +10,7 @@ function firstFor(scope: object, key: string): boolean {
     return true;
 }
 
-/** Like `warnOnce`, but once per `scope` (a table) and key: one table's mistake never silences another table's. */
+/** `console.warn` once per `scope` (a table, a registry) and key: one owner's mistake never silences another's. */
 export function warnOncePer(scope: object, key: string, message: string, ...detail: unknown[]): void {
     if (firstFor(scope, key)) console.warn(message, ...detail);
 }

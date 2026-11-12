@@ -213,9 +213,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         rejectionMessage: () => this.resolvedLocale.invalidValue,
         emit: (...event) => this.emit(event[0], event[1] as never),
     });
-    /** A `cellRange` assigned before the first connect, until the range session adopts it (no controller is assembled before the first connect). */
     /** The step 0 clipboard answers, for a call while no `clipboard` service is provided (detached); built once. */
     private neutralClip: ClipboardService<T> | undefined;
+    /** A `cellRange` assigned before the first connect, until the range session adopts it (no controller is assembled before the first connect). */
     private earlyRange: CellRange | null | undefined;
     private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
@@ -885,7 +885,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** What each controller draws in the toolbar or over the grid: one that throws is reported once (per controller and slot) and draws nothing, never a broken render. */
     private renderParts(slot: 'renderToolbar' | 'renderOverlay'): unknown[] {
-        return (this.assembled?.controllers ?? []).map((controller, index) => {
+        return (this.assembled?.drawing(slot) ?? []).map(([index, controller]) => {
             try {
                 return controller[slot]?.();
             } catch (error) {
