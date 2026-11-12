@@ -28,8 +28,13 @@ export interface ConfigCheckInput<T> {
     enableRowDrag?: boolean;
     /** Undo/redo of edits; they find a row again by its id. */
     enableEditHistory?: boolean;
-    // The waves add the inputs of their checks here and in the diagnostics snapshot together with the check (`enableFillHandle`,
-    // `enableClipboardPaste`, `localReorder`, `sortState`, `multiSortState`): nothing reads them yet.
+    /** Wave 6 checks: fill and paste write through value setters. */
+    enableFillHandle?: boolean;
+    enableClipboardPaste?: boolean;
+    /** Wave 6 row-drag check; set by the diagnostics snapshot only while `enableRowDrag`. */
+    localReorder?: boolean;
+    /** A sort (single or multi) is applied; set by the diagnostics snapshot only while `enableRowDrag && localReorder`. */
+    sortActive?: boolean;
 }
 
 const PREFIX = '[ge-data-table]';
