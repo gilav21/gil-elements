@@ -23,6 +23,10 @@ interface ColumnHandlers {
     change: (event: Event) => void;
     input: (event: Event) => void;
     toggle: (event: CustomEvent<boolean>) => void;
+    /** The header panel's listeners, built for one column object (rebuilt when the consumer replaces the column). */
+    panel?: { readonly column: object; readonly outputs: ComponentOutputs };
+    /** The floating component's listeners: only the table's `filter-change`. */
+    floating: ComponentOutputs;
 }
 
 /**
@@ -55,7 +59,7 @@ export class FilterUiController<T> {
         prefetch: (column) => this.prefetch(column),
         panelInputs: (column) => this.panelInputs(column),
         panelOutputs: (column) => this.panelOutputs(column),
-        floatingOutputs: (column) => ({ 'filter-change': this.handlersOf(String(column.accessorKey)).change }),
+        floatingOutputs: (column) => this.handlersOf(String(column.accessorKey)).floating,
         setter: (key) => this.handlersOf(key).set,
         floatingInput: (key) => this.handlersOf(key).input,
     };
@@ -145,16 +149,16 @@ export class FilterUiController<T> {
 
     /**
      * The header panel's listeners: the consumer's `filterComponentOutputs`, with its own `filter-change` (if any) COMPOSED with the table's,
-     * consumer first: the table never replaces a handler the consumer gave. Built once per column object, so the panel's listeners keep their
-     * identity across renders.
+     * consumer first: the table never replaces a handler the consumer gave. Kept in the column's ONE handlers entry (dropped at detach) for its
+     * column object, so the panel's listeners keep their identity across renders.
      */
     private panelOutputs(column: ColumnDef<T>): ComponentOutputs {
-        let outputs = this.outputsByColumn.get(column);
-        if (outputs) return outputs;
+        const handlers = this.handlersOf(String(column.accessorKey));
+        if (handlers.panel?.column === column) return handlers.panel.outputs;
         const own = column.filterComponentOutputs ?? {};
-        const table = this.handlersOf(String(column.accessorKey)).change;
+        const table = handlers.change;
         const consumer = own['filter-change'];
-        outputs = {
+        const outputs: ComponentOutputs = {
             ...own,
             'filter-change': consumer
                 ? (event) => {
@@ -163,11 +167,9 @@ export class FilterUiController<T> {
                   }
                 : table,
         };
-        this.outputsByColumn.set(column, outputs);
+        handlers.panel = { column, outputs };
         return outputs;
     }
-
-    private readonly outputsByColumn = new WeakMap<ColumnDef<T>, ComponentOutputs>();
 
     private handlersOf(key: string): ColumnHandlers {
         let handlers = this.handlers.get(key);
@@ -177,13 +179,15 @@ export class FilterUiController<T> {
             this.pending.delete(key);
             this.host.provider('query')?.changeColumnFilter(key, value);
         };
+        const change = (event: Event): void => {
+            // The panel's event bubbles and is composed: stopped here, so it never reaches a listener of the table's own (global) `filter-change` (D4).
+            event.stopPropagation();
+            set((event as CustomEvent).detail ?? null);
+        };
         handlers = {
             set,
-            change: (event) => {
-                // The panel's event bubbles and is composed: stopped here, so it never reaches a listener of the table's own (global) `filter-change` (D4).
-                event.stopPropagation();
-                set((event as CustomEvent).detail ?? null);
-            },
+            change,
+            floating: { 'filter-change': change },
             input: (event) => {
                 const value = (event.currentTarget as HTMLInputElement).value;
                 const debounce = this.host.config.filterDebounce;

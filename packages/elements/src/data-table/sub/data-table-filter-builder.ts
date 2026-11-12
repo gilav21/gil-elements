@@ -1,4 +1,4 @@
-import { html, nothing, unsafeCSS } from 'lit';
+import { html, nothing, type PropertyValues, unsafeCSS } from 'lit';
 import { live } from 'lit/directives/live.js';
 import { chromeIcon } from '../data-table-icons.js';
 import { UiElement } from '@gilav21/elements-base';
@@ -76,6 +76,18 @@ export class GeDataTableFilterBuilder extends UiElement {
         return this.owner ?? this;
     }
 
+    /** The tree this builder reported last: a `group` fed back that is NOT it was replaced from outside (Clear all, a restored view). */
+    private lastEmitted: FilterGroup | null = null;
+
+    protected override willUpdate(changed: PropertyValues<this>): void {
+        // A tree replaced from outside makes the waiting values meaningless (their paths name another tree's conditions): they are dropped.
+        if (!this.owner && changed.has('group') && this.group !== this.lastEmitted && this.pending.size > 0) {
+            clearTimeout(this.timer);
+            this.timer = undefined;
+            this.pending.clear();
+        }
+    }
+
     override disconnectedCallback(): void {
         super.disconnectedCallback();
         // The popover closed (or the table went) while a typed value waited: the top level reports it now, once, against its latest tree.
@@ -116,6 +128,7 @@ export class GeDataTableFilterBuilder extends UiElement {
 
     private emit(group: FilterGroup): void {
         if (group === this.group) return; // a patch of a slot that holds a group changes nothing (Angular emits nothing); also an edit that changed nothing
+        this.lastEmitted = group;
         this.dispatchEvent(new CustomEvent<FilterGroup>('group-change', { detail: group }));
     }
 

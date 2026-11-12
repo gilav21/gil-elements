@@ -6,6 +6,7 @@
  * (a stub) draws no trigger and no row.
  */
 import { html, nothing, type TemplateResult } from 'lit';
+import { computeGridAria } from './data-table-aria.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
 import { chromeIcon } from './data-table-icons.js';
@@ -50,6 +51,9 @@ export interface FilterUiService<T> extends FilterService<T> {
 
 /** The step 0 view: no trigger, no floating row. A constant, so a render with nothing to filter allocates no view. */
 const NO_FILTERS: FiltersView<unknown> = Object.freeze({ trigger: () => nothing, row: () => nothing, rows: 0 });
+
+/** The floating row is the SECOND header row: its `aria-rowindex` from the grid's own aria rule (`headerRowIndex(1)`), not a literal. */
+const FLOATING_ROW_INDEX = computeGridAria({ tree: false, headerRows: 2, totalDataRows: 0, columnCount: 0 }).headerRowIndex(1);
 
 const isUiService = <T>(service: FilterService<T> | undefined): service is FilterUiService<T> => typeof (service as Partial<FilterUiService<T>> | undefined)?.panelOpen === 'function';
 
@@ -98,7 +102,7 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
         const columns = requireProvider(host, 'columns').enhancedColumns();
         const window: BodyWindow = host.provider('virtual')?.window() ?? { start: 0, end: 0, padStart: 0, padEnd: 0, colPadStart: 0, colPadEnd: 0, colStart: 0, colEnd: columns.length, retained: [] };
         const flexible = columns.some((c) => c._width === 'auto');
-        return html`<div data-slot="table-row" role="row" data-kind="filter" aria-rowindex="2">${columnParts(columns, window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : cell(p.column, p.n)))}${flexible ? nothing : html`<div data-slot="table-head" role="presentation"></div>`}</div>`; // no column borders: Angular's floating cells have none (html 763)
+        return html`<div data-slot="table-row" role="row" data-kind="filter" aria-rowindex=${FLOATING_ROW_INDEX}>${columnParts(columns, window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : cell(p.column, p.n)))}${flexible ? nothing : html`<div data-slot="table-head" role="presentation"></div>`}</div>`; // no column borders: Angular's floating cells have none (html 763)
     };
 
     return { trigger, row, rows: 1 };

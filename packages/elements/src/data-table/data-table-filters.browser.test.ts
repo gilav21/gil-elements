@@ -286,6 +286,31 @@ describe('a press inside an open header panel never drags its column (round 5)',
     });
 });
 
+describe('round 6: floating row index, handlers across a reattach', () => {
+    it('the floating row is the second header row (aria-rowindex 2), the first data row the third', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true });
+        expect(q(table, '[data-kind="filter"]').getAttribute('aria-rowindex')).toBe('2');
+        expect(bodyRows(table)[0]!.getAttribute('aria-rowindex')).toBe('3');
+    });
+
+    it('after a detach and reattach the panel still filters, and the consumer handler runs once per change', async () => {
+        const consumer = vi.fn();
+        const column: ColumnDef<Row> = { ...nameColumn, enableFiltering: true, filterComponent: 'x-text-filter', filterComponentOutputs: { 'filter-change': consumer } };
+        const table = await mount({ columns: [column, roleColumn] });
+        const parent = table.parentElement!;
+        table.remove();
+        parent.append(table);
+        await settle(table);
+        const content = await openPopover(trigger(table, 'name'));
+        await settle(table);
+        await typeText(content!.querySelector('x-text-filter')!.querySelector('input')!, 'D');
+        await settle(table);
+        expect(table.columnFilters['name']).toBe('D');
+        expect(consumer).toHaveBeenCalledTimes(1);
+        await closePopover(table);
+    });
+});
+
 describe('an equal column filter write is a no-op (round 6)', () => {
     it('Clear on an empty panel and the same day picked again fire nothing and keep the page', async () => {
         const table = await mount({ paginationState: { pageIndex: 0, pageSize: 2 } }, { 'show-pagination': 'true' });
@@ -769,6 +794,23 @@ describe('F7 the advanced filter builder', () => {
         expect(table.advancedFilter!.rules).toHaveLength(1);
         expect((inner(table, 'select.column')[0] as unknown as HTMLSelectElement).value).toBe('role');
         expect(op().value).toBe('equals');
+        await closePopover(table);
+    });
+
+    it('a tree replaced from outside drops the waiting values: Clear all within the debounce, then + Condition, gives an empty condition (round 6)', async () => {
+        const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'a' }] };
+        const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 1000 });
+        await openBuilder(table);
+        await typeText(inner(table, 'input.value')[0]!, 'xyz');
+        await userEvent.click(q(table, '[data-slot="advanced-filter-clear"]'));
+        await refresh(table);
+        expect(table.advancedFilter).toBeNull();
+        await userEvent.click(byText(table, '+ Condition'));
+        await refresh(table);
+        expect(table.advancedFilter!.rules).toEqual([{ type: 'condition', column: 'name', operator: 'contains', value: '' }]);
+        await new Promise((resolve) => setTimeout(resolve, 1100));
+        await refresh(table);
+        expect(table.advancedFilter!.rules).toEqual([{ type: 'condition', column: 'name', operator: 'contains', value: '' }]);
         await closePopover(table);
     });
 
