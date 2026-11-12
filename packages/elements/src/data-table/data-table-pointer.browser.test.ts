@@ -2588,6 +2588,61 @@ describe('two pointerdowns of the same pointer that only the root hears', () => 
     });
 });
 
+describe('a table inside a contenteditable region', () => {
+    it('keeps its navigation keys (the editable ancestor outside the table is not a text field of the grid); a real input inside a cell still keeps its keys', async () => {
+        const region = document.createElement('div');
+        region.setAttribute('contenteditable', 'true');
+        document.body.append(region);
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS });
+        region.append(table);
+        try {
+            await settle(table);
+            table.focusCell(0, 'name');
+            await settle(table);
+            const cell = cellAt(table, 0, 'name')!;
+            cell.focus();
+            // The key event is dispatched ON the cell (a real browser may retarget keys in an editing host to the host itself; this is the event that reaches the grid).
+            const key = (el: Element, name: string): void => void el.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true, composed: true, cancelable: true }));
+            key(cell, 'ArrowDown');
+            await settle(table);
+            expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+            // a text input inside a cell keeps its own keys: ArrowDown there does not move the roving cell
+            const input = document.createElement('input');
+            cellAt(table, 1, 'name')!.append(input);
+            input.focus();
+            key(input, 'ArrowDown');
+            await settle(table);
+            expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        } finally {
+            region.remove();
+        }
+    });
+});
+
+describe('a control in a draggable header', () => {
+    it('keeps its own press: a ge-slider (a library control) or a role=slider element does not start a column drag; plain header text does', async () => {
+        const table = await mountTable({ enableColumnReorder: true });
+        const head = table.querySelector<HTMLElement>('[data-slot="table-head"][data-draggable]');
+        if (!head) throw new Error('no draggable header in this setup');
+        const box = head.getBoundingClientRect();
+        const slider = document.createElement('ge-slider');
+        const aria = document.createElement('div');
+        aria.setAttribute('role', 'slider');
+        head.append(slider, aria);
+        const dragged = (el: Element): boolean => {
+            el.dispatchEvent(pointer('pointerdown', 661, { clientX: box.left + 3, clientY: box.top + 3 }));
+            document.dispatchEvent(pointer('pointermove', 661, { clientX: box.left + 40, clientY: box.top + 3, buttons: 1 }));
+            const started = table.querySelector('[data-dragging], [data-table-dragging]') !== null;
+            document.dispatchEvent(pointer('pointerup', 661, { clientX: box.left + 40, clientY: box.top + 3 }));
+            return started;
+        };
+        expect(dragged(slider)).toBe(false);
+        expect(dragged(aria)).toBe(false);
+        expect(dragged(head)).toBe(true); // the positive control: a press on the header itself drags
+    });
+});
+
 describe('controls seen through the composed path', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

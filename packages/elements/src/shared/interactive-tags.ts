@@ -24,3 +24,12 @@ export const INTERACTIVE_ROLES: readonly string[] = Object.freeze([
 export const NATIVE_CONTROLS: readonly string[] = Object.freeze([
     'input', 'textarea', 'select', 'button', 'a[href]', 'summary', 'video[controls]', 'audio[controls]',
 ]);
+
+/**
+ * The selector of what owns its own press: native controls, the library's controls (`INTERACTIVE_TAGS`), a checkbox role, an editable region and the explicit
+ * `data-table-keeps-focus` opt-out. ONE place for the data-table's cell press and its column drag (a header press on a control must not start a drag).
+ */
+export const CONTROLS_SELECTOR = `${NATIVE_CONTROLS.join(', ')}, [role="checkbox"], ${INTERACTIVE_TAGS.join(', ')}, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]`;
+
+/** The ARIA widget roles as one selector (`INTERACTIVE_ROLES`). */
+export const ROLES_SELECTOR = INTERACTIVE_ROLES.map((role) => `[role="${role}"]`).join(', ');

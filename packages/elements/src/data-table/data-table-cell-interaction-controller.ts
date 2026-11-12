@@ -4,7 +4,7 @@ import { EditSession } from './data-table-edit-session.js';
 import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
 import { reportOncePer } from './data-table-warn.js';
-import { INTERACTIVE_ROLES, INTERACTIVE_TAGS, NATIVE_CONTROLS } from '../shared/interactive-tags.js';
+import { CONTROLS_SELECTOR, NATIVE_CONTROLS, ROLES_SELECTOR } from '../shared/interactive-tags.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { RangeSession } from './data-table-range-session.js';
@@ -49,7 +49,7 @@ const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= b
  * A press on one of these belongs to the control: it keeps its own focus and click. `data-table-keeps-focus` is the explicit opt-out for a widget in a cell
  * that manages its own focus (a combobox, a menu button, a custom editor): treated like a control.
  */
-const CONTROLS = `${NATIVE_CONTROLS.join(", ")}, [role="checkbox"], ${INTERACTIVE_TAGS.join(", ")}, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]`;
+const CONTROLS = CONTROLS_SELECTOR;
 const CELL = '[data-slot="table-cell"]';
 /** A touch press with no pointer event for this long is taken as lost (its release was swallowed). */
 const STALE_TOUCH_MS = 2000;
@@ -60,11 +60,11 @@ const FRESH_PRESS_MS = 500;
 /** A pointer event that carries a position: an UNTRUSTED one (`new PointerEvent('pointerdown')`, a test library's fireEvent) with all-zero coordinates has none, and its point says nothing about where it landed. A real (trusted) press at (0, 0) has one. */
 export const hasPosition = (event: Pick<PointerEvent, 'isTrusted' | 'clientX' | 'clientY' | 'screenX' | 'screenY'>): boolean =>
     event.isTrusted || event.clientX !== 0 || event.clientY !== 0 || event.screenX !== 0 || event.screenY !== 0;
-/** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
 /** Inside a shadow root of a consumer component (not this table's own tree): only the real form controls count; its roles, bare anchors (SVG included) and tags are its own business. */
 const SHADOW_CONTROLS = `${NATIVE_CONTROLS.join(', ')}, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]`;
 const XHTML = 'http://www.w3.org/1999/xhtml';
-const CELL_CONTROLS = `${CONTROLS}, a, ${INTERACTIVE_ROLES.map((role) => `[role="${role}"]`).join(', ')}`;
+/** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
+const CELL_CONTROLS = `${CONTROLS}, a, ${ROLES_SELECTOR}`;
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
 /** Rows moved by one page key when nothing is drawn to measure. */
@@ -581,13 +581,13 @@ export class CellInteractionController<T> {
 
     // ---- pointer ----------------------------------------------------------------------------------------------------
 
-    /** The document hears every press first: one whose composed path does not include the root clears `within` now (the root restores it for a press it hears). */
     /** Ends the open press of this pointer, if any (`event`: the release that was seen, or null). */
     private endOpenPress(pointerId: number, event: PointerEvent | null): void {
         const open = this.presses.get(pointerId);
         if (open) this.endPress(pointerId, open, event);
     }
 
+    /** The document hears every press first: one whose composed path does not include the root clears `within` now (the root restores it for a press it hears). */
     private onDocumentDown(event: PointerEvent): void {
         // A press of the same pointer that is still open (inside this table, outside it, or on a nested table, which records its own) ends
         // the earlier press whose release was lost (a pointerup swallowed over an iframe, alt-tab): its claimant is told, with the REAL pointerup when the release
@@ -1003,7 +1003,7 @@ export class CellInteractionController<T> {
     private onKey(event: KeyboardEvent): boolean {
         if (event.defaultPrevented || event.isComposing || event.altKey) return false;
         const target = event.target as Element;
-        if (target.closest(TEXT_FIELD) || (event.composedPath()[0] as Element | undefined)?.matches?.(TEXT_FIELD)) return false;
+        if (ownClosest(this.host.root, target, TEXT_FIELD) || (event.composedPath()[0] as Element | undefined)?.matches?.(TEXT_FIELD)) return false;
         if (!NAVIGATION_KEYS.has(event.key)) return false;
         const query = requireProvider(this.host, 'query');
         const keys = requireProvider(this.host, 'columns').focusableKeys();

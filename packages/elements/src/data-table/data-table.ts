@@ -588,7 +588,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The `copy*ToClipboard` methods resolve to what happened: `status` is `done`, `empty`, `denied` (the browser refused), `unavailable` (no clipboard) or `ignored` (the feature is off). */
     private copyToClipboard(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<ClipboardResult> {
-        return this.provider('clipboard')?.copy(scope, row) ?? Promise.resolve({ status: 'unavailable' });
+        return this.provider('clipboard')?.copy(scope, row) ?? Promise.resolve({ status: this.enableCopy ? 'unavailable' : 'ignored' }); // no service (detached): the same answers as the step 0 service
     }
 
     copyCellToClipboard(): Promise<ClipboardResult> {

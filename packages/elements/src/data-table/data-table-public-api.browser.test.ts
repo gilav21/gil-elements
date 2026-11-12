@@ -169,6 +169,18 @@ describe('clearAdvancedFilter with no query provider', () => {
     });
 });
 
+describe('copy with the feature off', () => {
+    it('answers "ignored" while enable-copy is off (attached or detached), and "unavailable" while it is on and there is no real copy yet', async () => {
+        const off = await mountTable({ enableCopy: false });
+        expect(await off.copyAllToClipboard()).toEqual({ status: 'ignored' });
+        expect(await off.copyCellToClipboard()).toEqual({ status: 'ignored' });
+        off.remove();
+        expect(await off.copyAllToClipboard()).toEqual({ status: 'ignored' });
+        const on = await mountTable({ enableCopy: true });
+        expect(await on.copyAllToClipboard()).toEqual({ status: 'unavailable' });
+    });
+});
+
 describe('moveRow on a detached table', () => {
     it('is inert (false, no throw): it needs the live grid', async () => {
         const table = await mountTable();

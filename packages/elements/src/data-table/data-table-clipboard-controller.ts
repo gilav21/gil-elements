@@ -14,7 +14,8 @@ export class ClipboardController<T> {
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 
     private readonly service: ClipboardService<T> = {
-        copy: () => Promise.resolve({ status: 'unavailable' }),
+        // The step 0 copy answers like the element documents: `ignored` while the feature flag is off, `unavailable` otherwise (the real copy is wave 6 B).
+        copy: () => Promise.resolve({ status: this.host.config.enableCopy ? 'unavailable' : 'ignored' }),
         paste: () => Promise.resolve({ status: 'unavailable' }),
         pasteText: () => ({ status: 'unavailable' }),
     };

@@ -1,4 +1,5 @@
 import { startAutoScroll, type AutoScrollController } from '../shared/auto-scroll.js';
+import { CONTROLS_SELECTOR, ROLES_SELECTOR } from '../shared/interactive-tags.js';
 import { onLongPress, onPointerDrag } from '../shared/touch.js';
 import { baseColumnOrder, dropSide, moveByOffset, moveColumnKey, type DropSide } from './data-table-column-order.js';
 import { columnCells, HEAD_SELECTOR as HEAD, pinGroupOf } from './data-table-columns.js';
@@ -9,8 +10,8 @@ import { interpolate } from './data-table.locales.js';
 /** A header is a drag only after the pointer moved this far, so a click on its sort button stays a click. */
 const DRAG_THRESHOLD = 4;
 const DRAGGABLE_HEAD = `${HEAD}[data-draggable]`;
-/** Things inside a header that keep their own press: the resize handle, inputs, checkboxes and header actions. */
-const OWN_PRESS = '[data-slot="data-table-resize-handle"], input, textarea, select, [role="checkbox"], ge-checkbox, ge-input, [data-slot="data-table-header-action"]';
+/** Things inside a header that keep their own press: the same controls as a cell's (native, the library's, ARIA widgets, editable, keeps-focus), the resize handle and the header actions. */
+const OWN_PRESS = `${CONTROLS_SELECTOR}, ${ROLES_SELECTOR}, [data-slot="data-table-resize-handle"], [data-slot="data-table-header-action"]`;
 
 interface Drag {
     readonly key: string;
