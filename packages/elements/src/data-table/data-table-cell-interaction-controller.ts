@@ -20,6 +20,8 @@ const OVERLAY = '[data-pointer-transparent]';
 
 /** What the controller keeps of a press: what the sessions are told (`PointerPress`) and the session that claimed it. */
 interface Press extends PointerPress {
+    /** THE object every session call of this press receives (frozen, built once in `recordPress`): the same identity for its pointerdown, pointerup and cancel. */
+    readonly view: PointerPress;
     /** Set in the bubble phase by the session that claimed it. */
     claimedBy: CellSession | null;
     /** The bubble-phase listener ran for this press: when it did not (a widget stopped `pointerdown`) nothing is offered at its pointerup either. */
@@ -52,8 +54,8 @@ function isPositioned(el: Element, host: Element): boolean {
     return false;
 }
 
-/** What a session is told of a press (the controller's own bookkeeping, `claimedBy`, stays out). */
-const pressOf = ({ anchor, pressed, startCell }: Press): PointerPress => ({ anchor, pressed, startCell });
+/** What a session is told of a press: the one frozen `view` built when the press was recorded (the controller's own bookkeeping, `claimedBy`, stays out). */
+const pressOf = (press: Press): PointerPress => press.view;
 
 /**
  * A press on one of these belongs to the control: it keeps its own focus and click. `data-table-keeps-focus` is the explicit opt-out for a widget in a cell
@@ -563,7 +565,7 @@ export class CellInteractionController<T> {
      */
     private onRootDownBubble(event: PointerEvent): void {
         const press = this.presses.get(event.pointerId);
-        if (!press || press.bubbled || !ownsTarget(this.host.root, event.target)) return;
+        if (!press || press.bubbled) return; // the press recorded for this pointer id proves the pointerdown is this table's (a nested table's press has no entry here); the target may have been replaced mid-dispatch
         press.bubbled = true;
         if (press.bypass) return; // not a cell press: no offer, no focus
         const target = press.pressed;
@@ -577,7 +579,7 @@ export class CellInteractionController<T> {
         }
         if (claimant) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
-        if (event.pointerType !== 'touch' && target && !this.insideOpenEditor(target)) this.pointerFocus(target); // by the recorded element, as `tapFocus` does
+        if (event.pointerType !== 'touch' && target) this.focusPressed(press, target);
     }
 
     /**
@@ -602,7 +604,9 @@ export class CellInteractionController<T> {
         // Only the PRIMARY button (the left mouse button, a touch or pen contact) makes a cell press: a right or middle press is not offered to the sessions
         // and moves no focus (the context menu addon handles `contextmenu` itself).
         const bypass = event.button !== 0 || (target !== null && (this.controlOf(target) !== null || this.overlayOf(target) !== null || floatsOut(target, event.clientX, event.clientY)));
-        this.presses.set(event.pointerId, { anchor, pressed: target, startCell: bypass ? null : cellAddressOf(target), claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, bypass });
+        const startCell = bypass ? null : cellAddressOf(target);
+        const view: PointerPress = Object.freeze({ anchor, pressed: target, startCell });
+        this.presses.set(event.pointerId, { anchor, pressed: target, startCell, view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, bypass });
     }
 
     /**
@@ -641,6 +645,16 @@ export class CellInteractionController<T> {
         // does nothing on a header, a control or a popover), unless that element is in the open editor's cell. It is a tap while the finger is released
         // within the pressed cell's box plus a small slop; further away it was a drag and focuses nothing. (A claimant is told the cell under the finger.)
         if (event.pointerType === 'touch') this.tapFocus(event, press);
+    }
+
+    /** The mouse / pen focus move of a cell press, by the recorded element; when a renderer replaced it during the dispatch, by the press's start cell (an address). */
+    private focusPressed(press: Press, target: Element): void {
+        if (target.isConnected) {
+            if (!this.insideOpenEditor(target)) this.pointerFocus(target);
+            return;
+        }
+        const start = press.startCell;
+        if (start && !this.isEditorCell(start)) this.focusCell(start.rowIndex, start.columnKey, false);
     }
 
     private tapFocus(event: PointerEvent, press: Press): void {

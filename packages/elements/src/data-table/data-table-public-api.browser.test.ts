@@ -62,6 +62,53 @@ describe('a cellRange assigned to a live range service', () => {
     });
 });
 
+describe('a failure of the same kind in TWO tables', () => {
+    it('is reported for each table: one table\'s warning never silences the other\'s', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const tables = [await mountTable(), await mountTable()];
+        for (const table of tables) {
+            const controller = (table as unknown as { assembled: { controllers: Record<string, () => unknown>[] } }).assembled.controllers[0]!;
+            controller['renderOverlay'] = () => {
+                throw new Error('overlay failed');
+            };
+            table.requestUpdate();
+            await settle(table);
+        }
+        expect(warn.mock.calls.filter((call) => String(call[0]).includes('renderOverlay')).length).toBe(2);
+        warn.mockRestore();
+    });
+});
+
+describe('a cellRange parked while the range session was failed', () => {
+    it('wins over the session\'s old value once a detach clears the failure, and the session holds it after the reconnect', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const { RangeSession } = await import('./data-table-range-session.js');
+        let fail = false;
+        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            if (fail) throw new Error('range hostUpdate failed');
+        });
+        try {
+            const table = await mountTable({ enableCellRangeSelection: true });
+            const r1 = { startRow: 0, startCol: 'name', endRow: 0, endCol: 'name' };
+            const r2 = { startRow: 1, startCol: 'name', endRow: 2, endCol: 'age' };
+            table.cellRange = r1;
+            fail = true;
+            table.requestUpdate();
+            await settle(table);
+            table.cellRange = r2; // parked while the session is failed
+            table.remove(); // the detach clears `broken`: the session would answer r1 again
+            expect(table.cellRange).toEqual(r2); // the pending value wins
+            update.mockRestore();
+            document.body.append(table);
+            await settle(table);
+            expect(table.provider('range')!.range()).toEqual(r2); // handed over at the reconnect
+        } finally {
+            update.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
 describe('a controller that throws while drawing', () => {
     it('is reported once and draws nothing (toolbar and overlay alike): the table still renders', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);

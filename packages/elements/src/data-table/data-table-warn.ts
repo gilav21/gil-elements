@@ -13,3 +13,14 @@ export function resetWarnOnce(key?: string): void {
     if (key === undefined) spoken.clear();
     else spoken.delete(key);
 }
+
+const spokenPer = new WeakMap<object, Set<string>>();
+
+/** Like `warnOnce`, but once per `scope` (a table) and key: one table's failure never silences another table's. */
+export function warnOncePer(scope: object, key: string, message: string, ...detail: unknown[]): void {
+    const keys = spokenPer.get(scope) ?? new Set<string>();
+    spokenPer.set(scope, keys);
+    if (keys.has(key)) return;
+    keys.add(key);
+    console.warn(message, ...detail);
+}

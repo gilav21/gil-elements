@@ -81,7 +81,7 @@ export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolea
     const rangeMode = rangeModeOn(config) && rangeActive;
     const selectionMode = rangeSelectionDrawn(config, rangeActive);
     // Flash costs per-cell work only while some cell is actually flashing (`enable-cell-flash` alone, with nothing flashing, does not).
-    const flashable = config.enableCellFlash && (formatting?.anyFlashing?.() ?? false);
+    const flashable = config.enableCellFlash && formatting !== undefined && (formatting.anyFlashing?.() ?? true); // a service without the optional `anyFlashing` cannot say "nothing flashes": every cell is asked
     const flashOff = flashable ? flashOffKeys(config.columns) : NO_KEYS; // only built while something flashes
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);

@@ -36,7 +36,7 @@ import { defaultGetRowId } from './data-table.utils.js';
 import './sub/data-table-column-header.js';
 import './sub/data-table-pager.js';
 import { css } from './data-table-styles.js';
-import { warnOnce } from './data-table-warn.js';
+import { warnOnce, warnOncePer } from './data-table-warn.js';
 
 /** State the element reads out of its services and does not accept back (Angular: signals). */
 const READ_ONLY_STATE = ['editingCell', 'cellEditError'] as const;
@@ -491,11 +491,15 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.provider('interaction')?.cancelEdit?.();
     }
 
-    /** Undoes the last edit step (needs `enable-edit-history`); `stale` lists the entries whose row or column is gone. */
+    /**
+     * Undoes the last edit step (needs `enable-edit-history`); `stale` lists the entries whose row or column is gone. Angular's public name (cmp 4966); the
+     * element's `undo` / `redo` fields are the `DataTableCoreHost` members the controllers call (Ctrl+Z), not a second public API: use these.
+     */
     undoEdit(): HistoryResult {
         return this.undo();
     }
 
+    /** Redoes the last undone edit step; Angular's public name (cmp 4979). */
     redoEdit(): HistoryResult {
         return this.redo();
     }
@@ -537,9 +541,11 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * value assigned before the table is attached waits for the range service.
      */
     get cellRange(): CellRange | null {
-        const service = this.serviceOf('range');
-        if (service) return service.range();
-        return this.earlyRange !== undefined && rangeModeOn(this) ? this.earlyRange : null;
+        // A value PENDING in `earlyRange` (assigned while no real range service existed: before the first connect, or while the range session was failed)
+        // wins until it is handed over at the next connect: once the failure's `broken` mark is cleared by a detach the session answers again with its OLD
+        // value, which must not shadow the newer one.
+        if (this.earlyRange !== undefined && rangeModeOn(this)) return this.earlyRange;
+        return this.serviceOf('range')?.range() ?? null;
     }
 
     set cellRange(range: CellRange | null) {
@@ -876,7 +882,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             try {
                 return controller[slot]?.();
             } catch (error) {
-                warnOnce(`controller-${index}-${slot}`, `[ge-data-table] a controller threw in ${slot}; it draws nothing:`, error);
+                warnOncePer(this, `controller-${index}-${slot}`, `[ge-data-table] a controller threw in ${slot}:`, error);
                 return undefined;
             }
         });

@@ -1726,6 +1726,57 @@ describe('a press in a NESTED table outside its own cells', () => {
     });
 });
 
+describe('a renderer that replaces its content in its own pointerdown', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is still the cell\'s press: the mouse press is offered and focuses, and a touch tap focuses (the target left the DOM during the dispatch)', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'age')!;
+        const child = document.createElement('span');
+        child.textContent = 'x';
+        cell.append(child);
+        child.addEventListener('pointerdown', () => child.remove()); // a renderer swaps its content in its own handler (bubble, before the root's)
+        const offers: string[] = [];
+        hooks.onPointerDown = () => void offers.push('down');
+        child.dispatchEvent(pointer('pointerdown', 521, { over: cell }));
+        cell.dispatchEvent(pointer('pointerup', 521, { over: cell }));
+        await settle(table);
+        expect(offers).toEqual(['down']);
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'age' });
+        table.focusCell(0, 'name');
+        await settle(table);
+        const second = document.createElement('span');
+        second.textContent = 'y';
+        cellAt(table, 2, 'age')!.append(second);
+        second.addEventListener('pointerdown', () => second.remove());
+        second.dispatchEvent(pointer('pointerdown', 522, { pointerType: 'touch', over: cellAt(table, 2, 'age')! }));
+        cellAt(table, 2, 'age')!.dispatchEvent(pointer('pointerup', 522, { pointerType: 'touch', over: cellAt(table, 2, 'age')! }));
+        await settle(table);
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'age' });
+    });
+});
+
+describe('the press object a session receives', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is ONE frozen object for the whole press: the same identity at its pointerdown and its pointerup', async () => {
+        const table = await mountTable();
+        const seen: PointerPress[] = [];
+        hooks.onPointerDown = (_event, _at, press) => (seen.push(press), true);
+        hooks.onPointerUp = (_event, _at, press) => void seen.push(press);
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 531, { over: cell }));
+        cell.dispatchEvent(pointer('pointerup', 531, { over: cell }));
+        expect(seen).toHaveLength(2);
+        expect(seen[1]).toBe(seen[0]);
+        expect(Object.isFrozen(seen[0])).toBe(true);
+    });
+});
+
 describe('one release path for every press', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

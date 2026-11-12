@@ -71,7 +71,7 @@ export class RangeSession<T> implements CellSession {
         ...NEUTRAL_RANGE,
         range: () => this.current(),
         // What the PART says (like `rowDrag.active()`): a loaded part that does not handle ranges yet is not active, so nothing of range mode is drawn.
-        active: () => callPart(this.lazy.part, 'range-part-active', (part) => part.active(), false),
+        active: () => callPart(this.lazy.part, this.context.host, 'range-part-active', (part) => part.active(), false),
         setRange: (range) => {
             // The value is always HELD (a property order such as `cellRange = r; enableCellRangeSelection = true` must keep it); while range mode is off
             // it is only not reported, and it applies when the mode turns on. `undefined` is "no range"; anything that is not a range, or names a column
@@ -111,11 +111,11 @@ export class RangeSession<T> implements CellSession {
     private live(): CellRange | null {
         // Every call into the part goes through `callPart`: one that throws is reported once and answers the held value / "inactive" / a no-op, so a render
         // or a detach is never broken (a detach would otherwise skip the part's disposal).
-        return callPart(this.lazy.part, 'range-part-getRange', (part) => part.getRange(), this.held);
+        return callPart(this.lazy.part, this.context.host, 'range-part-getRange', (part) => part.getRange(), this.held);
     }
 
     private setPartRange(range: CellRange | null): void {
-        callPart(this.lazy.part, 'range-part-setRange', (part) => part.setRange(range), undefined);
+        callPart(this.lazy.part, this.context.host, 'range-part-setRange', (part) => part.setRange(range), undefined);
     }
 
     /** What is reported: the range while range mode is on, nothing while it is off. */

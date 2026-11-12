@@ -89,8 +89,8 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 - Node tests added by step 0: `data-table-lazy`, `data-table-grid-state`, `data-table-cell-session` (inert sessions, no literal key priority, sessions import no controller), the registry plan and `KEY_PRIORITY` cases, the locale keys.
 
 ### J8 Measured at the end of step 0
-- Typecheck `tsc -p packages/elements --noEmit`: clean. Node project: 85 files, 1596 tests, all green. Browser project (`packages/elements/src/data-table`): 16 files, 469 tests, all green. Parity `data-table data-table-rows data-table-integration`: 48 comparisons, 0 differing. Build: green.
-- Size (gzip, `node scripts/size.mjs`, `size-budget.json` untouched as instructed): after review round 39 all 343 entries are within the lead's budget lines (round 35 was 57 and 79 B over the previous lines, which the lead then raised) (round 31 was 174 and 196 B over the previous lines, which the lead then raised) (round 26 was 274 and 278 B over the previous lines, which the lead then raised; dropping the Proxy gave bytes back) (round 20 was 135 and 139 B over the previous lines, which the lead then raised; the simpler failure machinery gave bytes back; `size-budget.json` untouched) (before step 0: 76 921; the lead's budget lines are 80 500 and 80 950, all entries within budget); the five lazy entries are 20 to 160 B each. The +3.3 KB is the real static cost of the seams: the two sessions and the cell-state composition, three stub controllers and their lazy shells, about 20 element delegations, the 22 locale strings, the lazy helper. It comes out of the 7 KB the two waves estimated for their static code, so the integration PR measures the final figure rather than the estimates of wave 5 section 4 and wave 6 section G.
+- Typecheck `tsc -p packages/elements --noEmit`: clean. Node project: 85 files, 1596 tests, all green. Browser project (`packages/elements/src/data-table`): 16 files, 474 tests, all green. Parity `data-table data-table-rows data-table-integration`: 48 comparisons, 0 differing. Build: green.
+- Size (gzip, `node scripts/size.mjs`, `size-budget.json` untouched as instructed): after review round 40 all 343 entries are within the lead's budget lines (round 35 was 57 and 79 B over the previous lines, which the lead then raised) (round 31 was 174 and 196 B over the previous lines, which the lead then raised) (round 26 was 274 and 278 B over the previous lines, which the lead then raised; dropping the Proxy gave bytes back) (round 20 was 135 and 139 B over the previous lines, which the lead then raised; the simpler failure machinery gave bytes back; `size-budget.json` untouched) (before step 0: 76 921; the lead's budget lines are 80 500 and 80 950, all entries within budget); the five lazy entries are 20 to 160 B each. The +3.3 KB is the real static cost of the seams: the two sessions and the cell-state composition, three stub controllers and their lazy shells, about 20 element delegations, the 22 locale strings, the lazy helper. It comes out of the 7 KB the two waves estimated for their static code, so the integration PR measures the final figure rather than the estimates of wave 5 section 4 and wave 6 section G.
 - Known not covered here: `nativeDrag` and `fakeClipboard` are written but not yet exercised by a test (no wave 6 test exists); the `data-edit` parity hook is untested until editing lands.
 
 ### J9 Contract changes from review round 1 (they amend J1 to J8)
@@ -397,6 +397,14 @@ Tests of the cross-feature kind (wave 5: `data-table-edit-filter-integration.bro
 - **`QueryService.changeAdvancedFilter(group)` is real** (one batch: page reset, then `advanced-filter-change`), and `clearAdvancedFilter()` calls it.
 - **A controller that throws in `renderToolbar` / `renderOverlay` is reported once and draws nothing.**
 - The `rangeService()` alias is gone.
+
+**Round 40 (amends the above):**
+- **A formatting service without the optional `anyFlashing`** is asked for every cell (wave 6 C: implement `anyFlashing` to gate the work; callers tolerate its absence by asking every cell).
+- **A pending `cellRange` wins** until it is handed over at the next connect.
+- **The bubble-phase listener trusts the pointer id** (a target replaced mid-dispatch no longer makes the press look stopped; the focus move falls back to the start cell).
+- **Warnings are scoped per table** (`warnOncePer`; `callPart` takes the table as `scope`: wave 6 A / C pass their `host`).
+- **One frozen `PointerPress` per press:** the same object, by identity, at `onPointerDown`, `onPointerUp` and `onPointerCancel` of one press.
+- `undoEdit()` / `redoEdit()` are Angular's public names; `undo` / `redo` on the element are the internal `DataTableCoreHost` members.
 - **The paste part has no `changed` on purpose** (round 26): nothing renders from it today. Wave 6 B adds `changed: () => host.requestRender()` to its `lazyPart` when the part draws something (a status, a preview).
 
 ## 0. What exists, and what the reading changed (read first)

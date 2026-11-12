@@ -27,7 +27,7 @@
  *   At its pointerdown the sessions are OFFERED the press in the order range, edit, as `onPointerDown(event, at, press)`: `at` is the cell
  *   under the pointer (null outside any cell) and `press` is `{ anchor, pressed, startCell }` (`anchor`: the roving cell BEFORE the press
  *   moved it; `pressed`: the element of the table it began on (an overlay itself: a press that begins on one has no start cell); `startCell`: the body cell it began
- *   on, null when it began on a resize handle, a header, a popover or elsewhere), the same object content for every call of one press. The first
+ *   on, null when it began on a resize handle, a header, a popover or elsewhere), the SAME frozen object (identity included) for every call of one press. The first
  *   session that returns true CLAIMS the press and moves the focus itself; if none does, the controller focuses the pressed cell (a mouse, at the
  *   pointerdown, except in the open editor's cell).
  *   A CLAIMED press is routed only to its claimant, and it is told how the press ended exactly once: `onPointerUp(event, at, press)` when the

@@ -296,15 +296,19 @@ describe('lazyPart', () => {
     it('callPart answers the fallback for a part that is not loaded or throws (reported once per key)', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         try {
-            expect(callPart(null, 'k-null', () => true, false)).toBe(false);
+            expect(callPart(null, {}, 'k-null', () => true, false)).toBe(false);
             const bad = {
                 active: () => {
                     throw new Error('active failed');
                 },
             };
-            expect(callPart(bad, 'k-bad', (p) => p.active(), false)).toBe(false);
-            expect(callPart(bad, 'k-bad', (p) => p.active(), false)).toBe(false);
+            const scope = {};
+            expect(callPart(bad, scope, 'k-bad', (p) => p.active(), false)).toBe(false);
+            expect(callPart(bad, scope, 'k-bad', (p) => p.active(), false)).toBe(false);
             expect(warn).toHaveBeenCalledTimes(1);
+            // ANOTHER table (scope) failing the same way is reported too: one table's failure never silences another's
+            expect(callPart(bad, {}, 'k-bad', (p) => p.active(), false)).toBe(false);
+            expect(warn).toHaveBeenCalledTimes(2);
         } finally {
             warn.mockRestore();
         }
