@@ -1367,6 +1367,16 @@ describe('F9 result announcements (D7)', () => {
         expect(announcer(table)).toBe('');
     });
 
+    it('server filtering: an equal echo of the filters waits for no answer (round 16)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], localFiltering: false, total: 500, columnFilters: { name: 'a' } });
+        table.columnFilters = { name: 'a' }; // a new, equal object
+        await settle(table);
+        expect(table.provider('query')?.filteredCount()).toBe(500); // no answer awaited: the total in hand still counts
+        table.columnFilters = { name: 'b' };
+        await settle(table);
+        expect(table.provider('query')?.filteredCount()).toBeUndefined(); // a real change waits
+    });
+
     it('server filtering announces the ANSWER total once its rows arrive, never the total from before the request', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
         table.addEventListener('query', () => setTimeout(() => Object.assign(table, { data: [...table.data], total: 3 }), 900));

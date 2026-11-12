@@ -336,7 +336,7 @@ export class QueryController<T> {
             // write, reads it (`filterSeq`) for its own announcement.
             this.filterChanged();
             model.batch(() => {
-                model.set('columnFilters', { ...model.get('columnFilters'), [String(key)]: value });
+                model.set('columnFilters', { ...filters, [name]: value });
                 this.resetPage();
             });
         },
@@ -379,7 +379,9 @@ export class QueryController<T> {
             this.lastQuery = next;
             // Only server filtering waits for an answer, and only for a query whose FILTERS changed (a sort or a page changes no count): a local table
             // and a server sort arm no timer and cause no extra render.
-            const filtersChanged = !previous || previous.globalFilter !== next.globalFilter || previous.columnFilters !== next.columnFilters || previous.advancedFilter !== next.advancedFilter;
+            // Structurally (an echo of an equal filter object changes no count, so it waits for no answer).
+            const filtersChanged =
+                !previous || previous.globalFilter !== next.globalFilter || !sameStructure(previous.columnFilters, next.columnFilters) || !sameStructure(previous.advancedFilter, next.advancedFilter);
             if (!this.host.config.localFiltering && filtersChanged) {
                 this.awaitingRows = true;
                 this.loadingSeen = false;
