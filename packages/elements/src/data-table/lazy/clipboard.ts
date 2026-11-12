@@ -1,14 +1,72 @@
 /**
- * Lazy part of `ClipboardController` (wave 6, package B owns this file): paste parsing, planning and writing, and the native
- * `paste` listener. Copy is eager. A build entry (`data-table/lazy/clipboard`), loaded by `lazyPart` when
- * `enable-clipboard-paste` is on. Joint step 0: an inert part.
+ * Lazy part of `ClipboardController` (wave 6, package B owns this file): paste parsing, planning and writing, and the native `paste`
+ * listener. Copy is eager. A build entry (`data-table/lazy/clipboard`), loaded by `lazyPart` when `enable-clipboard-paste` is on. It draws
+ * nothing, so its `lazyPart` has no `changed`.
  */
-import type { DataTableCoreHost } from '../data-table-host.js';
+import { cellAddressOf, type CellAddress, type DataTableCoreHost, ownClosest, ownEvents, requireProvider } from '../data-table-host.js';
+import { CELL_SELECTOR, inTextField } from '../data-table-clipboard-grid.js';
+import { pasteAnnouncement, pastedGrid, pasteEvent, planPasteRequests } from '../data-table-paste-apply.js';
+import type { ClipboardResult } from '../data-table-providers.js';
+import { rangeModeOn } from '../data-table-range.js';
 
 export class PastePart<T> {
+    private unlisten: (() => void) | null = null;
+
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 
-    attach(): void {}
+    attach(): void {
+        const { root, disposables } = this.host;
+        // The browser's own Paste (its menu, or Ctrl/Cmd+V when the async clipboard is missing or the key handler left it): the text comes with the event.
+        this.unlisten = disposables.listen<ClipboardEvent>(root, 'paste', ownEvents(root, (event: ClipboardEvent) => this.onNativePaste(event)));
+    }
 
-    detach(): void {}
+    detach(): void {
+        this.unlisten?.();
+        this.unlisten = null;
+    }
+
+    private editing(): boolean {
+        return this.host.provider('interaction')?.editingCell?.() != null;
+    }
+
+    private onNativePaste(event: ClipboardEvent): void {
+        const { host } = this;
+        if (event.defaultPrevented || !host.config.enableClipboardPaste || this.editing() || inTextField(host.root, event)) return;
+        const cell = ownClosest(host.root, event.target, CELL_SELECTOR);
+        const at = host.provider('interaction')?.focusedCell() ?? cellAddressOf(cell);
+        if (!cell || !at) return;
+        event.preventDefault();
+        this.pasteText(event.clipboardData?.getData('text/plain') ?? '', at);
+    }
+
+    /**
+     * Pastes `text` from `at` (default: the focused cell): one undo step, one `data-change`, `cells-paste` once, an `edit-error` per rejected cell,
+     * the pasted rectangle becomes the range (D3b, range mode only, two cells or more) and the result is announced. `ignored` while the table is
+     * loading, with no target cell or a start column that takes no paste; `empty` for empty text.
+     */
+    pasteText(text: string, at?: CellAddress): ClipboardResult {
+        const { host } = this;
+        const target = at ?? host.provider('interaction')?.focusedCell() ?? null;
+        if (host.config.loading || !target) return { status: 'ignored' };
+        const grid = pastedGrid(text);
+        if (grid.length === 0) return { status: 'empty' };
+        const query = requireProvider(host, 'query');
+        const columns = requireProvider(host, 'columns');
+        const all = columns.enhancedColumns();
+        const plan = planPasteRequests(grid, target.rowIndex, target.columnKey, {
+            navigableKeys: columns.navigableKeys(),
+            rowCount: query.renderedRows().length,
+            rowAt: (index) => query.renderedRowAt(index),
+            columnByKey: (key) => all.find((c) => String(c.accessorKey) === key),
+            cellValue: (row, column) => query.cellValue(row, column.accessorKey, column),
+        });
+        if (!plan) return { status: 'ignored' };
+        const results = host.runAsCommand(() => host.writeCells(plan.requests));
+        const detail = pasteEvent(plan, results);
+        host.emit('cells-paste', detail);
+        const { rect } = plan;
+        if (rect && rangeModeOn(host.config) && (rect.endRow > rect.startRow || rect.endCol !== rect.startCol)) host.provider('range')?.setRange(rect);
+        host.announce(pasteAnnouncement(host.resolvedLocale, detail.cellsApplied, detail.cellsRejected));
+        return { status: 'done', cells: detail.cellsApplied, rejected: detail.cellsRejected };
+    }
 }
