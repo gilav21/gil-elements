@@ -41,6 +41,8 @@ export class QueryController<T> {
     private unsubscribeData: (() => void) | undefined;
     /** `config.total` when the last query was sent: a different one is its answer. */
     private totalAtQuery: number | undefined;
+    /** `loading` was seen true since the last query: the consumer drives it, and its end (not a data push) is the answer. */
+    private loadingSeen = false;
     private cancelAnswerWait: (() => void) | undefined;
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
@@ -322,6 +324,8 @@ export class QueryController<T> {
             });
         },
         changeAdvancedFilter: (group) => {
+            // An unchanged tree is no filter change (the same no-op rule as `changeAdvancedFilterOf`): a waiting announcement stays.
+            if ((this.host.model.get('advancedFilter') ?? null) === (group ?? null)) return;
             this.onRows = null;
             changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group);
         },
@@ -359,6 +363,7 @@ export class QueryController<T> {
             // Only server filtering waits for an answer: a local table counts its own rows (no timer, no extra render after a local sort).
             if (!this.host.config.localFiltering) {
                 this.awaitingRows = true;
+                this.loadingSeen = false;
                 this.totalAtQuery = this.host.config.total;
                 this.cancelAnswerWait?.();
                 // The fallback: a consumer that answers in a way the table cannot see (rows mutated in place, the same total) is taken as answered.
@@ -366,20 +371,24 @@ export class QueryController<T> {
             }
             this.host.emit('query', next);
         });
-        // The answer's rows (a `data` set from outside) end the wait; `total` is read a tick later, so a consumer may set it after `data`.
+        // Without `loading`, the answer's rows (a `data` set from outside) end the wait; `total` is read a tick later, so a consumer may set it
+        // after `data`. While the consumer drives `loading`, only its end does (a push during the request is not the answer).
         this.unsubscribeData = this.host.model.subscribe('data', (_, origin) => {
-            if (origin !== 'internal') this.answered();
+            if (origin !== 'internal' && !this.loadingSeen && !this.host.config.loading) this.answered();
         });
     }
 
     /**
-     * The answer to the last query is in (its `data`, a changed `total`, or the `ANSWER_WAIT_MS` fallback): `filteredCount` answers the total
-     * again, a waiting announcement is spoken a tick later (the consumer may set `total` after `data`), and the table renders, so a controller
-     * that waits for the count in its own update sees it.
+     * The answer to the last query is in, and `filteredCount` answers the total again. What counts as the answer:
+     * - when the consumer drives `loading` (it went true after the query): `loading` going back to false; nothing else (a `data` push during the
+     *   request, a `total` change, the timer) ends the wait then;
+     * - otherwise: its `data` (from outside), a changed `total`, or the `ANSWER_WAIT_MS` fallback.
+     * A waiting announcement is spoken a tick later (the consumer may set `total` after `data`), and the table renders, so a controller that
+     * waits for the count in its own update sees it.
      *
-     * KNOWN LIMITATION: the table cannot tell an answer from any other `data` the consumer assigns, so in server mode ANY outside `data`
-     * assignment ends the wait (an unrelated push, a live update, between the query and its answer, ends it early and the count spoken is
-     * that moment's `total`).
+     * KNOWN LIMITATION (only for a consumer that does not drive `loading`): the table cannot tell an answer from any other `data` the consumer
+     * assigns, so ANY outside `data` assignment ends the wait (an unrelated push between the query and its answer ends it early, and the count
+     * spoken is that moment's `total`).
      */
     private answered(): void {
         if (!this.awaitingRows) return;
@@ -406,8 +415,17 @@ export class QueryController<T> {
     }
 
     hostUpdate(): void {
-        // A changed `total` is an answer too (rows mutated in place keep the same `data` array).
-        if (this.awaitingRows && this.host.config.total !== this.totalAtQuery) this.answered();
+        if (this.awaitingRows) {
+            if (this.host.config.loading) {
+                // The consumer drives `loading` for this request: its end is the answer (no fallback timer while it loads).
+                this.loadingSeen = true;
+                this.cancelAnswerWait?.();
+                this.cancelAnswerWait = undefined;
+            } else if (this.loadingSeen || this.host.config.total !== this.totalAtQuery) {
+                // Loading ended, or (without loading) a changed `total`: rows mutated in place keep the same `data` array.
+                this.answered();
+            }
+        }
         this.clampPage();
         const next = this.displayRows();
         if (next !== this.lastRows) {

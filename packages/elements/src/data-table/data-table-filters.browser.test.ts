@@ -286,6 +286,53 @@ describe('a press inside an open header panel never drags its column (round 5)',
     });
 });
 
+describe('round 8', () => {
+    const announcer = (table: Element): string => (q(table, '[data-slot="data-table-announcer"]').textContent ?? '').replaceAll('​', '').trim();
+
+    it('an outside reset within the debounce also clears the text shown in the floating input', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, filterDebounce: 400 });
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input') as HTMLInputElement;
+        await typeText(input, 'abc');
+        table.requestUpdate(); // a render while the write waits keeps the typed text
+        await settle(table);
+        expect(input.value).toBe('abc');
+        table.columnFilters = {};
+        await settle(table);
+        await frames(1);
+        expect(input.value).toBe('');
+    });
+
+    it('with the consumer driving loading, a data push during the request does not end the wait; loading false does', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
+        table.addEventListener('query', () => {
+            table.loading = true;
+            setTimeout(() => Object.assign(table, { data: [...table.data], total: 999 }), 300); // an unrelated live push
+            setTimeout(() => Object.assign(table, { data: [...table.data], total: 3, loading: false }), 1100); // the answer
+        });
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'q');
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        await settle(table);
+        expect(announcer(table)).toBe('');
+        expect(table.provider('query')?.filteredCount()).toBeUndefined();
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await settle(table);
+        expect(announcer(table)).toBe('3 rows match the filters');
+    });
+
+    it('an unchanged advanced filter keeps a waiting announcement (no-op before the drop)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, enableAdvancedFilter: true, localFiltering: false, total: 500 });
+        table.addEventListener('query', () => setTimeout(() => Object.assign(table, { data: [...table.data], total: 2 }), 800));
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'q');
+        await new Promise((resolve) => setTimeout(resolve, 600)); // the announcement waits for the answer
+        table.provider('query')?.changeAdvancedFilter(null); // already null: no change
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await settle(table);
+        expect(announcer(table)).toBe('2 rows match the filters');
+    });
+});
+
 describe('round 7: pending floating writes', () => {
     it('a reset of the filters from outside within the debounce drops the waiting write', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, filterDebounce: 250 });

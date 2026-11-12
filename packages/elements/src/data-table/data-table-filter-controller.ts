@@ -39,13 +39,13 @@ export class FilterUiController<T> {
     private openColumn: string | null = null;
     private builderOpen = false;
     private cancelAnnounce: (() => void) | undefined;
-    /** The pending debounced floating-input writes, by column key. */
-    private readonly pending = new Map<string, () => void>();
+    /** The pending debounced floating-input writes, by column key: the timer's cancel and the text it will write (what the input shows meanwhile). */
+    private readonly pending = new Map<string, { cancel: () => void; text: string }>();
     /** Set while the controller writes a column filter itself: a `columnFilters` change seen then is ours, not an outside reset. */
     private writing = false;
 
     private dropPending(): void {
-        for (const cancel of this.pending.values()) cancel();
+        for (const { cancel } of this.pending.values()) cancel();
         this.pending.clear();
     }
     /** Stable per-column handlers, so the component listeners and the input's `@input` are not re-bound at every render; dropped at detach. */
@@ -67,6 +67,7 @@ export class FilterUiController<T> {
         floatingOutputs: (column) => this.handlersOf(String(column.accessorKey)).floating,
         setter: (key) => this.handlersOf(key).set,
         floatingInput: (key) => this.handlersOf(key).input,
+        floatingText: (key) => this.pending.get(key)?.text,
     };
 
     attach(): void {
@@ -184,7 +185,7 @@ export class FilterUiController<T> {
         let handlers = this.handlers.get(key);
         if (handlers) return handlers;
         const set = (value: unknown): void => {
-            this.pending.get(key)?.();
+            this.pending.get(key)?.cancel();
             this.pending.delete(key);
             this.writing = true;
             try {
@@ -206,14 +207,12 @@ export class FilterUiController<T> {
                 const value = (event.currentTarget as HTMLInputElement).value;
                 const debounce = this.host.config.filterDebounce;
                 if (debounce <= 0) return set(value);
-                this.pending.get(key)?.();
-                this.pending.set(
-                    key,
-                    this.host.disposables.timeout(() => {
-                        this.pending.delete(key);
-                        set(value);
-                    }, debounce),
-                );
+                this.pending.get(key)?.cancel();
+                const cancel = this.host.disposables.timeout(() => {
+                    this.pending.delete(key);
+                    set(value);
+                }, debounce);
+                this.pending.set(key, { cancel, text: value });
             },
             toggle: (event) => {
                 if (event.target !== event.currentTarget) return; // a popover inside the panel (a month select)

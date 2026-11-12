@@ -6,6 +6,7 @@
  * (a stub) draws no trigger and no row.
  */
 import { html, nothing, type TemplateResult } from 'lit';
+import { live } from 'lit/directives/live.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { computeGridAria } from './data-table-aria.js';
 import { componentCell } from './data-table-component-cell.js';
@@ -48,6 +49,8 @@ export interface FilterUiService<T> extends FilterService<T> {
     setter(columnKey: string): (value: unknown) => void;
     /** The floating text input's `input` handler (debounced by `filterDebounce`, D6). */
     floatingInput(columnKey: string): (event: Event) => void;
+    /** The text a floating input holds while its write waits on the debounce (undefined when none waits). */
+    floatingText(columnKey: string): string | undefined;
 }
 
 /** The step 0 view: no trigger, no floating row. A constant, so a render with nothing to filter allocates no view. */
@@ -90,7 +93,9 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
         // Its own contract only (`column`, `value`, `filter-change`): the header panel's `filterComponentInputs` / `Outputs` are that panel's, not its.
         if (c.floatingFilterComponent) return componentCell(c.floatingFilterComponent, { column: c, value: valueOf(key) }, service.floatingOutputs(c));
         if (c.floatingFilterRenderer) return c.floatingFilterRenderer({ column: c, value: valueOf(key), setValue: service.setter(key) });
-        return html`<ge-input placeholder=${c.header} aria-label=${interpolate(locale.filterColumn, { column: c.header })} .value=${stringifyValue(valueOf(key))} @input=${service.floatingInput(key)}></ge-input>`;
+        // `.value` with `live`: the text still waiting on the debounce (what the input holds), else the stored filter. So typing is never reset by a
+        // render, and a waiting write dropped by an outside reset clears the shown text.
+        return html`<ge-input placeholder=${c.header} aria-label=${interpolate(locale.filterColumn, { column: c.header })} .value=${live(service.floatingText(key) ?? stringifyValue(valueOf(key)))} @input=${service.floatingInput(key)}></ge-input>`;
     };
 
     const cell = (c: EnhancedColumnDef<T>, n: number): TemplateResult => {
