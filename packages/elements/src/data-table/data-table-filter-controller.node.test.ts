@@ -25,6 +25,7 @@ function fakeHost(config: Partial<Record<string, unknown>> = {}) {
             const count = query.filteredCount();
             if (count !== undefined) say(count);
         },
+        filterSeq: (): number => 0,
     };
     const columns: ColumnDef<Row>[] = [{ accessorKey: 'name', header: 'Name', enableFiltering: true }];
     const disposables = new Disposables();

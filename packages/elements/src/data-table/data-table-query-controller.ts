@@ -38,6 +38,8 @@ export class QueryController<T> {
     private awaitingRows = false;
     /** The announcement waiting for those rows (one: a newer filter replaces it). */
     private onRows: (() => void) | null = null;
+    /** The sequence number of the latest filter change (global, column, advanced): an announcement for an older one says nothing. */
+    private seq = 0;
     private unsubscribeData: (() => void) | undefined;
     /** `config.total` when the last query was sent: a different one is its answer. */
     private totalAtQuery: number | undefined;
@@ -219,20 +221,31 @@ export class QueryController<T> {
             this.resetPage();
         });
         this.host.emit('filter-change', value);
-        this.dropWaiting(); // a newer filter (also clearing it) drops every announcement of an earlier one
+        const seq = this.filterChanged(); // a newer filter (also clearing it) drops every announcement of an earlier one
         this.cancelAnnounce = this.host.disposables.timeout(() => {
+            this.cancelAnnounce = undefined;
             if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
             // ONE rule with the column and advanced filter announcement: `filteredCount` (server filtering: the total of the ANSWER, so wait for it).
-            this.whenCounted((count) => this.host.announce(interpolate(count === 1 ? locale.filterResultAnnouncement : locale.filterResultsAnnouncement, { count, value })));
+            this.whenCounted((count) => this.host.announce(interpolate(count === 1 ? locale.filterResultAnnouncement : locale.filterResultsAnnouncement, { count, value })), seq);
         }, FILTER_ANNOUNCE_MS);
+    }
+
+    /** A filter change (global, column, advanced): it gets the next sequence number and drops every announcement of an EARLIER change. */
+    private filterChanged(): number {
+        this.dropWaiting();
+        return ++this.seq;
     }
 
     /**
      * Calls `say` with the filtered count: now, or (server filtering, the request still unanswered) once the answer's rows arrive. No count
-     * (server filtering without `total`) says nothing. A newer call replaces a waiting one.
+     * (server filtering without `total`) says nothing. `seq` is the change the announcement is for: one for an OLDER change than the latest says
+     * nothing; an announcement FIRING never cancels anything scheduled after it (only a newer CHANGE does). A newer call replaces a waiting one.
      */
-    private whenCounted(say: (count: number) => void): void {
-        this.dropWaiting();
+    private whenCounted(say: (count: number) => void, seq = this.seq): void {
+        if (seq < this.seq) return;
+        this.onRows = null;
+        this.cancelSay?.();
+        this.cancelSay = undefined;
         const now = (): void => {
             const count = this.service.filteredCount();
             if (count !== undefined) say(count);
@@ -318,7 +331,9 @@ export class QueryController<T> {
             const name = String(key);
             // An equal value (a Clear of an empty panel, the same day again, the same text after a debounce) changes nothing: no new object, no page reset, no event.
             if (sameFilterValue(Object.hasOwn(filters, name) ? filters[name] : undefined, value)) return;
-            this.dropWaiting(); // a newer filter drops an announcement still waiting for the previous one's answer
+            // A newer filter drops the announcements of earlier ones; its number is taken BEFORE the write, so the filter controller, which hears the
+            // write, reads it (`filterSeq`) for its own announcement.
+            this.filterChanged();
             model.batch(() => {
                 model.set('columnFilters', { ...model.get('columnFilters'), [String(key)]: value });
                 this.resetPage();
@@ -327,10 +342,11 @@ export class QueryController<T> {
         changeAdvancedFilter: (group) => {
             // An unchanged tree is no filter change (the same no-op rule as `changeAdvancedFilterOf`): a waiting announcement stays.
             if ((this.host.model.get('advancedFilter') ?? null) === (group ?? null)) return;
-            this.dropWaiting();
+            this.filterChanged();
             changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group);
         },
-        whenCounted: (say) => this.whenCounted(say),
+        whenCounted: (say, seq) => this.whenCounted(say, seq),
+        filterSeq: () => this.seq,
         // Server filtering: the held rows are not the matches, so the server's `total`, but only once the ANSWER to the last query arrived (the next
         // `data` from outside): before that, `total` is the previous answer's and `undefined` says "not known yet".
         filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.awaitingRows ? undefined : this.host.config.total),
@@ -360,9 +376,12 @@ export class QueryController<T> {
         this.unsubscribe = this.host.model.onFlush(() => {
             const next = this.currentQuery();
             if (this.lastQuery && sameQuery(this.lastQuery, next)) return;
+            const previous = this.lastQuery;
             this.lastQuery = next;
-            // Only server filtering waits for an answer: a local table counts its own rows (no timer, no extra render after a local sort).
-            if (!this.host.config.localFiltering) {
+            // Only server filtering waits for an answer, and only for a query whose FILTERS changed (a sort or a page changes no count): a local table
+            // and a server sort arm no timer and cause no extra render.
+            const filtersChanged = !previous || previous.globalFilter !== next.globalFilter || previous.columnFilters !== next.columnFilters || previous.advancedFilter !== next.advancedFilter;
+            if (!this.host.config.localFiltering && filtersChanged) {
                 this.awaitingRows = true;
                 this.loadingSeen = false;
                 this.totalAtQuery = this.host.config.total;
@@ -434,7 +453,6 @@ export class QueryController<T> {
         this.awaitingRows = false;
         this.unprovide?.();
         this.cancelFilter?.();
-        this.cancelAnnounce?.();
         this.lastRows = null;
     }
 

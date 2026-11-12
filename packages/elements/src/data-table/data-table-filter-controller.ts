@@ -232,8 +232,12 @@ export class FilterUiController<T> {
     /** One polite message once the column and advanced filter edits have settled: the rows that match now, or that every filter is cleared (D7). */
     private scheduleAnnouncement(): void {
         this.cancelAnnounce?.();
+        // The change this announcement is for: a later filter change (a global one too, in the query controller) makes it an older one, which says nothing.
+        const seq = this.host.provider('query')?.filterSeq() ?? 0;
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             this.cancelAnnounce = undefined;
+            const query = this.host.provider('query');
+            if (!query || seq < query.filterSeq()) return;
             const { model, resolvedLocale: locale } = this.host;
             const filters = model.get('columnFilters');
             const any = Object.keys(filters).some((key) => isFilterActive(filters, key)) || countConditions(model.get('advancedFilter')) > 0 || model.get('globalFilter').trim() !== '';
@@ -241,7 +245,7 @@ export class FilterUiController<T> {
             const say = (count: number): void => this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
             // ONE rule with the global filter: the query service says the count now, or (server filtering) once the query's answer is in, or never
             // (no total); a newer filter change drops a waiting one.
-            this.host.provider('query')?.whenCounted(say);
+            query.whenCounted(say, seq);
         }, FILTER_UI_ANNOUNCE_MS);
     }
 }

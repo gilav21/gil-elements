@@ -333,6 +333,20 @@ describe('round 8', () => {
         expect(announcer(table)).toMatch(/rows? match(es)? the filters/);
     });
 
+    it('the other order: a global change within 500 ms of a column change is the one spoken, the column announcement says nothing (round 11)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn] });
+        const spoken: string[] = [];
+        new MutationObserver(() => spoken.push(announcer(table))).observe(q(table, '[data-slot="data-table-announcer"]'), { childList: true, characterData: true, subtree: true });
+        table.provider('query')?.changeColumnFilter('role', ['Engineer']);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        table.provider('query')?.changeGlobalFilter('a');
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        await settle(table);
+        const said = spoken.filter((s) => s !== '');
+        expect(said).toHaveLength(1);
+        expect(said[0]).toMatch(/for "a"/); // the global announcement's text
+    });
+
     it('a cache answering in the same task (loading true, data, loading false) ends the wait at once (round 9)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
         table.addEventListener('query', () => {
@@ -1228,6 +1242,16 @@ describe('F9 result announcements (D7)', () => {
         await new Promise((resolve) => setTimeout(resolve, 50));
         await settle(table);
         expect(announcer(table)).toBe('All filters cleared, showing all rows');
+    });
+
+    it('a server sort arms no answer wait: no render 2 s after it, and the count is the total in hand (round 11)', async () => {
+        const table = await mount({ localFiltering: false, localSorting: false, total: 40 });
+        table.sortState = { column: 'name', direction: 'asc' };
+        await settle(table);
+        expect(table.provider('query')?.filteredCount()).toBe(40);
+        const renders = vi.spyOn(table, 'requestUpdate');
+        await new Promise((resolve) => setTimeout(resolve, 2200));
+        expect(renders).not.toHaveBeenCalled();
     });
 
     it('a local table arms no answer wait: no render 2 s after a sort (round 5)', async () => {

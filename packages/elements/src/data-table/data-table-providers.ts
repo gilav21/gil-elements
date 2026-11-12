@@ -144,7 +144,12 @@ export interface QueryService<T> {
     /** Wave 5: the number of rows the filters let through, read when an announcement fires; undefined for server filtering without `total`. */
     filteredCount(): number | undefined;
     /** wave5 (required): calls `say` with `filteredCount()` now, or (server filtering) once the last query's answer is in; never without a count; a newer call or filter change drops a waiting one. */
-    whenCounted(say: (count: number) => void): void;
+    whenCounted(say: (count: number) => void, seq?: number): void;
+    /**
+     * wave5: the sequence number of the latest filter change (global, column, advanced). An announcement carries the number of the change it is
+     * for (taken right after that change) and passes it to `whenCounted`: one for an OLDER change than the latest is dropped, never a newer one.
+     */
+    filterSeq(): number;
 }
 
 /** Which user action the busy overlay stands for; `loadingVisibility` can silence it per trigger. */
