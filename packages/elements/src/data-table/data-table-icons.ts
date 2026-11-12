@@ -19,6 +19,9 @@ const GLYPHS = {
     'chevrons-right': svg`<path d="m13 6 6 6-6 6" /><path d="m5 6 6 6-6 6" />`,
     'chevrons-down': svg`<path d="m6 5 6 6 6-6" /><path d="m6 13 6 6 6-6" />`,
     'circle-off': svg`<circle cx="12" cy="12" r="9" /><path d="m4 4 16 16" />`,
+    // Wave 5 (filters): the header and toolbar filter triggers, and the builder's remove buttons.
+    filter: svg`<path d="M3 5h18l-7 8.5V20l-4-2v-4.5z" />`,
+    x: svg`<path d="m6 6 12 12" /><path d="M18 6 6 18" />`,
 } as const;
 
 export type ChromeIconName = keyof typeof GLYPHS;
@@ -28,10 +31,13 @@ export const CHROME_ICON_NAMES = Object.keys(GLYPHS) as ChromeIconName[];
 
 const SIZE = { xs: 12, sm: 16, xl: 48 } as const;
 
-/** A glyph as an inline `<svg>` in a `span` that centres it like `ge-icon` does. */
-export function chromeIcon(name: ChromeIconName, size: keyof typeof SIZE = 'sm', className?: string): TemplateResult {
+/**
+ * A glyph as an inline `<svg>` in a `span` that centres it like `ge-icon` does. `solid` draws `ge-icon`'s filled weight (fill, no stroke):
+ * the active filter trigger.
+ */
+export function chromeIcon(name: ChromeIconName, size: keyof typeof SIZE = 'sm', className?: string, solid = false): TemplateResult {
     const px = SIZE[size];
-    return html`<span data-slot="dt-icon" class=${className ?? nothing}><svg xmlns="http://www.w3.org/2000/svg" width=${px} height=${px} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPHS[name]}</svg></span>`;
+    return html`<span data-slot="dt-icon" class=${className ?? nothing}><svg xmlns="http://www.w3.org/2000/svg" width=${px} height=${px} viewBox="0 0 24 24" fill=${solid ? 'currentColor' : 'none'} stroke=${solid ? 'none' : 'currentColor'} stroke-width=${solid ? '0' : '2'} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPHS[name]}</svg></span>`;
 }
 
 export const iconElement = lazyElement('ge-icon', () => import('../icon/define.js'));

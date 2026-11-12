@@ -103,6 +103,10 @@ select {
     border-radius: calc(var(--radius) - 2px);
     color: var(--muted-foreground);
 }
+/* The table's shared glyph (`chromeIcon`): its span centres the svg like ge-icon does. */
+.remove > [data-slot="dt-icon"] {
+    display: inline-flex;
+}
 /* border-s-2 ps-2 */
 .subgroup {
     padding-inline-start: 0.5rem;

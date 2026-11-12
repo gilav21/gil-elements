@@ -8,7 +8,7 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
-import { filterIcon } from './data-table-filter-controller.js';
+import { chromeIcon } from './data-table-icons.js';
 import { filterInputsOf } from './data-table-filters.js';
 import { columnParts, columnSpacer } from './data-table-grid-window.js';
 import { requireProvider } from './data-table-host.js';
@@ -70,7 +70,7 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
         const prefetch = (): void => service.prefetch(c);
         return html`<ge-popover close-on-scroll @open-change=${service.onPanelToggle(key)}>
             <ge-popover-trigger><button type="button" data-slot="data-table-filter-trigger" ?data-active=${active} aria-label=${interpolate(active ? locale.filterColumnActive : locale.filterColumn, { column: c.header })}
-                @pointerenter=${prefetch} @focus=${prefetch}>${filterIcon(16, active)}</button></ge-popover-trigger>
+                @pointerenter=${prefetch} @focus=${prefetch}>${chromeIcon('filter', 'sm', undefined, active)}</button></ge-popover-trigger>
             <ge-popover-content data-slot="data-table-filter-panel" strategy="fixed" align="end">${open && c.filterComponent ? componentCell(c.filterComponent, service.panelInputs(c), service.panelOutputs(c)) : nothing}</ge-popover-content>
         </ge-popover>`;
     };

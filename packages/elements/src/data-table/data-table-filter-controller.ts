@@ -1,4 +1,5 @@
-import { html, nothing, svg, type TemplateResult } from 'lit';
+import { html, nothing, type TemplateResult } from 'lit';
+import { chromeIcon } from './data-table-icons.js';
 import { builderColumns, emptyGroup, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
@@ -7,11 +8,6 @@ import { countConditions } from './data-table-query.js';
 import { EN_FILTER_BUILDER_LABELS, interpolate } from './data-table.locales.js';
 import type { ColumnDef, ComponentOutputs, FilterGroup } from './data-table.types.js';
 
-const FILTER_GLYPH = svg`<path d="M3 5h18l-7 8.5V20l-4-2v-4.5z" />`;
-
-/** The `filter` glyph of `ge-icon` inline (the header trigger and the toolbar trigger); `solid` is its filled weight (fill, no stroke), the "filter applied" state. */
-export const filterIcon = (px: number, solid = false): TemplateResult =>
-    html`<span data-slot="dt-icon"><svg xmlns="http://www.w3.org/2000/svg" width=${px} height=${px} viewBox="0 0 24 24" fill=${solid ? 'currentColor' : 'none'} stroke=${solid ? 'none' : 'currentColor'} stroke-width=${solid ? '0' : '2'} stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${FILTER_GLYPH}</svg></span>`;
 
 /** How long the result announcement of a column or advanced filter waits for the edits to settle (D7). */
 export const FILTER_UI_ANNOUNCE_MS = 500;
@@ -94,7 +90,7 @@ export class FilterUiController<T> {
         const count = countConditions(group);
         return html`<ge-popover @open-change=${this.onBuilderToggle}>
             <ge-popover-trigger><button type="button" data-slot="advanced-filter-trigger" aria-label=${count > 0 ? `${labels.filterButton} (${count})` : labels.filterButton}
-                @pointerenter=${this.prefetchBuilder} @focus=${this.prefetchBuilder}>${filterIcon(12)}<span data-hide-below="sm">${labels.filterButton}</span>${count > 0 ? html`<span data-slot="data-table-count-badge" aria-hidden="true">${count}</span>` : nothing}</button></ge-popover-trigger>
+                @pointerenter=${this.prefetchBuilder} @focus=${this.prefetchBuilder}>${chromeIcon('filter', 'xs')}<span data-hide-below="sm">${labels.filterButton}</span>${count > 0 ? html`<span data-slot="data-table-count-badge" aria-hidden="true">${count}</span>` : nothing}</button></ge-popover-trigger>
             <ge-popover-content data-slot="advanced-filter-panel">${this.builderOpen
                 ? html`<div data-slot="advanced-filter-body"><ge-data-table-filter-builder .group=${group ?? emptyGroup()} .columns=${builderColumns(config.columns)} .labels=${labels} @group-change=${this.onGroupChange}></ge-data-table-filter-builder>${count > 0
                       ? html`<button type="button" data-slot="advanced-filter-clear" @click=${this.onClear}>${labels.clearFilters}</button>`
