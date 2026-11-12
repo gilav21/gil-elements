@@ -16,9 +16,9 @@ export function editKindOf<T>(column: Pick<ColumnDef<T>, 'editComponent' | 'edit
         case 'date':
         case 'number':
             return column.editType;
-        // A select without options draws the text input, as Angular does (`editType === 'select' && col.editOptions`).
+        // A select without options draws the text input, as Angular does for a missing list; an EMPTY list too (a select with nothing to pick).
         case 'select':
-            return column.editOptions ? 'select' : 'text';
+            return column.editOptions?.length ? 'select' : 'text';
         default:
             return 'text';
     }
@@ -48,6 +48,7 @@ export function coerceDraft(kind: EditKind, raw: unknown, options?: readonly { r
             return Number.isNaN(n) ? null : n;
         }
         case 'select': {
+            if (raw === '') return raw; // the placeholder of a value no option holds
             const index = Number(raw);
             return Number.isInteger(index) && options?.[index] ? options[index].value : raw;
         }

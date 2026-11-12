@@ -728,6 +728,97 @@ describe('E7 history keys', () => {
     });
 });
 
+describe('review round 1', () => {
+    it('Enter on a commit that re-sorts the rows leaves the focus on the edited record, wherever it is drawn now', async () => {
+        const table = await mount({ sortState: { column: 'name', direction: 'asc' } });
+        expect(names(table)).toEqual(['Alice', 'Bob', 'Carol', 'Dave']);
+        await startEditingAt(table, 1, 'name'); // Bob
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.clear(input);
+        await userEvent.type(input, 'Zed');
+        await press('{Enter}');
+        await settle(table);
+        await frames(2);
+        expect(names(table)).toEqual(['Alice', 'Carol', 'Dave', 'Zed']);
+        expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'name' });
+        expect(deepActive()).toBe(cellAt(table, 3, 'name'));
+    });
+
+    it('Tab after a commit that re-sorts the rows opens the next column of the SAME record', async () => {
+        const table = await mount({ sortState: { column: 'name', direction: 'asc' } });
+        await startEditingAt(table, 0, 'name'); // Alice
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.clear(input);
+        await userEvent.type(input, 'Zoe');
+        await press('{Tab}');
+        await settle(table);
+        await frames(2);
+        expect(names(table)).toEqual(['Bob', 'Carol', 'Dave', 'Zoe']);
+        expect(table.editingCell).toEqual({ rowIndex: 3, columnKey: 'age' });
+        expect((openEditor(table) as HTMLInputElement).value).toBe('30'); // Alice's (now Zoe's) age
+        expect(table.focusedCell).toEqual({ rowIndex: 3, columnKey: 'age' });
+    });
+
+    it('a select whose value no option holds shows an empty placeholder, so any real option commits', async () => {
+        const table = await mount({ columns: editColumns({ age: { editType: 'select', editOptions: [{ label: 'Twenty', value: 20 }, { label: 'Thirty', value: 30 }] } }) });
+        await startEditingAt(table, 0, 'age'); // 41
+        const select = openEditor(table) as HTMLSelectElement;
+        expect(select.selectedOptions[0]?.hasAttribute('data-placeholder')).toBe(true);
+        expect(select.selectedOptions[0]?.textContent).toBe('');
+        await userEvent.selectOptions(select, '0');
+        await settle(table);
+        expect(table.data[0]!.age).toBe(20);
+        expect(table.editingCell).toBeNull();
+    });
+
+    it('releases the virtual retain of the edited row when the table detaches', async () => {
+        const table = await mountTable<SampleRow>({ columns: editColumns(), data: makeRows(100), enableVirtualScroll: true, virtualRowHeight: 36 }, {}, { width: 600, height: 300 });
+        await startEditingAt(table, 1, 'name');
+        const retain = vi.spyOn(table.provider('virtual')!, 'retain');
+        table.remove();
+        expect(retain).toHaveBeenCalledWith('edit', []);
+    });
+
+    it('a number editor holding text it cannot read stays open with an error (Enter and blur), and an emptied one commits null', async () => {
+        const table = await mount();
+        const edits = record(table, 'cell-edit');
+        await startEditingAt(table, 0, 'age');
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.clear(input);
+        await userEvent.type(input, '1e');
+        expect(input.validity.badInput).toBe(true);
+        await press('{Enter}');
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'age' });
+        expect(editError(table)?.textContent?.trim()).toBe('Invalid value');
+        await userEvent.click(cellAt(table, 2, 'id')!);
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'age' });
+        expect(table.data[0]!.age).toBe(41);
+        expect(edits).toHaveLength(0);
+        await userEvent.clear(input);
+        await press('{Enter}');
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        expect(table.data[0]!.age).toBeNull();
+    });
+
+    it('a double click that opens an editor still reaches a listener above the table', async () => {
+        const table = await mount();
+        const heard: Event[] = [];
+        const listener = (event: Event): number => heard.push(event);
+        document.body.addEventListener('dblclick', listener);
+        try {
+            await mouseDblClick(cellAt(table, 1, 'name')!);
+            await settle(table);
+            expect(table.editingCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+            expect(heard).toHaveLength(1);
+        } finally {
+            document.body.removeEventListener('dblclick', listener);
+        }
+    });
+});
+
 describe('axe', () => {
     const rows = ROWS.map((r) => ({ ...r, active: true, born: '2020-01-15', role: 'b' }));
     const extra: ColumnDef<SampleRow>[] = [

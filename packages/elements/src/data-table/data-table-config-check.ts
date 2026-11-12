@@ -100,7 +100,7 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     const selectWithoutOptions = c.columns.filter((col) => col.editable && col.editType === 'select' && !col.editComponent && !col.editRenderer && !col.editOptions?.length);
     warn(
         selectWithoutOptions.length > 0,
-        `Columns [${keys(selectWithoutOptions)}] have editType 'select' but no editOptions. The editor has nothing to pick from (without the list it is a text input); give the options.`,
+        `Columns [${keys(selectWithoutOptions)}] have editType 'select' but no editOptions. The editor falls back to a text input; give the options to pick from.`,
     );
     // wave5: package B (editing) end
     // wave5: package A (filters). Reads only `columns` (already in the snapshot).

@@ -80,6 +80,12 @@ export interface OpenEditor<T> {
      */
     shown: unknown;
     error: CellEditError | null;
+    /**
+     * A number editor holds text the browser cannot read as a number (`validity.badInput`: its value reads `''`, which would commit `null`
+     * and wipe the cell). Such a draft is never committed: the editor stays open with the locale's `invalidValue`. An explicitly EMPTIED field
+     * is not bad input and commits `null`.
+     */
+    badInput: boolean;
     /** The id of the error message, for `aria-describedby`. */
     readonly errorId: string;
 }
@@ -163,6 +169,8 @@ export class EditSession<T> implements CellSession {
         this.teardown = [];
         if (sessions.get(this.host) === (this as EditSession<unknown>)) sessions.delete(this.host);
         this.attached = false;
+        // The edited row is no longer kept drawn: the editor is gone (a later attach starts with none).
+        if (this.open) this.host.provider('virtual')?.retain('edit', []);
         this.open = null;
         this.doubleTap.reset();
     }
@@ -259,6 +267,7 @@ export class EditSession<T> implements CellSession {
             draft: value,
             shown: value,
             error: null,
+            badInput: false,
             errorId: `ge-dt-${++uid}-edit-error`,
         };
         this.open = open;
@@ -290,6 +299,13 @@ export class EditSession<T> implements CellSession {
             return 'cancelled';
         }
         if (verdict.kind === 'move') this.moveTo(open, verdict.rowIndex);
+        if (open.badInput) {
+            // Unreadable number text: nothing is written (its value reads '' and would wipe the cell); the editor stays open and says so. No
+            // `edit-error`: that event is the validator's verdict on a value, and there is no value here.
+            open.error = { rowIndex: open.at.rowIndex, columnKey: open.at.columnKey, value: open.draft, message: host.resolvedLocale.invalidValue };
+            this.changed();
+            return 'rejected';
+        }
         const row = query.renderedRowAt(open.at.rowIndex);
         const column = host.provider('columns')?.enhancedColumns().find((c) => String(c.accessorKey) === open.at.columnKey);
         if (row === undefined || !column) {
@@ -330,7 +346,16 @@ export class EditSession<T> implements CellSession {
         const inside = refocus && composedContains(this.host.cellAt(at.rowIndex, at.columnKey), this.context.deepActive());
         this.open = null;
         this.changed();
-        if (inside) this.context.afterRender(() => this.open === null && this.context.setFocus(at.rowIndex, at.columnKey));
+        // The write may have re-sorted or re-filtered the rows: the focus goes to the edited RECORD where it is drawn now (by id), not to the index it had.
+        if (inside) this.context.afterRender(() => this.open === null && this.context.setFocus(this.indexOfRow(open.rowId, at.rowIndex), at.columnKey));
+    }
+
+    /** Where the row with this id is drawn now; when it is not drawn any more, `fallback` clamped to the rows (the focus stays near where it was). */
+    private indexOfRow(rowId: string, fallback: number): number {
+        const { host } = this;
+        const rows = requireProvider(host, 'query').renderedRows();
+        const index = rows.findIndex((row) => String(host.config.getRowId(row)) === rowId);
+        return index !== -1 ? index : Math.max(0, Math.min(fallback, rows.length - 1));
     }
 
     /** The editor's row is drawn at another index now: the editor and its error go with it (the roving cell follows in `keepFocus` when DOM focus is in the editor). */
@@ -393,8 +418,10 @@ export class EditSession<T> implements CellSession {
 
     // ---- what the editor view calls -----------------------------------------------------------------------------------
 
-    /** The built-in input or a custom editor reported a raw value (typed, picked). */
-    input(open: OpenEditor<T>, raw: unknown): void {
+    /** The built-in input reported a raw value (typed); `badInput` is a number input's `validity.badInput` (text it cannot read as a number). */
+    input(open: OpenEditor<T>, raw: unknown, badInput = false): void {
+        if (this.open !== open) return;
+        open.badInput = open.kind === 'number' && badInput;
         this.setValue(open, coerceDraft(open.kind, raw, open.column.editOptions), false);
     }
 
@@ -470,9 +497,13 @@ export class EditSession<T> implements CellSession {
      * edge of the grid the commit happens and the key is not prevented, so the focus can leave the grid.
      */
     private onTab(event: KeyboardEvent, open: OpenEditor<T>): void {
-        const keys = requireProvider(this.host, 'columns').navigableKeys();
-        const from = { ...open.at };
-        const next = tabTarget(event.shiftKey, from.rowIndex, keys.indexOf(from.columnKey), keys.length, this.context.rowCount());
+        const { host } = this;
+        const keys = requireProvider(host, 'columns').navigableKeys();
+        const rows = requireProvider(host, 'query').renderedRows();
+        const from = this.indexOfRow(open.rowId, open.at.rowIndex);
+        const next = tabTarget(event.shiftKey, from, keys.indexOf(open.at.columnKey), keys.length, this.context.rowCount());
+        // The target is a RECORD: the commit may re-sort or re-filter the rows, so it is found again by id after the write.
+        const target = next && rows[next.row] !== undefined ? String(host.config.getRowId(rows[next.row] as T)) : null;
         const result = this.commit(false);
         if (result === 'rejected') {
             event.preventDefault();
@@ -481,8 +512,9 @@ export class EditSession<T> implements CellSession {
         if (!next) return;
         event.preventDefault();
         const key = keys[next.col] as string;
-        this.context.setFocus(next.row, key, true);
-        this.startAt(next.row, key);
+        const row = target === null ? next.row : this.indexOfRow(target, next.row);
+        this.context.setFocus(row, key, true);
+        this.startAt(row, key);
     }
 
     /**
@@ -533,7 +565,8 @@ export class EditSession<T> implements CellSession {
 
     /**
      * A double click on a data cell opens its editor (Angular `onCellDblClick`, cmp 4471), not on a control inside the cell (D22: a button, a
-     * link, an input), and not inside the open editor (selecting a word in it).
+     * link, an input), and not inside the open editor (selecting a word in it). The event goes on bubbling: a consumer's own `dblclick`
+     * listener on the table or the page still hears it (nothing in the table needs it stopped).
      */
     private onDoubleClick(event: MouseEvent): void {
         const { root } = this.host;
@@ -544,7 +577,7 @@ export class EditSession<T> implements CellSession {
         if (!cell || !at || this.service.isEditing?.(at.rowIndex, at.columnKey)) return;
         const control = target.closest(CONTROLS_SELECTOR);
         if (control && control !== cell && cell.contains(control)) return;
-        if (this.startAt(at.rowIndex, at.columnKey)) event.stopPropagation();
+        this.startAt(at.rowIndex, at.columnKey);
     }
 
     /**

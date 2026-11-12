@@ -24,13 +24,15 @@ describe('editKindOf (Angular html 207-290 precedence)', () => {
         expect(editKindOf({ editType: 'checkbox' })).toBe('checkbox');
         expect(editKindOf({ editType: 'date' })).toBe('date');
         expect(editKindOf({ editType: 'number' })).toBe('number');
-        expect(editKindOf({ editType: 'select', editOptions: [] })).toBe('select');
+        expect(editKindOf({ editType: 'select', editOptions: [{ label: 'x', value: 0 }] })).toBe('select');
         expect(editKindOf({ editType: 'text' })).toBe('text');
         expect(editKindOf({})).toBe('text');
     });
 
-    it('draws the text input for a select without options, as Angular does', () => {
+    it('draws the text input for a select without options, missing or empty, which is what the config warning says', () => {
         expect(editKindOf({ editType: 'select' })).toBe('text');
+        expect(editKindOf({ editType: 'select', editOptions: [] })).toBe('text');
+        expect(editKindOf({ editType: 'select', editOptions: [{ label: 'a', value: 1 }] })).toBe('select');
     });
 
     it('knows which editors the table drives: Enter commits text, number, select and checkbox; leaving commits only text and number (D16)', () => {
@@ -62,6 +64,8 @@ describe('coerceDraft (fixes B4: Angular hands strings to the validator and the 
         expect(coerceDraft('select', '1', options)).toBe(true);
         expect(coerceDraft('select', '2', options)).toBe(options[2]!.value);
         expect(coerceDraft('select', '9', options)).toBe('9');
+        expect(coerceDraft('select', '', options)).toBe(''); // the placeholder of a value no option holds is never option 0
+
     });
 
     it('a checkbox reports a boolean; text passes through', () => {
@@ -195,7 +199,7 @@ describe('the editing config check (wave 5 B block of validateConfig)', () => {
     it("warns about an editable select column without options, naming it", () => {
         const setter = (row: unknown) => row;
         expect(check([{ accessorKey: 'a', header: 'A', editable: true, editType: 'select', valueSetter: setter }])).toEqual([
-            "[ge-data-table] Columns [a] have editType 'select' but no editOptions. The editor has nothing to pick from (without the list it is a text input); give the options.",
+            "[ge-data-table] Columns [a] have editType 'select' but no editOptions. The editor falls back to a text input; give the options to pick from.",
         ]);
         expect(check([{ accessorKey: 'a', header: 'A', editable: true, editType: 'select', editOptions: [], valueSetter: setter }])).toHaveLength(1);
     });

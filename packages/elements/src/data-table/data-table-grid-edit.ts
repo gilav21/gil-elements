@@ -90,15 +90,21 @@ function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overl
         case 'select': {
             const options = column.editOptions ?? [];
             const selected = optionIndexOf(options, open.shown);
-            // Each option carries its INDEX: the session maps it back to the option's value, of whatever type (B4).
+            // Each option carries its INDEX: the session maps it back to the option's value, of whatever type (B4). A value no option holds shows an
+            // empty, selected placeholder (not the first option, which would then be unpickable: choosing it fires no `change`).
             editor = html`<select data-edit-input aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
-                @change=${(event: Event) => session.change(open, (event.target as HTMLSelectElement).value)}>${options.map((o, i) => html`<option value=${i} ?selected=${i === selected}>${o.label}</option>`)}</select>`;
+                @change=${(event: Event) => session.change(open, (event.target as HTMLSelectElement).value)}>${selected === -1 ? html`<option value="" selected disabled data-placeholder></option>` : nothing}${options.map(
+                    (o, i) => html`<option value=${i} ?selected=${i === selected}>${o.label}</option>`,
+                )}</select>`;
             break;
         }
         default:
             // `.value` is the SHOWN value (the draft at open, or one set by `setEditValue`): typing does not change it, so a render never resets the caret.
             editor = html`<input data-edit-input type=${kind === 'number' ? 'number' : 'text'} .value=${text(open.shown)} aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
-                @input=${(event: Event) => session.input(open, (event.target as HTMLInputElement).value)} />`;
+                @input=${(event: Event) => {
+                    const input = event.target as HTMLInputElement;
+                    session.input(open, input.value, input.validity.badInput);
+                }} />`;
     }
     const builtIn = kind !== 'component' && kind !== 'renderer';
     return html`<div data-slot="data-table-cell-editor" data-kind=${kind} ?data-invalid=${invalid} @focusout=${builtIn ? (event: FocusEvent) => session.leave(open, event) : nothing}>${editor}${invalid
