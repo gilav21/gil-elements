@@ -1,11 +1,11 @@
 import { html, type TemplateResult } from 'lit';
 import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
-import { type CellAddress, cellAddressOf, composedContains, type DataTableCoreHost, TEXT_FIELD, VIEWPORT, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, CELL_CONTROLS, composedContains, controlInPath, type DataTableCoreHost, TEXT_FIELD, VIEWPORT, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
 import { reportOncePer } from './data-table-warn.js';
 import { mergeSessionServices } from './data-table-session-service.js';
-import { CONTROLS_SELECTOR, INTERACTIVE_TAGS, NATIVE_CONTROLS, ROLES_SELECTOR } from '../shared/interactive-tags.js';
+import { CONTROLS_SELECTOR, INTERACTIVE_TAGS } from '../shared/interactive-tags.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { RangeSession } from './data-table-range-session.js';
@@ -59,11 +59,6 @@ const FRESH_PRESS_MS = 500;
 /** A pointer event that carries a position: an UNTRUSTED one (`new PointerEvent('pointerdown')`, a test library's fireEvent) with all-zero coordinates has none, and its point says nothing about where it landed. A real (trusted) press at (0, 0) has one. */
 export const hasPosition = (event: Pick<PointerEvent, 'isTrusted' | 'clientX' | 'clientY' | 'screenX' | 'screenY'>): boolean =>
     event.isTrusted || event.clientX !== 0 || event.clientY !== 0 || event.screenX !== 0 || event.screenY !== 0;
-/** Inside a shadow root of a consumer component (not this table's own tree): only the real form controls count; its roles, bare anchors (SVG included) and tags are its own business. */
-const SHADOW_CONTROLS = `${NATIVE_CONTROLS.join(', ')}, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]`;
-const XHTML = 'http://www.w3.org/1999/xhtml';
-/** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS_SELECTOR`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
-const CELL_CONTROLS = `${CONTROLS_SELECTOR}, a, ${ROLES_SELECTOR}`;
 
 /** Rows moved by one page key when nothing is drawn to measure. */
 const FALLBACK_PAGE = 10;
@@ -957,14 +952,8 @@ export class CellInteractionController<T> {
         const selector = cell ? CELL_CONTROLS : CONTROLS_SELECTOR;
         const stop = cell ?? this.host.root;
         if (target === null) return null;
-        const tree = this.host.root.getRootNode();
-        for (const node of path) {
-            if (node === stop) break;
-            if (!(node instanceof Element)) continue;
-            // This table's own tree: the full rules. Inside a shadow root of a cell widget: real HTML form controls only.
-            if (node.getRootNode() === tree ? node.matches(selector) : node.namespaceURI === XHTML && node.matches(SHADOW_CONTROLS)) return node;
-        }
-        return null;
+        // This table's own tree: the full rules. Inside a shadow root of a cell widget: real HTML form controls only.
+        return controlInPath(path, stop, this.host.root.getRootNode(), selector);
     }
     /** The `data-pointer-transparent` overlay a target is (or sits in), bounded to THIS table (an ancestor of the whole table never counts). */
     private overlayOf(target: Element): Element | null {

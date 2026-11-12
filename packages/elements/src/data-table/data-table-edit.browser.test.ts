@@ -109,6 +109,27 @@ describe('E1 opening an editor', () => {
         expect(table.editingCell).toBeNull();
     });
 
+    it('a role=button span or an href-less anchor in a cell keeps the double click, like the pointer press (round 13)', async () => {
+        const span = (): HTMLElement => {
+            const el = Object.assign(document.createElement('span'), { textContent: 'Act' });
+            el.setAttribute('role', 'button');
+            return el;
+        };
+        const anchor = (): HTMLElement => Object.assign(document.createElement('a'), { textContent: 'Link' });
+        const columns: ColumnDef<SampleRow>[] = [
+            ...editColumns(),
+            { accessorKey: 'tools', header: 'Tools', editable: true, cellRenderer: span },
+            { accessorKey: 'more', header: 'More', editable: true, cellRenderer: anchor },
+        ];
+        const table = await mount({ columns });
+        await mouseDblClick(cellAt(table, 0, 'tools')!.querySelector('[role="button"]')!);
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        await mouseDblClick(cellAt(table, 0, 'more')!.querySelector('a')!);
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+    });
+
     it('opens on a touch double tap of the same cell within 300 ms, not on a single tap, a slow one or two cells', async () => {
         const table = await mount();
         await emulateTouch(true);

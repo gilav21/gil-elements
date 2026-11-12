@@ -32,14 +32,13 @@ import {
     writeBackDate,
 } from './data-table-edit.js';
 // TEXT_FIELD: a key typed in one is the field's own (its undo, Enter in a filter input): the history and edit-start keys never take it (B1).
-import { type CellAddress, cellAddressOf, composedContains, ownClosest, ownElements, ownsTarget, requireProvider, TEXT_FIELD, VIEWPORT } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, composedContains, controlInPath, ownClosest, ownElements, ownsTarget, requireProvider, TEXT_FIELD, VIEWPORT } from './data-table-host.js';
 import { lazyElement } from './data-table-lazy.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
 import type { CellEditError, EditingCell, EnhancedColumnDef } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
-import { CONTROLS_SELECTOR } from '../shared/interactive-tags.js';
 
 type EditService = Pick<CellInteractionService, 'editingCell' | 'cellEditError' | 'startEditing' | 'commitEdit' | 'cancelEdit' | 'isEditing' | 'editValue' | 'setEditValue'>;
 
@@ -662,11 +661,9 @@ export class EditSession<T> implements CellSession {
         const cell = ownClosest<HTMLElement>(root, event.target, '[data-slot="table-cell"][data-row-index][data-column]');
         const at = cellAddressOf(cell);
         if (!cell || !at || this.service.isEditing?.(at.rowIndex, at.columnKey)) return;
-        // D22: a control anywhere between the pressed node and the cell, inside open shadow roots too (a button in a component), keeps the double click.
-        for (const node of event.composedPath()) {
-            if (node === cell) break;
-            if (node instanceof Element && node.matches(CONTROLS_SELECTOR)) return;
-        }
+        // D22: a control between the pressed node and the cell keeps the double click: the pointer press's own rule (`CELL_CONTROLS` in this table's
+        // tree, any anchor and widget role included; the real form controls inside a component's shadow root).
+        if (controlInPath(event.composedPath(), cell, root.getRootNode())) return;
         this.startAt(at.rowIndex, at.columnKey);
     }
 

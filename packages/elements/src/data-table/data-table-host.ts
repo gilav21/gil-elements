@@ -21,6 +21,7 @@
  * | disposables                     | all (listeners, timers, observers)                                          |
  * | requestRender, afterRender      | all that draw; Virtual and Resize measure after a paint                     |
  */
+import { CONTROLS_SELECTOR, NATIVE_CONTROLS, ROLES_SELECTOR } from '../shared/interactive-tags.js';
 import type { Disposables, TopicBus } from '../shared/registry.js';
 import type { DataTableLocale } from './data-table.locales.js';
 import type { DataTableEventMap } from './data-table-events.js';
@@ -73,6 +74,25 @@ export const VIEWPORT = '[data-slot="data-table-viewport"]';
 
 /** A field whose keys are its own (typing, its undo, Enter in it): the grid's key handlers never act on an event from one. */
 export const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
+
+/** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS_SELECTOR`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
+export const CELL_CONTROLS = `${CONTROLS_SELECTOR}, a, ${ROLES_SELECTOR}`;
+/** Inside a shadow root of a consumer component (not this table's own tree): only the real form controls count; its roles, bare anchors (SVG included) and tags are its own business. */
+export const SHADOW_CONTROLS = `${NATIVE_CONTROLS.join(', ')}, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]`;
+const XHTML = 'http://www.w3.org/1999/xhtml';
+
+/**
+ * The control a press inside `cell` landed on: the first element of its composed path below the cell that is one. ONE rule for the pointer press and the
+ * double click: `selector` in the table's own tree (`tree`), the real HTML form controls only inside a consumer component's shadow root.
+ */
+export function controlInPath(path: readonly EventTarget[], stop: Element, tree: Node, selector: string = CELL_CONTROLS): Element | null {
+    for (const node of path) {
+        if (node === stop) break;
+        if (!(node instanceof Element)) continue;
+        if (node.getRootNode() === tree ? node.matches(selector) : node.namespaceURI === XHTML && node.matches(SHADOW_CONTROLS)) return node;
+    }
+    return null;
+}
 
 /** `node` is `ancestor` or inside it, across shadow roots (a component's input in its own root, a focused element in a cell widget). */
 export function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
