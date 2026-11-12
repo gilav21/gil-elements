@@ -1,7 +1,7 @@
 import { html, type TemplateResult } from 'lit';
 import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
-import { type CellAddress, cellAddressOf, CELL_CONTROLS, composedContains, controlInPath, type DataTableCoreHost, TEXT_FIELD, VIEWPORT, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, CELL_CONTROLS, composedContains, controlInPath, type DataTableCoreHost, isTextFieldKey, VIEWPORT, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
 import { reportOncePer } from './data-table-warn.js';
 import { mergeSessionServices } from './data-table-session-service.js';
@@ -984,7 +984,7 @@ export class CellInteractionController<T> {
     private onKey(event: KeyboardEvent): boolean {
         if (event.defaultPrevented || event.isComposing || event.altKey) return false;
         const target = event.target as Element;
-        if (ownClosest(this.host.root, target, TEXT_FIELD) || (event.composedPath()[0] as Element | undefined)?.matches?.(TEXT_FIELD)) return false;
+        if (isTextFieldKey(this.host.root, event)) return false;
         if (!NAVIGATION_KEYS.has(event.key)) return false;
         const query = requireProvider(this.host, 'query');
         const keys = requireProvider(this.host, 'columns').focusableKeys();

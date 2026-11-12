@@ -75,6 +75,21 @@ export const VIEWPORT = '[data-slot="data-table-viewport"]';
 /** A field whose keys are its own (typing, its undo, Enter in it): the grid's key handlers never act on an event from one. */
 export const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
+/**
+ * The key belongs to a text field (typing, its undo, Enter or Alt+Shift+Arrow in it), so no grid key handler acts on it: the deepest node of the
+ * event's path is one (a field inside a component's shadow root too), or the event's target or that node sits in one of this table's. With
+ * `keepsFocus`, also anything inside a `[data-table-keeps-focus]` region of this table (a widget that owns its keys, the header filter panel).
+ * ONE rule for the edit session, the column drag and the cell keyboard navigation.
+ */
+export function isTextFieldKey(root: Element, event: Event, { keepsFocus = false }: { keepsFocus?: boolean } = {}): boolean {
+    const origin = event.composedPath()[0] as Element | undefined;
+    if (origin?.matches?.(TEXT_FIELD)) return true;
+    for (const from of [event.target, origin]) {
+        if (ownClosest(root, from, TEXT_FIELD) || (keepsFocus && ownClosest(root, from, '[data-table-keeps-focus]'))) return true;
+    }
+    return false;
+}
+
 /** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS_SELECTOR`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
 export const CELL_CONTROLS = `${CONTROLS_SELECTOR}, a, ${ROLES_SELECTOR}`;
 /** Inside a shadow root of a consumer component (not this table's own tree): only the real form controls count; its roles, bare anchors (SVG included) and tags are its own business. */

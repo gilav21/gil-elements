@@ -31,8 +31,8 @@ import {
     textDraftFor,
     writeBackDate,
 } from './data-table-edit.js';
-// TEXT_FIELD: a key typed in one is the field's own (its undo, Enter in a filter input): the history and edit-start keys never take it (B1).
-import { type CellAddress, cellAddressOf, composedContains, controlInPath, ownClosest, ownElements, ownsTarget, requireProvider, TEXT_FIELD, VIEWPORT } from './data-table-host.js';
+// isTextFieldKey: a key typed in a text field is the field's own (its undo, Enter in a filter input): the history and edit-start keys never take it (B1).
+import { type CellAddress, cellAddressOf, composedContains, controlInPath, isTextFieldKey, ownClosest, ownElements, ownsTarget, requireProvider, VIEWPORT } from './data-table-host.js';
 import { lazyElement } from './data-table-lazy.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
@@ -649,7 +649,7 @@ export class EditSession<T> implements CellSession {
     private onGrid(event: KeyboardEvent): boolean {
         const target = event.composedPath()[0] as Element | undefined;
         const { root } = this.host;
-        if (!target?.matches || !ownsTarget(root, target) || target.matches(TEXT_FIELD) || ownClosest(root, target, TEXT_FIELD)) return false;
+        if (!target?.matches || !ownsTarget(root, target) || isTextFieldKey(root, event)) return false;
         return target.matches(VIEWPORT) || target === root || ownClosest(root, target, '[data-slot="table-cell"][data-row-index][data-column]') !== null;
     }
 
