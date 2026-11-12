@@ -1732,6 +1732,89 @@ describe('an anchor used as a button inside a cell', () => {
     });
 });
 
+describe('the open editor is ONE answer everywhere', () => {
+    it('a provider a consumer wrapped is respected: data-editing is drawn on its cell AND a press inside it does not move the focus', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const real = table.provider('interaction')!;
+        table.provide('interaction', { ...real, editingCell: () => ({ rowIndex: 1, columnKey: 'name' }) });
+        table.requestUpdate();
+        await settle(table);
+        const cell = cellAt(table, 1, 'name')!;
+        expect(cell.hasAttribute('data-editing')).toBe(true);
+        cell.dispatchEvent(pointer('pointerdown', 371, { over: cell }));
+        cell.dispatchEvent(pointer('pointerup', 371, { over: cell }));
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        const other = cellAt(table, 2, 'age')!;
+        other.dispatchEvent(pointer('pointerdown', 372, { over: other }));
+        other.dispatchEvent(pointer('pointerup', 372, { over: other }));
+        expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'age' }); // another cell still takes the focus
+    });
+});
+
+describe('a touch tap on a widget that stops pointerup', () => {
+    it('keeps the widget\'s own focus (as on main): no tap focus; the same tap on a plain span focuses the cell', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const stopper = document.createElement('span');
+        stopper.addEventListener('pointerup', (event) => event.stopPropagation());
+        const plain = document.createElement('span');
+        cell.append(stopper, plain);
+        const tap = (id: number, el: Element): void => {
+            el.dispatchEvent(pointer('pointerdown', id, { pointerType: 'touch', over: el }));
+            el.dispatchEvent(pointer('pointerup', id, { pointerType: 'touch', over: el }));
+        };
+        tap(381, stopper);
+        expect(table.focusedCell).toBeNull();
+        tap(382, plain);
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+    });
+});
+
+describe('a press on the body outside any cell whose element a renderer replaced', () => {
+    it('clears the focus like the connected path does (mouse)', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        expect(table.focusedCell).not.toBeNull();
+        const body = table.querySelector<HTMLElement>('[data-slot="table-body"]')!;
+        const filler = document.createElement('div');
+        body.append(filler);
+        const down = pointer('pointerdown', 391, { over: filler });
+        filler.addEventListener('pointerdown', () => filler.remove()); // the renderer replaces the pressed element during the dispatch
+        filler.dispatchEvent(down);
+        expect(table.focusedCell).toBeNull();
+        document.dispatchEvent(pointer('pointerup', 391, { over: body }));
+    });
+});
+
+describe('a component cell with a tabindex', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is a cell press, not a control: its root (or a span inside it) with tabindex=0 is offered and focuses the cell; `data-table-keeps-focus` is the opt-out', async () => {
+        const table = await mountTable();
+        const downs: unknown[] = [];
+        hooks.onPointerDown = (_event, at) => void downs.push(at);
+        const cell = cellAt(table, 1, 'name')!;
+        const root = document.createElement('div'); // a component's root, tabbable for its own keyboard reasons
+        root.tabIndex = 0;
+        const inner = document.createElement('span');
+        root.append(inner);
+        cell.append(root);
+        inner.dispatchEvent(pointer('pointerdown', 361, { over: inner }));
+        inner.dispatchEvent(pointer('pointerup', 361, { over: inner }));
+        expect(downs).toEqual([{ rowIndex: 1, columnKey: 'name' }]);
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        root.setAttribute('data-table-keeps-focus', '');
+        inner.dispatchEvent(pointer('pointerdown', 362, { over: inner }));
+        inner.dispatchEvent(pointer('pointerup', 362, { over: inner }));
+        expect(downs).toHaveLength(1);
+    });
+});
+
 describe('a press on a popover that floats out of its cell', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

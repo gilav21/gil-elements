@@ -52,8 +52,31 @@ describe('RangeSession column validation of an invalid range', () => {
     });
 });
 
+describe('RangeSession keeps the last VALID range', () => {
+    it('a valid range, then a range with a bad column: after the update the valid one is back (one warning); an explicit clear forgets it', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        resetBadRangeWarning();
+        const { range } = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]);
+        const good = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' };
+        range.rangeService.setRange(good);
+        range.hostUpdate();
+        range.rangeService.setRange({ startRow: 2, startCol: 'a', endRow: 3, endCol: 'zzz' });
+        range.hostUpdate();
+        expect(range.rangeService.range()).toEqual(good);
+        expect(warn).toHaveBeenCalledTimes(1);
+        range.hostUpdate();
+        expect(range.rangeService.range()).toEqual(good); // and it stays
+        range.rangeService.setRange(null);
+        range.hostUpdate();
+        range.rangeService.setRange({ startRow: 2, startCol: 'a', endRow: 3, endCol: 'zzz' });
+        range.hostUpdate();
+        expect(range.rangeService.range()).toBeNull(); // cleared on purpose: nothing to go back to
+        warn.mockRestore();
+    });
+});
+
 describe('RangeSession column validation by value', () => {
-    it('sees a later mutation of the consumer\'s own range object: endCol changed to a missing column is dropped with the warning', () => {
+    it('sees a later mutation of the consumer\'s own range object: endCol changed to a missing column is refused with the warning, and the last valid range stays', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         resetBadRangeWarning();
         const { range } = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]);
@@ -63,7 +86,7 @@ describe('RangeSession column validation by value', () => {
         expect(range.rangeService.range()).toBe(mine); // valid, kept, the very object
         mine.endCol = 'zzz';
         range.hostUpdate();
-        expect(range.rangeService.range()).toBeNull();
+        expect(range.rangeService.range()).toEqual({ startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' }); // the copy of the valid value
         expect(warn).toHaveBeenCalled();
         warn.mockRestore();
     });

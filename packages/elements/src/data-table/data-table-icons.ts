@@ -44,18 +44,12 @@ export const iconElement = lazyElement('ge-icon', () => import('../icon/define.j
 export function ensureIconElement(): void {
     // Called for every icon cell at every render: defined, latched-failed or already requested answers at once, with no promise allocated (the memoised
     // import is in flight or done; a definition that arrives later is seen by `ready()`).
-    if (requested || iconElement.ready() || iconElement.failed()) return;
-    requested = true;
+    if (iconElement.requested() || iconElement.ready() || iconElement.failed()) return;
     void iconElement.load();
 }
 
-let requested = false;
-
 /** Forgets a latched load failure: the next `ensureIconElement()` imports again (called when a table attaches). */
-export const resetIconElement = (): void => {
-    if (iconElement.failed()) requested = false;
-    iconElement.resetIfFailed();
-};
+export const resetIconElement = (): void => iconElement.resetIfFailed();
 
 /** A glyph's markup as `ge-icon` stores it, for the test that keeps the two equal. */
 export const chromeGlyphMarkup = (name: ChromeIconName): string => GLYPHS[name].strings.join('');

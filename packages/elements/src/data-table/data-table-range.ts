@@ -83,7 +83,7 @@ export const rangeModeOn = (config: { readonly enableCellRangeSelection: boolean
 
 /** What an owner of a range says, ONCE per page, when it refuses a value that is not a range of the table (the element before the first connect and the session after share it). */
 export function warnBadRange(value: unknown): void {
-    warnOnce('bad-range', '[ge-data-table] cellRange is not a range of this table (needs integer startRow / endRow and the keys of existing data columns as startCol / endCol); it was ignored:', value);
+    warnOnce('bad-range', '[ge-data-table] cellRange is not a range of this table (integer startRow / endRow, and startCol / endCol the keys of data columns); ignored, the previous range stays:', value);
 }
 
 /** For tests: lets `warnBadRange` speak again. */

@@ -90,6 +90,7 @@ export class RangeSession<T> implements CellSession {
             }
             const changed = !sameRange(this.seen, next); // by VALUE against the copy: an in-place edit followed by the same object again is a change
             this.held = next;
+            if (next === null) this.checked = null; // an explicit clear forgets the last valid range too
             this.seen = next && { ...next };
             this.assignedSince = true; // and one assigned since the last update survives a turn-off that update sees
             this.setPartRange(next);
@@ -150,9 +151,10 @@ export class RangeSession<T> implements CellSession {
             return;
         }
         warnBadRange(this.held);
-        this.held = null;
-        this.checked = null;
-        this.setPartRange(null);
+        // The previous VALID range (the last that passed, still remembered in `checked`) stays; a change of columns re-checks it at the next update.
+        const previous = this.checked && { ...this.checked.range };
+        this.held = previous;
+        this.setPartRange(previous);
     }
 
     private rangeOn(): boolean {

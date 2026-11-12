@@ -64,6 +64,8 @@ export interface LazyElement {
     reset(): void;
     /** `reset()` only when a failure is latched: safe to call at every attach (a load in flight, e.g. another table's, is left alone). */
     resetIfFailed(): void;
+    /** `load()` was asked for (and not reset since): the import is in flight or done. Lets a hot caller skip the call. */
+    requested(): boolean;
 }
 
 /** A custom element that a lazy module defines as a side effect. */
@@ -95,6 +97,7 @@ export function lazyElement(
         load: () => (failed ? Promise.resolve(false) : (loading ??= run(generation)).then((imported) => imported && customElements.get(tag) !== undefined)),
         ready: () => customElements.get(tag) !== undefined,
         failed: () => failed,
+        requested: () => loading !== undefined,
         reset,
         // A caller that may run at every attach cannot use `reset`: it would make a load another caller has in flight stale and swallow its failure.
         resetIfFailed: () => {
