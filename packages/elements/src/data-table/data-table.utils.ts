@@ -75,9 +75,10 @@ export function isFilterValueEmpty(value: unknown): boolean {
     if (Array.isArray(value)) return value.length === 0;
     if (value instanceof Date) return false;
     if (typeof value === 'object') {
-        // wave5: a range with no end set ({ start: null }, ends undefined, `{}`) filters nothing: it is empty however its keys are spelled.
+        // wave5: a range with no end set ({ start: null }, ends undefined or '', `{}`) filters nothing: it is empty however its keys are spelled.
         const range = value as { start?: unknown; end?: unknown };
-        if ('start' in range || 'end' in range) return range.start == null && range.end == null;
+        const unset = (end: unknown): boolean => end == null || end === '';
+        if ('start' in range || 'end' in range) return unset(range.start) && unset(range.end);
         return Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).length === 0;
     }
     return false;
