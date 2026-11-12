@@ -2,11 +2,12 @@
  * Wave 6, package A in a real browser: range selection by mouse, keys and touch, the readout, the fill handle, auto-scroll in a virtual grid and
  * the leaks (spec E.2, package A). Real input through CDP (`mouseDrag`, `touchLongPressDrag`); scrolling through `scrollGrid`, never the wheel.
  */
+import axe from 'axe-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { GeDataTable } from './data-table.js';
-import { bodyRows, cellAt, makeRows, mountTable, q, qa, type SampleRow, settle } from './data-table-fixtures.js';
-import { emulateTouch, frames, mouseDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPressDrag, withRtl } from './data-table-input-fixtures.js';
+import { axProps, axTree, bodyRows, cellAt, makeRows, mountTable, q, qa, type SampleRow, settle } from './data-table-fixtures.js';
+import { emulateTouch, frames, mouseDrag, nativeDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPressDrag, withRtl, withTheme } from './data-table-input-fixtures.js';
 import type { ColumnDef, FillSeriesEvent, RangeChartPayload } from './data-table.types.js';
 
 afterEach(async () => {
@@ -491,6 +492,50 @@ describe('virtual grid', () => {
         await settle(table);
         await settle(table);
         expect(table.cellRange).toBeNull();
+    });
+});
+
+describe('with row drag', () => {
+    it('a mouse drag from a data cell starts a native row drag and no range (the pointerdown is not prevented, D12); with row drag off it selects', async () => {
+        const table = await mountRange({ enableRowDrag: true });
+        await vi.waitFor(() => expect(table.provider('rowDrag')?.active()).toBe(true));
+        await settle(table);
+        let started = 0;
+        table.addEventListener('dragstart', () => started++);
+        await nativeDrag(cell(table, 1, 'name'), cell(table, 4, 'name'));
+        await settle(table);
+        expect(started).toBe(1);
+        expect(table.cellRange).toBeNull();
+        expect(qa(table, '[data-in-range]')).toEqual([]);
+        table.enableRowDrag = false;
+        await settle(table);
+        await mouseDrag(cell(table, 1, 'name'), cell(table, 3, 'score'));
+        await settle(table);
+        expect(table.cellRange).toEqual({ startRow: 1, startCol: 'name', endRow: 3, endCol: 'score' });
+    });
+});
+
+describe('accessibility', () => {
+    it.each(['light', 'dark'])('passes axe in %s mode with a range, the readout and the fill handle', async (mode) => {
+        withTheme(mode);
+        const table = await mountRange({ enableRangeActions: true, enableFillHandle: true });
+        table.cellRange = { startRow: 0, startCol: 'score', endRow: 2, endCol: 'label' };
+        await settle(table);
+        await vi.waitFor(() => expect(handle(table)).not.toBeNull());
+        const result = await axe.run(table);
+        expect(result.violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`)).toEqual([]);
+    });
+
+    it('exposes the cells in the range as selected, the grid as multiselectable and the readout as a named group', async () => {
+        const table = await mountRange({ enableRangeActions: true });
+        table.cellRange = { startRow: 0, startCol: 'score', endRow: 1, endCol: 'score' };
+        await settle(table);
+        const tree = await axTree();
+        const grid = tree.find((n) => n.role?.value === 'grid');
+        expect(axProps(grid)['multiselectable']).toBe(true);
+        const selected = tree.filter((n) => n.role?.value === 'gridcell' && axProps(n)['selected'] === true);
+        expect(selected).toHaveLength(2);
+        expect(tree.some((n) => n.role?.value === 'group' && n.name?.value === 'Selection summary')).toBe(true);
     });
 });
 
