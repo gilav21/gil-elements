@@ -1412,23 +1412,53 @@ describe('a press on the cell itself', () => {
     });
 });
 
-describe('a press inside its cell\'s box', () => {
-    it('reads no computed style: the point in the box is the common case, only a point outside it asks whether the element is positioned', async () => {
+
+describe('the plain rule: a press point outside the cell\'s box is not that cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('reads no computed style at all, and a press on the cell itself reads no rect', async () => {
         const table = await mountTable();
         const cell = cellAt(table, 1, 'name')!;
         const child = document.createElement('span');
         child.textContent = 'text';
         cell.append(child);
+        const onChild = pointer('pointerdown', 395, { over: child });
+        const outside = pointer('pointerdown', 396, { clientX: 5, clientY: 5 });
+        const onCell = pointer('pointerdown', 397, { over: cell });
         const style = vi.spyOn(window, 'getComputedStyle');
+        const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect');
         try {
-            child.dispatchEvent(pointer('pointerdown', 395, { over: child }));
-            child.dispatchEvent(pointer('pointerup', 395, { over: child }));
+            child.dispatchEvent(onChild);
+            child.dispatchEvent(outside);
             expect(style).not.toHaveBeenCalled();
-            child.dispatchEvent(pointer('pointerdown', 396, { clientX: 5, clientY: 5 })); // outside the box: now it asks
-            expect(style).toHaveBeenCalled();
+            rect.mockClear();
+            openEditorAt(table, 1, 'name'); // the press on the cell then moves no focus
+            cell.dispatchEvent(onCell);
+            expect(rect).not.toHaveBeenCalled();
         } finally {
             style.mockRestore();
+            rect.mockRestore();
         }
+    });
+
+    it('a translated (not positioned) menu item that sits outside the cell\'s box is not a cell press; the same item inside the box is', async () => {
+        const table = await mountTable();
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const cell = cellAt(table, 1, 'name')!;
+        const item = document.createElement('span');
+        item.textContent = 'item';
+        item.style.cssText = 'display:inline-block;transform:translate(0, 400px)'; // moved away by a transform: no `position` at all
+        cell.append(item);
+        const box = item.getBoundingClientRect(); // where the item really is now
+        item.dispatchEvent(pointer('pointerdown', 381, { clientX: box.left + 2, clientY: box.top + 2 }));
+        expect(downs).toEqual([]);
+        item.style.transform = '';
+        const inBox = item.getBoundingClientRect();
+        item.dispatchEvent(pointer('pointerdown', 382, { clientX: inBox.left + 2, clientY: inBox.top + 2 }));
+        expect(downs).toEqual(['down']);
     });
 });
 
@@ -1541,24 +1571,6 @@ describe('InteractionContext.hasOpenEditor', () => {
     });
 });
 
-describe('an unpositioned child that overflows its cell', () => {
-    afterEach(() => {
-        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
-    });
-
-    it('is still the cell\'s content: only a positioned element (absolute, fixed, popover) can float out of it', async () => {
-        const table = await mountTable();
-        const downs: unknown[] = [];
-        hooks.onPointerDown = () => void downs.push('down');
-        const cell = cellAt(table, 1, 'name')!;
-        const child = document.createElement('span');
-        child.textContent = 'text';
-        cell.append(child);
-        child.dispatchEvent(pointer('pointerdown', 381, { clientX: 5, clientY: 5 })); // a point far outside the cell's box, but nothing positioned
-        child.dispatchEvent(pointer('pointerup', 381, { clientX: 5, clientY: 5 }));
-        expect(downs).toEqual(['down']);
-    });
-});
 
 describe('a touch tap on a popover that floats out of its cell', () => {
     it('focuses no cell (not the one that holds it) and leaves the popover focused', async () => {
@@ -1849,6 +1861,53 @@ describe('a press that begins on an overlay of the table', () => {
         expect(offers).toEqual([]);
         expect(downs).toEqual([]); // the readout's button is a control: its press is not offered either
         button.remove();
+    });
+
+    async function fillHandleLike(table: GeDataTable): Promise<HTMLElement> {
+        const cell = cellAt(table, 1, 'name')!;
+        const rect = cell.getBoundingClientRect();
+        const handle = document.createElement('div'); // not a control: a transparent overlay like the fill handle
+        handle.setAttribute('data-pointer-transparent', '');
+        handle.style.cssText = `position:fixed;left:${rect.right - 8}px;top:${rect.bottom - 8}px;width:10px;height:10px;z-index:50`;
+        table.querySelector('[data-slot="data-table-viewport"]')!.append(handle);
+        return handle;
+    }
+
+    it('is OFFERED when it is not a control (the fill handle): a session can claim it (pressed = the overlay, at and start cell null) and gets its pointerup with the cell under the release', async () => {
+        const table = await mountTable();
+        const handle = await fillHandleLike(table);
+        const log: string[] = [];
+        const seen: PointerPress[] = [];
+        hooks.onPointerDown = (_event, at, press) => {
+            seen.push(press);
+            log.push(`down:${JSON.stringify(at)}`);
+            return press.pressed === handle; // a session recognises its own overlay by `pressed`
+        };
+        hooks.onPointerUp = (_event, at) => void log.push(`up:${JSON.stringify(at)}`);
+        const target = cellAt(table, 2, 'age')!;
+        handle.dispatchEvent(pointer('pointerdown', 541, { pointerType: 'touch', over: handle }));
+        handle.dispatchEvent(pointer('pointerup', 541, { pointerType: 'touch', over: target })); // a touch pointerup goes to the pressed overlay; the finger is over the cell
+        expect(log).toEqual(['down:null', 'up:{"rowIndex":2,"columnKey":"age"}']);
+        expect(seen[0]!.startCell).toBeNull();
+        handle.remove();
+    });
+
+    it('does nothing when UNclaimed: no focus move, no tap focus, no pointerup offer', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const handle = await fillHandleLike(table);
+        const log: string[] = [];
+        hooks.onPointerDown = () => void log.push('down'); // offered, does not claim
+        hooks.onPointerUp = () => void log.push('up');
+        for (const [id, pointerType] of [[542, 'mouse'], [543, 'touch']] as const) {
+            handle.dispatchEvent(pointer('pointerdown', id, { pointerType, over: handle }));
+            handle.dispatchEvent(pointer('pointerup', id, { pointerType, over: handle }));
+        }
+        await settle(table);
+        expect(log).toEqual(['down', 'down']); // offered at the pointerdowns, never at a pointerup
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        handle.remove();
     });
 
     it('still lets a CLAIMED gesture that began on a cell be released over the transparent overlay: the cell under it', async () => {

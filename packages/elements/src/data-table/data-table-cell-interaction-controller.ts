@@ -18,8 +18,8 @@ const BODY = '[data-slot="table-body"]';
  */
 const OVERLAY = '[data-pointer-transparent]';
 
-/** What the controller keeps of a press: what the sessions are told (`PointerPress`) and the session that claimed it. */
-interface Press extends PointerPress {
+/** What the controller keeps of a press: `view` (the only thing the sessions are told) and its own bookkeeping. */
+interface Press {
     /** THE object every session call of this press receives (frozen, built once in `recordPress`): the same identity for its pointerdown, pointerup and cancel. */
     readonly view: PointerPress;
     /** Set in the bubble phase by the session that claimed it. */
@@ -29,8 +29,10 @@ interface Press extends PointerPress {
     /** Where the pointer went down: a tap on something that is not in a cell is measured from here. */
     readonly x: number;
     readonly y: number;
-    /** The press was not a cell press (a control, an overlay, a popover floating out of its cell, a non-primary button): a tap on it focuses no cell either. */
+    /** The press is the control's own (a control, a popover floating out of its cell, a non-primary button): no offer, no focus, no tap focus. */
     readonly bypass: boolean;
+    /** The press began on a `data-pointer-transparent` overlay (the fill handle, a readout): offered to the sessions at its pointerdown (`pressed` = the overlay, `at` and the start cell null) so one can claim it; unclaimed it does nothing (no focus, no tap focus, no pointerup offer). */
+    readonly overlay: boolean;
 }
 
 /** Whether the point is in the box, or within `slop` px of it. */
@@ -40,22 +42,10 @@ const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= b
 function floatsOut(el: Element, x: number, y: number): boolean {
     const host = el.closest(CELL);
     if (!host || el === host) return false;
-    // The point in the cell's box is the common case: not floating, and no style is read. Only a point OUTSIDE the box asks whether the element is (or sits
-    // in) a positioned box (absolute / fixed, or a `popover`), the only kind that can float out of the cell.
-    return !inside(host.getBoundingClientRect(), x, y) && isPositioned(el, host);
+    // The plain rule: the point is outside the cell's box, so whatever is under it (a popover, a menu, a translated or transformed item) is not that cell. No style
+    // is read; the cheap early-outs above (no cell, the cell itself) read no rect either.
+    return !inside(host.getBoundingClientRect(), x, y);
 }
-
-function isPositioned(el: Element, host: Element): boolean {
-    for (let e: Element | null = el; e && e !== host; e = e.parentElement) {
-        if (e.hasAttribute('popover')) return true;
-        const { position } = getComputedStyle(e);
-        if (position === 'absolute' || position === 'fixed') return true;
-    }
-    return false;
-}
-
-/** What a session is told of a press: the one frozen `view` built when the press was recorded (the controller's own bookkeeping, `claimedBy`, stays out). */
-const pressOf = (press: Press): PointerPress => press.view;
 
 /**
  * A press on one of these belongs to the control: it keeps its own focus and click. `data-table-keeps-focus` is the explicit opt-out for a widget in a cell
@@ -104,7 +94,6 @@ export class CellInteractionController<T> {
     private teardown: (() => void)[] = [];
 
     /** The wave sessions, in the order the pointer reaches them (range, then edit); `hostUpdate` runs them edit, then range. */
-    private readonly edit: EditSession<T>;
     private readonly range: RangeSession<T>;
     /** The one list: attach and the pointer go through it forwards, detach and `hostUpdate` backwards. */
     private readonly sessions: readonly CellSession[];
@@ -144,9 +133,9 @@ export class CellInteractionController<T> {
             hasOpenEditor: () => this.service.editingCell?.() != null,
             deepActive: () => this.deepActive(),
         };
-        this.edit = new EditSession(context);
+        const edit = new EditSession(context);
         this.range = new RangeSession(context);
-        this.sessions = [this.range, this.edit];
+        this.sessions = [this.range, edit];
         // DERIVED, never written: the range service while the range session is healthy, undefined while it is broken.
         const controller = this;
         this.services = {
@@ -568,8 +557,8 @@ export class CellInteractionController<T> {
         if (!press || press.bubbled) return; // the press recorded for this pointer id proves the pointerdown is this table's (a nested table's press has no entry here); the target may have been replaced mid-dispatch
         press.bubbled = true;
         if (press.bypass) return; // not a cell press: no offer, no focus
-        const target = press.pressed;
-        const claimant = this.offer(event, target, (session) => session.onPointerDown, pressOf(press)) ?? null;
+        const target = press.view.pressed;
+        const claimant = this.offer(event, press.overlay ? null : target, (session) => session.onPointerDown, press.view) ?? null;
         press.claimedBy = claimant; // recorded before any further work
         // A session's `onPointerDown` may END the press itself (it blurs the window, detaches the table): then the end path found no claimant yet, so the
         // claimant that returned true is told now, once, and the press is not routed or focused any more.
@@ -579,6 +568,7 @@ export class CellInteractionController<T> {
         }
         if (claimant) return; // the claimant owns the press: no focus from the controller
         // A touch that scrolls is cancelled by the browser and never reaches pointerup: only a tap focuses.
+        if (press.overlay) return; // an unclaimed overlay press does nothing: no focus move
         if (event.pointerType !== 'touch' && target) this.focusPressed(press, target);
     }
 
@@ -597,16 +587,19 @@ export class CellInteractionController<T> {
         this.pointer = true;
         const path = event.composedPath(); // once per event: a path is built at every call
         const target = this.targetOf(path);
-        // A press that begins on an overlay is the overlay's (`pressed` = the overlay, no start cell): only the RELEASE of a gesture is looked through it.
+        // A press that begins on an overlay is OFFERED (see `overlay` below) but is never a cell press: it has no start cell, and only the RELEASE of a gesture is looked through it.
         // A press on a control inside its cell (or a widget with `data-table-keeps-focus`) is the control's own: no start cell, no offer, no focus.
         // The release side's rules apply at the pointerdown too: an element that floats out of its cell's box (a popover or menu of the cell) is not that
         // cell, so its press is not a cell press either (and the popover keeps its focus).
         // Only the PRIMARY button (the left mouse button, a touch or pen contact) makes a cell press: a right or middle press is not offered to the sessions
         // and moves no focus (the context menu addon handles `contextmenu` itself).
-        const bypass = event.button !== 0 || (target !== null && (this.controlOf(target) !== null || this.overlayOf(target) !== null || floatsOut(target, event.clientX, event.clientY)));
-        const startCell = bypass ? null : cellAddressOf(target);
+        const own = event.button === 0 && !(target !== null && (this.controlOf(target) !== null || floatsOut(target, event.clientX, event.clientY)));
+        const bypass = !own;
+        // An overlay press (the fill handle, a readout) is OFFERED so a session can claim it (`pressed` = the overlay; `at` and the start cell null); unclaimed it does nothing.
+        const overlay = own && target !== null && this.overlayOf(target) !== null;
+        const startCell = bypass || overlay ? null : cellAddressOf(target);
         const view: PointerPress = Object.freeze({ anchor, pressed: target, startCell });
-        this.presses.set(event.pointerId, { anchor, pressed: target, startCell, view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, bypass });
+        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, bypass, overlay });
     }
 
     /**
@@ -629,7 +622,7 @@ export class CellInteractionController<T> {
         this.endPress(event.pointerId, press, event, !where.own); // a release elsewhere is a cancel for the claimant; on this table it is routed below
         if (!where.own) return;
         const { claimedBy } = press;
-        const info = pressOf(press);
+        const info = press.view;
         const cell = where.cell;
         if (claimedBy) {
             if (this.broken.has(claimedBy)) return; // a failed session is never called (its presses are ended when it fails)
@@ -640,7 +633,7 @@ export class CellInteractionController<T> {
         }
         // An unclaimed press is offered at its pointerup only when it BEGAN on a body cell: a press that began on a resize handle, a header or a popover
         // and is released over a cell is not a click on that cell.
-        if (press.bubbled && press.startCell && this.offer(event, cell, (session) => session.onPointerUp, info)) return;
+        if (press.bubbled && press.view.startCell && this.offer(event, cell, (session) => session.onPointerUp, info)) return;
         // A TAP does what a mouse press on the PRESSED element does (`pointerFocus`: it focuses a cell, clears the focus on the body outside any cell, and
         // does nothing on a header, a control or a popover), unless that element is in the open editor's cell. It is a tap while the finger is released
         // within the pressed cell's box plus a small slop; further away it was a drag and focuses nothing. (A claimant is told the cell under the finger.)
@@ -653,18 +646,18 @@ export class CellInteractionController<T> {
             if (!this.insideOpenEditor(target)) this.pointerFocus(target);
             return;
         }
-        const start = press.startCell;
+        const start = press.view.startCell;
         if (start && !this.isEditorCell(start)) this.focusCell(start.rowIndex, start.columnKey, false);
     }
 
     private tapFocus(event: PointerEvent, press: Press): void {
-        const { pressed } = press;
+        const { pressed } = press.view;
         // Not a cell press (`bypass`), or one a cell widget stopped at its pointerdown (`!bubbled`): the widget's own, for a touch as for a mouse.
-        if (press.bypass || !press.bubbled) return;
+        if (press.bypass || press.overlay || !press.bubbled) return;
         if (!pressed?.isConnected) {
             // A renderer replaced the DOM between the down and the up: the press's start cell (an address) is still the cell that was tapped, if the finger
             // is where it went down.
-            const start = press.startCell;
+            const start = press.view.startCell;
             if (start && !this.isEditorCell(start) && withinTouchSlop(event.clientX - press.x, event.clientY - press.y)) this.focusCell(start.rowIndex, start.columnKey, false);
             return;
         }
@@ -811,7 +804,7 @@ export class CellInteractionController<T> {
     /** Tells the claimant its press ended without a pointerup on the table; a claimant that throws is reported and never stops the caller. */
     private notifyCancel(press: Press, event: PointerEvent | null): void {
         const { claimedBy } = press;
-        if (claimedBy && !this.broken.has(claimedBy)) this.guarded(() => claimedBy.onPointerCancel?.(event, pressOf(press)));
+        if (claimedBy && !this.broken.has(claimedBy)) this.guarded(() => claimedBy.onPointerCancel?.(event, press.view));
     }
 
     /** The table detaches (or the window loses focus) mid-press: every claimant is told (`event` null) before the sessions detach; one that throws does not abort the detach. */

@@ -551,8 +551,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
     set cellRange(range: CellRange | null) {
         const service = this.serviceOf('range');
         if (service) {
-            service.setRange(range); // the session checks the value and asks for the render
-            this.earlyRange = undefined; // a value held from an earlier gap (a failed session, before the first connect) must not overwrite this newer one at a reconnect
+            // The session checks the value and asks for the render. Only an ACCEPTED value supersedes a held one (a failed session, before the first connect):
+            // it must not overwrite the newer value at a reconnect; a refused value (not a range of this table) leaves the pending one alone.
+            if (service.setRange(range)) this.earlyRange = undefined;
             return;
         }
         // No REAL range service exists (before the first connect nothing is assembled; a custom plan may have no cell-interaction controller; the range

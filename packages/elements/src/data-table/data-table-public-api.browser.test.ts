@@ -62,6 +62,22 @@ describe('a cellRange assigned to a live range service', () => {
     });
 });
 
+describe('a cellRange that the range service REFUSES', () => {
+    it('leaves a pending held value alone (only an accepted value supersedes it)', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const table = await mountTable({ enableCellRangeSelection: true });
+        const pending = { startRow: 0, startCol: 'name', endRow: 0, endCol: 'name' };
+        (table as unknown as { earlyRange: unknown }).earlyRange = pending;
+        table.cellRange = { startRow: 'x' } as never; // not a range of this table: refused
+        expect(table.cellRange).toEqual(pending); // the pending value still wins
+        table.remove();
+        document.body.append(table);
+        await settle(table);
+        expect(table.cellRange).toEqual(pending); // and is handed over at the reconnect
+        warn.mockRestore();
+    });
+});
+
 describe('a failure of the same kind in TWO tables', () => {
     it('is reported for each table: one table\'s warning never silences the other\'s', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);

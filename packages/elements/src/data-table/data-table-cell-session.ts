@@ -30,6 +30,11 @@
  *   on, null when it began on a resize handle, a header, a popover or elsewhere), the SAME frozen object (identity included) for every call of one press. The first
  *   session that returns true CLAIMS the press and moves the focus itself; if none does, the controller focuses the pressed cell (a mouse, at the
  *   pointerdown, except in the open editor's cell).
+ *   A press that begins on an OVERLAY (an element marked `data-pointer-transparent` that is not a control: the fill handle) is offered too, so a
+ *   session can claim it: `pressed` is the overlay (a session recognises its own overlay by it), `at` and `startCell` are null. A session that
+ *   claims it is routed its release like any claimed press (`at` is the cell under the release, looking through overlays). An UNCLAIMED overlay
+ *   press does nothing: no focus move, no tap focus, and no offer at its pointerup. A press on a CONTROL (or a `data-table-keeps-focus` widget, or
+ *   one a widget stopped) is never offered.
  *   A CLAIMED press is routed only to its claimant, and it is told how the press ended exactly once: `onPointerUp(event, at, press)` when the
  *   pointer was released on this table (`at`: the cell under the pointer there; a touch and a captured pointer are located by a hit test at the
  *   release point, looking through elements marked `data-pointer-transparent`, an element that floats out of its cell is not that cell), else

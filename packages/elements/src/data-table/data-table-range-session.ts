@@ -24,7 +24,7 @@ export const NEUTRAL_RANGE: Readonly<RangeService> = Object.freeze({
     isInRange: () => false,
     isFillPreview: () => false,
     edgeOf: () => '',
-    setRange: () => undefined,
+    setRange: () => false,
     extendTo: () => undefined,
     stats: () => null,
     chartPayload: () => null,
@@ -80,7 +80,10 @@ export class RangeSession<T> implements CellSession {
             // columns of that moment (`validateColumns`). The ROWS are not looked up here either (`cellRange = r; data = newData` in one tick must not
             // trim `r` against the old data): `hostUpdate` trims them once the rows of that update are known.
             const next = sanitizeCellRange(range, 0, []);
-            if (next === undefined) return warnBadRange(range);
+            if (next === undefined) {
+                warnBadRange(range);
+                return false; // refused: the old value stays, and the caller keeps what it holds
+            }
             const changed = !sameRange(this.seen, next); // by VALUE against the copy: an in-place edit followed by the same object again is a change
             this.held = next;
             this.seen = next && { ...next };
@@ -88,6 +91,7 @@ export class RangeSession<T> implements CellSession {
             this.setPartRange(next);
             // `data-in-range`, `aria-selected` and the readout read the range at render, and only in range mode: an equal value, or a value held while the mode is off, draws nothing new
             if (changed && this.rangeOn()) this.context.host.requestRender();
+            return true;
         },
     };
 

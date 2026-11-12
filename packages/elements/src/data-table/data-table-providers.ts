@@ -285,8 +285,8 @@ export interface RangeService {
     isFillPreview(rowIndex: number, columnKey: string): boolean;
     /** The edges of the range this cell sits on (`top`, `bottom`, `start`, `end`, space-separated; `rangeEdges` in `data-table-range.ts`), '' for an inner cell. */
     edgeOf(rowIndex: number, columnKey: string): string;
-    /** Programmatic: no event, clamped like any range. */
-    setRange(range: CellRange | null): void;
+    /** Programmatic: no event, clamped like any range. Answers whether the value was ACCEPTED (a refused one, not a range of this table, leaves the old value and answers false). */
+    setRange(range: CellRange | null): boolean;
     extendTo(rowIndex: number, columnKey: string): void;
     /** Null unless `enable-range-actions` and at least two cells. */
     stats(): RangeAggregateStats | null;
