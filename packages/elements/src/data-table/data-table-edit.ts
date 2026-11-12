@@ -4,7 +4,7 @@
  * `data-table-edit-session.ts` applies them, node tests pin them.
  */
 import type { CellEditError, ColumnDef, EditingCell } from './data-table.types.js';
-import { asEditableDate, dateOnlyParts, toLocalDateString, type Ymd } from './data-table.utils.js';
+import { asEditableDate, dateOnlyParts, stringifyValue, toLocalDateString, type Ymd } from './data-table.utils.js';
 import { toDateOnlyTimestamp } from './data-table-filters.js';
 
 /** The editor a column opens, in Angular's precedence (html 207-290): a component, a renderer, then `editType`, else a text input. */
@@ -135,6 +135,9 @@ export function decideCommit(draft: unknown, stored: unknown, error: CellEditErr
     if (sameEditValue(draft, stored)) return { action: 'cancel' };
     // A text or number editor shows an empty cell (null, undefined, '') as an empty field: typing then deleting leaves it as it was. 0 is a value.
     if ((kind === 'text' || kind === 'number') && isEmptyText(draft) && isEmptyText(stored)) return { action: 'cancel' };
+    // An object cell (a Date, a plain object) is shown as its text (`stringifyValue`): that same text committed back changed nothing, and the
+    // cell keeps its object (never the string).
+    if (typeof draft === 'string' && stored !== null && typeof stored === 'object' && draft === stringifyValue(stored)) return { action: 'cancel' };
     const reported = error !== null && error.rowIndex === at.rowIndex && error.columnKey === at.columnKey && sameEditValue(error.value, draft);
     return { action: 'write', report: !reported };
 }

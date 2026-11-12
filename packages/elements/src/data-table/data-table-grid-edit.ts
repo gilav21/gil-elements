@@ -15,7 +15,8 @@ import { editSessionOf, type EditSession, type OpenEditor } from './data-table-e
 import { isBuiltInKind, optionIndexOf } from './data-table-edit.js';
 import type { DataTableViewHost } from './data-table-view.js';
 import type { ComponentOutputs, EnhancedColumnDef } from './data-table.types.js';
-import { asEditableDate } from './data-table.utils.js';
+// stringifyValue: the text editor shows a cell as the table writes it everywhere (a Date as ISO text, an object as JSON, null as '').
+import { asEditableDate, stringifyValue } from './data-table.utils.js';
 
 export interface EditView<T> {
     /** The editor to draw in place of the cell's content, or `undefined` when this cell is not being edited. */
@@ -73,8 +74,6 @@ function shownDate<T>(open: OpenEditor<T>): Date | null {
 /** Select editors the pointer is picking in (a press opened its list): their next `change` commits. */
 const pointerPicks = new WeakSet<object>();
 
-const text = (value: unknown): string => (value === null || value === undefined ? '' : String(value));
-
 function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overlay: boolean): TemplateResult {
     const { column, kind } = open;
     const message = open.error?.message ?? null;
@@ -130,7 +129,7 @@ function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overl
         default:
             // `.value` is the SHOWN text, compared with the DOM (`live`): typing keeps it equal to what the input holds (so a render never resets the
             // caret), and `setEditValue` always reaches the input, even with the value it had set before the user typed over it.
-            editor = html`<input data-edit-input type=${kind === 'number' ? 'number' : 'text'} .value=${live(text(open.shown))} aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
+            editor = html`<input data-edit-input type=${kind === 'number' ? 'number' : 'text'} .value=${live(stringifyValue(open.shown))} aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
                 @input=${(event: Event) => {
                     const input = event.target as HTMLInputElement;
                     session.input(open, input.value, input.validity.badInput);

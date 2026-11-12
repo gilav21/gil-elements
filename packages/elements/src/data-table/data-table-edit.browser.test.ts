@@ -68,6 +68,34 @@ describe('E1 opening an editor', () => {
         expect(deepActive()).toBe(editorIn(table, 2, 'age'));
     });
 
+    it('a text editor on an object cell shows its text (a Date as ISO, an object as JSON); committing that text unchanged writes nothing (round 15)', async () => {
+        const when = new Date(Date.UTC(2024, 0, 3, 10, 20));
+        const meta = { tag: 'a' };
+        const columns: ColumnDef<SampleRow>[] = [
+            ...editColumns(),
+            { accessorKey: 'when', header: 'When', editable: true, accessorFn: () => when, valueSetter: (row) => ({ ...row }) },
+            { accessorKey: 'meta', header: 'Meta', editable: true, accessorFn: () => meta, valueSetter: (row) => ({ ...row }) },
+        ];
+        const table = await mount({ columns });
+        const edits = record(table, 'cell-edit');
+        await startEditingAt(table, 0, 'when');
+        let input = openEditor(table) as HTMLInputElement;
+        expect(input.value).toBe('2024-01-03T10:20:00.000Z');
+        await userEvent.type(input, 'x');
+        await press('{Backspace}');
+        await press('{Enter}');
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        await startEditingAt(table, 0, 'meta');
+        input = openEditor(table) as HTMLInputElement;
+        expect(input.value).toBe('{"tag":"a"}');
+        await userEvent.type(input, 'x');
+        await press('{Backspace}');
+        await press('{Enter}');
+        await settle(table);
+        expect(edits).toHaveLength(0);
+    });
+
     it("a held key's auto-repeat neither opens an editor (Enter, F2) nor commits one (Enter) (round 14)", async () => {
         const table = await mount();
         const first = names(table)[0];
