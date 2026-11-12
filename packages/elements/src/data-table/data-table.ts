@@ -565,8 +565,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
      * `moveRow`) use `serviceOf(key)`: the controller's own (`services`, which outlives a disconnect: the controllers are built once and kept), so
      * a detached table keeps its value and answers pure questions. Everything that needs the LIVE grid (focus, editing, the clipboard's reads of the
      * query and columns, `fillDownTo`, the queries) uses `provider(key)`, which is cleared at disconnect: such a call is inert or null while detached
-     * (as on main) instead of reaching controller code that requires providers that are gone. `serviceOf` is undefined before the first connect and,
-     * for `range`, while the range session is failed (the controller withdraws it).
+     * (as on main) instead of reaching controller code that requires providers that are gone. `serviceOf` is undefined before the first connect (and for a
+     * service no controller of a custom plan provides); the range VALUE is never withdrawn, not even when the range session failed.
      */
     private serviceOf<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined {
         return this.built?.service(key);

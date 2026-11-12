@@ -74,7 +74,7 @@ export function lazyElement(
 ): LazyElement {
     const once = lazyOnce(importer);
     let failed = false;
-    /** The whole load, failure handling included, as ONE promise: concurrent callers share it, so one failure is one report. */
+    /** The IMPORT, failure handling included, as ONE promise (true: it imported): concurrent callers share it, so one failure is one report. */
     let loading: Promise<boolean> | undefined;
     /** Bumped by `reset()`: a run that started before it is stale and neither latches the failure nor reports it (the run after the reset does). */
     let generation = 0;
@@ -88,10 +88,11 @@ export function lazyElement(
             }
             return false;
         }
-        return customElements.get(tag) !== undefined;
+        return true;
     };
     return {
-        load: () => (failed ? Promise.resolve(false) : (loading ??= run(generation))),
+        // Only the import is memoised: whether the tag is defined is asked per call, so a definition that arrives later than the import is seen by a later load.
+        load: () => (failed ? Promise.resolve(false) : (loading ??= run(generation)).then((imported) => imported && customElements.get(tag) !== undefined)),
         ready: () => customElements.get(tag) !== undefined,
         failed: () => failed,
         reset,

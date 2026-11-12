@@ -1835,6 +1835,30 @@ describe('the press object a session receives', () => {
     });
 });
 
+describe('a release of a press that is not offered', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is not located: a touch tap on an in-cell checkbox (a control) makes no hit test', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        cell.append(box);
+        const down = pointer('pointerdown', 551, { pointerType: 'touch', over: box });
+        const up = pointer('pointerup', 551, { pointerType: 'touch', over: box });
+        const spy = vi.spyOn(Document.prototype, 'elementsFromPoint');
+        try {
+            box.dispatchEvent(down);
+            box.dispatchEvent(up);
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+        }
+    });
+});
+
 describe('one release path for every press', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

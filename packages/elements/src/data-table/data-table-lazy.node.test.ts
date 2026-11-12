@@ -118,6 +118,16 @@ describe('lazyElement', () => {
         expect(onError).toHaveBeenCalledTimes(2);
     });
 
+    it('does not memoise "not defined": an import that resolves without defining the tag answers false, and a later load sees a later definition', async () => {
+        fakeRegistry();
+        const importer = vi.fn(() => Promise.resolve({}));
+        const element = lazyElement('ge-late', importer);
+        await expect(element.load()).resolves.toBe(false); // imported, the tag is not defined (yet)
+        defined.add('ge-late'); // defined later than the import
+        await expect(element.load()).resolves.toBe(true); // the same import (memoised), the definition is asked again
+        expect(importer).toHaveBeenCalledTimes(1);
+    });
+
     it('failed() says a failure is latched (so a hot caller allocates no promise), until reset', async () => {
         fakeRegistry();
         const element = lazyElement('ge-x', () => Promise.reject(new Error('404')), vi.fn());

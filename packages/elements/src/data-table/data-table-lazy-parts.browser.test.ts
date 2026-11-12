@@ -48,6 +48,25 @@ describe('lazy parts and the render', () => {
         expect(cellAt(table, 0, 'name')!.hasAttribute('data-flash')).toBe(false);
     });
 
+    it('renders with an old-shaped formatting service that has only `cell` (no flash, no anyFlashing) and enable-cell-flash on: nothing is drawn, nothing throws', async () => {
+        const table = await mountTable({ enableCellFlash: true });
+        await settle(table);
+        const real = table.provider('formatting') as unknown as { cell: unknown };
+        table.provide('formatting', { cell: real.cell } as never);
+        const errors: unknown[] = [];
+        const onError = (event: ErrorEvent): void => void errors.push(event.error);
+        window.addEventListener('error', onError);
+        try {
+            table.requestUpdate();
+            await settle(table);
+            expect(bodyRows(table).length).toBeGreaterThan(0);
+            expect(table.querySelector('[data-flash]')).toBeNull();
+            expect(errors).toEqual([]);
+        } finally {
+            window.removeEventListener('error', onError);
+        }
+    });
+
     it('a part whose active() throws does not break the render: the table draws, the part counts as inactive, one warning per part', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         vi.spyOn(RowDragPart.prototype, 'active').mockImplementation(() => {

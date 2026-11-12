@@ -157,7 +157,7 @@ export interface LoadingService {
 export interface FormattingService<T> {
     cell(column: ColumnDef<T>, row: T): ResolvedCellFormatting | null;
     /** Wave 6 (flash, package C implements): the direction a cell is flashing now, or undefined. */
-    flash(rowId: string, columnKey: string): CellFlashDirection | undefined;
+    flash?(rowId: string, columnKey: string): CellFlashDirection | undefined;
     /** Some cell is flashing now: a cheap question the renderer asks once per render, so `enable-cell-flash` alone (nothing flashing) costs no per-cell work. */
     anyFlashing?(): boolean;
 }

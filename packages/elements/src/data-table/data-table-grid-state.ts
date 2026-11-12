@@ -81,7 +81,7 @@ export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolea
     const rangeMode = rangeModeOn(config) && rangeActive;
     const selectionMode = rangeSelectionDrawn(config, rangeActive);
     // Flash costs per-cell work only while some cell is actually flashing (`enable-cell-flash` alone, with nothing flashing, does not).
-    const flashable = config.enableCellFlash && formatting !== undefined && (formatting.anyFlashing?.() ?? true); // a service without the optional `anyFlashing` cannot say "nothing flashes": every cell is asked
+    const flashable = config.enableCellFlash && formatting?.flash !== undefined && (formatting.anyFlashing?.() ?? true); // no `flash` (an older-shaped service): nothing is drawn; a missing `anyFlashing` cannot say "nothing flashes": every cell is asked
     const flashOff = flashable ? flashOffKeys(config.columns) : NO_KEYS; // only built while something flashes
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);
@@ -97,7 +97,7 @@ export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolea
             if (isSpecialColumnKey(key)) return NO_CELL_FLAGS;
             const inRange = rangeMode && (range?.isInRange(rowIndex, key) ?? false);
             const fill = config.enableFillHandle && rangeActive && (range?.isFillPreview(rowIndex, key) ?? false);
-            const flash = flashable && !flashOff.has(key) ? formatting?.flash(rowId, key) : undefined;
+            const flash = flashable && !flashOff.has(key) ? formatting?.flash?.(rowId, key) : undefined;
             const editing = editingOpen && (interaction?.isEditing?.(rowIndex, key) ?? false); // the per-cell question only while an editor is open
             if (!inRange && !fill && flash === undefined && !editing) {
                 return selectionMode ? OUT_OF_RANGE_FLAGS : NO_CELL_FLAGS;

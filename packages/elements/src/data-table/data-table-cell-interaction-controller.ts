@@ -98,8 +98,8 @@ export class CellInteractionController<T> {
     /** The one list: attach and the pointer go through it forwards, detach and `hostUpdate` backwards. */
     private readonly sessions: readonly CellSession[];
     private readonly service: CellInteractionService;
-    /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. Undefined while the range session is failed. */
-    readonly services: { readonly range: RangeService | undefined };
+    /** The range service of the range session: it outlives a disconnect (the controller is built once), unlike its provider entry. */
+    readonly services: { readonly range: RangeService };
     /** Sessions that FAILED (their `attach()` or a `hostUpdate()` threw): detached at once and skipped by everything after, until the next attach. */
     private readonly broken = new Set<CellSession>();
     /** The sessions whose `renderOverlay` failure was already reported: it runs at every render and reports its first failure only (cleared at detach). */
@@ -608,6 +608,12 @@ export class CellInteractionController<T> {
         // captured by its path target, a touch or a captured pointer by a hit test: its pointerup is delivered to the PRESSED element, whatever the finger
         // is over), a release that is not on this table ends the press as a cancel, and the tail offers it and runs the tap. Whether a tap focuses never
         // depends on which sessions define `onPointerUp`.
+        // An UNCLAIMED press that is the control's own, an overlay press, or one a widget stopped (`!bubbled`) is not offered at its release and never taps:
+        // nothing needs its location, so no hit test (a touch tap on an in-cell checkbox costs none).
+        if (!press.claimedBy && (press.bypass || press.overlay || !press.bubbled)) {
+            this.endPress(event.pointerId, press, event, false);
+            return;
+        }
         const where = event.type === 'pointerup' ? this.locateRelease(event, event.composedPath()) : { own: false, cell: null };
         this.endPress(event.pointerId, press, event, !where.own); // a release elsewhere is a cancel for the claimant; on this table it is routed below
         if (!where.own) return;
