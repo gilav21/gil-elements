@@ -3,6 +3,7 @@ import { UiElement } from '@gilav21/elements-base';
 import '../../button/define.js';
 import '../../calendar/define.js';
 import { type CalendarLocale, resolveCalendarLocale } from '../../shared/calendar-locales.js';
+import { asEditableDate } from '../data-table.utils.js';
 import css from './data-table-filters-panels.css?inline';
 
 /**
@@ -24,7 +25,7 @@ export class GeDataTableDateFilter extends UiElement {
     };
 
     /** The current filter, re-supplied by the table: mirrored into the calendar, which the panel also updates itself (it works uncontrolled). */
-    declare value: Date | null;
+    declare value: Date | string | number | null;
     declare title: string;
     declare locale: string | CalendarLocale | undefined;
     declare selected: Date | null;
@@ -38,7 +39,8 @@ export class GeDataTableDateFilter extends UiElement {
     }
 
     protected override willUpdate(changed: PropertyValues<this>): void {
-        if (changed.has('value')) this.selected = this.value instanceof Date ? this.value : null;
+        // Read like a cell (`asEditableDate`): a value restored from JSON (an ISO string) or a timestamp shows its day, anything else none.
+        if (changed.has('value')) this.selected = asEditableDate(this.value);
     }
 
     private emit(value: Date | null): void {

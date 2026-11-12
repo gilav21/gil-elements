@@ -5,6 +5,7 @@ import '../../calendar/define.js';
 import { type CalendarLocale, resolveCalendarLocale } from '../../shared/calendar-locales.js';
 import { type DateRangePreset, defaultDateRangePresets, isCompleteRange } from '../data-table-filters.js';
 import type { DataTableDateRange } from '../data-table.types.js';
+import { asEditableDate } from '../data-table.utils.js';
 import css from './data-table-filters-panels.css?inline';
 
 const EMPTY: DataTableDateRange = Object.freeze({ start: null, end: null }) as DataTableDateRange;
@@ -45,7 +46,13 @@ export class GeDataTableDateRangeFilter extends UiElement {
     }
 
     protected override willUpdate(changed: PropertyValues<this>): void {
-        if (changed.has('value')) this.selected = this.value && typeof this.value === 'object' ? this.value : EMPTY;
+        // Both ends read like cells (`asEditableDate`): a range restored from JSON (ISO strings) shows its days; a value that is not a range shows none.
+        if (changed.has('value')) {
+            const value = this.value as { start?: unknown; end?: unknown } | null;
+            const start = value && typeof value === 'object' ? asEditableDate(value.start) : null;
+            const end = value && typeof value === 'object' ? asEditableDate(value.end) : null;
+            this.selected = start || end ? { start, end } : EMPTY;
+        }
     }
 
     private emit(value: DataTableDateRange | null): void {

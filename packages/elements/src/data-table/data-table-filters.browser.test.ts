@@ -235,6 +235,27 @@ describe('F3 the date-range panel', () => {
     });
 });
 
+describe('date panels given a filter restored from JSON (ISO strings)', () => {
+    const iso = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+    it('the date panel shows the day of an ISO string value, and the rows are filtered by it', async () => {
+        const table = await mount({ columnFilters: { day: iso(dayOf(5)) } });
+        expect(names(table)).toEqual(['Bob', 'Carol']);
+        const panel = await openPanel(table, 'day', 'ge-data-table-date-filter');
+        expect(calendarDay(panel, 5).hasAttribute('data-selected')).toBe(true);
+        await closePopover(table);
+    });
+
+    it('the range panel shows both ends of a range of ISO strings', async () => {
+        const table = await mount({ columns: [nameColumn, rangeColumn], columnFilters: { day: JSON.parse(JSON.stringify({ start: iso(dayOf(4)), end: iso(dayOf(9)) })) } });
+        expect(names(table)).toEqual(['Bob', 'Carol', 'Dave']);
+        const panel = await openPanel(table, 'day', 'ge-data-table-date-range-filter');
+        expect(calendarDay(panel, 4).hasAttribute('data-range-start')).toBe(true);
+        expect(calendarDay(panel, 9).hasAttribute('data-range-end')).toBe(true);
+        await closePopover(table);
+    });
+});
+
 describe('F4 the multiselect panel', () => {
     const optionRow = (panel: Element, label: string): HTMLElement => panel.shadowRoot!.querySelector<HTMLElement>(`ge-command-item[value="${label}"]`)!;
 
