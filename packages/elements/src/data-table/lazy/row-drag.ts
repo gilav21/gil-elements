@@ -12,11 +12,11 @@
 import { type AutoScrollController, startAutoScroll } from '../../shared/auto-scroll.js';
 import { CONTROLS_SELECTOR } from '../../shared/interactive-tags.js';
 import { interpolate } from '../../shared/interpolate.js';
-import { CELL_SELECTOR, inTextField } from '../data-table-clipboard-grid.js';
+import { editorOpen, inTextField, onGrid } from '../data-table-clipboard-grid.js';
 import { type DataTableCoreHost, ownClosest, ownElements, ownEvents } from '../data-table-host.js';
 import type { RowDragState } from '../data-table-providers.js';
 import { KEY_PRIORITY } from '../data-table-registry.js';
-import { buildRowReorderEvent, dropEdge, dropPosition, reorderRows, siblingMove } from '../data-table-row-reorder.js';
+import { buildRowReorderEvent, dropEdge, dropPosition, siblingMove } from '../data-table-row-reorder.js';
 import type { RowDragPosition, RowReorderEvent } from '../data-table.types.js';
 import { reportOncePer } from '../data-table-warn.js';
 
@@ -76,16 +76,27 @@ export class RowDragPart<T> {
         this.attached = false;
         this.clear();
         for (const undo of this.teardown.splice(0)) undo();
-        this.grid()?.removeAttribute('aria-description');
+        (this.hinted?.grid ?? this.grid())?.removeAttribute('aria-description');
+        this.hinted = null;
     }
 
-    /** Called by the shell before every render: the keyboard hint goes on the grid element (one place, not on every row) once it is drawn. */
+    /**
+     * The grid element that carries the keyboard hint and the text it carries. The renderer does not write `aria-description` on the grid, so the part
+     * does, once: when it attaches, when the locale's text changes, and when the grid element is a new one (the skeleton gave way to the grid). An
+     * unrelated render costs one comparison, no DOM query and no queued task.
+     */
+    private hinted: { grid: HTMLElement; text: string } | null = null;
+
+    /** Called by the shell before every render. */
     hostUpdate(): void {
+        const text = this.host.resolvedLocale.rowDragHint;
+        if (this.hinted?.text === text && this.hinted.grid.isConnected) return;
         this.host.afterRender(() => {
             if (!this.attached) return;
             const grid = this.grid();
-            const hint = this.host.resolvedLocale.rowDragHint;
-            if (grid && grid.getAttribute('aria-description') !== hint) grid.setAttribute('aria-description', hint);
+            if (!grid) return; // not drawn yet (a skeleton): the next update tries again
+            grid.setAttribute('aria-description', text);
+            this.hinted = { grid, text };
         });
     }
 
@@ -242,7 +253,9 @@ export class RowDragPart<T> {
     private commit(event: RowReorderEvent<T>, total: number): void {
         const { config, model } = this.host;
         if (config.localReorder) {
-            model.set('data', reorderRows(model.get('data'), event, { enabled: config.enableSubRows, getRowId: config.getRowId, getChildren: config.getChildren, setChildren: config.setChildren }));
+            // The one reorder path: the service's `reorderData` (the element's public one), which knows the flat and the tree rules.
+            const reorder = this.host.provider('rowDrag');
+            if (reorder) model.set('data', reorder.reorderData(model.get('data'), event));
         }
         this.host.emit('row-reorder', event);
         this.host.announce(interpolate(this.host.resolvedLocale.rowMovedAnnouncement, { position: event.toIndex + 1, total }));
@@ -300,13 +313,11 @@ export class RowDragPart<T> {
         const { root, config } = this.host;
         const direction = MOVE_KEYS[event.key];
         if (!direction || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.defaultPrevented || event.isComposing || !config.enableRowDrag) return false;
-        if (inTextField(root, event)) return false; // the shared rule: a checkbox or a button in a cell is no text field, Alt+Arrow moves its row
-        const target = event.target as Element;
-        if (!ownClosest(root, target, CELL_SELECTOR) && target !== root && !target.matches?.(VIEWPORT)) return false;
-        const interaction = this.host.provider('interaction');
-        const at = interaction?.focusedCell();
+        // The shared grid-key rule (a body cell, the viewport or the root; never a text field): a checkbox or a button in a cell is no text field, Alt+Arrow moves its row.
+        if (!onGrid(root, event)) return false;
+        const at = this.host.provider('interaction')?.focusedCell();
         const row = at ? this.host.provider('query')?.renderedRowAt(at.rowIndex) : undefined;
-        if (!at || row === undefined || interaction?.editingCell?.()) return false;
+        if (!at || row === undefined || editorOpen(this.host)) return false;
         event.preventDefault(); // consumed even at an end: the keys are the row move's
         const id = String(config.getRowId(row));
         if (this.moveRow(row, direction)) {

@@ -3,6 +3,7 @@ import type { GeDataTable } from './data-table.js';
 import { makeRows, mountTable, q, qa, type SampleRow, send, settle } from './data-table-fixtures.js';
 import { emulateTouch, nativeDrag, parkMouse, press, scrollGrid, syntheticDrag } from './data-table-input-fixtures.js';
 import type { RowReorderEvent } from './data-table.types.js';
+import { DATA_TABLE_LOCALES } from './data-table.locales.js';
 
 type Table = GeDataTable<SampleRow>;
 
@@ -240,6 +241,35 @@ describe('row drag: indicators and cleanup', () => {
             document.addEventListener = add;
             document.removeEventListener = remove;
         }
+    });
+
+    it('writes the keyboard hint once: an unrelated render looks nothing up; a new locale text is written', async () => {
+        const table = await mountDrag();
+        const grid = q(table, '[data-slot="table"]');
+        await vi.waitFor(() => expect(grid.getAttribute('aria-description')).toBe('Alt+Up or Alt+Down arrow moves the focused row'));
+        const lookups = vi.spyOn(table, 'querySelectorAll');
+        try {
+            for (let i = 0; i < 3; i++) {
+                table.requestUpdate();
+                await settle(table);
+            }
+            expect(lookups.mock.calls.filter(([selector]) => selector === '[data-slot="table"]')).toHaveLength(0);
+        } finally {
+            lookups.mockRestore();
+        }
+        table.locale = { ...DATA_TABLE_LOCALES.en, rowDragHint: 'Move with Alt+arrows' };
+        await settle(table);
+        await vi.waitFor(() => expect(q(table, '[data-slot="table"]').getAttribute('aria-description')).toBe('Move with Alt+arrows'));
+    });
+
+    it('a drop reorders through the service\'s reorderData (the one reorder path)', async () => {
+        const table = await mountDrag();
+        const service = table.provider('rowDrag')!;
+        const spy = vi.spyOn(service, 'reorderData');
+        await dragOver(table, 0, 2, 0.75);
+        await drop(table, 2, 0.75);
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(ids(table)).toEqual(['r1', 'r2', 'r0', 'r3', 'r4', 'r5']);
     });
 
     it('a drag from another table is ignored', async () => {
