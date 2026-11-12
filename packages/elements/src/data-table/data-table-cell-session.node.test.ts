@@ -2,7 +2,6 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InteractionContext } from './data-table-cell-session.js';
 import { EditSession, NEUTRAL_EDIT } from './data-table-edit-session.js';
-import { resetBadRangeWarning } from './data-table-range.js';
 import { NEUTRAL_RANGE, RangeSession } from './data-table-range-session.js';
 import { RangePart } from './lazy/range.js';
 
@@ -75,6 +74,21 @@ describe('the joint step 0 sessions', () => {
         vi.spyOn(session.rangeService, 'isInRange').mockImplementation((r) => r >= 3 && r <= 4);
         expect(session.service.isCellSelected(1, 'a')).toBe(false); // the focused cell is not selected once a range exists elsewhere
         expect(session.service.isCellSelected(3, 'a')).toBe(true);
+    });
+
+    it('says a cell of a SELECTED row is selected (row selection on) whatever the range, like the aria-selected of its cells; with row selection off it is not', () => {
+        const { context } = rangeContext({ ...on });
+        const provide = (selectionOn: boolean) => {
+            const host = context.host as unknown as { config: Record<string, unknown>; provider: (key: string) => unknown };
+            Object.assign(host.config, { enableRowSelection: selectionOn, getRowId: (row: { id: string }) => row.id });
+            host.provider = (key) => ({ query: { renderedRowAt: (index: number) => ({ id: `r${index}` }) }, selection: { isSelected: (id: string) => id === 'r3' } })[key as 'query' | 'selection'];
+        };
+        const session = new RangeSession(context);
+        provide(true);
+        expect(session.service.isCellSelected(3, 'a')).toBe(true);
+        expect(session.service.isCellSelected(2, 'a')).toBe(false);
+        provide(false);
+        expect(session.service.isCellSelected(3, 'a')).toBe(false);
     });
 
     it('has no neutral override for isCellSelected: with no live part (loading, or a failed session) its own service answers the focused cell', () => {
@@ -273,7 +287,6 @@ describe('the range held by the shell', () => {
     });
 
     it('drops, at the next update and with one warning, a range that names a special column or a column that is not configured', () => {
-        resetBadRangeWarning();
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         const { session } = make({ ...on });
         for (const endCol of ['_selection', '_expander', '_actions', 'ghost']) {
@@ -424,7 +437,6 @@ describe('the range held by the shell', () => {
         });
 
         it('refuses a value that is not a range, warns once, and keeps the old range', () => {
-            resetBadRangeWarning();
             const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
             const { session } = make();
             session.rangeService.setRange(range);

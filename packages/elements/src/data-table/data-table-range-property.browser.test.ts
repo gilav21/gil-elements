@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GeDataTable } from './data-table.js';
 import { makeRows, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
-import { resetBadRangeWarning } from './data-table-range.js';
 import { registerDataTableLocale } from './data-table.locales.js';
 
 const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
@@ -100,7 +99,6 @@ describe('the cellRange property', () => {
     });
 
     it('answers the same before the first connect as after it: held, reported only while range mode is on, malformed values refused', () => {
-        resetBadRangeWarning();
         const warn = console.warn;
         const warnings: unknown[][] = [];
         console.warn = (...args: unknown[]) => void warnings.push(args);
@@ -205,7 +203,6 @@ describe('the cellRange property', () => {
     });
 
     it('refuses a value that is not a range of this table (warned once) and keeps the old one', async () => {
-        resetBadRangeWarning();
         const warn = console.warn;
         const warnings: unknown[][] = [];
         console.warn = (...args: unknown[]) => void warnings.push(args);

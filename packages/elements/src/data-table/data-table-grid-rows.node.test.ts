@@ -75,7 +75,7 @@ describe('the body rows and the wave 5 and 6 state', () => {
         renderRows(v);
         expect(rowState).toHaveBeenCalledTimes(rows.length);
         expect(cellState).toHaveBeenCalledTimes(rows.length * columns.length);
-        expect(cellState).toHaveBeenCalledWith(0, 'a', 'r0');
+        expect(cellState).toHaveBeenCalledWith(0, 'a', 'r0', false);
         expect(rowState).toHaveBeenCalledWith(1, 'r1', false);
     });
 

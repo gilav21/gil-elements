@@ -4,7 +4,7 @@
  * among the navigable keys (the data columns, in drawn order).
  */
 import type { CellRange, ColumnDef, RangeAggregateStats, RangeChartPayload } from './data-table.types.js';
-import { resetWarnOnce, warnOnce } from './data-table-warn.js';
+import { warnOncePer } from './data-table-warn.js';
 import { computeAggregateValue, getCellValue, isSpecialColumnKey, stringifyValue, toAggregatableNumber } from './data-table.utils.js';
 
 export interface NormalizedRange {
@@ -81,13 +81,14 @@ export const rangeSelectionDrawn = (config: { readonly enableCellRangeSelection:
 /** Range mode is on: range selection or the fill handle (the one predicate the element and the range session both use). */
 export const rangeModeOn = (config: { readonly enableCellRangeSelection: boolean; readonly enableFillHandle: boolean }): boolean => config.enableCellRangeSelection || config.enableFillHandle;
 
-/** What an owner of a range says, ONCE per page, when it refuses a value that is not a range of the table (the element before the first connect and the session after share it). */
-export function warnBadRange(value: unknown): void {
-    warnOnce('bad-range', '[ge-data-table] cellRange is not a range of this table (integer startRow / endRow, and startCol / endCol the keys of data columns); ignored, the previous range stays:', value);
+/**
+ * What an owner of a range says, ONCE per table and kind, when it refuses a value that is not a range of the table (the element before the first connect and the
+ * session after share it). `kept`: the previous valid range stays; otherwise the value was dropped and there is none.
+ */
+export function warnBadRange(scope: object, value: unknown, kept: boolean): void {
+    const what = '[ge-data-table] cellRange is not a range of this table (integer startRow / endRow, and startCol / endCol the keys of data columns); ';
+    warnOncePer(scope, kept ? 'bad-range-kept' : 'bad-range-dropped', what + (kept ? 'ignored, the previous range stays:' : 'dropped, there is no range:'), value);
 }
-
-/** For tests: lets `warnBadRange` speak again. */
-export const resetBadRangeWarning = (): void => resetWarnOnce('bad-range');
 
 /** The fill source: the selected range, or the focused cell as a 1x1 range. */
 export function fillSourceRange(
@@ -264,9 +265,18 @@ export function planPaste(grid: readonly (readonly string[])[], startRow: number
 }
 
 /**
- * THE answer to "is this cell selected" (Angular's `isCellSelected`), shared by `interaction.isCellSelected` and the cell's `aria-selected`: with a range, whether
- * the cell is in it (`inRange`, asked only then); with none, whether it is the focused cell.
+ * THE answer to "is this cell selected" (Angular's `isCellSelected`), called with the same inputs by `interaction.isCellSelected` and by the cell's `aria-selected`:
+ * a cell of a selected row (`rowSelected`: already false when row selection is off) is selected; otherwise, with a range, the cell is selected when it is in it
+ * (`inRange`, ignored without one); with none, when it is the focused cell. Plain values: no closure, no lookup per cell.
  */
-export function cellSelectedBy(range: CellRange | null | undefined, inRange: () => boolean, focused: { rowIndex: number; columnKey: string } | null, rowIndex: number, columnKey: string): boolean {
-    return range ? inRange() : focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
+export function cellSelectedBy(
+    range: CellRange | null | undefined,
+    inRange: boolean,
+    focused: { rowIndex: number; columnKey: string } | null,
+    rowIndex: number,
+    columnKey: string,
+    rowSelected: boolean,
+): boolean {
+    if (rowSelected) return true;
+    return range ? inRange : focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
 }

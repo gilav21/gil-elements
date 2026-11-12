@@ -56,7 +56,8 @@ export interface StateView {
     /** `rowState` can say something now (draggable rows). */
     rowStateActive: boolean;
     /** `rowId` and `disabled` are what the renderer already read for the row (`dataRow` reads each once): plain arguments, no per-row object. */
-    cellState(rowIndex: number, columnKey: string, rowId: string): CellFlags;
+    /** `selected`: the row is selected (the renderer read it once for the row). */
+    cellState(rowIndex: number, columnKey: string, rowId: string, selected: boolean): CellFlags;
     rowState(rowIndex: number, rowId: string, disabled: boolean): RowFlags;
 }
 
@@ -93,24 +94,24 @@ export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolea
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;
     const editingAt = interaction?.editingCell?.() ?? null; // ONE answer to "which cell holds the editor": its address, the same the pointer guard (`isEditorCell`) reads
     const editingOpen = editingAt !== null;
-    // aria-selected (selection mode): THE selection predicate `interaction.isCellSelected` answers (in the range, else the focused cell), or its row is selected.
+    // aria-selected (selection mode): THE selection predicate `interaction.isCellSelected` answers (`cellSelectedBy`: a selected row, else the range, else the focused cell).
     const rangeNow = selectionMode ? (range?.range() ?? null) : null;
     const focusedNow = selectionMode ? (interaction?.focusedCell?.() ?? null) : null;
-    const rowSelection = selectionMode && config.enableRowSelection ? host.provider('selection') : undefined;
+    const rowSelectable = config.enableRowSelection;
     const cellStateActive = rangeMode || flashable || editingOpen;
-    if (!cellStateActive && !dragOn && !selectionMode) return IDLE_STATE; // the plain grid: one shared frozen view, no closures allocated per render
+    if (!cellStateActive && !dragOn) return IDLE_STATE; // the plain grid (selection mode implies range mode, so it is covered): one shared frozen view, no closures per render
     return {
         cellStateActive,
         rowStateActive: dragOn,
         rangeSelectable: selectionMode,
-        cellState(rowIndex, key, rowId) {
+        cellState(rowIndex, key, rowId, rowSelected) {
             // The special columns (selection, expander, actions) are not cells of the range, of an editor or of a flash.
             if (isSpecialColumnKey(key)) return NO_CELL_FLAGS;
             const inRange = rangeMode && (range?.isInRange(rowIndex, key) ?? false);
             const fill = config.enableFillHandle && rangeActive && (range?.isFillPreview(rowIndex, key) ?? false);
             const flash = flashable && !flashOff.has(key) ? formatting?.flash?.(rowId, key) : undefined;
             const editing = editingAt !== null && editingAt.rowIndex === rowIndex && editingAt.columnKey === key;
-            const selected = selectionMode && (cellSelectedBy(rangeNow, () => inRange, focusedNow, rowIndex, key) || rowSelection?.isSelected(rowId) === true);
+            const selected = selectionMode && cellSelectedBy(rangeNow, inRange, focusedNow, rowIndex, key, rowSelectable && rowSelected);
             if (!inRange && !fill && flash === undefined && !editing) {
                 if (!selectionMode) return NO_CELL_FLAGS;
                 return selected ? SELECTED_FLAGS : OUT_OF_RANGE_FLAGS;

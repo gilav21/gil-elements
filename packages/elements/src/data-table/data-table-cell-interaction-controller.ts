@@ -231,8 +231,13 @@ export class CellInteractionController<T> {
         }
     }
 
+    /** The report key of a session's failure: one per ATTACHMENT (a session outlives a reconnect; a new attach period reports its first failure again). */
+    private failureKey(): string {
+        return `failure:${this.attachment}`;
+    }
+
     /**
-     * A session failed (its `attach()` or a `hostUpdate()` threw): a bug. It is reported once (`reportOncePer`, key `failure`), marked broken FIRST (nothing calls it again, not even
+     * A session failed (its `attach()` or a `hostUpdate()` threw): a bug. It is reported once (`reportOncePer`, key `failureKey()`), marked broken FIRST (nothing calls it again, not even
      * for the presses it claimed, which end without telling it), detached NOW (that removes what it registered, a key handler or a listener, and disposes
      * a range session's lazy part) and left out of its LIFECYCLE (pointer, hostUpdate, overlay, detach) until the next attach. Its methods of the merged
      * `interaction` service that need its live part answer from `neutral.service` while it is broken; its VALUE (the range: `range()`, `setRange()`,
@@ -240,7 +245,7 @@ export class CellInteractionController<T> {
      * simply resumes the lifecycle.
      */
     private fail(session: CellSession, error: unknown): void {
-        reportOncePer(session, 'failure', SESSION_THREW, error); // the same key as the broken loop's `keepValue`: a value rule that keeps throwing is the same bug, reported once
+        reportOncePer(session, this.failureKey(), SESSION_THREW, error); // the same key as the broken loop's `keepValue`: a value rule that keeps throwing is the same bug, reported once per attachment
         this.broken.add(session);
         for (const [id, press] of [...this.presses]) if (press.claimedBy === session) this.endPress(id, press, null); // `notifyCancel` skips a broken claimant
         this.guarded(() => session.detach());
@@ -271,7 +276,7 @@ export class CellInteractionController<T> {
         this.reconcile();
         // A FAILED session stops its lifecycle but not its value: `keepValue` (guarded, reported once per session) keeps its value rules running. It runs BEFORE
         // the live sessions' updates, so a session that fails in THIS update (its `hostUpdate` is where its value rules threw) is not run twice nor reported twice.
-        for (const session of this.broken) this.guarded(() => session.keepValue?.(), session, 'failure');
+        for (const session of this.broken) this.guarded(() => session.keepValue?.(), session, this.failureKey());
         // A session whose `hostUpdate` throws is failed like one whose attach threw (reported once, left out from now on, withdrawn): it would throw at every
         // render. The others, and the rest of the update, still run.
         this.eachBackwards((session) => {
@@ -760,7 +765,8 @@ export class CellInteractionController<T> {
      */
     private endPress(pointerId: number, press: Press, event: PointerEvent | null, notify = true): void {
         this.presses.delete(pointerId);
-        if (event && press.touch) this.lastPressEnd = event.timeStamp; // a mouse or pen focuses the viewport at its pointerdown, not after the release
+        // Only a TAP in the body (a touch press ended by its pointerup, on this table's rows) can cause the browser's viewport focus that follows: not a scroll's pointercancel, not a toolbar, header or pager tap.
+        if (event?.type === 'pointerup' && press.touch && press.view.pressed && ownClosest(this.host.root, press.view.pressed, BODY)) this.lastPressEnd = event.timeStamp;
         if (this.presses.size === 0) this.unwatchPresses?.(), (this.unwatchPresses = null);
         this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed

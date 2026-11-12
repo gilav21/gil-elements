@@ -20,6 +20,7 @@ const anyActive = (state: { cellStateActive: boolean; rowStateActive: boolean })
 interface RowInfo {
     readonly id: string;
     readonly disabled: boolean;
+    readonly selected?: boolean;
 }
 const row: RowInfo = { id: 'r1', disabled: false };
 const info = (id: string, disabled = false): RowInfo => ({ id, disabled });
@@ -27,7 +28,7 @@ function stateView(host: DataTableViewHost<unknown>) {
     const real = realStateView(host);
     return {
         ...real,
-        cellState: (rowIndex: number, key: string, r: RowInfo) => real.cellState(rowIndex, key, r.id),
+        cellState: (rowIndex: number, key: string, r: RowInfo) => real.cellState(rowIndex, key, r.id, r.selected ?? false),
         rowState: (rowIndex: number, r: RowInfo) => real.rowState(rowIndex, r.id, r.disabled),
     };
 }
@@ -165,16 +166,25 @@ it('says the same as interaction.isCellSelected: no range, the focused cell is a
             expect(ranged.cellState(0, 'a', row)).toMatchObject({ selected: 'true' });
         });
 
+        it('asks the range service for its range ONCE per view and never the selection provider per cell (the renderer passes the selection of its row in)', () => {
+            const range = rangeService({ range: vi.fn(() => null) });
+            const selection = { isSelected: vi.fn(() => false) };
+            const state = stateView(fakeHost({ config: { enableCellRangeSelection: true, enableRowSelection: true }, providers: { range, selection } }));
+            for (const key of ['a', 'b', 'c']) state.cellState(0, key, { ...row, selected: true });
+            expect(range.range).toHaveBeenCalledTimes(1);
+            expect(selection.isSelected).not.toHaveBeenCalled();
+        });
+
         it('also marks the cells of a SELECTED row (row selection on) while the range is elsewhere', () => {
             const selection = { isSelected: (id: string) => id === 'r3' };
             const providers = { range: rangeService({ isInRange: (r: number) => r === 0 }), selection };
             const state = stateView(fakeHost({ config: { enableCellRangeSelection: true, enableRowSelection: true }, providers }));
-            expect(state.cellState(3, 'a', info('r3'))).toMatchObject({ selected: 'true', inRange: false });
-            expect(state.cellState(3, 'b', info('r3'))).toMatchObject({ selected: 'true' });
+            expect(state.cellState(3, 'a', { ...info('r3'), selected: true })).toMatchObject({ selected: 'true', inRange: false });
+            expect(state.cellState(3, 'b', { ...info('r3'), selected: true })).toMatchObject({ selected: 'true' });
             expect(state.cellState(4, 'a', info('r4'))).toBe(OUT_OF_RANGE_FLAGS);
             // row selection off: the selected row does not count
             const off = stateView(fakeHost({ config: { enableCellRangeSelection: true, enableRowSelection: false }, providers }));
-            expect(off.cellState(3, 'a', info('r3'))).toBe(OUT_OF_RANGE_FLAGS);
+            expect(off.cellState(3, 'a', { ...info('r3'), selected: true })).toBe(OUT_OF_RANGE_FLAGS);
         });
 
         it('leaves the special columns (selection, expander, actions) out of it', () => {

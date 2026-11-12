@@ -2514,6 +2514,56 @@ describe('a session whose keepValue keeps throwing after it failed in its hostUp
     });
 });
 
+describe('a session that fails again after a reconnect', () => {
+    it('is reported again: each attach period reports its first failure', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        let message = 'one';
+        let failing = true;
+        const update = vi.spyOn(RangeSession.prototype, 'hostUpdate').mockImplementation(() => {
+            if (failing) throw new Error(message);
+        });
+        try {
+            const table = await mountTable();
+            const parent = table.parentElement!;
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(['one']);
+            table.remove(); // detach: the failure is forgotten
+            message = 'two';
+            parent.append(table); // attach again, and the session fails again, differently
+            await settle(table);
+            expect(error.mock.calls.map((call) => String((call[1] as Error).message))).toEqual(['one', 'two']);
+            failing = false;
+        } finally {
+            update.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
+describe('the viewport focus after a touch press that was not a tap in the body', () => {
+    it('a scroll (pointercancel) or a header tap does not make the viewport focus within 500 ms "pointer-caused": the Tab-in goes to the roving cell', async () => {
+        const table = await mountTable();
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        const cell = cellAt(table, 1, 'name')!;
+        const head = table.querySelector<HTMLElement>('[data-slot="table-head"]')!;
+        const focusViewport = async (): Promise<boolean> => {
+            (document.activeElement as HTMLElement).blur();
+            viewport.focus();
+            await frames(2);
+            const handed = (document.activeElement as HTMLElement).matches('[data-slot="table-cell"]');
+            (document.activeElement as HTMLElement).blur();
+            return handed;
+        };
+        cell.dispatchEvent(pointer('pointerdown', 621, { pointerType: 'touch', over: cell }));
+        cell.dispatchEvent(pointer('pointercancel', 621, { pointerType: 'touch', over: cell })); // the browser took the touch for a scroll
+        expect(await focusViewport()).toBe(true);
+        const box = head.getBoundingClientRect();
+        const at = { pointerType: 'touch', clientX: box.left + 3, clientY: box.top + 3 };
+        head.dispatchEvent(pointer('pointerdown', 622, at));
+        head.dispatchEvent(pointer('pointerup', 622, at)); // a tap on the header
+        expect(await focusViewport()).toBe(true);
+    });
+});
+
 describe('hasPosition', () => {
     it('is false only for an UNTRUSTED event with all-zero coordinates: a real (trusted) press at (0, 0) has a position', () => {
         const at = (isTrusted: boolean, clientX = 0, clientY = 0, screenX = 0, screenY = 0) => ({ isTrusted, clientX, clientY, screenX, screenY });

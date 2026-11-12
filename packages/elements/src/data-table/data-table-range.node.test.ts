@@ -10,7 +10,6 @@ import {
     rangeChartPayload,
     rangeStats,
     rangeModeOn,
-    resetBadRangeWarning,
     warnBadRange,
     rangeColumnKeys,
     rangeEdges,
@@ -194,15 +193,19 @@ describe('rangeColumnKeys, rangeModeOn and warnBadRange', () => {
         expect(rangeColumnKeys([{ accessorKey: 'a' }, { accessorKey: '_selection' }, { accessorKey: 'b' }, { accessorKey: '_actions' }])).toEqual(['a', 'b']);
     });
 
-    it('warns once per page, however many owners call it, until it is reset (tests)', () => {
+    it('warns once per table and kind: another table speaks again, and "previous range stays" and "dropped" are different messages', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-        resetBadRangeWarning();
-        warnBadRange(1);
-        warnBadRange(2);
+        const table = {};
+        warnBadRange(table, 1, true);
+        warnBadRange(table, 2, true);
         expect(warn).toHaveBeenCalledTimes(1);
-        resetBadRangeWarning();
-        warnBadRange(3);
+        expect(String(warn.mock.calls[0]?.[0])).toContain('the previous range stays');
+        warnBadRange(table, 3, false);
         expect(warn).toHaveBeenCalledTimes(2);
+        expect(String(warn.mock.calls[1]?.[0])).toContain('dropped');
+        expect(String(warn.mock.calls[1]?.[0])).not.toContain('stays');
+        warnBadRange({}, 4, true);
+        expect(warn).toHaveBeenCalledTimes(3);
         warn.mockRestore();
     });
 

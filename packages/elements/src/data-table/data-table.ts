@@ -560,7 +560,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // then it stays a held value only). The value waits here, checked by the same rules (rows are not known yet), and the range session adopts it
         // right after the first attach.
         const next = sanitizeCellRange(range, 0, []); // the columns are looked up by the session at its next update
-        if (next === undefined) warnBadRange(range);
+        if (next === undefined) warnBadRange(this, range, (this.earlyRange ?? null) !== null);
         else this.earlyRange = next;
     }
 

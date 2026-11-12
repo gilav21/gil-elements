@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { InteractionContext } from './data-table-cell-session.js';
-import { resetBadRangeWarning } from './data-table-range.js';
 import { RangeSession } from './data-table-range-session.js';
 import { RangePart } from './lazy/range.js';
 
@@ -55,7 +54,6 @@ describe('RangeSession column validation of an invalid range', () => {
 describe('RangeSession keeps the last VALID range', () => {
     it('a valid range, then a range with a bad column: after the update the valid one is back (one warning); an explicit clear forgets it', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-        resetBadRangeWarning();
         const { range } = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]);
         const good = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' };
         range.rangeService.setRange(good);
@@ -78,7 +76,6 @@ describe('RangeSession keeps the last VALID range', () => {
 describe('RangeSession and the last valid range after the columns or the mode change', () => {
     it('a range on columns that were removed is dropped, not kept for ever as the "previous" one (warned)', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-        resetBadRangeWarning();
         const { range, config } = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]);
         range.rangeService.setRange({ startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' });
         range.hostUpdate();
@@ -110,7 +107,6 @@ describe('RangeSession and the last valid range after the columns or the mode ch
 describe('RangeSession column validation by value', () => {
     it('sees a later mutation of the consumer\'s own range object: endCol changed to a missing column is refused with the warning, and the last valid range stays', () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-        resetBadRangeWarning();
         const { range } = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]);
         const mine = { startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' };
         range.rangeService.setRange(mine);
@@ -260,5 +256,26 @@ describe('RangeSession.setRange', () => {
         rows = 3; // the data shrinks
         range.hostUpdate();
         expect(range.rangeService.range()).toEqual({ startRow: 0, startCol: 'a', endRow: 2, endCol: 'a' });
+    });
+});
+
+describe('RangeSession says what actually happened to a bad range', () => {
+    it('with no earlier valid range it says "dropped"; with one it says "the previous range stays"; each table speaks for itself', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const bad = { startRow: 2, startCol: 'a', endRow: 3, endCol: 'zzz' };
+        const first = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]).range;
+        first.rangeService.setRange(bad);
+        first.hostUpdate();
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(String(warn.mock.calls[0]?.[0])).toContain('dropped');
+        expect(String(warn.mock.calls[0]?.[0])).not.toContain('stays');
+        const second = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]).range; // another table: it speaks again
+        second.rangeService.setRange({ startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' });
+        second.hostUpdate();
+        second.rangeService.setRange(bad);
+        second.hostUpdate();
+        expect(warn).toHaveBeenCalledTimes(2);
+        expect(String(warn.mock.calls[1]?.[0])).toContain('the previous range stays');
+        warn.mockRestore();
     });
 });

@@ -80,7 +80,7 @@ export class RangeSession<T> implements CellSession {
             // trim `r` against the old data): `hostUpdate` trims them once the rows of that update are known.
             const next = sanitizeCellRange(range, 0, []);
             if (next === undefined) {
-                warnBadRange(range);
+                warnBadRange(this.context.host, range, this.held !== null);
                 return false; // refused: the old value stays, and the caller keeps what it holds
             }
             const changed = !sameRange(this.seen, next); // by VALUE against the copy: an in-place edit followed by the same object again is a change
@@ -97,16 +97,26 @@ export class RangeSession<T> implements CellSession {
 
     /**
      * Derived from `rangeService`, so wave 6 implements one pair. `isCellSelected` is Angular's (cmp `isCellSelected`, which the context-menu
-     * addon reads): with a range, whether the cell is in it; with none, whether it is the focused cell. Not gated on the range flag: the
+     * addon reads): `cellSelectedBy` (a cell of a selected row, else in the range, else the focused cell). Not gated on the range flag: the
      * focused cell is "selected" for the menu whatever the mode (the step 0 stub used to answer false always; the spec 0.3 #4 meaning wins).
      * With the flags off no range is reported, so the focused cell is what is reported. The range branch needs the range service ACTIVE (part
      * loaded): while it loads, or after a latched load failure, `isInRange` has no answer, so the focused cell is reported instead.
      */
     readonly service: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = {
         cellRange: () => this.rangeService.range(),
-        isCellSelected: (rowIndex, columnKey) =>
-            cellSelectedBy(this.rangeService.active() ? this.rangeService.range() : null, () => this.rangeService.isInRange(rowIndex, columnKey), this.context.focused(), rowIndex, columnKey),
+        isCellSelected: (rowIndex, columnKey) => {
+            const range = this.rangeService.active() ? this.rangeService.range() : null;
+            return cellSelectedBy(range, range !== null && this.rangeService.isInRange(rowIndex, columnKey), this.context.focused(), rowIndex, columnKey, this.rowSelected(rowIndex));
+        },
     };
+
+    /** The row at this rendered index is selected, with row selection on (what the cell's `aria-selected` is given by the renderer, which already knows its row). */
+    private rowSelected(rowIndex: number): boolean {
+        const { host } = this.context;
+        if (!host.config.enableRowSelection) return false;
+        const row = host.provider('query')?.renderedRowAt(rowIndex);
+        return row !== undefined && host.provider('selection')?.isSelected(String(host.config.getRowId(row))) === true;
+    }
 
     /** The attached part's range when there is a part (it may have cleared it: null is an answer), else the held one; whatever the range mode. */
     private live(): CellRange | null {
@@ -143,10 +153,10 @@ export class RangeSession<T> implements CellSession {
             this.checked = { range: { ...this.held }, columns }; // remembered only once the range PASSED (by VALUE: a later mutation of the consumer's object is seen)
             return;
         }
-        warnBadRange(this.held);
         // The last range that PASSED is restored only if it is a different range and passes against the CURRENT columns; else the range is dropped.
         const last = this.checked?.range;
         const previous = last && !sameRange(last, this.held) && sanitizeCellRange(last, 0, keys) !== undefined ? { ...last } : null;
+        warnBadRange(this.context.host, this.held, previous !== null);
         this.held = previous;
         this.checked = previous && { range: { ...previous }, columns };
         this.setPartRange(previous);
