@@ -185,15 +185,15 @@ export function localSortApplies(localSorting: boolean, tree: boolean, subRowSor
  * Whether the table itself reorders the rows by a sort: `localSortApplies`, and a sort in force (`activeSorts`' rule) on
  * at least one known column (`buildSortComparator` skips the others). Allocates nothing (plain loops).
  */
-export function sortReordersRows<T>(
-    multi: boolean,
-    sortState: SortState,
-    multiSortState: readonly SortState[],
-    columns: readonly ColumnDef<T>[],
-    localSorting: boolean,
-    tree: boolean,
-    subRowSorting: boolean,
-): boolean {
+export function sortReordersRows<T>({ multi, sortState, multiSortState, columns, localSorting, tree, subRowSorting }: {
+    multi: boolean;
+    sortState: SortState;
+    multiSortState: readonly SortState[];
+    columns: readonly ColumnDef<T>[];
+    localSorting: boolean;
+    tree: boolean;
+    subRowSorting: boolean;
+}): boolean {
     if (!localSortApplies(localSorting, tree, subRowSorting)) return false;
     if (!multi) return sortApplies(sortState, columns);
     for (const sort of multiSortState) if (sortApplies(sort, columns)) return true;

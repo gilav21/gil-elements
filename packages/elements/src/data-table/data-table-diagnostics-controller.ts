@@ -1,5 +1,6 @@
-import { type ConfigCheckInput, validateConfig } from './data-table-config-check.js';
+import { type ConfigCheckInput, scansRowIds, validateConfig } from './data-table-config-check.js';
 import type { DataTableCoreHost } from './data-table-host.js';
+import { isGroupingActive } from './data-table-group.js';
 import { sortReordersRows } from './data-table-query.js';
 import { findDuplicateRowIds } from './data-table.utils.js';
 
@@ -57,12 +58,20 @@ export class DiagnosticsController<T> {
             // Only what a check reads (or a wave check about to land reads) is here: each re-run costs the O(rows) id scan.
             enableFillHandle: config.enableFillHandle,
             enableClipboardPaste: config.enableClipboardPaste,
-            localReorder: config.localReorder,
             // Resolved to one boolean, and false outside row drag with local reorder, so a sort change re-runs nothing there.
-            rowDragSorted:
+            rowDragOrderOverridden:
                 config.enableRowDrag &&
                 config.localReorder &&
-                sortReordersRows(config.enableMultiSort, model.get('sortState'), model.get('multiSortState'), config.columns, config.localSorting, config.enableSubRows, config.enableSubRowSorting),
+                (isGroupingActive(config.groupBy, config.enableSubRows, virtualActive) ||
+                    sortReordersRows({
+                        multi: config.enableMultiSort,
+                        sortState: model.get('sortState'),
+                        multiSortState: model.get('multiSortState'),
+                        columns: config.columns,
+                        localSorting: config.localSorting,
+                        tree: config.enableSubRows,
+                        subRowSorting: config.enableSubRowSorting,
+                    })),
         };
         if (!sameSnapshot(this.last, snapshot)) {
             this.last = snapshot;
@@ -90,7 +99,8 @@ export class DiagnosticsController<T> {
             this.warn('[ge-data-table] enable-row-expansion with virtual scroll: a detail row has no fixed height, so row heights are measured (as with virtual-variable-row-height) and the window uses them.');
         }
         // `validateConfig` already reports shared ids for the features that act on them; rows are KEYED by id either way.
-        if (data && data.length > 1 && !warnings.some((m) => m.includes('row id(s) are shared'))) {
+        // Rows are keyed by id even without a feature that needs ids; `validateConfig` already scanned them when one does.
+        if (data && data.length > 1 && !scansRowIds(input)) {
             const dupes = findDuplicateRowIds(data, (getRowId ?? this.host.config.getRowId) as (row: T) => string);
             if (dupes.length > 0) {
                 this.warn(`[ge-data-table] ${dupes.length} row id(s) are shared by more than one row (e.g. ${dupes.slice(0, 3).map((d) => JSON.stringify(d)).join(', ')}). Rows are keyed by id, so rows sharing one are drawn and updated wrongly; provide a unique getRowId.`);

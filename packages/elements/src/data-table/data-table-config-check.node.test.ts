@@ -17,6 +17,18 @@ const ok: ConfigCheckInput<Row> = {
 };
 const check = (over: Partial<ConfigCheckInput<Row>>) => validateConfig({ ...ok, ...over });
 
+describe('validateConfig: wave 6', () => {
+    it.each(['enableFillHandle', 'enableClipboardPaste'] as const)('warns when %s is on and no column has a valueSetter', (flag) => {
+        expect(check({ [flag]: true }).some((m) => m.includes('no column has a valueSetter'))).toBe(true);
+        const withSetter = { columns: [{ accessorKey: 'name' as const, header: 'N', valueSetter: (row: Row) => row }] };
+        expect(check({ [flag]: true, ...withSetter }).some((m) => m.includes('no column has a valueSetter'))).toBe(false);
+    });
+    it('warns about row drag while the drawn order is overridden', () => {
+        expect(check({ rowDragOrderOverridden: true }).some((m) => m.includes('does not appear to move'))).toBe(true);
+        expect(check({ rowDragOrderOverridden: false })).toEqual([]);
+    });
+});
+
 describe('validateConfig', () => {
     it('is silent for a sane configuration', () => {
         expect(validateConfig(ok)).toEqual([]);

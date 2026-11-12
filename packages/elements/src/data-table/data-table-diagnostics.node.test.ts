@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const validateConfig = vi.hoisted(() => vi.fn<(input: unknown) => string[]>(() => []));
-vi.mock('./data-table-config-check.js', () => ({ validateConfig }));
+vi.mock('./data-table-config-check.js', () => ({ validateConfig, scansRowIds: () => false }));
 
 import { DiagnosticsController } from './data-table-diagnostics-controller.js';
 import type { DataTableCoreHost } from './data-table-host.js';
@@ -71,7 +71,7 @@ describe('the diagnostics snapshot', () => {
     it('does not re-run when a sort is cleared or applied without row drag', () => {
         const table = setup({ enableRowDrag: false });
         table.run();
-        expect(lastInput()['rowDragSorted']).toBe(false);
+        expect(lastInput()['rowDragOrderOverridden']).toBe(false);
         table.sort('a', null);
         table.run();
         table.sort('a', 'asc');
@@ -82,15 +82,15 @@ describe('the diagnostics snapshot', () => {
     it('re-runs when the sort is cleared and re-applied during row drag with local reorder', () => {
         const table = setup(DRAG);
         table.run();
-        expect(lastInput()['rowDragSorted']).toBe(true);
+        expect(lastInput()['rowDragOrderOverridden']).toBe(true);
         table.sort('a', null);
         table.run();
         expect(validateConfig).toHaveBeenCalledTimes(2);
-        expect(lastInput()['rowDragSorted']).toBe(false);
+        expect(lastInput()['rowDragOrderOverridden']).toBe(false);
         table.sort('a', 'asc');
         table.run();
         expect(validateConfig).toHaveBeenCalledTimes(3);
-        expect(lastInput()['rowDragSorted']).toBe(true);
+        expect(lastInput()['rowDragOrderOverridden']).toBe(true);
     });
 
     it.each([
@@ -103,11 +103,11 @@ describe('the diagnostics snapshot', () => {
         ['tree mode without sub-row sorting', { enableSubRows: true }, null, false],
         ['tree mode with sub-row sorting', { enableSubRows: true, enableSubRowSorting: true }, null, true],
         ['local reorder off', { localReorder: false }, null, false],
-    ] as const)('rowDragSorted follows the table’s own rule: %s', (_name, config, chain, expected) => {
+    ] as const)('rowDragOrderOverridden follows the table’s own rule: %s', (_name, config, chain, expected) => {
         const table = setup({ ...DRAG, ...config });
         if (chain) table.multiSort([...chain]);
         table.run();
-        expect(lastInput()['rowDragSorted']).toBe(expected);
+        expect(lastInput()['rowDragOrderOverridden']).toBe(expected);
     });
 
     it.each([
@@ -117,19 +117,19 @@ describe('the diagnostics snapshot', () => {
         const table = setup(DRAG);
         table.sort(column, 'asc');
         table.run();
-        expect(lastInput()['rowDragSorted']).toBe(false);
+        expect(lastInput()['rowDragOrderOverridden']).toBe(false);
     });
 
     it.each([
         ['localSorting', false],
         ['enableMultiSort', true],
-    ])('re-runs with a fresh rowDragSorted when %s changes at runtime', (flag, value) => {
+    ])('re-runs with a fresh rowDragOrderOverridden when %s changes at runtime', (flag, value) => {
         const table = setup(DRAG);
         table.run();
         table.config[flag] = value;
         table.run();
         expect(validateConfig).toHaveBeenCalledTimes(2);
-        expect(lastInput()['rowDragSorted']).toBe(false);
+        expect(lastInput()['rowDragOrderOverridden']).toBe(false);
     });
 
     it('follows the columns: losing the sorted column clears it, keeping it does not', () => {
@@ -138,14 +138,32 @@ describe('the diagnostics snapshot', () => {
         table.config['columns'] = [{ accessorKey: 'a' }];
         table.run();
         expect(validateConfig).toHaveBeenCalledTimes(2);
-        expect(lastInput()['rowDragSorted']).toBe(true);
+        expect(lastInput()['rowDragOrderOverridden']).toBe(true);
         table.config['columns'] = [{ accessorKey: 'b' }];
         table.run();
         expect(validateConfig).toHaveBeenCalledTimes(3);
-        expect(lastInput()['rowDragSorted']).toBe(false);
+        expect(lastInput()['rowDragOrderOverridden']).toBe(false);
     });
 
-    it.each(['enableFillHandle', 'enableClipboardPaste', 'localReorder'])('re-runs the config check when %s changes and passes it', (flag) => {
+    it.each([
+        ['a plain group-by', {}, true],
+        ['group-by with sub-rows (ignored by the table)', { enableSubRows: true }, false],
+    ])('a group-by overrides the drawn order too: %s', (_name, config, expected) => {
+        const table = setup({ ...DRAG, groupBy: 'a', ...config });
+        table.sort('a', null);
+        table.run();
+        expect(lastInput()['rowDragOrderOverridden']).toBe(expected);
+    });
+
+    it('does not re-run when localReorder changes without row drag', () => {
+        const table = setup({ enableRowDrag: false, localReorder: false });
+        table.run();
+        table.config['localReorder'] = true;
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(1);
+    });
+
+    it.each(['enableFillHandle', 'enableClipboardPaste'])('re-runs the config check when %s changes and passes it', (flag) => {
         const table = setup({ [flag]: false });
         table.run();
         table.config[flag] = true;
