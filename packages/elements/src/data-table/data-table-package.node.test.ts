@@ -14,5 +14,10 @@ describe('package.json sideEffects', () => {
         expect(entries.length).toBeGreaterThanOrEqual(5);
         const patterns = pkg.sideEffects.map(globToRegex);
         for (const entry of entries) expect(patterns.some((pattern) => pattern.test(entry)), entry).toBe(true);
+        // wave5: and their SOURCES, for a consumer (or the parity bundle) that builds from `src`: a bare import of a lazy module must not be dropped.
+        for (const entry of entries) {
+            const source = entry.replace(/^dist\//, 'src/').replace(/\.js$/, '.ts');
+            expect(patterns.some((pattern) => pattern.test(source)), source).toBe(true);
+        }
     });
 });

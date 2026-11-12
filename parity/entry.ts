@@ -148,8 +148,6 @@ import '../packages/elements/src/file-viewer/define.js';
 import '../packages/elements/src/page-builder/define.js';
 import '../packages/elements/src/page-renderer/define.js';
 import '../packages/elements/src/data-table/define.js';
-// wave5: the advanced filter builder is a lazy entry the table loads on demand; defined here so its parity case can render it standalone.
-// A bare `import '…/lazy/filter-builder.js'` is dropped by the bundler (the package's `sideEffects` names the built `lazy/*.js`, not the
-// `.ts` source), so the class is imported and defined explicitly (a no-op once the lazy module defined it).
-import { GeDataTableFilterBuilder } from '../packages/elements/src/data-table/lazy/filter-builder.js';
-if (!customElements.get('ge-data-table-filter-builder')) customElements.define('ge-data-table-filter-builder', GeDataTableFilterBuilder);
+// wave5: the advanced filter builder is a lazy entry the table loads on demand; imported here so its parity case can render it standalone
+// (the package's `sideEffects` names the lazy sources too, so the bundler keeps the module's define).
+import '../packages/elements/src/data-table/lazy/filter-builder.js';
