@@ -376,6 +376,10 @@ export class QueryController<T> {
      * The answer to the last query is in (its `data`, a changed `total`, or the `ANSWER_WAIT_MS` fallback): `filteredCount` answers the total
      * again, a waiting announcement is spoken a tick later (the consumer may set `total` after `data`), and the table renders, so a controller
      * that waits for the count in its own update sees it.
+     *
+     * KNOWN LIMITATION: the table cannot tell an answer from any other `data` the consumer assigns, so in server mode ANY outside `data`
+     * assignment ends the wait (an unrelated push, a live update, between the query and its answer, ends it early and the count spoken is
+     * that moment's `total`).
      */
     private answered(): void {
         if (!this.awaitingRows) return;
