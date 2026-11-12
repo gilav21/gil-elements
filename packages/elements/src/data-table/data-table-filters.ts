@@ -6,7 +6,7 @@
  */
 import type { CalendarLocale } from '../shared/calendar-locales.js';
 import type { ColumnDef, DataTableDateRange, FilterCondition, FilterGroup, FilterOperator, FilterRule } from './data-table.types.js';
-import { asEditableDate, isFilterValueEmpty, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
+import { asEditableDate, isFilterValueEmpty, isSpecialColumnKey } from './data-table.utils.js';
 
 // ---- filter functions (exported from the package index) ---------------------------------------------------------------------------
 
@@ -165,14 +165,11 @@ const VALUELESS: ReadonlySet<FilterOperator> = new Set(['isEmpty', 'isNotEmpty']
 /** False for the unary operators, which hide the value input (the rule keeps its old value). */
 export const needsValue = (operator: FilterOperator): boolean => !VALUELESS.has(operator);
 
-/** A rule's value as the text input shows it. */
-export const asText = (value: unknown): string => stringifyValue(value);
-
-/** The empty AND group the builder shows while no advanced filter is set. */
-export const emptyGroup = (): FilterGroup => ({ type: 'group', combinator: 'and', rules: [] });
-
 /** The tree the builder shows while there is no advanced filter: ONE frozen object (the tree operations never mutate, they build new trees). */
 export const EMPTY_GROUP: FilterGroup = Object.freeze({ type: 'group', combinator: 'and', rules: Object.freeze([]) as unknown as FilterGroup['rules'] }) as FilterGroup;
+
+/** A new empty group (a nested one added by the builder): EMPTY_GROUP's shape, with a rules array of its own. */
+export const emptyGroup = (): FilterGroup => ({ ...EMPTY_GROUP, rules: [] });
 
 /** The columns the builder offers: the consumer's columns, special ones left out. */
 export const builderColumns = <T>(columns: readonly ColumnDef<T>[]): FilterBuilderColumn[] =>

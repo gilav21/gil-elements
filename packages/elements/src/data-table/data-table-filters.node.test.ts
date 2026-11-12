@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     addCondition,
     addGroup,
-    asText,
+    EMPTY_GROUP,
     builderColumns,
     dateFilterFn,
     dateRangeFilterFn,
@@ -220,13 +220,16 @@ describe('builder tree operations', () => {
         setCombinator(group, 'or');
         expect(JSON.stringify(group)).toBe(before);
     });
-    it('needsValue is false for the unary operators; asText stringifies', () => {
+    it('needsValue is false for the unary operators', () => {
         expect(needsValue('isEmpty')).toBe(false);
         expect(needsValue('isNotEmpty')).toBe(false);
         expect(OPERATOR_ORDER.filter(needsValue)).toHaveLength(10);
-        expect(asText(42)).toBe('42');
-        expect(asText('hello')).toBe('hello');
-        expect(asText(undefined)).toBe('');
+    });
+    it('emptyGroup is EMPTY_GROUP with a rules array of its own (round 13)', () => {
+        const group = emptyGroup();
+        expect(group).toEqual(EMPTY_GROUP);
+        expect(group.rules).not.toBe(EMPTY_GROUP.rules);
+        expect(Object.isFrozen(group.rules)).toBe(false);
     });
     it('offers the consumer columns, special ones left out', () => {
         expect(builderColumns<unknown>([{ accessorKey: '_selection', header: '' }, { accessorKey: 'a', header: 'A' }])).toEqual([{ key: 'a', header: 'A' }]);
