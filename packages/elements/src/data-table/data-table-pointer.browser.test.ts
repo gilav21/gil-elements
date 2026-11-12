@@ -1799,7 +1799,7 @@ describe('a tap left pending by a stopped pointerup', () => {
 });
 
 describe('a release a window-level capture listener swallowed', () => {
-    it('does not leave "a pointer is down": a key anywhere (the Tab in from outside) clears it and the Tab-in focuses a cell', async () => {
+    it('is closed by the next move of that mouse with no button down: Tab into the grid focuses a cell; a key never closes a press (Shift during a drag)', async () => {
         const table = await mountTable();
         const swallow = (event: Event): void => event.stopImmediatePropagation();
         window.addEventListener('pointerup', swallow, true);
@@ -1813,11 +1813,122 @@ describe('a release a window-level capture listener swallowed', () => {
             window.removeEventListener('pointerup', swallow, true);
         }
         outside.focus();
+        outside.dispatchEvent(pointer('pointermove', 491, { buttons: 0 })); // the mouse moves with no button down: its release was lost
         outside.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }));
         table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!.focus(); // what the Tab does
         await frames(2);
         expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
         outside.remove();
+    });
+});
+
+describe('a press that is still held', () => {
+    it('keeps "a pointer is down" through a key (Shift during a drag) and through a move with the button down: the viewport focus is not a Tab arrival', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 495, { over: cell, buttons: 1 }));
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true, composed: true }));
+        document.body.dispatchEvent(pointer('pointermove', 495, { buttons: 1 }));
+        const viewport = table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!;
+        viewport.focus();
+        await frames(2);
+        expect(document.activeElement).toBe(viewport); // not handed to a cell: a pointer is down
+        document.dispatchEvent(pointer('pointerup', 495, { over: cell }));
+    });
+});
+
+describe('a tap left pending by a stopped pointerup (after the dispatch)', () => {
+    it('is dropped right after the dispatch: no event is kept alive', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const stopper = document.createElement('span');
+        stopper.addEventListener('pointerup', (event) => event.stopPropagation());
+        cell.append(stopper);
+        const controller = (table as unknown as { assembled: { controllers: Record<string, unknown>[] } }).assembled.controllers.find((c) => 'tapPending' in c)!;
+        stopper.dispatchEvent(pointer('pointerdown', 496, { pointerType: 'touch', over: stopper }));
+        stopper.dispatchEvent(pointer('pointerup', 496, { pointerType: 'touch', over: stopper }));
+        expect(controller['tapPending']).not.toBeNull();
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(controller['tapPending']).toBeNull();
+    });
+});
+
+describe('the library\'s own controls and ARIA widgets in a cell', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('are the control\'s own: a press on ge-select, ge-switch, a role=switch div or a role=combobox gets no offer and moves no focus', async () => {
+        const table = await mountTable();
+        table.focusCell(0, 'name');
+        await settle(table);
+        const downs: unknown[] = [];
+        hooks.onPointerDown = () => void downs.push('down');
+        const cell = cellAt(table, 1, 'name')!;
+        const made = [document.createElement('ge-select'), document.createElement('ge-switch'), document.createElement('div'), document.createElement('span')];
+        made[2]!.setAttribute('role', 'switch');
+        made[3]!.setAttribute('role', 'combobox');
+        cell.append(...made);
+        made.forEach((el, i) => {
+            el.dispatchEvent(pointer('pointerdown', 500 + i, { over: cell }));
+            el.dispatchEvent(pointer('pointerup', 500 + i, { over: cell }));
+        });
+        expect(downs).toEqual([]);
+        expect(table.focusedCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+    });
+});
+
+describe('a release nothing needs the location of', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is not located: an unclaimed mouse press makes no geometry read at its release when no session defines onPointerUp (and does when one does)', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const child = document.createElement('span');
+        cell.append(child);
+        const box = cell.getBoundingClientRect();
+        const spy = vi.spyOn(Element.prototype, 'getBoundingClientRect');
+        try {
+            for (const withUp of [false, true]) {
+                if (withUp) hooks.onPointerUp = () => undefined;
+                const id = withUp ? 511 : 510;
+                const at = { clientX: box.left + 3, clientY: box.top + 3 }; // inside the cell
+                const down = pointer('pointerdown', id, at);
+                const up = pointer('pointerup', id, at);
+                child.dispatchEvent(down);
+                spy.mockClear();
+                child.dispatchEvent(up);
+                if (withUp) expect(spy).toHaveBeenCalled();
+                else expect(spy).not.toHaveBeenCalled();
+            }
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    it('is not located: an unclaimed TOUCH press that began on a header (nothing to focus or clear) makes no hit test; one on the body outside any cell does', async () => {
+        const table = await mountTable();
+        const head = table.querySelector<HTMLElement>('[data-slot="table-head"]')!;
+        const body = table.querySelector<HTMLElement>('[data-slot="table-body"]')!;
+        const filler = document.createElement('div');
+        body.append(filler);
+        const spy = vi.spyOn(Document.prototype, 'elementsFromPoint');
+        try {
+            const tap = (el: Element, id: number): void => {
+                const box = el.getBoundingClientRect();
+                const at = { pointerType: 'touch', clientX: box.left + 3, clientY: box.top + 3 };
+                el.dispatchEvent(pointer('pointerdown', id, at));
+                el.dispatchEvent(pointer('pointerup', id, at));
+            };
+            tap(head, 520);
+            expect(spy).not.toHaveBeenCalled();
+            tap(filler, 521);
+            expect(spy).toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+        }
     });
 });
 

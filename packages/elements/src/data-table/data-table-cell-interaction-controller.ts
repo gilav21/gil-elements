@@ -3,6 +3,7 @@ import type { CellSession, InteractionContext, PointerPress } from './data-table
 import { EditSession } from './data-table-edit-session.js';
 import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
+import { INTERACTIVE_ROLES, INTERACTIVE_TAGS } from '../shared/interactive-tags.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { RangeSession } from './data-table-range-session.js';
@@ -54,12 +55,12 @@ function floatsOut(el: Element, x: number, y: number): boolean {
  * A press on one of these belongs to the control: it keeps its own focus and click. `data-table-keeps-focus` is the explicit opt-out for a widget in a cell
  * that manages its own focus (a combobox, a menu button, a custom editor): treated like a control.
  */
-const CONTROLS = 'input, textarea, select, button, a[href], [role="checkbox"], ge-checkbox, ge-input, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]';
+const CONTROLS = `input, textarea, select, button, a[href], [role="checkbox"], ${INTERACTIVE_TAGS.join(', ')}, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]`;
 const CELL = '[data-slot="table-cell"]';
 /** A press on this element clears the focus: it is the body outside any cell (a group row, the stretch row); the toolbar, header, pager and detail rows do not. */
 const clearsFocus = (target: Element): boolean => target.closest(BODY) !== null && target.closest('[data-kind="detail"]') === null;
-/** Inside a cell, also an anchor used as a button or a link. NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
-const CELL_CONTROLS = `${CONTROLS}, a, [role="button"], [role="link"]`;
+/** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
+const CELL_CONTROLS = `${CONTROLS}, a, ${INTERACTIVE_ROLES.map((role) => `[role="${role}"]`).join(', ')}`;
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
 /** Rows moved by one page key when nothing is drawn to measure. */
@@ -85,8 +86,6 @@ export class CellInteractionController<T> {
     private lastColumn = 0;
     /** DOM focus is inside the grid: a render that loses it (rows moved, a row left the window) gives it back. */
     private within = false;
-    /** A pointer is down: the focus it causes on the viewport is not a Tab arrival. */
-    private pointer = false;
     private observer: MutationObserver | null = null;
     /** The row that held the focus when a node or group was opened or closed: the render that follows follows it. */
     private rowAtExpansion: { at: CellAddress; id: string; hadFocus: boolean } | null = null;
@@ -216,8 +215,12 @@ export class CellInteractionController<T> {
                 this.within = false;
                 this.cancelPresses();
             }),
-            // Any key anywhere (a Tab in from outside included) ends "a pointer is down" for the focus guard: a release that a page-level capture listener swallowed must not skip the Tab-in focus.
-            disposables.listen(root.ownerDocument, 'keydown', () => (this.pointer = false), true),
+            // A press whose release was swallowed (a window-level capture listener) is closed by the next move of its mouse or pen with no button down: such a
+            // pointer is not pressing any more. Keys never end a press (a Shift during a drag). The early exit makes the hot move event cost one check.
+            disposables.listen<PointerEvent>(root.ownerDocument, 'pointermove', (event) => {
+                const press = event.buttons === 0 && event.pointerType !== 'touch' ? this.presses.get(event.pointerId) : undefined;
+                if (press) this.endPress(event.pointerId, press, null);
+            }, true),
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => this.onFocusIn(event))),
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
             disposables.add(() => this.observer?.disconnect()),
@@ -259,7 +262,7 @@ export class CellInteractionController<T> {
         this.teardown = [];
         this.observer?.disconnect();
         this.observer = this.watched = null;
-        this.within = false; // (`pointer` was reset by `endPress`)
+        this.within = false;
         this.clearedAt = null;
         this.captured.clear(); // captures of pointers that had no press
         // (`closing` is empty here: `cancelPresses` above ended every press through `endPress`, which cancels and drops its pending look)
@@ -522,7 +525,7 @@ export class CellInteractionController<T> {
 
     /** Tab (or a script) put focus on the viewport: hand it to the roving cell, or to the first one. */
     private onViewportFocus(): void {
-        if (this.pointer) return;
+        if (this.presses.size > 0) return; // a pointer is down: the focus it causes on the viewport is not a Tab arrival
         const keys = requireProvider(this.host, 'columns').focusableKeys();
         const first = keys[0];
         // A drawn roving cell never leaves the viewport tabbable, so a viewport focus here means it is not on screen (or none exists).
@@ -595,7 +598,6 @@ export class CellInteractionController<T> {
         // (like at detach and window blur); the new pointerdown is not its end.
         const lost = this.presses.get(event.pointerId);
         if (lost) this.endPress(event.pointerId, lost, this.closing.get(event.pointerId)?.event ?? null);
-        this.pointer = true;
         const path = event.composedPath(); // once per event: a path is built at every call
         const target = this.targetOf(path);
         // A press that begins on an overlay is OFFERED (see `overlay` below) but is never a cell press: it has no start cell, and only the RELEASE of a gesture is looked through it.
@@ -630,10 +632,12 @@ export class CellInteractionController<T> {
         // is over), a release that is not on this table ends the press as a cancel, and the tail offers it and runs the tap. Whether a tap focuses never
         // depends on which sessions define `onPointerUp`.
         // THE cell-press rule. An UNCLAIMED press is a cell press only when it is not the control's own, not an overlay press, not one a widget stopped
-        // (`!bubbled`) and began on a body cell; and only a TOUCH can still tap. Anything else is not offered at its release and never taps: nothing needs its
-        // location, so no hit test (a tap on an in-cell checkbox, a column-resize drag released over the body cost none). A mouse press that began in no
-        // cell (a group row) did its focus work at its pointerdown.
-        if (!press.claimedBy && (press.bypass || press.overlay || !press.bubbled || (!press.view.startCell && event.pointerType !== 'touch'))) {
+        // (`!bubbled`) and began on a body cell. Then it matters at its release only for a TOUCH tap (which focuses or clears) and for a session that defines
+        // `onPointerUp` (a mouse or pen has nothing else to do there). Anything else is not offered at its release and never taps: nothing needs its location,
+        // so no hit test (a tap on an in-cell checkbox or a column header, a column-resize drag released over the body, a click with no `onPointerUp` session).
+        // A press that began in no cell did its focus work at its pointerdown (a mouse) or has the clear of the body to do (a touch tap: `clears`).
+        const touch = event.pointerType === 'touch';
+        if (!press.claimedBy && (press.bypass || press.overlay || !press.bubbled || (!press.view.startCell && !(touch && press.clears)) || (!touch && !this.sessions.some((session) => session.onPointerUp && !this.broken.has(session))))) {
             this.endPress(event.pointerId, press, event, false);
             return;
         }
@@ -656,7 +660,13 @@ export class CellInteractionController<T> {
         // A TAP does what a mouse press on the PRESSED element does (`pointerFocus`: it focuses a cell, clears the focus on the body outside any cell, and
         // does nothing on a header, a control or a popover), unless that element is in the open editor's cell. It is a tap while the finger is released
         // within the pressed cell's box plus a small slop; further away it was a drag and focuses nothing. (A claimant is told the cell under the finger.)
-        if (event.pointerType === 'touch') this.tapPending = { event, press }; // run by `onRootUpBubble` if the event gets there (a widget that stops it keeps its focus)
+        if (event.pointerType === 'touch') {
+            // Run by the bubble-phase pointerup listener of the SAME event (a widget that stops it keeps its focus); dropped right after the dispatch if that never ran.
+            this.tapPending = { event, press };
+            this.afterDispatch(() => {
+                if (this.tapPending?.event === event) this.tapPending = null;
+            });
+        }
     }
 
     /** The mouse / pen focus move of a cell press, by the recorded element; when a renderer replaced it during the dispatch, by the press's start cell (an address). */
@@ -724,7 +734,6 @@ export class CellInteractionController<T> {
         this.captured.delete(pointerId); // its `lostpointercapture` may never reach us
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed
         this.closing.delete(pointerId);
-        this.pointer = this.presses.size > 0;
         if (this.tapPending?.press === press) this.tapPending = null;
         if (notify) this.notifyCancel(press, event);
     }
