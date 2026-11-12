@@ -59,6 +59,31 @@ export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] |
 /** How long a filter result announcement waits for the edits to settle (D7): ONE value for the global filter and the column / advanced filters. */
 export const FILTER_ANNOUNCE_MS = 500;
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+    if (value === null || typeof value !== 'object') return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
+};
+
+/**
+ * Structural equality of filter state: primitives by `Object.is`, `Date`s by time, arrays item by item, PLAIN objects key by key (an absent key and
+ * one holding `undefined` are the same). Anything else (a class instance, a `Map`) only by identity. A cycle answers "different" (never loops).
+ * The echo test: a consumer that writes back a NEW but equal object (a framework's two-way binding) changed nothing.
+ */
+export function sameStructure(a: unknown, b: unknown, stack: unknown[] = []): boolean {
+    if (Object.is(a, b)) return true;
+    if (a instanceof Date || b instanceof Date) return a instanceof Date && b instanceof Date && Object.is(a.getTime(), b.getTime());
+    if (stack.includes(a)) return false;
+    const inner = [...stack, a];
+    if (Array.isArray(a) || Array.isArray(b)) {
+        return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, i) => sameStructure(item, b[i], inner));
+    }
+    if (!isPlainObject(a) || !isPlainObject(b)) return false;
+    const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+    for (const key of keys) if (!sameStructure(a[key], b[key], inner)) return false;
+    return true;
+}
+
 // ---- filter value equality -----------------------------------------------------------------------------------------------------------
 
 /**

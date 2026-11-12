@@ -15,6 +15,7 @@ import {
     isCompleteRange,
     isFilterActive,
     multiselectFilterFn,
+    sameStructure,
     needsValue,
     normalizeSelection,
     OPERATOR_ORDER,
@@ -115,6 +116,37 @@ describe('date filter values of any shape (a saved view restored from JSON, a ti
 
     it('dateRangeFilterFn treats a value that is not a range, or a range of non-dates, as no filter, and never throws', () => {
         for (const bad of ['2024-03-11', 7, true, [], { start: 'x', end: {} }, { from: day }]) expect(dateRangeFilterFn(row, bad as never, at(0))).toBe(true);
+    });
+});
+
+describe('sameStructure (round 15)', () => {
+    it('compares primitives, Dates by time, arrays and plain objects deeply', () => {
+        expect(sameStructure('a', 'a')).toBe(true);
+        expect(sameStructure(Number.NaN, Number.NaN)).toBe(true);
+        expect(sameStructure(0, '0')).toBe(false);
+        expect(sameStructure(new Date(5), new Date(5))).toBe(true);
+        expect(sameStructure(new Date(5), new Date(6))).toBe(false);
+        expect(sameStructure(new Date(5), 5)).toBe(false);
+        expect(sameStructure(['a', ['b']], ['a', ['b']])).toBe(true);
+        expect(sameStructure(['a'], ['a', 'b'])).toBe(false);
+        expect(sameStructure({ name: 'x', range: { start: new Date(1), end: null } }, { range: { end: null, start: new Date(1) }, name: 'x' })).toBe(true);
+        expect(sameStructure({ a: 1 }, { a: 2 })).toBe(false);
+        expect(sameStructure({ a: undefined }, {})).toBe(true); // an absent key and undefined are the same
+        expect(sameStructure([], {})).toBe(false);
+        expect(sameStructure(null, undefined)).toBe(false);
+    });
+    it('compares anything else by identity, and a cycle as different', () => {
+        class Box {
+            constructor(readonly v: number) {}
+        }
+        expect(sameStructure(new Box(1), new Box(1))).toBe(false);
+        expect(sameStructure(new Map(), new Map())).toBe(false);
+        const a: Record<string, unknown> = {};
+        a['self'] = a;
+        const b: Record<string, unknown> = {};
+        b['self'] = b;
+        expect(sameStructure(a, b)).toBe(false);
+        expect(sameStructure(a, a)).toBe(true);
     });
 });
 

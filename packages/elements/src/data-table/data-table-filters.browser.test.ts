@@ -290,9 +290,10 @@ describe('round 8', () => {
     const announcer = (table: Element): string => (q(table, '[data-slot="data-table-announcer"]').textContent ?? '').replaceAll('​', '').trim();
 
     it('an outside reset within the debounce also clears the text shown in the floating input', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, filterDebounce: 400 });
+        // Round 15: the reset must CHANGE the column's value (an equal write is an echo and keeps the text): the column starts filtered.
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, filterDebounce: 400, columnFilters: { name: 'a' } });
         const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input') as HTMLInputElement;
-        await typeText(input, 'abc');
+        await typeText(input, 'bc');
         table.requestUpdate(); // a render while the write waits keeps the typed text
         await settle(table);
         expect(input.value).toBe('abc');
@@ -300,6 +301,27 @@ describe('round 8', () => {
         await settle(table);
         await frames(1);
         expect(input.value).toBe('');
+        await new Promise((resolve) => setTimeout(resolve, 450));
+        expect(table.columnFilters).toEqual({}); // the dropped write never lands
+    });
+
+    it("a consumer's echo (a new, equal object a tick later) keeps the announcement and another column's waiting text (round 15)", async () => {
+        const idColumn: ColumnDef<Row> = { accessorKey: 'id', header: 'Id', width: '80px', enableFiltering: true };
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, idColumn], enableFloatingFilters: true, filterDebounce: 200 });
+        // Vue-style two-way binding: every emitted value is written back as a fresh copy, a tick later.
+        table.addEventListener('column-filters-change', (e) => setTimeout(() => (table.columnFilters = structuredClone((e as CustomEvent).detail)), 0));
+        const [nameInput, idInput] = [...table.querySelectorAll('[data-kind="filter"] ge-input')].map((el) => shadow(el, 'input') as HTMLInputElement);
+        await typeText(nameInput!, 'Al');
+        await new Promise((resolve) => setTimeout(resolve, 250)); // the name write lands, its echo follows
+        await typeText(idInput!, '1'); // waits on the debounce while the echo arrives
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        await settle(table);
+        expect(idInput!.value).toBe('1');
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        expect(table.columnFilters).toEqual({ name: 'Al', id: '1' });
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        await settle(table);
+        expect(announcer(table)).toBe('1 row matches the filters');
     });
 
     it('with the consumer driving loading, a data push during the request does not end the wait; loading false does', async () => {
@@ -394,9 +416,10 @@ describe('round 8', () => {
 
 describe('round 7: pending floating writes', () => {
     it('a reset of the filters from outside within the debounce drops the waiting write', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, filterDebounce: 250 });
+        // Round 15: the column starts filtered, so the reset changes its value (an equal write would be an echo).
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, filterDebounce: 250, columnFilters: { name: 'A' } });
         const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'Al');
+        await typeText(input, 'l');
         table.columnFilters = {};
         await new Promise((resolve) => setTimeout(resolve, 350));
         await settle(table);

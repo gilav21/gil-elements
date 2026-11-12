@@ -14,7 +14,7 @@ import {
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
-import { FILTER_ANNOUNCE_MS, sameFilterValue } from './data-table-filters.js';
+import { FILTER_ANNOUNCE_MS, sameFilterValue, sameStructure } from './data-table-filters.js';
 import { buildGroupedDisplayRows, isGroupingActive, partitionIntoGroups, renumberDataRows, type RowGroup } from './data-table-group.js';
 import { buildTreeIndex, filterTree, flattenTree, sortTree } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
@@ -399,10 +399,18 @@ export class QueryController<T> {
             else if (!this.loadingSeen) this.answered();
         });
         // wave5: a consumer's own write of a filter (the property) is a filter change too: it takes the next number, so every announcement of an older
-        // change (the global filter's here, the column / advanced one of the filter UI) says nothing. It announces nothing itself.
-        const external = (_: unknown, origin: ModelOrigin): void => void (origin === 'property' && this.filterChanged());
+        // change (the global filter's here, the column / advanced one of the filter UI) says nothing. It announces nothing itself. An ECHO (a new
+        // object structurally equal to the value held, a framework's two-way binding writing back what the table emitted) is no change at all.
         const { model } = this.host;
-        const filterSubscriptions = [model.subscribe('columnFilters', external), model.subscribe('advancedFilter', external), model.subscribe('globalFilter', external)];
+        const watch = (key: 'columnFilters' | 'advancedFilter' | 'globalFilter'): (() => void) => {
+            let last: unknown = model.get(key);
+            return model.subscribe(key, (value: unknown, origin: ModelOrigin) => {
+                const echo = sameStructure(last, value);
+                last = value;
+                if (origin === 'property' && !echo) this.filterChanged();
+            });
+        };
+        const filterSubscriptions = [watch('columnFilters'), watch('advancedFilter'), watch('globalFilter')];
         this.unsubscribeFilters = () => filterSubscriptions.forEach((undo) => undo());
     }
 

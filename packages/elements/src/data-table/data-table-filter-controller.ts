@@ -1,17 +1,16 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { ref } from 'lit/directives/ref.js';
 import { chromeIcon } from './data-table-icons.js';
-import { BUILT_IN_FILTER_PANELS, builderColumns, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
+import { BUILT_IN_FILTER_PANELS, builderColumns, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive, sameStructure } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import { composedContains, type DataTableCoreHost, requireProvider, VIEWPORT } from './data-table-host.js';
-
-/** The header panel's `ge-popover` as the scroll watch uses it. */
-type PanelPopover = HTMLElement & { hide(): void };
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
 import { countConditions, memoLast } from './data-table-query.js';
 import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels, interpolate } from './data-table.locales.js';
 import type { ColumnDef, ComponentOutputs, FilterGroup } from './data-table.types.js';
 
+/** The header panel's `ge-popover` as the scroll watch uses it. */
+type PanelPopover = HTMLElement & { hide(): void };
 
 const panels = (): Promise<unknown> => import('./lazy/filter-panels.js');
 /** The ready-made panels (one lazy entry defines all three, with `ge-calendar` and `ge-command`): loaded when a trigger carrying one is hovered, focused or opened. */
@@ -43,15 +42,16 @@ export class FilterUiController<T> {
     private cancelAnnounce: (() => void) | undefined;
     /** The pending debounced floating-input writes, by column key: the timer's cancel and the text it will write (what the input shows meanwhile). */
     private readonly pending = new Map<string, { cancel: () => void; text: string }>();
-    /** Set while the controller writes a column filter itself: a `columnFilters` change seen then is ours, not an outside reset. */
-    private writing = false;
-
-    private dropPending(): void {
-        for (const { cancel } of this.pending.values()) cancel();
-        this.pending.clear();
-    }
     /** Stable per-column handlers, so the component listeners and the input's `@input` are not re-bound at every render; dropped at detach. */
     private readonly handlers = new Map<string, ColumnHandlers>();
+
+    /** Drops the floating writes still waiting on their debounce: all of them, or those of the given columns. */
+    private dropPending(keys?: Iterable<string>): void {
+        for (const key of keys ?? [...this.pending.keys()]) {
+            this.pending.get(key)?.cancel();
+            this.pending.delete(key);
+        }
+    }
 
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 
@@ -76,12 +76,16 @@ export class FilterUiController<T> {
         const { model } = this.host;
         // A latched load failure of an earlier attach is retried (a load in flight, e.g. another table's, is left alone).
         for (const lazy of [...PANELS.values(), BUILDER]) lazy.resetIfFailed();
+        let last = model.get('columnFilters');
         this.teardown = [
             this.host.provide('filters', this.service),
-            model.subscribe('columnFilters', (_, origin) => {
-                // A change that is not our own write (the consumer reset the filters, a view was restored) drops the floating writes still
-                // waiting on their debounce: they were typed against the filters that are gone.
-                if (!this.writing) this.dropPending();
+            model.subscribe('columnFilters', (filters, origin) => {
+                // A floating write still waiting on its debounce is dropped when ITS column's filter changed under it (the consumer reset it, a view
+                // was restored, a panel wrote it): it was typed against a value that is gone. Other columns' waiting text stays, and an echo (a new
+                // but structurally equal object) changes no column.
+                const changed = [...this.pending.keys()].filter((key) => !sameStructure(last[key], filters[key]));
+                last = filters;
+                this.dropPending(changed);
                 if (origin === 'internal') this.scheduleAnnouncement();
             }),
             model.subscribe('advancedFilter', (_, origin) => origin === 'internal' && this.scheduleAnnouncement()),
@@ -203,14 +207,8 @@ export class FilterUiController<T> {
         let handlers = this.handlers.get(key);
         if (handlers) return handlers;
         const set = (value: unknown): void => {
-            this.pending.get(key)?.cancel();
-            this.pending.delete(key);
-            this.writing = true;
-            try {
-                this.host.provider('query')?.changeColumnFilter(key, value);
-            } finally {
-                this.writing = false;
-            }
+            this.dropPending([key]); // this write supersedes the column's own waiting text
+            this.host.provider('query')?.changeColumnFilter(key, value);
         };
         const change = (event: Event): void => {
             // The panel's event bubbles and is composed: stopped here, so it never reaches a listener of the table's own (global) `filter-change` (D4).
