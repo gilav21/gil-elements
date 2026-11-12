@@ -539,6 +539,54 @@ describe('F7 the advanced filter builder', () => {
         await closePopover(table);
     });
 
+    it('a reused condition row shows the model: after removing condition 0, row 0 shows condition 1 column and operator', async () => {
+        const group: FilterGroup = {
+            type: 'group',
+            combinator: 'and',
+            rules: [
+                { type: 'condition', column: 'name', operator: 'contains', value: 'a' },
+                { type: 'condition', column: 'role', operator: 'equals', value: 'Engineer' },
+            ],
+        };
+        const table = await mount({ enableAdvancedFilter: true, advancedFilter: group });
+        await openBuilder(table);
+        const op = (): HTMLSelectElement => inner(table, 'select.operator')[0] as unknown as HTMLSelectElement;
+        // The user's own pick makes the options "dirty": their `selected` attribute no longer moves the selection.
+        await userEvent.selectOptions(op(), 'startsWith');
+        await refresh(table);
+        await userEvent.selectOptions(op(), 'contains');
+        await refresh(table);
+        expect(table.advancedFilter!.rules[0]).toMatchObject({ operator: 'contains' });
+        await userEvent.click(inner(table, 'button.remove')[0]!);
+        await refresh(table);
+        expect(table.advancedFilter!.rules).toHaveLength(1);
+        expect((inner(table, 'select.column')[0] as unknown as HTMLSelectElement).value).toBe('role');
+        expect(op().value).toBe('equals');
+        await closePopover(table);
+    });
+
+    it('debounces a typed value with filterDebounce (other edits are never delayed)', async () => {
+        const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: '' }] };
+        const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 300 });
+        const trees = record(table, 'advanced-filter-change');
+        await openBuilder(table);
+        await typeText(inner(table, 'input.value')[0]!, 'Al');
+        await refresh(table);
+        expect(trees).toHaveLength(0);
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await refresh(table);
+        expect(trees).toHaveLength(1);
+        expect(table.advancedFilter!.rules[0]).toMatchObject({ value: 'Al' });
+        // A value still waiting is not lost to a structural edit: it lands in its slot first, in the same new tree.
+        await typeText(inner(table, 'input.value')[0]!, 'i');
+        await userEvent.click(byText(table, '+ Condition'));
+        await refresh(table);
+        expect(trees).toHaveLength(2);
+        expect(table.advancedFilter!.rules).toHaveLength(2);
+        expect(table.advancedFilter!.rules[0]).toMatchObject({ value: 'Ali' });
+        await closePopover(table);
+    });
+
     it('names every control (D8), and grows them to 44 px on a coarse pointer', async () => {
         const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'Al' }, { type: 'group', combinator: 'or', rules: [] }] };
         const table = await mount({ enableAdvancedFilter: true, advancedFilter: group });
