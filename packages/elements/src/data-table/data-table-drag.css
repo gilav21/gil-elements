@@ -73,13 +73,23 @@
     ge-data-table [data-slot="table-cell"][data-flash="changed"]::before {
         border-inline-start-style: dotted;
     }
+    /* A cell that changes again while it flashes: the formatting controller toggles `data-flash-again`, and the other keyframes' name restarts the fade. */
+    ge-data-table [data-slot="table-cell"][data-flash][data-flash-again] {
+        animation-name: ge-dt-flash-again;
+    }
     @keyframes ge-dt-flash {
         from {
             background-color: var(--_flash);
         }
     }
+    @keyframes ge-dt-flash-again {
+        from {
+            background-color: var(--_flash);
+        }
+    }
     @media (prefers-reduced-motion: reduce) {
-        ge-data-table [data-slot="table-cell"][data-flash] {
+        ge-data-table [data-slot="table-cell"][data-flash],
+        ge-data-table [data-slot="table-cell"][data-flash][data-flash-again] {
             animation: none;
             background-color: var(--_flash);
         }

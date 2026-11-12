@@ -1,6 +1,6 @@
 import { resolveCellFormatting } from './data-table-cells.js';
 import { diffFlashes, flashColumns, type FlashSnapshot, snapshotFlash } from './data-table-flash.js';
-import type { DataTableCoreHost } from './data-table-host.js';
+import { type DataTableCoreHost, ownElements } from './data-table-host.js';
 import type { FormattingService } from './data-table-providers.js';
 import type { CellFlashDirection } from './data-table.types.js';
 
@@ -19,7 +19,7 @@ const FLASH_MS = '--ge-dt-flash-ms';
 export class FormattingController<T> {
     private unprovide: (() => void) | undefined;
     private snapshot: FlashSnapshot | null = null;
-    private seen: { data: unknown; columns: unknown; window: string } | null = null;
+    private seen: { data: unknown; columns: unknown; rendered: unknown; window: string } | null = null;
     /** Row id -> column key -> what flashes and until when (`performance.now()`). */
     private readonly flashes = new Map<string, Map<string, { direction: CellFlashDirection; until: number }>>();
     private timer: { at: number; cancel: () => void } | null = null;
@@ -45,15 +45,18 @@ export class FormattingController<T> {
         const query = this.host.provider('query');
         if (!query) return;
         const data = model.get('data');
+        // The drawn list is the memoised `renderedRows()` (a page, a filter, a sort, a group or a node opened or closed is a new array) plus the virtual window.
+        const rendered = query.renderedRows();
         const window = this.windowKey();
         const seen = this.seen;
-        if (seen?.data === data && seen.columns === config.columns && seen.window === window) return; // nothing new is drawn
-        const rows = this.drawnRows(query.renderedRows());
+        if (seen?.data === data && seen.columns === config.columns && seen.rendered === rendered && seen.window === window) return; // nothing new is drawn
+        const rows = this.drawnRows(rendered);
         const columns = flashColumns(config.columns);
-        // A change of the data or the columns flashes against what was drawn; a window that moved over the same data only re-snapshots (a row scrolled in does not flash).
+        // A change of the data or the columns flashes against what was drawn; anything else that changes what is drawn (another page, a filter, a sort, a
+        // window that moved) over the same data only re-snapshots: a row that comes into view does not flash.
         if (this.snapshot && seen && (seen.data !== data || seen.columns !== config.columns)) this.start(diffFlashes(this.snapshot, rows, columns, config.getRowId), config.cellFlashDuration);
         this.snapshot = snapshotFlash(rows, columns, config.getRowId);
-        this.seen = { data, columns: config.columns, window };
+        this.seen = { data, columns: config.columns, rendered, window };
     }
 
     detach(): void {
@@ -84,12 +87,30 @@ export class FormattingController<T> {
     private start(changes: ReturnType<typeof diffFlashes>, durationMs: number): void {
         if (changes.size === 0) return;
         const until = performance.now() + Math.max(0, durationMs);
+        const again: [rowId: string, key: string][] = [];
         for (const [rowId, cells] of changes) {
             let held = this.flashes.get(rowId);
             if (!held) this.flashes.set(rowId, (held = new Map()));
-            for (const [key, direction] of cells) held.set(key, { direction, until });
+            for (const [key, direction] of cells) {
+                if (held.has(key)) again.push([rowId, key]); // flashing already: the attribute may not change, so the animation must be restarted
+                held.set(key, { direction, until });
+            }
         }
+        if (again.length > 0) this.host.afterRender(() => this.restart(again));
         this.arm();
+    }
+
+    /**
+     * A cell that changes again while it flashes keeps its `data-flash` value when the direction is the same, so its CSS animation would not start over:
+     * the cell's `data-flash-again` is toggled, which switches the keyframes' name (data-table-drag.css) and so restarts the fade.
+     */
+    private restart(cells: readonly (readonly [string, string])[]): void {
+        const { root } = this.host;
+        const rows = new Map(ownElements(root, root.querySelectorAll<HTMLElement>('[data-slot="table-row"][data-row-id]')).map((row) => [row.dataset['rowId'], row]));
+        for (const [rowId, key] of cells) {
+            const cell = [...(rows.get(rowId)?.querySelectorAll<HTMLElement>('[data-slot="table-cell"][data-column]') ?? [])].find((el) => el.dataset['column'] === key);
+            cell?.toggleAttribute('data-flash-again');
+        }
     }
 
     /** One timer, for the earliest deadline; it drops what expired, asks for a render and arms itself for the next one. */

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Disposables, TopicBus } from '../shared/registry.js';
-import { classifyChange, diffFlashes, flashColumns, snapshotFlash } from './data-table-flash.js';
+import { classifyChange, diffFlashes, flashColumns, sameCellValue, snapshotFlash } from './data-table-flash.js';
 import { FormattingController } from './data-table-formatting-controller.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import type { ColumnDef } from './data-table.types.js';
@@ -69,15 +69,50 @@ describe('diffFlashes (ports of spec 4658-4740)', () => {
         expect(flashes.size).toBe(1);
     });
 
-    it('skips columns with enableCellFlash=false and special (underscore-prefixed) accessor keys', () => {
+    it('skips columns with enableCellFlash=false and the special columns (selection, expander, actions)', () => {
         const columns = [
             { accessorKey: 'id', header: 'ID' },
             { accessorKey: 'name', header: 'Name' },
             { accessorKey: 'score', header: 'Score', enableCellFlash: false },
-            { accessorKey: '_internal', header: 'Internal', accessorFn: (r: NumRow) => r.score },
+            { accessorKey: '_actions', header: 'Actions', accessorFn: (r: NumRow) => r.score },
+            { accessorKey: '_selection', header: '', accessorFn: (r: NumRow) => r.score },
         ] as ColumnDef<NumRow>[];
         const next = structuredClone(NUM);
         next[0] = { ...next[0]!, score: 999 };
+        expect(flashOf(next, columns).size).toBe(0);
+    });
+
+    it('flashes a data column whose key merely starts with an underscore (only the special columns are skipped)', () => {
+        const columns = [{ accessorKey: 'id', header: 'ID' }, { accessorKey: '_score', header: 'Score', accessorFn: (r: NumRow) => r.score }] as ColumnDef<NumRow>[];
+        expect(flashColumns(columns).map((c) => c.accessorKey)).toEqual(['id', '_score']);
+        const next = structuredClone(NUM);
+        next[0] = { ...next[0]!, score: 999 };
+        expect([...flashOf(next, columns).values()].flatMap((cells) => [...cells.keys()])).toEqual(['_score']);
+    });
+
+    it('does not flash a value that did not change: the same number as text, the same instant, the same object', () => {
+        expect(sameCellValue(5, 5)).toBe(true);
+        expect(sameCellValue('5', 5)).toBe(true);
+        expect(sameCellValue(5, '5.0')).toBe(true);
+        expect(sameCellValue(true, 1)).toBe(true);
+        expect(sameCellValue(new Date(2024, 0, 1), new Date(2024, 0, 1))).toBe(true);
+        expect(sameCellValue(Number.NaN, Number.NaN)).toBe(true);
+        const shared = { a: 1 };
+        expect(sameCellValue(shared, shared)).toBe(true);
+        // changed
+        expect(sameCellValue(5, 6)).toBe(false);
+        expect(sameCellValue(new Date(2024, 0, 1), new Date(2024, 0, 2))).toBe(false);
+        expect(sameCellValue({ a: 1 }, { a: 1 })).toBe(false); // another object: changed
+        expect(sameCellValue('a', 'b')).toBe(false);
+        // blanks are not 0
+        expect(sameCellValue(null, 0)).toBe(false);
+        expect(sameCellValue('', 0)).toBe(false);
+        expect(sameCellValue(undefined, null)).toBe(false);
+    });
+
+    it('a data refresh that re-serialises numbers as text (or re-creates equal dates) flashes nothing', () => {
+        const columns: ColumnDef<NumRow>[] = [{ accessorKey: 'id', header: 'ID' }, { accessorKey: 'score', header: 'Score' }];
+        const next = NUM.map((r) => ({ ...r, score: String(r.score) as unknown as number }));
         expect(flashOf(next, columns).size).toBe(0);
     });
 

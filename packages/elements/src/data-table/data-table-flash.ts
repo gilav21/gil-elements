@@ -5,7 +5,7 @@
  * drawn has no previous values and does not flash (Angular: the same for a new id).
  */
 import type { CellFlashDirection, ColumnDef } from './data-table.types.js';
-import { getCellValue } from './data-table.utils.js';
+import { getCellValue, isSpecialColumnKey } from './data-table.utils.js';
 
 /** Row id -> column key -> the value drawn. */
 export type FlashSnapshot = ReadonlyMap<string, ReadonlyMap<string, unknown>>;
@@ -24,9 +24,24 @@ export function classifyChange(oldValue: unknown, newValue: unknown): CellFlashD
     return 'changed';
 }
 
-/** The columns that flash: not opted out (`enableCellFlash: false`) and not a special (underscore) key. */
+/** The columns that flash: not opted out (`enableCellFlash: false`) and not a special column (selection, expander, actions); a data key that merely starts with `_` flashes. */
 export function flashColumns<T>(columns: readonly ColumnDef<T>[]): ColumnDef<T>[] {
-    return columns.filter((c) => c.enableCellFlash !== false && !String(c.accessorKey).startsWith('_'));
+    return columns.filter((c) => c.enableCellFlash !== false && !isSpecialColumnKey(String(c.accessorKey)));
+}
+
+/** A value that may be read as a number for the "same value" test: a number, a non-blank string or a boolean (not null, undefined or '', which `Number()` reads as 0). */
+const numberish = (value: unknown): boolean => typeof value === 'number' || typeof value === 'boolean' || (typeof value === 'string' && value.trim() !== '');
+
+/**
+ * The cell did not change: the same value (`Object.is`), the same instant for two `Date`s, or two primitives that read as the same finite number
+ * (`'5'` and `5`: a data feed that re-serialises a number is no change). Any other object is unchanged only when it is the same object.
+ */
+export function sameCellValue(oldValue: unknown, newValue: unknown): boolean {
+    if (Object.is(oldValue, newValue)) return true;
+    if (oldValue instanceof Date && newValue instanceof Date) return oldValue.getTime() === newValue.getTime();
+    if (!numberish(oldValue) || !numberish(newValue)) return false;
+    const before = Number(oldValue);
+    return Number.isFinite(before) && before === Number(newValue);
 }
 
 /** The values of `rows` in the flash columns, by row id (ids as strings: a `getRowId` may answer numbers). */
@@ -40,7 +55,7 @@ export function snapshotFlash<T>(rows: readonly T[], columns: readonly ColumnDef
     return snapshot;
 }
 
-/** The cells of `rows` whose value differs (`!==`) from `previous`; rows and columns `previous` does not know are skipped. */
+/** The cells of `rows` whose value changed (`sameCellValue` false) from `previous`; rows and columns `previous` does not know are skipped. */
 export function diffFlashes<T>(previous: FlashSnapshot, rows: readonly T[], columns: readonly ColumnDef<T>[], getRowId: (row: T) => string): FlashChanges {
     const changes: FlashChanges = new Map();
     for (const row of rows) {
@@ -52,7 +67,7 @@ export function diffFlashes<T>(previous: FlashSnapshot, rows: readonly T[], colu
             if (!before.has(key)) continue;
             const old = before.get(key);
             const now = getCellValue(row, column.accessorKey, column);
-            if (old === now) continue;
+            if (sameCellValue(old, now)) continue;
             let cells = changes.get(id);
             if (!cells) changes.set(id, (cells = new Map()));
             cells.set(key, classifyChange(old, now));
