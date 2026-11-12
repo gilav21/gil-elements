@@ -81,6 +81,10 @@ describe('FilterUiController', () => {
         const column: ColumnDef<Row> = { accessorKey: 'name', header: 'Name', filterComponent: 'x-panel', filterComponentInputs: () => ({ options: ['a', 'b'], value: 'ignored' }) };
         expect(service.panelInputs(column)).toEqual({ options: ['a', 'b'], column, value: ['a'] });
         expect(service.panelInputs({ ...column, accessorKey: 'other' }).value).toBeNull();
+        // Round 13: a key present with undefined is "none" too.
+        model.set('columnFilters', { name: undefined });
+        expect(service.panelInputs(column).value).toBeNull();
+        model.set('columnFilters', { name: ['a'] });
         // The ready-made panels also get the table's locale.
         expect(service.panelInputs({ ...column, filterComponent: 'ge-data-table-date-filter' })).toMatchObject({ locale: 'en' });
     });

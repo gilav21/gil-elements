@@ -1128,6 +1128,18 @@ describe('F7 the advanced filter builder', () => {
             expect(trees).toHaveLength(1);
             expect(table.advancedFilter).toEqual({ type: 'group', combinator: 'and', rules: [cond('name', 'Al'), { type: 'group', combinator: 'or', rules: [cond('role', 'Eng')] }] });
         });
+
+        it('a value typed, then the table removed and put back within the debounce, is kept in the advanced filter (round 13)', async () => {
+            const group: FilterGroup = { type: 'group', combinator: 'and', rules: [cond('name', '')] };
+            const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 1000 });
+            await openBuilder(table);
+            await typeText(inner(table, 'input.value')[0]!, 'Al');
+            const parent = table.parentElement!;
+            table.remove();
+            parent.append(table);
+            await settle(table);
+            expect(table.advancedFilter).toEqual({ type: 'group', combinator: 'and', rules: [cond('name', 'Al')] });
+        });
     });
 
     it('debounces a typed value with filterDebounce (other edits are never delayed)', async () => {

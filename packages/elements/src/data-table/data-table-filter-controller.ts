@@ -1,4 +1,5 @@
 import { html, nothing, type TemplateResult } from 'lit';
+import { ref } from 'lit/directives/ref.js';
 import { chromeIcon } from './data-table-icons.js';
 import { BUILT_IN_FILTER_PANELS, builderColumns, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
@@ -85,6 +86,10 @@ export class FilterUiController<T> {
     }
 
     detach(): void {
+        // The open builder's typed value still waiting on the debounce goes in FIRST, while the query service exists (the table detaches before its
+        // builder disconnects, so the builder's own flush would come too late).
+        this.builder?.flush?.();
+        this.builder = undefined;
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
         this.cancelAnnounce?.();
@@ -106,7 +111,7 @@ export class FilterUiController<T> {
             <ge-popover-trigger><button type="button" data-slot="advanced-filter-trigger" aria-label=${count > 0 ? `${labels.filterButton} (${count})` : labels.filterButton}
                 @pointerenter=${this.prefetchBuilder} @focus=${this.prefetchBuilder}>${chromeIcon('filter', 'xs')}<span data-hide-below="sm">${labels.filterButton}</span>${count > 0 ? html`<span data-slot="data-table-count-badge" aria-hidden="true">${count}</span>` : nothing}</button></ge-popover-trigger>
             <ge-popover-content data-slot="advanced-filter-panel">${this.builderOpen
-                ? html`<div data-slot="advanced-filter-body"><ge-data-table-filter-builder .group=${group ?? EMPTY_GROUP} .columns=${this.builderColumns(config.columns)} .labels=${labels} .debounce=${config.filterDebounce} @group-change=${this.onGroupChange}></ge-data-table-filter-builder>${count > 0
+                ? html`<div data-slot="advanced-filter-body"><ge-data-table-filter-builder ${ref(this.onBuilderRef)} .group=${group ?? EMPTY_GROUP} .columns=${this.builderColumns(config.columns)} .labels=${labels} .debounce=${config.filterDebounce} @group-change=${this.onGroupChange}></ge-data-table-filter-builder>${count > 0
                       ? html`<button type="button" data-slot="advanced-filter-clear" @click=${this.onClear}>${labels.clearFilters}</button>`
                       : nothing}</div>`
                 : nothing}</ge-popover-content>
@@ -119,16 +124,26 @@ export class FilterUiController<T> {
 
     private readonly prefetchBuilder = (): void => void BUILDER.load();
 
+    /**
+     * The drawn builder (lazy: its `flush` exists once it is defined), for the flush at detach. An `undefined` from the ref is ignored: the table's own
+     * disconnect clears its refs BEFORE its controllers detach. It is dropped when the builder popover closes (the builder's own disconnect flushes then).
+     */
+    private builder: { flush?: () => void } | undefined;
+    private readonly onBuilderRef = (el: Element | undefined): void => {
+        if (el) this.builder = el as { flush?: () => void };
+    };
+
     private readonly onBuilderToggle = (event: CustomEvent<boolean>): void => {
         if (event.target !== event.currentTarget) return; // a popover inside the builder
         this.builderOpen = event.detail;
         if (event.detail) this.prefetchBuilder();
+        else this.builder = undefined;
         this.host.requestRender();
     };
 
     private readonly onGroupChange = (event: CustomEvent<FilterGroup>): void => {
         event.stopPropagation();
-        // `?.`: a builder removed WITH the table flushes its pending value after the table detached; there is nothing left to filter then.
+        // `?.`: the detach flushes the builder first, so this is only a guard for an event that still arrives after it.
         this.host.provider('query')?.changeAdvancedFilter(event.detail);
     };
 
@@ -152,7 +167,7 @@ export class FilterUiController<T> {
         const panel = builtInPanelOf(column.filterComponent);
         const calendarId = typeof locale === 'string' && locale ? locale : this.host.resolvedLocale.code;
         const own = panel ? { locale: panel === 'ge-data-table-multiselect-filter' ? this.host.resolvedLocale : calendarId } : {};
-        return { ...own, ...filterInputsOf(column), column, value: Object.hasOwn(filters, key) ? filters[key] : null };
+        return { ...own, ...filterInputsOf(column), column, value: Object.hasOwn(filters, key) ? (filters[key] ?? null) : null }; // undefined is "none" too
     }
 
     /**

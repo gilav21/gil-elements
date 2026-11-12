@@ -103,8 +103,16 @@ export class GeDataTableFilterBuilder extends UiElement {
 
     override disconnectedCallback(): void {
         super.disconnectedCallback();
-        // The popover closed (or the table went) while a typed value waited: the top level reports it now, once, against its latest tree.
-        if (!this.owner && this.pending.size > 0) this.edit([], (group) => group);
+        // The popover closed while a typed value waited: the top level reports it now, once, against its latest tree.
+        this.flush();
+    }
+
+    /**
+     * Reports the typed values still waiting on the debounce now (one `group-change`), if any; a no-op otherwise. The table calls it while it detaches
+     * (it is removed before its builder is), so the value reaches the table while it can still filter. Called on a nested builder, flushes its top level.
+     */
+    flush(): void {
+        if (this.root.pending.size > 0) this.root.edit([], (group) => group);
     }
 
     /** A value typed in the condition at `path` (top-level tree): reported now, or after `debounce` ms of quiet (the last value per condition wins). */
