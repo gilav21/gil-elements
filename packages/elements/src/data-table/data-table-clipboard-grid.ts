@@ -134,12 +134,18 @@ export function onGrid(root: Element, event: Event): boolean {
 
 /**
  * A native `copy` / `paste` event is this table's: it landed on one of its cells, or it landed OUTSIDE the table (the browser's menu, a target the page
- * chose) while the focus is inside this table. An event inside the table but not on its cells (a header, a nested table) is not.
+ * chose) while the focus is on an element of THIS table (not of a table nested in it). An event inside the table but not on its cells (a header, a
+ * nested table) is not.
  */
 export function clipboardEventForGrid(root: Element, event: Event): boolean {
     const target = event.target as Node | null;
     if (ownClosest(root, target, CELL_SELECTOR)) return true;
-    return target !== null && !root.contains(target) && root.matches?.(':focus-within') === true;
+    if (target === null || root.contains(target)) return false;
+    // The element with the focus in the tree the table lives in (the document, or the shadow root that holds it): a consumer component's focused
+    // inner element shows as its host there. It must be THIS table's own, not a table nested in one of its detail rows.
+    const tree = root.getRootNode?.() as Document | ShadowRoot | undefined;
+    const active = tree?.activeElement ?? null;
+    return active !== null && ownsTarget(root, active);
 }
 
 /** Where a paste starts: the TOP-LEFT cell of the range when there is one (however it was made: dragged from its bottom-right too), else the focused cell. */

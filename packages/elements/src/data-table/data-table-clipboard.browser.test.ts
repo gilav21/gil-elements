@@ -281,20 +281,43 @@ describe('copy', () => {
 });
 
 describe('paste', () => {
-    it('Ctrl+V of a 3x3 grid: coercion by type, cells past the end dropped, a column without setter skipped, one cells-paste and one data-change', async () => {
-        const fake = install({ text: 'Zed\t7\tfalse\nYan\t\tTRUE\nXu\t999\tnope\nextra\t1\t1' });
+    it('a real Ctrl+V is left to the browser: not prevented, no clipboard read (its native paste event carries the text, no permission prompt)', async () => {
+        const fake = install({ text: '5' });
         const table = await grid({ enableClipboardPaste: true });
         await pasteReady(table);
-        await focusCell(table, 1, 'name');
+        const cell = await focusCell(table, 0, 'qty');
+        const seen: { prevented: boolean }[] = [];
+        const onKey = (event: KeyboardEvent): void => void seen.push({ prevented: event.defaultPrevented });
+        document.addEventListener('keydown', onKey); // bubble on the document: after the grid's handlers
+        let natives = 0;
+        const onPaste = (): void => void natives++;
+        document.addEventListener('paste', onPaste, true);
+        try {
+            await press('{Control>}v{/Control}');
+        } finally {
+            document.removeEventListener('keydown', onKey);
+            document.removeEventListener('paste', onPaste, true);
+        }
+        expect(seen.at(-1)?.prevented).toBe(false);
+        expect(fake.reads.count).toBe(0);
+        expect(natives).toBe(1); // Chromium fires the native paste on the focused cell
+        expect(document.activeElement).toBe(cell);
+    });
+
+    it('a native paste of a 3x3 grid: coercion by type, cells past the end dropped, a column without setter skipped, one cells-paste and one data-change', async () => {
+        const fake = install();
+        const table = await grid({ enableClipboardPaste: true });
+        await pasteReady(table);
+        const cell = await focusCell(table, 1, 'name');
         const pastes: CellsPasteEvent[] = [];
         const changes: unknown[] = [];
         const errors: unknown[] = [];
         table.addEventListener('cells-paste', (e) => pastes.push((e as CustomEvent<CellsPasteEvent>).detail));
         table.addEventListener('data-change', (e) => changes.push((e as CustomEvent).detail));
         table.addEventListener('edit-error', (e) => errors.push((e as CustomEvent).detail));
-        await press('{Control>}v{/Control}');
+        expect(dispatchPaste(cell, 'Zed\t7\tfalse\nYan\t\tTRUE\nXu\t999\tnope\nextra\t1\t1')).toBe(false); // taken (prevented)
         await until(() => pastes.length > 0);
-        expect(fake.reads.count).toBe(1);
+        expect(fake.reads.count).toBe(0);
         const data = table.data as Row[];
         expect(data.map((r) => [r.name, r.qty, r.ok])).toEqual([
             ['=SUM(1,2)', 1, true],
@@ -317,19 +340,28 @@ describe('paste', () => {
         await press('{Control>}c{/Control}');
         await until(() => fake.writes.length > 0);
         expect(fake.text).toBe("'=SUM(1,2)");
-        await focusCell(table, 1, 'name');
-        await press('{Control>}v{/Control}');
+        const target = await focusCell(table, 1, 'name');
+        dispatchPaste(target, fake.text);
         await until(() => (table.data as Row[])[1]?.name !== 'Bob');
         expect((table.data as Row[])[1]?.name).toBe('=SUM(1,2)');
     });
 
+    it('applies a native paste that arrives while the paste part is still loading, once it has loaded', async () => {
+        const table = await grid();
+        const cell = await focusCell(table, 2, 'qty');
+        table.enableClipboardPaste = true; // the part loads at the next update: the paste below comes first
+        expect(dispatchPaste(cell, '33')).toBe(false);
+        expect((table.data as Row[])[2]?.qty).toBe(3);
+        await until(() => (table.data as Row[])[2]?.qty === 33);
+        expect((table.data as Row[])[2]?.qty).toBe(33);
+    });
+
     it('selects the pasted rectangle (needs the range part)', async () => {
-        install({ text: '1\ttrue\n2\tfalse' });
         const table = await grid({ enableClipboardPaste: true, enableCellRangeSelection: true });
         await pasteReady(table);
         await rangeReady(table);
-        await focusCell(table, 0, 'qty');
-        await press('{Control>}v{/Control}');
+        const cell = await focusCell(table, 0, 'qty');
+        dispatchPaste(cell, '1\ttrue\n2\tfalse');
         await until(() => table.cellRange !== null);
         expect(table.cellRange).toEqual({ startRow: 0, startCol: 'qty', endRow: 1, endCol: 'ok' });
     });
@@ -362,14 +394,13 @@ describe('paste', () => {
     });
 
     it('pastes from the TOP-LEFT of the range, whichever corner it was made from', async () => {
-        install({ text: 'P\t5\ttrue\nQ\t6\tfalse' });
         const table = await grid({ enableClipboardPaste: true, enableCellRangeSelection: true });
         await pasteReady(table);
         await rangeReady(table);
-        await focusCell(table, 3, 'ok');
+        const cell = await focusCell(table, 3, 'ok');
         table.cellRange = { startRow: 3, startCol: 'ok', endRow: 2, endCol: 'name' }; // made from the bottom-right
         await settle(table);
-        await press('{Control>}v{/Control}');
+        dispatchPaste(cell, 'P\t5\ttrue\nQ\t6\tfalse');
         await until(() => (table.data as Row[])[2]?.name === 'P');
         expect((table.data as Row[]).map((r) => [r.name, r.qty, r.ok])).toEqual([
             ['=SUM(1,2)', 1, true],
@@ -423,8 +454,7 @@ describe('paste', () => {
             await focusCell(table, 0, 'qty');
             let pastes = 0;
             table.addEventListener('cells-paste', () => pastes++);
-            await press('{Control>}v{/Control}');
-            await frames(3);
+            await expect(table.provider('clipboard')!.paste()).resolves.toEqual({ status: 'denied' }); // the programmatic read
             await settle(table);
             expect(announced(table)).toContain('Could not read the clipboard');
             expect(pastes).toBe(0);
@@ -447,34 +477,35 @@ describe('paste', () => {
         expect((table.data as Row[])[2]?.qty).toBe(42);
     });
 
-    it('is not consumed with no focused cell or with paste off, and a second Ctrl+V while the read is pending pastes once', async () => {
-        const fake = install({ text: '5' });
+    it('leaves a native paste alone with paste off, with nothing focused, or while an editor is open', async () => {
         const off = await grid();
-        await focusCell(off, 0, 'qty');
-        const key = (): KeyboardEvent => new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, bubbles: true, cancelable: true, composed: true });
-        const offKey = key();
-        cellAt(off, 0, 'qty')!.dispatchEvent(offKey);
-        expect(offKey.defaultPrevented).toBe(false);
+        const offCell = await focusCell(off, 0, 'qty');
+        expect(dispatchPaste(offCell, '5')).toBe(true);
+        expect((off.data as Row[])[0]?.qty).toBe(1);
 
         const table = await grid({ enableClipboardPaste: true });
         await pasteReady(table);
-        const unfocused = key();
-        q(table, '[data-slot="data-table-viewport"]').dispatchEvent(unfocused);
-        expect(unfocused.defaultPrevented).toBe(false);
-        expect(fake.reads.count).toBe(0);
-
-        let pastes = 0;
-        table.addEventListener('cells-paste', () => pastes++);
+        expect(dispatchPaste(q(table, '[data-slot="data-table-viewport"]'), '5')).toBe(true); // no target cell
         const cell = await focusCell(table, 0, 'qty');
-        const first = key();
-        const second = key();
-        cell.dispatchEvent(first);
-        cell.dispatchEvent(second);
-        expect([first.defaultPrevented, second.defaultPrevented]).toEqual([true, true]);
-        await until(() => pastes > 0);
-        await frames(2);
-        expect(fake.reads.count).toBe(1);
-        expect(pastes).toBe(1);
-        expect((table.data as Row[])[0]?.qty).toBe(5);
+        (table.provider('interaction') as { editingCell(): unknown }).editingCell = () => ({ rowIndex: 0, columnKey: 'qty' });
+        expect(dispatchPaste(cell, '5')).toBe(true);
+        expect((table.data as Row[])[0]?.qty).toBe(1);
+    });
+
+    it('a native paste or copy aimed outside the table is not the OUTER table\'s while a table nested in its detail row holds the focus', async () => {
+        install({ missing: true });
+        const inner = document.createElement('ge-data-table') as GeDataTable<Row>;
+        Object.assign(inner, { columns: COLUMNS, data: ROWS, getRowId: (row: Row) => row.id, enableCopy: false, showToolbar: false, showPagination: false });
+        const outer = await grid({ enableClipboardPaste: true, enableRowExpansion: true, expandedRows: { a: true }, renderDetail: () => inner });
+        await pasteReady(outer);
+        await settle(inner);
+        outer.focusCell(1, 'qty'); // the outer table had a focused cell...
+        await settle(outer);
+        inner.focusCell(0, 'name'); // ...but the focus is now in the nested table
+        await settle(inner);
+        const copy = dispatchCopy(document.body);
+        expect(copy.notPrevented).toBe(true);
+        expect(dispatchPaste(document.body, '9')).toBe(true);
+        expect((outer.data as Row[])[1]?.qty).toBe(2);
     });
 });

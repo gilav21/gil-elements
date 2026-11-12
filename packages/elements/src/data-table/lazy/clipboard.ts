@@ -1,40 +1,20 @@
 /**
- * Lazy part of `ClipboardController` (wave 6, package B owns this file): paste parsing, planning and writing, and the native `paste`
- * listener. Copy is eager. A build entry (`data-table/lazy/clipboard`), loaded by `lazyPart` when `enable-clipboard-paste` is on. It draws
- * nothing, so its `lazyPart` has no `changed`.
+ * Lazy part of `ClipboardController` (wave 6, package B owns this file): paste parsing, planning and writing. Copy, and the native `paste` listener
+ * (which must hear a paste that arrives while this part loads), are the controller's (eager). A build entry (`data-table/lazy/clipboard`), loaded by
+ * `lazyPart` when `enable-clipboard-paste` is on.
  */
-import { cellAddressOf, type CellAddress, type DataTableCoreHost, ownClosest, requireProvider } from '../data-table-host.js';
-import { CELL_SELECTOR, clipboardEventForGrid, editorOpen, inTextField, pasteStart } from '../data-table-clipboard-grid.js';
+import { type CellAddress, type DataTableCoreHost, requireProvider } from '../data-table-host.js';
+import { pasteStart } from '../data-table-clipboard-grid.js';
 import { pasteAnnouncement, pastedGrid, pasteEvent, planPasteRequests } from '../data-table-paste-apply.js';
 import type { ClipboardResult } from '../data-table-providers.js';
 import { rangeModeOn } from '../data-table-range.js';
 
 export class PastePart<T> {
-    private unlisten: (() => void) | null = null;
-
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 
-    attach(): void {
-        const { root, disposables } = this.host;
-        // The browser's own Paste (its menu, or Ctrl/Cmd+V when the async clipboard is missing or the key handler left it): the text comes with the event.
-        // Heard on the document: the event may target something outside the table while the focus is in it (`clipboardEventForGrid`).
-        this.unlisten = disposables.listen<ClipboardEvent>(root.ownerDocument, 'paste', (event) => this.onNativePaste(event));
-    }
+    attach(): void {}
 
-    detach(): void {
-        this.unlisten?.();
-        this.unlisten = null;
-    }
-
-    private onNativePaste(event: ClipboardEvent): void {
-        const { host } = this;
-        if (event.defaultPrevented || !host.config.enableClipboardPaste || editorOpen(host) || inTextField(host.root, event)) return;
-        if (!clipboardEventForGrid(host.root, event)) return;
-        const at = pasteStart(host) ?? cellAddressOf(ownClosest(host.root, event.target, CELL_SELECTOR));
-        if (!at) return;
-        event.preventDefault();
-        this.pasteText(event.clipboardData?.getData('text/plain') ?? '', at);
-    }
+    detach(): void {}
 
     /**
      * Pastes `text` from `at` (default: the focused cell): one undo step, one `data-change`, `cells-paste` once, an `edit-error` per rejected cell,

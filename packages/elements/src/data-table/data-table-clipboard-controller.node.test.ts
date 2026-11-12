@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Disposables } from '../shared/registry.js';
-import { ClipboardController, neutralClipboard } from './data-table-clipboard-controller.js';
+import { ClipboardController, neutralClipboard, READ_TIMEOUT_MS } from './data-table-clipboard-controller.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import { DATA_TABLE_LOCALES } from './data-table.locales.js';
 import type { ClipboardService } from './data-table-providers.js';
@@ -158,7 +158,7 @@ describe('ClipboardController', () => {
         await expect(t.service().copy('selected')).resolves.toEqual({ status: 'empty' });
     });
 
-    it('Ctrl+V pastes at the focused cell read at key time; a second Ctrl+V while the read is pending is swallowed', async () => {
+    it('leaves Ctrl+V to the browser (its native paste carries the text, no prompt); paste() reads once, at the target taken at call time', async () => {
         let release: (text: string) => void = () => undefined;
         const readText = vi.fn(() => new Promise<string>((resolve) => (release = resolve)));
         stubClipboard({ readText });
@@ -167,9 +167,11 @@ describe('ClipboardController', () => {
         controller.attach();
         controller.hostUpdate();
         await loaded();
-        expect(t.key({ key: 'v' }).consumed).toBe(true);
+        expect(t.key({ key: 'v' }).consumed).toBe(false); // not consumed, nothing read: the browser's paste event follows
+        expect(readText).not.toHaveBeenCalled();
+        void t.service().paste();
         t.focus({ rowIndex: 1, columnKey: 'n' }); // the focus moves during the await
-        expect(t.key({ key: 'v' }).consumed).toBe(true);
+        await expect(t.service().paste()).resolves.toEqual({ status: 'ignored' }); // one read at a time
         expect(readText).toHaveBeenCalledTimes(1);
         release('9');
         await loaded();
@@ -200,6 +202,41 @@ describe('ClipboardController', () => {
         stubClipboard({});
         expect(t.key({ key: 'v' }).consumed).toBe(false);
         controller.detach();
+    });
+
+    it('refuses pasteText while an editor is open (the editor owns its input)', async () => {
+        const t = fakeHost();
+        const controller = new ClipboardController(t.host);
+        controller.attach();
+        controller.hostUpdate();
+        await loaded();
+        t.edit({ rowIndex: 1, columnKey: 'n' });
+        expect(t.service().pasteText('9', { rowIndex: 0, columnKey: 'n' })).toEqual({ status: 'ignored' });
+        expect(t.raw.writeCells).not.toHaveBeenCalled();
+        t.edit(null);
+        expect(t.service().pasteText('9', { rowIndex: 0, columnKey: 'n' }).status).toBe('done');
+        controller.detach();
+    });
+
+    it('gives up a read that never settles (an unanswered prompt) after 10 s, announced, so a later paste works', async () => {
+        const t = fakeHost();
+        const controller = new ClipboardController(t.host);
+        controller.attach();
+        controller.hostUpdate();
+        await loaded();
+        vi.useFakeTimers();
+        try {
+            stubClipboard({ readText: () => new Promise<string>(() => undefined) }); // never settles
+            const stuck = t.service().paste();
+            await vi.advanceTimersByTimeAsync(READ_TIMEOUT_MS);
+            await expect(stuck).resolves.toEqual({ status: 'denied' });
+            expect(t.raw.announce).toHaveBeenCalledWith('Could not read the clipboard');
+            stubClipboard({ readText: () => Promise.resolve('9') });
+            await expect(t.service().paste()).resolves.toMatchObject({ status: 'done', cells: 1 });
+        } finally {
+            vi.useRealTimers();
+            controller.detach();
+        }
     });
 
     it('catches a refused read: denied, announced, nothing written', async () => {
