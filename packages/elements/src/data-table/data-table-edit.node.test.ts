@@ -13,6 +13,7 @@ import {
     reconcileEditor,
     sameEditValue,
     tabTarget,
+    writeBackDate,
 } from './data-table-edit.js';
 import { validateConfig } from './data-table-config-check.js';
 import { composedContains } from './data-table-host.js';
@@ -38,7 +39,7 @@ describe('editKindOf (Angular html 207-290 precedence)', () => {
 
     it('knows which editors the table drives: Enter commits text, number, select and checkbox; leaving commits only text and number (D16)', () => {
         expect(['text', 'number', 'select', 'checkbox', 'date', 'component', 'renderer'].map((k) => commitsOnEnter(k as never))).toEqual([true, true, true, true, false, false, false]);
-        expect(['text', 'number', 'select', 'checkbox', 'date'].map((k) => commitsOnBlur(k as never))).toEqual([true, true, false, false, false]);
+        expect(['text', 'number', 'select', 'checkbox', 'date'].map((k) => commitsOnBlur(k as never))).toEqual([true, true, true, false, false]);
         expect(isBuiltInKind('date')).toBe(true);
         expect(isBuiltInKind('component')).toBe(false);
         expect(isBuiltInKind('renderer')).toBe(false);
@@ -210,6 +211,41 @@ describe('the editing config check (wave 5 B block of validateConfig)', () => {
         expect(check([{ accessorKey: 'a', header: 'A', editable: true, editType: 'select', editOptions: [{ label: 'x', value: 1 }], valueSetter: setter }])).toEqual([]);
         expect(check([{ accessorKey: 'a', header: 'A', editable: true, editType: 'select', editComponent: 'x-ed', valueSetter: setter }])).toEqual([]);
         expect(check([{ accessorKey: 'a', header: 'A', editType: 'select' }])).toEqual([]);
+    });
+});
+
+describe('writeBackDate: the picked day in the type the cell held', () => {
+    const picked = new Date(2024, 4, 20); // local midnight, as the calendar hands it
+
+    it('a timestamp stays a timestamp, at the time of day the cell had', () => {
+        const before = new Date(2024, 0, 3, 14, 30).getTime();
+        expect(writeBackDate(picked, before)).toBe(new Date(2024, 4, 20, 14, 30).getTime());
+    });
+
+    it('a Date stays a Date, at the time of day the cell had', () => {
+        const out = writeBackDate(picked, new Date(2024, 0, 3, 9, 15, 7));
+        expect(out).toBeInstanceOf(Date);
+        expect((out as Date).getTime()).toBe(new Date(2024, 4, 20, 9, 15, 7).getTime());
+    });
+
+    it('a date-only string stays a date-only string', () => {
+        expect(writeBackDate(picked, '2024-01-03')).toBe('2024-05-20');
+    });
+
+    it('an ISO date-time string keeps its time and offset as written, its date moved by the days picked', () => {
+        const before = '2024-01-03T10:20:30+05:00';
+        const shownDay = new Date(before);
+        const target = new Date(shownDay.getFullYear(), shownDay.getMonth(), shownDay.getDate() + 2);
+        const out = writeBackDate(target, before) as string;
+        expect(out).toMatch(/T10:20:30\+05:00$/);
+        expect(out.slice(0, 10)).toBe('2024-01-05');
+        expect(writeBackDate(new Date(shownDay.getFullYear(), shownDay.getMonth(), shownDay.getDate()), '2024-01-03T23:59:00Z')).toMatch(/^2024-01-0\dT23:59:00Z$/);
+    });
+
+    it('an empty cell gives a Date, an unreadable string a date-only string, and a cleared pick null', () => {
+        expect(writeBackDate(picked, null)).toEqual(picked);
+        expect(writeBackDate(picked, 'soon')).toBe('2024-05-20');
+        expect(writeBackDate(null, '2024-01-03')).toBeNull();
     });
 });
 

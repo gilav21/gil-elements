@@ -27,6 +27,7 @@ import {
     moveError,
     reconcileEditor,
     tabTarget,
+    writeBackDate,
 } from './data-table-edit.js';
 // TEXT_FIELD: a key typed in one is the field's own (its undo, Enter in a filter input): the history and edit-start keys never take it (B1).
 import { type CellAddress, cellAddressOf, composedContains, ownClosest, ownsTarget, requireProvider, TEXT_FIELD, VIEWPORT } from './data-table-host.js';
@@ -35,7 +36,7 @@ import type { CellInteractionService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
 import type { CellEditError, EditingCell, EnhancedColumnDef } from './data-table.types.js';
-import { isSpecialColumnKey, toEditedDateValue } from './data-table.utils.js';
+import { isSpecialColumnKey } from './data-table.utils.js';
 import { CONTROLS_SELECTOR } from '../shared/interactive-tags.js';
 
 type EditService = Pick<CellInteractionService, 'editingCell' | 'cellEditError' | 'startEditing' | 'commitEdit' | 'cancelEdit' | 'isEditing' | 'editValue' | 'setEditValue'>;
@@ -416,15 +417,20 @@ export class EditSession<T> implements CellSession {
     input(open: OpenEditor<T>, raw: unknown, badInput = false): void {
         if (this.open !== open) return;
         open.badInput = open.kind === 'number' && badInput;
+        open.shown = raw; // what the input holds now: the `live` value binding then leaves it (and the caret) alone
         this.setValue(open, coerceDraft(open.kind, raw, open.column.editOptions), false);
     }
 
-    /** A select or checkbox changed, a date was picked: the draft takes the value and commits at once (Angular html 237, 253; D18). */
-    change(open: OpenEditor<T>, raw: unknown): void {
+    /**
+     * A select or checkbox changed, a date was picked: the draft takes the value and, with `commitNow`, commits at once (Angular html 237, 253;
+     * D18). A select changed from the KEYBOARD (arrows on the closed select) only moves the draft: Enter, Tab or leaving commits it.
+     */
+    change(open: OpenEditor<T>, raw: unknown, commitNow = true): void {
         if (this.open !== open) return;
-        const value = open.kind === 'date' ? toEditedDateValue(raw instanceof Date ? raw : null, open.original) : coerceDraft(open.kind, raw, open.column.editOptions);
+        const value = open.kind === 'date' ? writeBackDate(raw instanceof Date ? raw : null, open.original) : coerceDraft(open.kind, raw, open.column.editOptions);
+        if (open.kind === 'select') open.shown = value;
         this.setValue(open, value, false);
-        this.commit();
+        if (commitNow) this.commit();
     }
 
     /** `setValue` of an `EditContext` or a component's `value-change`: the draft, without a commit. */
@@ -441,8 +447,8 @@ export class EditSession<T> implements CellSession {
     }
 
     /**
-     * Focus left a built-in editor (`focusout` of its container, `event.currentTarget`). It commits a text or number editor (Angular's blur)
-     * and cancels a select, checkbox or date one (D16); a WINDOW blur (alt-tab: no related target and the document lost focus) does nothing
+     * Focus left a built-in editor (`focusout` of its container, `event.currentTarget`). It commits a text, number or select editor (Angular's
+     * blur; a select's draft moved by the keyboard is kept, an untouched one closes with no event) and cancels a checkbox or date one (D16); a WINDOW blur (alt-tab: no related target and the document lost focus) does nothing
      * (B8), and neither does a move of the focus inside the editor (a picker's panel) or one the session made itself.
      */
     leave(open: OpenEditor<T>, event: FocusEvent): void {

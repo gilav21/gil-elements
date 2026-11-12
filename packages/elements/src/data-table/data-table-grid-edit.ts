@@ -9,6 +9,7 @@
  * message is overlaid under the cell instead (`data-overlay`), so row heights stay constant.
  */
 import { html, nothing, type TemplateResult } from 'lit';
+import { live } from 'lit/directives/live.js';
 import { componentCell } from './data-table-component-cell.js';
 import { editSessionOf, type EditSession, type OpenEditor } from './data-table-edit-session.js';
 import { optionIndexOf } from './data-table-edit.js';
@@ -52,6 +53,9 @@ function outputsOf<T>(session: EditSession<T>, open: OpenEditor<T>): ComponentOu
     return outputs;
 }
 
+/** Select editors the pointer is picking in (a press opened its list): their next `change` commits. */
+const pointerPicks = new WeakSet<object>();
+
 const text = (value: unknown): string => (value === null || value === undefined ? '' : String(value));
 
 function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overlay: boolean): TemplateResult {
@@ -92,15 +96,19 @@ function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overl
             const selected = optionIndexOf(options, open.shown);
             // Each option carries its INDEX: the session maps it back to the option's value, of whatever type (B4). A value no option holds shows an
             // empty, selected placeholder (not the first option, which would then be unpickable: choosing it fires no `change`).
+            // A pick with the POINTER (the picker list) commits at once, as Angular; a change from the keyboard (arrows on the closed select) moves
+            // only the draft, which Enter, Tab or leaving commits.
             editor = html`<select data-edit-input aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
-                @change=${(event: Event) => session.change(open, (event.target as HTMLSelectElement).value)}>${selected === -1 ? html`<option value="" selected disabled data-placeholder></option>` : nothing}${options.map(
+                @pointerdown=${() => pointerPicks.add(open)} @keydown=${() => pointerPicks.delete(open)}
+                @change=${(event: Event) => session.change(open, (event.target as HTMLSelectElement).value, pointerPicks.delete(open))}>${selected === -1 ? html`<option value="" selected disabled data-placeholder></option>` : nothing}${options.map(
                     (o, i) => html`<option value=${i} ?selected=${i === selected}>${o.label}</option>`,
                 )}</select>`;
             break;
         }
         default:
-            // `.value` is the SHOWN value (the draft at open, or one set by `setEditValue`): typing does not change it, so a render never resets the caret.
-            editor = html`<input data-edit-input type=${kind === 'number' ? 'number' : 'text'} .value=${text(open.shown)} aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
+            // `.value` is the SHOWN text, compared with the DOM (`live`): typing keeps it equal to what the input holds (so a render never resets the
+            // caret), and `setEditValue` always reaches the input, even with the value it had set before the user typed over it.
+            editor = html`<input data-edit-input type=${kind === 'number' ? 'number' : 'text'} .value=${live(text(open.shown))} aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
                 @input=${(event: Event) => {
                     const input = event.target as HTMLInputElement;
                     session.input(open, input.value, input.validity.badInput);

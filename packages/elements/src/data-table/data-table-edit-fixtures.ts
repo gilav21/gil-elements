@@ -2,6 +2,7 @@
  * Test kit of inline editing (wave 5, package B), for `*.browser.test.ts` files: editable columns over `SampleRow`, and reading the open
  * editor back from the DOM. Mounting and real input stay in data-table-fixtures.ts and data-table-input-fixtures.ts.
  */
+import { userEvent } from 'vitest/browser';
 import { cellAt, type SampleRow, settle } from './data-table-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 import type { ColumnDef } from './data-table.types.js';
@@ -41,6 +42,15 @@ export async function startEditingAt(table: GeDataTable<SampleRow>, row: number,
     const opened = target !== undefined && table.startEditing(target, key);
     await settle(table);
     return opened;
+}
+
+/**
+ * Picks an option of a select editor as the POINTER does: the press that opens the native list, then the pick (`userEvent.selectOptions` alone
+ * is a programmatic change with no press, which the editor treats like a keyboard change: draft only).
+ */
+export async function pointerPick(select: HTMLSelectElement, value: string): Promise<void> {
+    select.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true, pointerType: 'mouse' }));
+    await userEvent.selectOptions(select, value);
 }
 
 /** The live region's text, without the zero-width space the table appends so that a repeated message is spoken again. */

@@ -7,7 +7,7 @@ import axe from 'axe-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { axTree, cellAt, makeRows, mountTable, q, type SampleRow, settle } from './data-table-fixtures.js';
-import { announced, editColumns, editError, editorIn, names, openEditor, record, startEditingAt } from './data-table-edit-fixtures.js';
+import { announced, editColumns, editError, editorIn, names, openEditor, pointerPick, record, startEditingAt } from './data-table-edit-fixtures.js';
 import { emulateTouch, frames, mouseDblClick, parkMouse, press, touchDoubleTap, touchTap, whenDefined, withTheme } from './data-table-input-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 import type { CellEditErrorEvent, CellEditEvent, ColumnDef, EditContext } from './data-table.types.js';
@@ -402,10 +402,34 @@ describe('E5 editor kinds', () => {
         expect(select.localName).toBe('select');
         expect(select.selectedOptions[0]?.textContent).toBe('Forty-one');
         expect(select.getAttribute('aria-label')).toBe('Edit Age');
-        await userEvent.selectOptions(select, '1');
+        await pointerPick(select, '1');
         await settle(table);
         expect(edits.map((e) => e.detail.newValue)).toEqual([30]);
         expect(table.data[0]!.age).toBe(30);
+        expect(table.editingCell).toBeNull();
+    });
+
+    it('the arrow keys on a closed select move only the draft; Enter commits it (round 3)', async () => {
+        const options = [
+            { label: 'Twenty', value: 20 },
+            { label: 'Thirty', value: 30 },
+            { label: 'Forty-one', value: 41 },
+        ];
+        const table = await mount({ columns: editColumns({ age: { editType: 'select', editOptions: options } }) });
+        const edits = record<CellEditEvent<SampleRow>>(table, 'cell-edit');
+        await startEditingAt(table, 2, 'age'); // Bob, 25: no option holds it, the placeholder is selected
+        const select = openEditor(table) as HTMLSelectElement;
+        expect(deepActive()).toBe(select);
+        await press('{ArrowDown}');
+        await press('{ArrowDown}');
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 2, columnKey: 'age' });
+        expect(edits).toHaveLength(0);
+        expect(select.selectedOptions[0]?.textContent).toBe('Thirty');
+        await press('{Enter}');
+        await settle(table);
+        expect(edits.map((e) => e.detail.newValue)).toEqual([30]);
+        expect(table.data[2]!.age).toBe(30);
         expect(table.editingCell).toBeNull();
     });
 
@@ -782,7 +806,7 @@ describe('review round 1', () => {
         const select = openEditor(table) as HTMLSelectElement;
         expect(select.selectedOptions[0]?.hasAttribute('data-placeholder')).toBe(true);
         expect(select.selectedOptions[0]?.textContent).toBe('');
-        await userEvent.selectOptions(select, '0');
+        await pointerPick(select, '0');
         await settle(table);
         expect(table.data[0]!.age).toBe(20);
         expect(table.editingCell).toBeNull();
@@ -870,6 +894,28 @@ describe('review round 2', () => {
         await mouseDblClick(cellAt(table, 1, 'age')!.querySelector('test-name-tool')!.shadowRoot!.querySelector('span')!);
         await settle(table);
         expect(table.editingCell).toEqual({ rowIndex: 1, columnKey: 'age' });
+    });
+
+    it('setEditValue always reaches the input, even the value it set before the user typed over it (round 3)', async () => {
+        const table = await mount();
+        await startEditingAt(table, 0, 'name');
+        const input = openEditor(table) as HTMLInputElement;
+        const set = (v: unknown): void => table.provider('interaction')?.setEditValue?.(v);
+        await userEvent.clear(input);
+        await userEvent.type(input, 'foobar');
+        set('foo');
+        await settle(table);
+        expect(input.value).toBe('foo');
+        await userEvent.type(input, 'bar');
+        expect(input.value).toBe('foobar');
+        set('foo'); // the same value as the last programmatic one
+        await settle(table);
+        expect(input.value).toBe('foo');
+        // Typing (with renders in between) is never reset.
+        await userEvent.type(input, 'z');
+        table.requestUpdate();
+        await settle(table);
+        expect(input.value).toBe('fooz');
     });
 
     it('setEditValue replaces unreadable number text: the value then commits', async () => {

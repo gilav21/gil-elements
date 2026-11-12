@@ -30,8 +30,47 @@ export const isBuiltInKind = (kind: EditKind): boolean => kind !== 'component' &
 /** Enter commits these editors (a date picker's trigger opens its panel on Enter; a custom editor reports its own commit). */
 export const commitsOnEnter = (kind: EditKind): boolean => kind === 'text' || kind === 'number' || kind === 'select' || kind === 'checkbox';
 
-/** Focus leaving the cell commits a text or number editor (Angular's blur) and cancels the others: their value commits on change anyway (D16). */
-export const commitsOnBlur = (kind: EditKind): boolean => kind === 'text' || kind === 'number';
+/**
+ * Focus leaving the cell commits a text, number or select editor (Angular's blur; a select's keyboard-moved draft is kept, an untouched one
+ * closes with no event) and cancels a checkbox or date one: their value commits on change anyway (D16).
+ */
+export const commitsOnBlur = (kind: EditKind): boolean => kind === 'text' || kind === 'number' || kind === 'select';
+
+const pad = (n: number): string => String(n).padStart(2, '0');
+/** `YYYY-MM-DD` of a date in the LOCAL calendar. */
+const localDay = (d: Date): string => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+/** An ISO date-time: the date part, then the rest (the time and any offset), kept as written. */
+const DATE_TIME = /^(\d{4}-\d{2}-\d{2})([T ].+)$/;
+
+/**
+ * The day picked in a date editor, written back in the TYPE the cell held, so a commit never changes a column's type behind the consumer's back:
+ * - a number (a timestamp) -> the timestamp of the picked local day, at the time of day the cell had;
+ * - a `Date` -> a `Date` on the picked day, at the time of day the cell had;
+ * - an ISO date-time string -> the same string with only its date part moved by the days picked (its time and offset are kept as written);
+ * - a date-only (or unreadable) string -> `YYYY-MM-DD` of the picked local day;
+ * - nothing to go on (an empty cell) -> a `Date`.
+ * `null` (the picker cleared) stays `null`.
+ */
+export function writeBackDate(picked: Date | null, previous: unknown): unknown {
+    if (picked === null) return null;
+    const onPickedDay = (time: Date): Date => new Date(picked.getFullYear(), picked.getMonth(), picked.getDate(), time.getHours(), time.getMinutes(), time.getSeconds(), time.getMilliseconds());
+    if (typeof previous === 'number') return (Number.isFinite(previous) ? onPickedDay(new Date(previous)) : picked).getTime();
+    if (previous instanceof Date) return Number.isNaN(previous.getTime()) ? new Date(picked) : onPickedDay(previous);
+    if (typeof previous === 'string') {
+        const dateTime = DATE_ONLY.test(previous) ? null : DATE_TIME.exec(previous);
+        const shown = dateTime ? new Date(previous) : null;
+        if (!dateTime || !shown || Number.isNaN(shown.getTime())) return localDay(picked);
+        // The editor showed the instant's LOCAL day; the string's date part may be another day (a `Z` time near midnight). Moving the written
+        // date by the days the user moved keeps the string's own calendar, time and offset exact.
+        const midnight = (d: Date): number => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const days = Math.round((midnight(picked) - midnight(shown)) / 86_400_000);
+        const [y, m, d] = (dateTime[1] as string).split('-').map(Number) as [number, number, number];
+        const moved = new Date(Date.UTC(y, m - 1, d + days));
+        return `${moved.getUTCFullYear()}-${pad(moved.getUTCMonth() + 1)}-${pad(moved.getUTCDate())}${dateTime[2]}`;
+    }
+    return new Date(picked);
+}
 
 /**
  * A raw editor value as the draft the validator and the setter receive (fixes B4: Angular hands strings). A number input gives a number
