@@ -12,7 +12,7 @@
 import type { CellSession, InteractionContext } from './data-table-cell-session.js';
 import { callPart, lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
-import { cellSelectedBy, clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
+import { cellSelectedBy, clampToRows, rangeColumnKeys, rangeModeOn, rangeSelectionDrawn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 import type { RangePart } from './lazy/range.js';
@@ -101,7 +101,8 @@ export class RangeSession<T> implements CellSession {
         cellRange: () => this.rangeService.range(),
         isCellSelected: (rowIndex, columnKey) => {
             if (isSpecialColumnKey(columnKey)) return false; // the selection, expander and action columns are no cells of the range (like their missing aria-selected)
-            const range = this.rangeService.active() ? this.rangeService.range() : null;
+            // The same gate as the cell's aria-selected (`stateView`): the range counts only with range SELECTION on and the part active; a fill-handle-only grid has no range-based selection.
+            const range = rangeSelectionDrawn(this.context.host.config, this.rangeService.active()) ? this.rangeService.range() : null;
             return cellSelectedBy(range, range !== null && this.rangeService.isInRange(rowIndex, columnKey), this.context.focused(), rowIndex, columnKey, this.rowSelected(rowIndex));
         },
     };

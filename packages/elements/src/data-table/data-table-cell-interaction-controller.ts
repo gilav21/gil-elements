@@ -5,7 +5,7 @@ import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownClosest, ow
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
 import { reportOncePer } from './data-table-warn.js';
 import { mergeSessionServices } from './data-table-session-service.js';
-import { CONTROLS_SELECTOR, NATIVE_CONTROLS, ROLES_SELECTOR } from '../shared/interactive-tags.js';
+import { CONTROLS_SELECTOR, INTERACTIVE_TAGS, NATIVE_CONTROLS, ROLES_SELECTOR } from '../shared/interactive-tags.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { RangeSession } from './data-table-range-session.js';
@@ -36,8 +36,8 @@ interface Press {
     readonly own: boolean;
     /** A touch press: it is closed when it has been idle for `STALE_TOUCH_MS` (its release was swallowed and no move says so). */
     readonly touch: boolean;
-    /** The press began inside this table's VIEWPORT (decided at the pointerdown, so a node a renderer replaced before the pointerup does not matter); touch presses only. */
-    readonly inViewport: boolean;
+    /** A touch press whose tap the BROWSER will answer with a viewport focus: it began in this table's VIEWPORT with no focusable element between the pressed node and the viewport (decided at the pointerdown, so a node a renderer replaced before the pointerup does not matter). */
+    readonly focusesViewport: boolean;
     /** `performance.now()` at HANDLER time of the last pointer event of this press (its down, its moves); not the event's own `timeStamp`. */
     seen: number;
     /** The press began on a `data-pointer-transparent` overlay (the fill handle, a readout): offered to the sessions at its pointerdown (`pressed` = the overlay, `at` and the start cell null) so one can claim it; unclaimed it does nothing (no focus, no tap focus, no pointerup offer). */
@@ -49,6 +49,8 @@ interface Press {
 const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= box.left - slop && x <= box.right + slop && y >= box.top - slop && y <= box.bottom + slop;
 
 const CELL = '[data-slot="table-cell"]';
+/** What the browser focuses by itself when it is pressed (or tapped): native controls, anything with a tabindex, an editable region, and the library's own controls (their inside may be a closed root). */
+const FOCUSABLE = `button, input, select, textarea, summary, a[href], [tabindex], [contenteditable]:not([contenteditable="false"]), ${INTERACTIVE_TAGS.join(', ')}`;
 /** A touch press with no pointer event for this long is taken as lost (its release was swallowed). */
 const STALE_TOUCH_MS = 2000;
 /** The message every session failure is reported under (`reportOncePer`, or a plain `console.error`). */
@@ -538,6 +540,20 @@ export class CellInteractionController<T> {
         for (const [id, press] of [...this.presses]) if (press.touch && id !== event.pointerId) this.endPress(id, press, null);
     }
 
+/**
+     * Whether a tap on this press path ends in a viewport focus: the path (deepest node up) reaches this table's VIEWPORT without meeting anything the browser focuses
+     * itself (a native control, a `[tabindex]`, an editable region, a library control: its host stands for the inside of a closed root). A `role=button` span or an
+     * anchor without `href` is not focusable, so the tap falls through to the viewport.
+     */
+    private tapFocusesViewport(path: readonly EventTarget[]): boolean {
+        for (const node of path) {
+            if (!(node instanceof Element)) continue;
+            if (node.matches(VIEWPORT) && ownsTarget(this.host.root, node)) return true;
+            if (node.matches(FOCUSABLE)) return false;
+        }
+        return false;
+    }
+
     /** Ends the UNCLAIMED TOUCH presses that have seen no pointer event for `STALE_TOUCH_MS`: their release never came. A press being dragged keeps seeing moves. (Times are `performance.now()` at HANDLER time, not event timestamps: main-thread jank must not make a press look old.) */
     private closeStale(now = performance.now()): void {
         for (const [id, press] of [...this.presses]) if (press.touch && !press.claimedBy && now - press.seen > STALE_TOUCH_MS) this.endPress(id, press, null);
@@ -644,7 +660,7 @@ export class CellInteractionController<T> {
         const startCell = !own || overlay ? null : this.addressOf(target);
         const view: PointerPress = Object.freeze({ anchor, pressed: target, startCell });
         if (this.presses.size === 0) this.watchPresses(); // the map goes from empty to non-empty: ONE watcher pair
-        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', inViewport: event.pointerType === 'touch' && target !== null && ownClosest(this.host.root, target, VIEWPORT) !== null, seen: performance.now(), overlay, clears: !startCell && target !== null && this.clearsFocus(target) });
+        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', focusesViewport: event.pointerType === 'touch' && this.tapFocusesViewport(path), seen: performance.now(), overlay, clears: !startCell && target !== null && this.clearsFocus(target) });
     }
 
     /**
@@ -771,9 +787,9 @@ export class CellInteractionController<T> {
      */
     private endPress(pointerId: number, press: Press, event: PointerEvent | null, notify = true): void {
         this.presses.delete(pointerId);
-        // Only a TAP in the VIEWPORT (a touch press ended by its pointerup, on the body, header, footer or empty area; the toolbar and pager are outside it) can
-        // cause the browser's viewport focus that follows: not a scroll's pointercancel, and not a tap on a control (a sort button, a checkbox takes its own focus).
-        if (event?.type === 'pointerup' && press.touch && press.own && press.inViewport) this.lastPressEnd = performance.now();
+        // Only a TAP the browser answers with a viewport focus (a touch press ended by its pointerup, inside the viewport, on nothing focusable: see `tapFocusesViewport`) can
+        // cause the viewport focus that follows: not a scroll's pointercancel, and not a tap on something that takes its own focus (a button, a checkbox, a focusable cell).
+        if (event?.type === 'pointerup' && press.touch && press.focusesViewport) this.lastPressEnd = performance.now();
         if (this.presses.size === 0) {
             this.unwatchPresses?.();
             this.unwatchPresses = null;

@@ -2970,6 +2970,22 @@ describe('the viewport focus after a touch press', () => {
         expect(await focusViewport()).toBe(true);
     });
 
+it('after a tap on a <span role=button> (not focusable: the browser falls through to the viewport) belongs to that tap; on a focusable <button> it is a Tab arrival', async () => {
+        const { table, focusViewport, tap } = await setup();
+        const cell = cellAt(table, 1, 'name')!;
+        const span = document.createElement('span');
+        span.setAttribute('role', 'button');
+        span.textContent = 'press';
+        const button = document.createElement('button');
+        button.textContent = 'real';
+        cell.append(span, button);
+        tap(span, 625);
+        expect(await focusViewport()).toBe(false);
+        await new Promise((resolve) => setTimeout(resolve, 600)); // the span's tap is no longer fresh
+        tap(button, 626);
+        expect(await focusViewport()).toBe(true);
+    });
+
     it('after a tap on a header CONTROL (the select-all checkbox) is a Tab arrival: the control took its own focus, so it goes to the roving cell', async () => {
         const { table, focusViewport, tap } = await setup({ enableRowSelection: true });
         const sort = table.querySelector<HTMLElement>('[data-slot="table-head"] ge-checkbox')!;

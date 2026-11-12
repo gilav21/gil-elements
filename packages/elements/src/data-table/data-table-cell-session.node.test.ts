@@ -91,6 +91,20 @@ describe('the joint step 0 sessions', () => {
         expect(session.service.isCellSelected(3, 'a')).toBe(false);
     });
 
+it('uses the range only with range SELECTION on (the aria-selected gate): a fill-handle-only grid with an active part and a range selects by focus alone', () => {
+        const { context } = rangeContext({ enableCellRangeSelection: false, enableFillHandle: true }, { focused: { rowIndex: 1, columnKey: 'a' } });
+        const session = new RangeSession(context);
+        session.rangeService.setRange({ startRow: 3, startCol: 'a', endRow: 4, endCol: 'a' });
+        vi.spyOn(session.rangeService, 'active').mockReturnValue(true);
+        vi.spyOn(session.rangeService, 'range').mockReturnValue({ startRow: 3, startCol: 'a', endRow: 4, endCol: 'a' });
+        vi.spyOn(session.rangeService, 'isInRange').mockImplementation((r) => r >= 3 && r <= 4);
+        expect(session.service.isCellSelected(3, 'a')).toBe(false); // in the range, but range selection is off
+        expect(session.service.isCellSelected(1, 'a')).toBe(true); // the focused cell, as with no range
+        context.host.config.enableCellRangeSelection = true; // range selection on: the range decides
+        expect(session.service.isCellSelected(3, 'a')).toBe(true);
+        expect(session.service.isCellSelected(1, 'a')).toBe(false);
+    });
+
 it('answers false for the special columns (selection, expander, actions), whatever the focus or the selected row: they are no cells of the range', () => {
         const { context } = rangeContext({ ...on }, { focused: { rowIndex: 1, columnKey: '_selection' } });
         const session = new RangeSession(context);
