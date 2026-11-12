@@ -38,9 +38,49 @@
         border-radius: calc(var(--radius) - 4px);
         background-color: color-mix(in oklab, var(--primary) 5%, transparent);
     }
-    ge-data-table [data-slot="table-cell"][data-flash="up"],
-    ge-data-table [data-slot="table-cell"][data-flash="down"],
-    ge-data-table [data-slot="table-cell"][data-flash="changed"] {
-        /* wave 6 (cell flash): keyframes and colours are decided with the formatting controller */
-        transition: background-color 600ms;
+    /* Cell flash (Angular's flash-up / -down / -changed classes name keyframes nobody defines: the look is ours). The tint fades out over
+       `--ge-dt-flash-ms` (written by the formatting controller from `cell-flash-duration`, so the two agree). Colour is not the only signal:
+       a 2px inline-start marker, solid for up, dashed for down, dotted for changed. Under reduced motion the tint stays, without animation. */
+    ge-data-table [data-slot="table-cell"][data-flash] {
+        --_flash-color: var(--ge-dt-flash-changed, oklch(79.5% 0.184 86.047));
+        --_flash: color-mix(in oklab, var(--_flash-color) 20%, transparent);
+        animation: ge-dt-flash var(--ge-dt-flash-ms, 500ms) ease-out;
+    }
+    ge-data-table [data-slot="table-cell"][data-flash="up"] {
+        --_flash-color: var(--ge-dt-flash-up, oklch(72.3% 0.219 149.579));
+    }
+    ge-data-table [data-slot="table-cell"][data-flash="down"] {
+        --_flash-color: var(--ge-dt-flash-down, oklch(63.7% 0.237 25.331));
+    }
+    /* A pinned cell is opaque: the tint is mixed over its own background, so nothing scrolls through it. */
+    ge-data-table [data-slot="table-cell"][data-flash][data-pinned] {
+        --_flash: color-mix(in oklab, var(--_flash-color) 20%, var(--ge-dt-cell-bg, var(--background)));
+    }
+    ge-data-table [data-slot="table-cell"][data-flash]:not([data-pinned]) {
+        position: relative; /* the marker's box (a pinned cell is sticky, so positioned already) */
+    }
+    ge-data-table [data-slot="table-cell"][data-flash]::before {
+        content: '';
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        border-inline-start: 2px solid var(--_flash-color);
+        pointer-events: none;
+    }
+    ge-data-table [data-slot="table-cell"][data-flash="down"]::before {
+        border-inline-start-style: dashed;
+    }
+    ge-data-table [data-slot="table-cell"][data-flash="changed"]::before {
+        border-inline-start-style: dotted;
+    }
+    @keyframes ge-dt-flash {
+        from {
+            background-color: var(--_flash);
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        ge-data-table [data-slot="table-cell"][data-flash] {
+            animation: none;
+            background-color: var(--_flash);
+        }
     }
