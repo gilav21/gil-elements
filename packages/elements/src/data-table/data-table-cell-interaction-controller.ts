@@ -1,7 +1,7 @@
 import { html, type TemplateResult } from 'lit';
 import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
-import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, composedContains, type DataTableCoreHost, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
 import { reportOncePer } from './data-table-warn.js';
 import { mergeSessionServices } from './data-table-session-service.js';
@@ -69,13 +69,6 @@ const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]
 
 /** Rows moved by one page key when nothing is drawn to measure. */
 const FALLBACK_PAGE = 10;
-
-/** Whether `node` is `ancestor` or inside it, across shadow roots: Node.contains stops at a shadow boundary, this goes from a shadow root to its host. */
-function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
-    if (!ancestor) return false;
-    for (let at = node; at; at = at.parentNode ?? (at as ShadowRoot).host ?? null) if (at === ancestor) return true;
-    return false;
-}
 
 /**
  * Focus, editing and range of the grid's cells: one owner because reconciling them after a render writes them together.

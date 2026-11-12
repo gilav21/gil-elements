@@ -15,6 +15,7 @@ import {
     tabTarget,
 } from './data-table-edit.js';
 import { validateConfig } from './data-table-config-check.js';
+import { composedContains } from './data-table-host.js';
 import type { CellEditError, ColumnDef } from './data-table.types.js';
 
 describe('editKindOf (Angular html 207-290 precedence)', () => {
@@ -209,6 +210,20 @@ describe('the editing config check (wave 5 B block of validateConfig)', () => {
         expect(check([{ accessorKey: 'a', header: 'A', editable: true, editType: 'select', editOptions: [{ label: 'x', value: 1 }], valueSetter: setter }])).toEqual([]);
         expect(check([{ accessorKey: 'a', header: 'A', editable: true, editType: 'select', editComponent: 'x-ed', valueSetter: setter }])).toEqual([]);
         expect(check([{ accessorKey: 'a', header: 'A', editType: 'select' }])).toEqual([]);
+    });
+});
+
+describe('composedContains (data-table-host, shared by the edit session and the interaction controller)', () => {
+    it('walks parents and from a shadow root to its host', () => {
+        const cell = { parentNode: null } as unknown as Node;
+        const host = { parentNode: cell } as unknown as Node;
+        const shadow = { parentNode: null, host } as unknown as Node;
+        const input = { parentNode: shadow } as unknown as Node;
+        expect(composedContains(cell, input)).toBe(true);
+        expect(composedContains(cell, cell)).toBe(true);
+        expect(composedContains(input, cell)).toBe(false);
+        expect(composedContains(null, input)).toBe(false);
+        expect(composedContains(cell, null)).toBe(false);
     });
 });
 

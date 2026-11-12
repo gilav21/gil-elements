@@ -68,6 +68,13 @@ export const ownClosest = <E extends Element = Element>(root: Element, target: u
     return match && ownsTarget(root, match) ? match : null;
 };
 
+/** `node` is `ancestor` or inside it, across shadow roots (a component's input in its own root, a focused element in a cell widget). */
+export function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
+    if (!ancestor) return false;
+    for (let at = node; at; at = at.parentNode ?? (at as ShadowRoot).host ?? null) if (at === ancestor) return true;
+    return false;
+}
+
 /** The elements of `list` that belong to this table, not to a table nested in one of its rows. */
 export const ownElements = <E extends Element>(root: Element, list: Iterable<E>): E[] => [...list].filter((el) => ownsTarget(root, el));
 

@@ -836,6 +836,57 @@ describe('review round 1', () => {
     });
 });
 
+describe('review round 2', () => {
+    const defineOnce = (tag: string, build: (root: ShadowRoot) => void): void => {
+        if (customElements.get(tag)) return;
+        customElements.define(
+            tag,
+            class extends HTMLElement {
+                connectedCallback(): void {
+                    if (!this.shadowRoot) build(this.attachShadow({ mode: 'open' }));
+                }
+            },
+        );
+    };
+
+    it('a double click on the text inside a component cell opens the editor; on a button in its shadow root it does not (D22)', async () => {
+        defineOnce('test-name-badge', (root) => {
+            root.innerHTML = '<span part="text">Badge text</span>';
+        });
+        defineOnce('test-name-tool', (root) => {
+            root.innerHTML = '<span>Tool </span><button type="button">Act</button>';
+        });
+        const table = await mount({ columns: editColumns({ name: { component: 'test-name-badge' }, age: { component: 'test-name-tool' } }) });
+        const badgeText = cellAt(table, 0, 'name')!.querySelector('test-name-badge')!.shadowRoot!.querySelector('span')!;
+        await mouseDblClick(badgeText);
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'name' });
+        await press('{Escape}');
+        await settle(table);
+        const button = cellAt(table, 1, 'age')!.querySelector('test-name-tool')!.shadowRoot!.querySelector('button')!;
+        await mouseDblClick(button);
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        await mouseDblClick(cellAt(table, 1, 'age')!.querySelector('test-name-tool')!.shadowRoot!.querySelector('span')!);
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 1, columnKey: 'age' });
+    });
+
+    it('setEditValue replaces unreadable number text: the value then commits', async () => {
+        const table = await mount();
+        await startEditingAt(table, 0, 'age');
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.clear(input);
+        await userEvent.type(input, '1e');
+        table.provider('interaction')?.setEditValue?.(12);
+        await settle(table);
+        table.commitEdit();
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        expect(table.data[0]!.age).toBe(12);
+    });
+});
+
 describe('axe', () => {
     const rows = ROWS.map((r) => ({ ...r, active: true, born: '2020-01-15', role: 'b' }));
     const extra: ColumnDef<SampleRow>[] = [

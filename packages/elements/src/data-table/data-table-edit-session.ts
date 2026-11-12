@@ -28,7 +28,7 @@ import {
     reconcileEditor,
     tabTarget,
 } from './data-table-edit.js';
-import { type CellAddress, cellAddressOf, ownClosest, ownsTarget, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, composedContains, ownClosest, ownsTarget, requireProvider } from './data-table-host.js';
 import { lazyElement } from './data-table-lazy.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
@@ -98,13 +98,6 @@ const sessions = new WeakMap<object, EditSession<unknown>>();
 
 /** The edit session of `host` while it is attached. */
 export const editSessionOf = <T>(host: object): EditSession<T> | undefined => sessions.get(host) as EditSession<T> | undefined;
-
-/** `node` is `ancestor` or inside it, across shadow roots (an editor component's input sits in its own root). */
-function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
-    if (!ancestor) return false;
-    for (let at = node; at; at = at.parentNode ?? (at as ShadowRoot).host ?? null) if (at === ancestor) return true;
-    return false;
-}
 
 /**
  * A popup an editor opened (a picker's panel, a listbox), or the trigger of one that is open (`aria-expanded="true"`, where the focus stays
@@ -370,7 +363,10 @@ export class EditSession<T> implements CellSession {
     private setValue(open: OpenEditor<T> | null, value: unknown, programmatic: boolean): void {
         if (!open || this.open !== open) return;
         open.draft = value;
-        if (programmatic) open.shown = value;
+        if (programmatic) {
+            open.shown = value;
+            open.badInput = false; // a value set by the API is readable: the unreadable text it replaces is gone
+        }
         if (open.error || programmatic) {
             open.error = null;
             this.host.requestRender();
@@ -570,13 +566,16 @@ export class EditSession<T> implements CellSession {
      */
     private onDoubleClick(event: MouseEvent): void {
         const { root } = this.host;
-        const target = event.composedPath()[0] as Element | undefined;
-        if (!target?.closest || !ownsTarget(root, event.target)) return;
-        const cell = ownClosest<HTMLElement>(root, target, '[data-slot="table-cell"][data-row-index][data-column]');
+        // The cell from the event's target as THIS tree sees it (retargeted to a component's host when the double click is inside its shadow root).
+        if (!ownsTarget(root, event.target)) return;
+        const cell = ownClosest<HTMLElement>(root, event.target, '[data-slot="table-cell"][data-row-index][data-column]');
         const at = cellAddressOf(cell);
         if (!cell || !at || this.service.isEditing?.(at.rowIndex, at.columnKey)) return;
-        const control = target.closest(CONTROLS_SELECTOR);
-        if (control && control !== cell && cell.contains(control)) return;
+        // D22: a control anywhere between the pressed node and the cell, inside open shadow roots too (a button in a component), keeps the double click.
+        for (const node of event.composedPath()) {
+            if (node === cell) break;
+            if (node instanceof Element && node.matches(CONTROLS_SELECTOR)) return;
+        }
         this.startAt(at.rowIndex, at.columnKey);
     }
 
