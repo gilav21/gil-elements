@@ -45,15 +45,10 @@ interface Press {
 /** Whether the point is in the box, or within `slop` px of it. */
 const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= box.left - slop && x <= box.right + slop && y >= box.top - slop && y <= box.bottom + slop;
 
-/**
- * A press on one of these belongs to the control: it keeps its own focus and click. `data-table-keeps-focus` is the explicit opt-out for a widget in a cell
- * that manages its own focus (a combobox, a menu button, a custom editor): treated like a control.
- */
-const CONTROLS = CONTROLS_SELECTOR;
 const CELL = '[data-slot="table-cell"]';
 /** A touch press with no pointer event for this long is taken as lost (its release was swallowed). */
 const STALE_TOUCH_MS = 2000;
-/** The message every session failure is reported under (`reportOncePer` / `report`). */
+/** The message every session failure is reported under (`reportOncePer`, or a plain `console.error`). */
 const SESSION_THREW = '[ge-data-table] a session threw:';
 /** A viewport focus within this long of a press's last pointer event, or of its end, is that press's own (a real press focuses the viewport at its pointerdown, a touch tap just after its pointerup). */
 const FRESH_PRESS_MS = 500;
@@ -63,8 +58,8 @@ export const hasPosition = (event: Pick<PointerEvent, 'isTrusted' | 'clientX' | 
 /** Inside a shadow root of a consumer component (not this table's own tree): only the real form controls count; its roles, bare anchors (SVG included) and tags are its own business. */
 const SHADOW_CONTROLS = `${NATIVE_CONTROLS.join(', ')}, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]`;
 const XHTML = 'http://www.w3.org/1999/xhtml';
-/** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
-const CELL_CONTROLS = `${CONTROLS}, a, ${ROLES_SELECTOR}`;
+/** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS_SELECTOR`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
+const CELL_CONTROLS = `${CONTROLS_SELECTOR}, a, ${ROLES_SELECTOR}`;
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
 /** Rows moved by one page key when nothing is drawn to measure. */
@@ -888,11 +883,6 @@ export class CellInteractionController<T> {
         return (node as Element | undefined) ?? null;
     }
 
-    /** A session error is a bug, not noise: every one is reported (`console.error`). */
-    private report(error: unknown): void {
-        console.error(SESSION_THREW, error);
-    }
-
     /**
      * Runs a session callback (a pointer handler, a cancel, a detach); one that throws is reported and answers nothing, so no press is ever broken by it.
      * A callback that runs at every render (`renderOverlay`, `keepValue`) passes its session and its name and reports its FIRST failure only (per session, one mechanism with the parts and controllers: `reportOncePer`).
@@ -902,7 +892,7 @@ export class CellInteractionController<T> {
             return call();
         } catch (error) {
             if (every) reportOncePer(every, what, SESSION_THREW, error);
-            else this.report(error);
+            else console.error(SESSION_THREW, error); // a session error is a bug, not noise: every one is reported
             return undefined;
         }
     }
@@ -962,7 +952,7 @@ export class CellInteractionController<T> {
         const cell = this.cellOf(target);
         // Inside a cell anything the content makes focusable or interactive counts (an anchor used as a button, a custom focusable widget); outside a
         // cell only the native controls do (the viewport and the rows have a tabindex of their own).
-        const selector = cell ? CELL_CONTROLS : CONTROLS;
+        const selector = cell ? CELL_CONTROLS : CONTROLS_SELECTOR;
         const stop = cell ?? this.host.root;
         if (target === null) return null;
         const tree = this.host.root.getRootNode();

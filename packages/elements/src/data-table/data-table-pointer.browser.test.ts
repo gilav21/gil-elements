@@ -3,7 +3,7 @@ import { userEvent } from 'vitest/browser';
 import type { PointerPress } from './data-table-cell-session.js';
 import { hasPosition } from './data-table-cell-interaction-controller.js';
 import { cellAt, makeColumns, makeRows, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
-import { frames, mouseDrag, parkMouse, scrollGrid } from './data-table-input-fixtures.js';
+import { frames, mouseDrag, parkMouse, scrollGrid, touchLongPressDrag } from './data-table-input-fixtures.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { EditSession } from './data-table-edit-session.js';
 import { RangeSession } from './data-table-range-session.js';
@@ -2614,6 +2614,62 @@ describe('a table inside a contenteditable region', () => {
             key(input, 'ArrowDown');
             await settle(table);
             expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+        } finally {
+            region.remove();
+        }
+    });
+});
+
+describe('column drag from a header: value controls own their press, buttons do not', () => {
+    const order = (table: GeDataTable): string[] => [...table.querySelectorAll<HTMLElement>('[data-slot="table-head"]')].map((head) => head.dataset['columnId'] ?? '');
+
+    it('a touch long-press on the sortable header\'s TITLE (its sort button) picks the column up', async () => {
+        const table = await mountTable({ enableColumnReorder: true }, {}, { width: 700, height: 400 });
+        const before = order(table);
+        const head = table.querySelector<HTMLElement>('[data-slot="table-head"][data-draggable]')!;
+        const title = table.querySelector<HTMLElement>('[data-slot="table-head"][data-draggable] ge-data-table-column-header')!;
+        expect(title).not.toBeNull();
+        const second = table.querySelectorAll<HTMLElement>('[data-slot="table-head"]')[1]!;
+        await touchLongPressDrag(title, { dx: second.getBoundingClientRect().width * 2, dy: 0 });
+        await settle(table);
+        expect(order(table)).not.toEqual(before);
+    });
+
+    it('a mouse drag from a role=button header renderer starts a drag; a ge-slider in a header still does not', async () => {
+        const table = await mountTable({ enableColumnReorder: true });
+        const head = table.querySelector<HTMLElement>('[data-slot="table-head"][data-draggable]')!;
+        const box = head.getBoundingClientRect();
+        const asButton = document.createElement('div');
+        asButton.setAttribute('role', 'button');
+        const slider = document.createElement('ge-slider');
+        head.append(asButton, slider);
+        const dragged = (el: Element, id: number): boolean => {
+            el.dispatchEvent(pointer('pointerdown', id, { clientX: box.left + 3, clientY: box.top + 3 }));
+            document.dispatchEvent(pointer('pointermove', id, { clientX: box.left + 40, clientY: box.top + 3, buttons: 1 }));
+            const started = table.querySelector('[data-dragging], [data-table-dragging]') !== null;
+            document.dispatchEvent(pointer('pointerup', id, { clientX: box.left + 40, clientY: box.top + 3 }));
+            return started;
+        };
+        expect(dragged(asButton, 671)).toBe(true);
+        await frames(2);
+        expect(dragged(slider, 672)).toBe(false);
+    });
+
+    it('an editable wrapper AROUND the table does not block header drags (mouse)', async () => {
+        const region = document.createElement('div');
+        region.setAttribute('contenteditable', 'true');
+        document.body.append(region);
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS, enableColumnReorder: true });
+        region.append(table);
+        try {
+            await settle(table);
+            const head = table.querySelector<HTMLElement>('[data-slot="table-head"][data-draggable]')!;
+            const box = head.getBoundingClientRect();
+            head.dispatchEvent(pointer('pointerdown', 673, { clientX: box.left + 3, clientY: box.top + 3 }));
+            document.dispatchEvent(pointer('pointermove', 673, { clientX: box.left + 40, clientY: box.top + 3, buttons: 1 }));
+            expect(table.querySelector('[data-dragging], [data-table-dragging]')).not.toBeNull();
+            document.dispatchEvent(pointer('pointerup', 673, { clientX: box.left + 40, clientY: box.top + 3 }));
         } finally {
             region.remove();
         }

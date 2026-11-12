@@ -91,6 +91,13 @@ describe('the joint step 0 sessions', () => {
         expect(session.service.isCellSelected(3, 'a')).toBe(false);
     });
 
+it('answers false for the special columns (selection, expander, actions), whatever the focus or the selected row: they are no cells of the range', () => {
+        const { context } = rangeContext({ ...on }, { focused: { rowIndex: 1, columnKey: '_selection' } });
+        const session = new RangeSession(context);
+        for (const key of ['_selection', '_expander', '_actions']) expect(session.service.isCellSelected(1, key), key).toBe(false);
+        expect(new RangeSession(rangeContext({ ...on }, { focused: { rowIndex: 1, columnKey: 'a' } }).context).service.isCellSelected(1, 'a')).toBe(true);
+    });
+
     it('has no neutral override for isCellSelected: with no live part (loading, or a failed session) its own service answers the focused cell', () => {
         const { context } = rangeContext({ enableCellRangeSelection: true, enableFillHandle: false }, { focused: { rowIndex: 1, columnKey: 'a' } });
         const session = new RangeSession(context);

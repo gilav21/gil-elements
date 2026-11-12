@@ -1,17 +1,17 @@
 import { startAutoScroll, type AutoScrollController } from '../shared/auto-scroll.js';
-import { CONTROLS_SELECTOR, ROLES_SELECTOR } from '../shared/interactive-tags.js';
+import { VALUE_CONTROLS_SELECTOR } from '../shared/interactive-tags.js';
 import { onLongPress, onPointerDrag } from '../shared/touch.js';
 import { baseColumnOrder, dropSide, moveByOffset, moveColumnKey, type DropSide } from './data-table-column-order.js';
 import { columnCells, HEAD_SELECTOR as HEAD, pinGroupOf } from './data-table-columns.js';
-import { type DataTableCoreHost, ownClosest, ownEvents, requireProvider } from './data-table-host.js';
+import { type DataTableCoreHost, ownClosest, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
 
 /** A header is a drag only after the pointer moved this far, so a click on its sort button stays a click. */
 const DRAG_THRESHOLD = 4;
 const DRAGGABLE_HEAD = `${HEAD}[data-draggable]`;
-/** Things inside a header that keep their own press: the same controls as a cell's (native, the library's, ARIA widgets, editable, keeps-focus), the resize handle and the header actions. */
-const OWN_PRESS = `${CONTROLS_SELECTOR}, ${ROLES_SELECTOR}, [data-slot="data-table-resize-handle"], [data-slot="data-table-header-action"]`;
+/** Things inside a header that keep their own press: the VALUE controls (never a button or a link: a click on a sort button stays a click and the header stays draggable from it), the resize handle and the header actions. */
+const OWN_PRESS = `${VALUE_CONTROLS_SELECTOR}, [data-slot="data-table-resize-handle"], [data-slot="data-table-header-action"]`;
 
 interface Drag {
     readonly key: string;
@@ -66,12 +66,18 @@ export class ColumnDragController<T> {
 
     // ---- pointer ----------------------------------------------------------------------------------------------
 
+    /** The press is a VALUE control's own only when it sits INSIDE the pressed header (a match above the header, in a wrapper, never counts). */
+    private ownPressIn(head: Element, own: Element | null): boolean {
+        return own !== null && head.contains(own);
+    }
+
     private readonly onDown = (event: PointerEvent): void => {
         // Touch waits for a long press (below); a second pointer never starts a drag.
         if (event.pointerType === 'touch' || event.button !== 0 || this.pending || this.drag) return;
         const target = event.target as Element;
-        const key = ownClosest<HTMLElement>(this.host.root, target, DRAGGABLE_HEAD)?.dataset['columnId'];
-        if (key === undefined || ownClosest(this.host.root, target, OWN_PRESS) || !this.groupOf(key)) return;
+        const head = ownClosest<HTMLElement>(this.host.root, target, DRAGGABLE_HEAD);
+        const key = head?.dataset['columnId'];
+        if (!head || key === undefined || this.ownPressIn(head, ownClosest(this.host.root, target, OWN_PRESS)) || !this.groupOf(key)) return;
         this.pending = { key, x: event.clientX, y: event.clientY, pointerId: event.pointerId };
         const view = this.host.root.ownerDocument.defaultView ?? window;
         this.stops = [
@@ -179,10 +185,12 @@ export class ColumnDragController<T> {
     // ---- touch: a long press picks the header up ----------------------------------------------------------------
 
     private readonly onLongPress = (event: TouchEvent, path: readonly EventTarget[]): void => {
-        const elements = path.filter((node): node is Element => node instanceof Element);
-        const key = elements.find((el) => el.matches(DRAGGABLE_HEAD))?.getAttribute('data-column-id');
+        // The press path from the deepest node up to THIS table's own header cell, never beyond it (an editable wrapper around the table is no control of the header).
+        const head = path.find((node): node is HTMLElement => node instanceof HTMLElement && node.matches(DRAGGABLE_HEAD) && ownsTarget(this.host.root, node));
+        const key = head?.getAttribute('data-column-id');
         const touch = event.touches[0];
-        if (key == null || elements.some((el) => el.matches(OWN_PRESS)) || !touch || this.drag || !this.groupOf(key)) return;
+        const inside = path.slice(0, head ? path.indexOf(head) : 0);
+        if (!head || key == null || inside.some((node) => node instanceof Element && node.matches(OWN_PRESS)) || !touch || this.drag || !this.groupOf(key)) return;
         this.begin(key);
         this.update(touch.clientX, touch.clientY);
         // Non-passive `touchmove` on the window: once the header is picked up the finger moves the column, not the page.

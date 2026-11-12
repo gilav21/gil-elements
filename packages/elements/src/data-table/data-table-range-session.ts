@@ -14,6 +14,7 @@ import { callPart, lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { cellSelectedBy, clampToRows, rangeColumnKeys, rangeModeOn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import type { CellRange } from './data-table.types.js';
+import { isSpecialColumnKey } from './data-table.utils.js';
 import type { RangePart } from './lazy/range.js';
 
 /** The range service that does nothing and answers "nothing" with the right types: the session's shell is built on it (its own `rangeService` spreads it and overrides what it can answer). Nothing installs it when a session fails: a failed session keeps its own range service and value. */
@@ -43,6 +44,8 @@ export class RangeSession<T> implements CellSession {
     private assignedSince = false;
     /** A range flag was on at the last update. */
     private wasOn = false;
+    /** The part the held range was handed to (set right after its attach): a part is read only once it is this one, so its attach sees the held range, not its empty one. */
+    private handedTo: RangePart<T> | null = null;
 
     /** Loaded when a range flag is on at an update (not at the first gesture), detached when it turns off or the table detaches. */
     private readonly lazy = lazyPart<RangePart<T>>(() =>
@@ -54,6 +57,7 @@ export class RangeSession<T> implements CellSession {
         // The part reads `context` / the shell for anything it needs in `attach()`; its own range is set after it.
         {
             changed: () => {
+                this.handedTo = this.lazy.part; // from now on the part is asked; until then (during its attach) the held range answers
                 this.setPartRange(this.held);
                 this.context.host.requestRender();
             },
@@ -102,6 +106,7 @@ export class RangeSession<T> implements CellSession {
     readonly service: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = {
         cellRange: () => this.rangeService.range(),
         isCellSelected: (rowIndex, columnKey) => {
+            if (isSpecialColumnKey(columnKey)) return false; // the selection, expander and action columns are no cells of the range (like their missing aria-selected)
             const range = this.rangeService.active() ? this.rangeService.range() : null;
             return cellSelectedBy(range, range !== null && this.rangeService.isInRange(rowIndex, columnKey), this.context.focused(), rowIndex, columnKey, this.rowSelected(rowIndex));
         },
@@ -119,7 +124,8 @@ export class RangeSession<T> implements CellSession {
     private live(): CellRange | null {
         // Every call into the part goes through `callPart`: one that throws is reported once and answers the held value / "inactive" / a no-op, so a render
         // or a detach is never broken (a detach would otherwise skip the part's disposal).
-        return callPart(this.lazy.part, this.context.host, 'range-part-getRange', (part) => part.getRange(), this.held);
+        const part = this.lazy.part === this.handedTo ? this.lazy.part : null; // a part still attaching has not been handed the range yet: the held one answers
+        return callPart(part, this.context.host, 'range-part-getRange', (p) => p.getRange(), this.held);
     }
 
     private setPartRange(range: CellRange | null): void {

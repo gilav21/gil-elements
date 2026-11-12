@@ -1,9 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EditSession } from './data-table-edit-session.js';
-import { bodyRows, cellAt, mountTable, settle } from './data-table-fixtures.js';
+import { bodyRows, cellAt, mountTable, SAMPLE_COLUMNS, SAMPLE_ROWS, settle } from './data-table-fixtures.js';
+import type { GeDataTable } from './data-table.js';
 import { frames } from './data-table-input-fixtures.js';
 import { RangeSession } from './data-table-range-session.js';
 import { RowDragPart } from './lazy/row-drag.js';
+import { RangePart } from './lazy/range.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -78,6 +80,26 @@ describe('lazy parts and the render', () => {
         expect(cellAt(table, 0, 'name')!.hasAttribute('data-editing')).toBe(false);
         log.push('drawn');
         expect(log).toEqual(['drawn']);
+    });
+
+it('a range part whose attach() reads the range service sees the HELD range, not its own empty one', async () => {
+        const range = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
+        const seen: unknown[] = [];
+        const table = document.createElement('ge-data-table') as GeDataTable;
+        const attach = vi.spyOn(RangePart.prototype, 'attach').mockImplementation(function (this: RangePart<unknown>) {
+            seen.push(table.provider('range')?.range());
+        });
+        try {
+            Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS, enableCellRangeSelection: true, cellRange: range });
+            document.body.append(table);
+            await frames(3);
+            await settle(table);
+            expect(attach).toHaveBeenCalled();
+            expect(seen[0]).toEqual(range);
+        } finally {
+            attach.mockRestore();
+            table.remove();
+        }
     });
 
     it('a part whose active() throws does not break the render: the table draws, the part counts as inactive, one warning per part', async () => {
