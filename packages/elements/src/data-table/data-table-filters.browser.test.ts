@@ -881,6 +881,31 @@ describe('F9 result announcements (D7)', () => {
         expect(announcer(table)).toBe('1 row matches the filters');
     });
 
+    it('a newer filter change drops an announcement still waiting for the previous answer (round 5)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'q');
+        await new Promise((resolve) => setTimeout(resolve, 650)); // waiting for the answer to "q"
+        await userEvent.clear(input);
+        await new Promise((resolve) => setTimeout(resolve, 650));
+        await settle(table);
+        expect(announcer(table)).toBe('All filters cleared, showing all rows');
+        Object.assign(table, { data: [...table.data], total: 3 }); // the answer to "q" arrives late
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        await settle(table);
+        expect(announcer(table)).toBe('All filters cleared, showing all rows');
+    });
+
+    it('a local table arms no answer wait: no render 2 s after a sort (round 5)', async () => {
+        const table = await mount();
+        table.sortState = { column: 'name', direction: 'asc' };
+        await settle(table);
+        const renders = vi.spyOn(table, 'requestUpdate');
+        await new Promise((resolve) => setTimeout(resolve, 2200));
+        expect(renders).not.toHaveBeenCalled();
+        expect(table.provider('query')?.filteredCount()).toBe(table.provider('query')?.sortedData().length);
+    });
+
     it('server filtering with no total says nothing, and stops waiting: a total set much later is not announced (round 4)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false });
         table.addEventListener('query', () => setTimeout(() => (table.data = [...table.data]), 100));

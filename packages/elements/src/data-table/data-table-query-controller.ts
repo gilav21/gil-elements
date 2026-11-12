@@ -215,6 +215,7 @@ export class QueryController<T> {
         });
         this.host.emit('filter-change', value);
         this.cancelAnnounce?.();
+        this.onRows = null; // a newer filter (also clearing it) drops an announcement still waiting for the previous one's answer
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
             // ONE rule with the column and advanced filter announcement: `filteredCount` (server filtering: the total of the ANSWER, so wait for it).
@@ -309,12 +310,17 @@ export class QueryController<T> {
         // `filtering` trigger from the `columnFilters` key. The model fires `column-filters-change`; no other event.
         changeColumnFilter: (key, value) => {
             const { model } = this.host;
+            this.onRows = null; // a newer filter drops an announcement still waiting for the previous one's answer
             model.batch(() => {
                 model.set('columnFilters', { ...model.get('columnFilters'), [String(key)]: value });
                 this.resetPage();
             });
         },
-        changeAdvancedFilter: (group) => changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group),
+        changeAdvancedFilter: (group) => {
+            this.onRows = null;
+            changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group);
+        },
+        whenCounted: (say) => this.whenCounted(say),
         // Server filtering: the held rows are not the matches, so the server's `total`, but only once the ANSWER to the last query arrived (the next
         // `data` from outside): before that, `total` is the previous answer's and `undefined` says "not known yet".
         filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.awaitingRows ? undefined : this.host.config.total),
@@ -345,11 +351,14 @@ export class QueryController<T> {
             const next = this.currentQuery();
             if (this.lastQuery && sameQuery(this.lastQuery, next)) return;
             this.lastQuery = next;
-            this.awaitingRows = true;
-            this.totalAtQuery = this.host.config.total;
-            this.cancelAnswerWait?.();
-            // The fallback: a consumer that answers in a way the table cannot see (rows mutated in place, the same total) is taken as answered.
-            this.cancelAnswerWait = this.host.disposables.timeout(() => this.answered(), ANSWER_WAIT_MS);
+            // Only server filtering waits for an answer: a local table counts its own rows (no timer, no extra render after a local sort).
+            if (!this.host.config.localFiltering) {
+                this.awaitingRows = true;
+                this.totalAtQuery = this.host.config.total;
+                this.cancelAnswerWait?.();
+                // The fallback: a consumer that answers in a way the table cannot see (rows mutated in place, the same total) is taken as answered.
+                this.cancelAnswerWait = this.host.disposables.timeout(() => this.answered(), ANSWER_WAIT_MS);
+            }
             this.host.emit('query', next);
         });
         // The answer's rows (a `data` set from outside) end the wait; `total` is read a tick later, so a consumer may set it after `data`.

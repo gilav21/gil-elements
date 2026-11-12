@@ -13,9 +13,6 @@ import type { ColumnDef, ComponentOutputs, FilterGroup } from './data-table.type
 
 /** How long the result announcement of a column or advanced filter waits for the edits to settle (D7). */
 export const FILTER_UI_ANNOUNCE_MS = 500;
-/** Server filtering: how long the announcement waits for a count before it gives up silently (longer than the query controller's 2 s answer wait). */
-const COUNT_GIVE_UP_MS = 2100;
-
 const panels = (): Promise<unknown> => import('./lazy/filter-panels.js');
 /** The ready-made panels (one lazy entry defines all three, with `ge-calendar` and `ge-command`): loaded when a trigger carrying one is hovered, focused or opened. */
 const PANELS: ReadonlyMap<string, LazyElement> = new Map(BUILT_IN_FILTER_PANELS.map((tag) => [tag, lazyElement(tag, panels)]));
@@ -81,7 +78,6 @@ export class FilterUiController<T> {
         this.teardown = [];
         this.cancelAnnounce?.();
         this.cancelAnnounce = undefined;
-        this.awaitingCount = null;
         for (const cancel of this.pending.values()) cancel();
         this.pending.clear();
         this.handlers.clear();
@@ -220,36 +216,19 @@ export class FilterUiController<T> {
     /** One polite message once the column and advanced filter edits have settled: the rows that match now, or that every filter is cleared (D7). */
     private scheduleAnnouncement(): void {
         this.cancelAnnounce?.();
-        this.awaitingCount = null;
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             this.cancelAnnounce = undefined;
             const { model, resolvedLocale: locale } = this.host;
             const filters = model.get('columnFilters');
             const any = Object.keys(filters).some((key) => isFilterActive(filters, key)) || countConditions(model.get('advancedFilter')) > 0 || model.get('globalFilter').trim() !== '';
             if (!any) return this.host.announce(locale.filtersClearedAnnouncement);
-            const say = (): boolean => {
-                const count = this.host.provider('query')?.filteredCount();
-                if (count === undefined) return false;
-                this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
-                return true;
-            };
-            // Server filtering: no count until the query's answer is in (`filteredCount`, the same rule as the global filter). The query controller
-            // renders the table when it is (new data, a changed total, or its wait ran out): the update after that speaks.
-            if (say() || this.host.config.localFiltering) return;
-            this.awaitingCount = say;
-            // The query controller answers within its wait (2 s after the query, which was sent before this delay began); after that the count
-            // cannot come any more (an answer with no `total`): give up, saying nothing, like the global filter.
-            this.cancelAnnounce = this.host.disposables.timeout(() => {
-                this.cancelAnnounce = undefined;
-                this.awaitingCount = null;
-            }, COUNT_GIVE_UP_MS);
+            const say = (count: number): void => this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
+            // ONE rule with the global filter: the query service says the count now, or (server filtering) once the query's answer is in, or never
+            // (no total); a newer filter change drops a waiting one. A query provider of the older shape: the count in hand, if any.
+            const query = this.host.provider('query');
+            if (query?.whenCounted) return query.whenCounted(say);
+            const count = query?.filteredCount();
+            if (count !== undefined) say(count);
         }, FILTER_UI_ANNOUNCE_MS);
-    }
-
-    /** The announcement that waits for a server count: tried at every update until it speaks; a newer one or a detach replaces it. */
-    private awaitingCount: (() => boolean) | null = null;
-
-    hostUpdate(): void {
-        if (this.awaitingCount?.()) this.awaitingCount = null;
     }
 }

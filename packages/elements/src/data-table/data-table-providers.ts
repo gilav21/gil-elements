@@ -143,6 +143,8 @@ export interface QueryService<T> {
     changeAdvancedFilter(group: FilterGroup | null): void;
     /** Wave 5: the number of rows the filters let through, read when an announcement fires; undefined for server filtering without `total`. */
     filteredCount(): number | undefined;
+    /** wave5: calls `say` with `filteredCount()` now, or (server filtering) once the last query's answer is in; never without a count; a newer call or filter change drops a waiting one. */
+    whenCounted?(say: (count: number) => void): void;
 }
 
 /** Which user action the busy overlay stands for; `loadingVisibility` can silence it per trigger. */
