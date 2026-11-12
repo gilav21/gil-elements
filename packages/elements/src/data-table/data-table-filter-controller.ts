@@ -13,6 +13,8 @@ import type { ColumnDef, ComponentOutputs, FilterGroup } from './data-table.type
 
 /** How long the result announcement of a column or advanced filter waits for the edits to settle (D7). */
 export const FILTER_UI_ANNOUNCE_MS = 500;
+/** Server filtering: how long the announcement waits for a count before it gives up silently (longer than the query controller's 2 s answer wait). */
+const COUNT_GIVE_UP_MS = 2100;
 
 const panels = (): Promise<unknown> => import('./lazy/filter-panels.js');
 /** The ready-made panels (one lazy entry defines all three, with `ge-calendar` and `ge-command`): loaded when a trigger carrying one is hovered, focused or opened. */
@@ -57,7 +59,8 @@ export class FilterUiController<T> {
         onPanelToggle: (key) => this.handlersOf(key).toggle,
         prefetch: (column) => this.prefetch(column),
         panelInputs: (column) => this.panelInputs(column),
-        panelOutputs: (column) => ({ ...column.filterComponentOutputs, 'filter-change': this.handlersOf(String(column.accessorKey)).change }) as ComponentOutputs,
+        panelOutputs: (column) => this.panelOutputs(column),
+        floatingOutputs: (column) => ({ 'filter-change': this.handlersOf(String(column.accessorKey)).change }),
         setter: (key) => this.handlersOf(key).set,
         floatingInput: (key) => this.handlersOf(key).input,
     };
@@ -137,10 +140,40 @@ export class FilterUiController<T> {
         const filters = this.host.model.get('columnFilters');
         // The ready-made panels follow the table's locale (Angular: the injected locale id); a consumer's own component is given only its contract.
         // The id the consumer gave wins over the resolved dictionary's code: a calendar dictionary may exist for a language the table has none for.
+        // The multiselect panel reads the TABLE dictionary: it gets the resolved object itself, so the labels of a custom locale object reach it.
+        // The date panels read the CALENDAR dictionary (Today, Clear, presets), a separate registry: they get its id.
         const { locale } = this.host.config;
-        const own = builtInPanelOf(column.filterComponent) ? { locale: typeof locale === 'string' && locale ? locale : this.host.resolvedLocale.code } : {};
+        const panel = builtInPanelOf(column.filterComponent);
+        const calendarId = typeof locale === 'string' && locale ? locale : this.host.resolvedLocale.code;
+        const own = panel ? { locale: panel === 'ge-data-table-multiselect-filter' ? this.host.resolvedLocale : calendarId } : {};
         return { ...own, ...filterInputsOf(column), column, value: Object.hasOwn(filters, key) ? filters[key] : null };
     }
+
+    /**
+     * The header panel's listeners: the consumer's `filterComponentOutputs`, with its own `filter-change` (if any) COMPOSED with the table's,
+     * consumer first: the table never replaces a handler the consumer gave. Built once per column object, so the panel's listeners keep their
+     * identity across renders.
+     */
+    private panelOutputs(column: ColumnDef<T>): ComponentOutputs {
+        let outputs = this.outputsByColumn.get(column);
+        if (outputs) return outputs;
+        const own = column.filterComponentOutputs ?? {};
+        const table = this.handlersOf(String(column.accessorKey)).change;
+        const consumer = own['filter-change'];
+        outputs = {
+            ...own,
+            'filter-change': consumer
+                ? (event) => {
+                      consumer(event);
+                      table(event);
+                  }
+                : table,
+        };
+        this.outputsByColumn.set(column, outputs);
+        return outputs;
+    }
+
+    private readonly outputsByColumn = new WeakMap<ColumnDef<T>, ComponentOutputs>();
 
     private handlersOf(key: string): ColumnHandlers {
         let handlers = this.handlers.get(key);
@@ -204,6 +237,12 @@ export class FilterUiController<T> {
             // renders the table when it is (new data, a changed total, or its wait ran out): the update after that speaks.
             if (say() || this.host.config.localFiltering) return;
             this.awaitingCount = say;
+            // The query controller answers within its wait (2 s after the query, which was sent before this delay began); after that the count
+            // cannot come any more (an answer with no `total`): give up, saying nothing, like the global filter.
+            this.cancelAnnounce = this.host.disposables.timeout(() => {
+                this.cancelAnnounce = undefined;
+                this.awaitingCount = null;
+            }, COUNT_GIVE_UP_MS);
         }, FILTER_UI_ANNOUNCE_MS);
     }
 

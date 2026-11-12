@@ -26,6 +26,8 @@ export interface ConfigCheckInput<T> {
     groupBy?: string | null;
     enableCellFlash?: boolean;
     enableFloatingFilters?: boolean;
+    /** wave5: the table matches column filters itself (unset counts as on, the default): only then does a panel need its `filterFn`. */
+    localFiltering?: boolean;
     enableRowSelection?: boolean;
     enableRowDrag?: boolean;
     /** Undo/redo of edits; they find a row again by its id. */
@@ -111,7 +113,8 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         `Columns [${keys(panelWithoutFlag)}] have a filterComponent but no enableFiltering. The header shows no filter trigger and the column filter is not applied; set enableFiltering.`,
     );
     // Only the three built-in panels report values that are not text; a consumer's own panel may well report text the default match handles.
-    const panelWithoutFn = c.columns.filter((col) => col.enableFiltering && builtInPanelOf(col.filterComponent) !== undefined && !col.filterFn);
+    // Server filtering never matches rows here, so a missing filterFn changes nothing then.
+    const panelWithoutFn = c.localFiltering === false ? [] : c.columns.filter((col) => col.enableFiltering && builtInPanelOf(col.filterComponent) !== undefined && !col.filterFn);
     warn(
         panelWithoutFn.length > 0,
         `Columns [${keys(panelWithoutFn)}] have a built-in filter panel but no filterFn. A panel value that is not text (a date, a list) is matched as text and filters every row out; pair the panel with its filter function (dateFilterFn, dateRangeFilterFn, multiselectFilterFn).`,

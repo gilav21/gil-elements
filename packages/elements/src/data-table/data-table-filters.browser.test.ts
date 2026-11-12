@@ -6,6 +6,7 @@ import { axTree, bodyRows, cellAt, headCell, mountTable, q, qa, settle } from '.
 import { dateFilterFn, dateRangeFilterFn, multiselectFilterFn } from './data-table-filters.js';
 import { emulateTouch, frames, openPopover, parkMouse, press, typeText, whenDefined, withRtl, withTheme } from './data-table-input-fixtures.js';
 import type { GeDataTable } from './data-table.js';
+import { DATA_TABLE_LOCALES } from './data-table.locales.js';
 import type { ColumnDef, DataTableDateRange, FilterGroup } from './data-table.types.js';
 
 afterEach(parkMouse);
@@ -302,7 +303,15 @@ describe('F4 the multiselect panel', () => {
         const table = await mount({ locale: 'he', columns: [nameColumn, { ...roleColumn, filterComponent: 'GE-Data-Table-Multiselect-Filter' }] });
         const panel = (await openPanel(table, 'role', 'ge-data-table-multiselect-filter')) as HTMLElement & { locale?: unknown };
         expect(panel.localName).toBe('ge-data-table-multiselect-filter');
-        expect(panel.locale).toBe('he');
+        expect(panel.locale).toBe((table as unknown as { resolvedLocale: unknown }).resolvedLocale);
+        await closePopover(table);
+    });
+
+    it('gets the RESOLVED table dictionary, so a custom locale object labels it (round 4)', async () => {
+        const table = await mount({ locale: { ...DATA_TABLE_LOCALES.en, code: 'xx', selectAllRows: 'Pick every one', clearAll: 'Wipe' } });
+        const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
+        expect(panelButton(panel, 'Pick every one')).toBeDefined();
+        expect(panelButton(panel, 'Wipe')).toBeDefined();
         await closePopover(table);
     });
 
@@ -346,6 +355,45 @@ class TextFilter extends HTMLElement {
 if (!customElements.get('x-text-filter')) customElements.define('x-text-filter', TextFilter);
 
 describe('F5 a custom filter component', () => {
+    it("runs the consumer's own filter-change output too (first), then the table's (round 4)", async () => {
+        const order: string[] = [];
+        const column: ColumnDef<Row> = {
+            ...nameColumn,
+            enableFiltering: true,
+            filterComponent: 'x-text-filter',
+            filterComponentOutputs: { 'filter-change': (event) => order.push(`consumer:${String((event as CustomEvent).detail)}`) },
+        };
+        const table = await mount({ columns: [column, roleColumn] });
+        table.addEventListener('column-filters-change', () => order.push('table'));
+        const content = await openPopover(trigger(table, 'name'));
+        await settle(table);
+        await typeText(content!.querySelector('x-text-filter')!.querySelector('input')!, 'B');
+        await settle(table);
+        expect(order).toEqual(['consumer:B', 'table']);
+        expect(table.columnFilters['name']).toBe('B');
+        await closePopover(table);
+    });
+
+    it('the floating component gets only its own contract: no header panel inputs or outputs (round 4)', async () => {
+        const panelOutput = vi.fn();
+        const column: ColumnDef<Row> = {
+            ...nameColumn,
+            enableFiltering: true,
+            filterComponent: 'x-text-filter',
+            filterComponentInputs: { extra: 'panel-only' },
+            filterComponentOutputs: { 'filter-change': panelOutput },
+            floatingFilterComponent: 'x-text-filter',
+        };
+        const table = await mount({ columns: [column, roleColumn], enableFloatingFilters: true });
+        const floating = table.querySelector('[data-kind="filter"] x-text-filter') as TextFilter;
+        expect(floating.extra).toBeNull();
+        expect(floating.column).toMatchObject({ accessorKey: 'name' });
+        await typeText(floating.querySelector('input')!, 'C');
+        await settle(table);
+        expect(table.columnFilters['name']).toBe('C');
+        expect(panelOutput).not.toHaveBeenCalled();
+    });
+
     it('gets value, column and its inputs (a factory re-read each render); its filter-change filters and never reaches the table own filter-change (D4)', async () => {
         let calls = 0;
         const column: ColumnDef<Row> = { ...nameColumn, enableFiltering: true, filterComponent: 'x-text-filter', filterComponentInputs: () => ({ extra: ++calls }) };
@@ -831,6 +879,20 @@ describe('F9 result announcements (D7)', () => {
         await new Promise((resolve) => setTimeout(resolve, 350));
         await settle(table);
         expect(announcer(table)).toBe('1 row matches the filters');
+    });
+
+    it('server filtering with no total says nothing, and stops waiting: a total set much later is not announced (round 4)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false });
+        table.addEventListener('query', () => setTimeout(() => (table.data = [...table.data]), 100));
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'q');
+        await new Promise((resolve) => setTimeout(resolve, 2800));
+        await settle(table);
+        expect(announcer(table)).toBe('');
+        table.total = 9;
+        await settle(table);
+        await frames(2);
+        expect(announcer(table)).toBe('');
     });
 
     it('server filtering: an answer the table cannot see is trusted after the wait, with the total in hand', async () => {

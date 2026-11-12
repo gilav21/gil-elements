@@ -285,6 +285,11 @@ describe('the package A config checks', () => {
         expect(warnings.filter((w) => w.includes('[a] have a filterComponent but no enableFiltering'))).toHaveLength(1);
         expect(warnings.filter((w) => w.includes('[b, c] have a built-in filter panel but no filterFn'))).toHaveLength(1);
     });
+    it('does not ask for a filterFn with server filtering (localFiltering off: nothing is matched here)', () => {
+        const columns: ColumnDef<unknown>[] = [{ accessorKey: 'b', header: 'B', enableFiltering: true, filterComponent: 'ge-data-table-date-filter' }];
+        expect(validateConfig<unknown>({ ...base, columns, localFiltering: false }).filter((w) => w.includes('filterFn'))).toEqual([]);
+        expect(validateConfig<unknown>({ ...base, columns, localFiltering: true }).filter((w) => w.includes('filterFn'))).toHaveLength(1);
+    });
     it('does not ask a consumer panel for a filterFn: it may report text the default match handles', () => {
         const columns: ColumnDef<unknown>[] = [{ accessorKey: 'a', header: 'A', enableFiltering: true, filterComponent: 'x-text-filter' }];
         expect(validateConfig<unknown>({ ...base, columns }).filter((w) => w.includes('filterFn'))).toEqual([]);

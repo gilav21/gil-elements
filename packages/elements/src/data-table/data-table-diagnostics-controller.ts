@@ -49,6 +49,7 @@ export class DiagnosticsController<T> {
             groupBy: config.groupBy,
             enableCellFlash: config.enableCellFlash,
             enableFloatingFilters: config.enableFloatingFilters,
+            localFiltering: config.localFiltering, // wave5: the built-in panel / filterFn check reads it
             enableRowSelection: config.enableRowSelection,
             enableRowDrag: config.enableRowDrag,
             enableEditHistory: config.enableEditHistory,

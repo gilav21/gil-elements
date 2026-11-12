@@ -9,7 +9,6 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
 import { chromeIcon } from './data-table-icons.js';
-import { filterInputsOf } from './data-table-filters.js';
 import { columnParts, columnSpacer } from './data-table-grid-window.js';
 import { requireProvider } from './data-table-host.js';
 import type { FilterService } from './data-table-providers.js';
@@ -39,8 +38,10 @@ export interface FilterUiService<T> extends FilterService<T> {
     prefetch(column: ColumnDef<T>): void;
     /** The properties of the column's filter component: `filterComponentInputs`, then `column` and `value` (the current filter, D2). */
     panelInputs(column: ColumnDef<T>): Record<string, unknown>;
-    /** `filterComponentOutputs` with the table's `filter-change` LAST (stable functions, so the listeners are not re-added at every render). */
+    /** `filterComponentOutputs`, its own `filter-change` composed with the table's (consumer first); stable per column, so listeners are not re-added. */
     panelOutputs(column: ColumnDef<T>): ComponentOutputs;
+    /** The floating component's listeners: only the table's `filter-change` (the header panel's outputs are not its own). */
+    floatingOutputs(column: ColumnDef<T>): ComponentOutputs;
     /** A stable setter of the column's filter (the floating renderer's `setValue`). */
     setter(columnKey: string): (value: unknown) => void;
     /** The floating text input's `input` handler (debounced by `filterDebounce`, D6). */
@@ -79,7 +80,8 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
 
     const control = (c: EnhancedColumnDef<T>): unknown => {
         const key = String(c.accessorKey);
-        if (c.floatingFilterComponent) return componentCell(c.floatingFilterComponent, { ...filterInputsOf(c), column: c, value: valueOf(key) }, service.panelOutputs(c));
+        // Its own contract only (`column`, `value`, `filter-change`): the header panel's `filterComponentInputs` / `Outputs` are that panel's, not its.
+        if (c.floatingFilterComponent) return componentCell(c.floatingFilterComponent, { column: c, value: valueOf(key) }, service.floatingOutputs(c));
         if (c.floatingFilterRenderer) return c.floatingFilterRenderer({ column: c, value: valueOf(key), setValue: service.setter(key) });
         return html`<ge-input placeholder=${c.header} aria-label=${interpolate(locale.filterColumn, { column: c.header })} .value=${stringifyValue(valueOf(key))} @input=${service.floatingInput(key)}></ge-input>`;
     };
