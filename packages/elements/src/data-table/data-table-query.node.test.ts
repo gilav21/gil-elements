@@ -28,6 +28,7 @@ describe('localSortApplies / sortReordersRows', () => {
         [false, false, true, false],
         [true, true, false, false],
         [true, true, true, true],
+        [false, true, true, false],
     ])('localSortApplies(local %s, tree %s, sub %s) is %s', (local, tree, sub, expected) => {
         expect(localSortApplies(local, tree, sub)).toBe(expected);
     });
@@ -40,6 +41,12 @@ describe('localSortApplies / sortReordersRows', () => {
         ['multi: a known chain entry', true, none, [{ column: 'b', direction: 'desc' as const }], true, true],
     ])('%s', (_name, multi, single, chain, local, expected) => {
         expect(sortReordersRows(multi, single, chain, cols, local, false, false)).toBe(expected);
+    });
+    it.each([
+        [false, false],
+        [true, true],
+    ])('in tree mode it needs sub-row sorting (sub %s -> %s)', (sub, expected) => {
+        expect(sortReordersRows(false, asc, [], cols, true, true, sub)).toBe(expected);
     });
 });
 
