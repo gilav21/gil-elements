@@ -49,19 +49,26 @@ export interface ReorderEventInput<T> {
     readonly getRowId: (row: T) => string;
     /** `rowDragMode` is `tree`: a drop `on` a row names it as the new parent (`parentId`). */
     readonly treeMode: boolean;
+    /**
+     * In a tree table, the parent id of the drawn row at an index (null for a root). A drop `above` / `below` makes the row a SIBLING of the target, so
+     * landing on its own drawn index is still a move when the target has another parent (B dropped below A's last child becomes A's child).
+     */
+    readonly parentOf?: (index: number) => string | null;
 }
 
 /**
  * The `row-reorder` event of a drop, or null when there is nothing to move: the dragged row is no longer drawn, the target index is past the
- * rows, or the row would land where it is (`fromIndex === toIndex` for `above` / `below`: beyond Angular, which emits a no-op event).
+ * rows, or the row would land where it is (`fromIndex === toIndex` for `above` / `below` under the SAME parent: beyond Angular, which emits a
+ * no-op event).
  */
-export function buildRowReorderEvent<T>({ rows, draggedId, overIndex, position, getRowId, treeMode }: ReorderEventInput<T>): RowReorderEvent<T> | null {
+export function buildRowReorderEvent<T>({ rows, draggedId, overIndex, position, getRowId, treeMode, parentOf }: ReorderEventInput<T>): RowReorderEvent<T> | null {
     const fromIndex = rows.findIndex((r) => String(getRowId(r)) === draggedId);
     const row = rows[fromIndex];
     const targetRow = rows[overIndex];
     if (row === undefined || targetRow === undefined) return null;
     const toIndex = Math.max(0, dropIndex(overIndex, fromIndex, position));
-    if (position !== 'on' && toIndex === fromIndex) return null;
+    const sameParent = !parentOf || parentOf(overIndex) === parentOf(fromIndex);
+    if (position !== 'on' && toIndex === fromIndex && sameParent) return null;
     const event: RowReorderEvent<T> = { row, targetRow, position, ...neighbourIds(rows, toIndex, fromIndex, getRowId), fromIndex, toIndex };
     if (position === 'on' && treeMode) event.parentId = String(getRowId(targetRow));
     return event;

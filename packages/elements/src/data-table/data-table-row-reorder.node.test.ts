@@ -67,6 +67,28 @@ describe('buildRowReorderEvent', () => {
         expect(buildRowReorderEvent({ rows: NUM, draggedId: '2', overIndex: 1, position: 'below', getRowId: getId, treeMode: false })).toBeNull();
     });
 
+    it('in a tree, landing on the same drawn index under ANOTHER parent is a move (the parent changes), under the same one it is none', () => {
+        // drawn, A expanded: A(0) A1(1) A2(2) B(3); parents: -, a, a, -
+        const drawn = [T_DATA[0]!, T_DATA[0]!.children![0]!, T_DATA[0]!.children![1]!, T_DATA[1]!];
+        const parents = [null, 'a', 'a', null];
+        const parentOf = (i: number): string | null => parents[i] ?? null;
+        const common = { rows: drawn, getRowId: (r: TNode) => r.id, treeMode: true, parentOf };
+        // B below A's last child: the same drawn index, but B becomes A's child
+        const bDown = buildRowReorderEvent({ ...common, draggedId: 'b', overIndex: 2, position: 'below' })!;
+        expect(bDown).toMatchObject({ fromIndex: 3, toIndex: 3, position: 'below' });
+        const moved = reorderTree(T_DATA, bDown, tree);
+        expect(moved.map((n) => n.id)).toEqual(['a']);
+        expect(moved[0]!.children!.map((n) => n.id)).toEqual(['a1', 'a2', 'b']);
+        // A2 above B: the same drawn index, but A2 moves to the root
+        const a2Up = buildRowReorderEvent({ ...common, draggedId: 'a2', overIndex: 3, position: 'above' })!;
+        expect(a2Up).toMatchObject({ fromIndex: 2, toIndex: 2 });
+        const rooted = reorderTree(T_DATA, a2Up, tree);
+        expect(rooted.map((n) => n.id)).toEqual(['a', 'a2', 'b']);
+        expect(rooted[0]!.children!.map((n) => n.id)).toEqual(['a1']);
+        // A1 above A2 (its own place, the same parent): no move
+        expect(buildRowReorderEvent({ ...common, draggedId: 'a1', overIndex: 2, position: 'above' })).toBeNull();
+    });
+
     it('is null when the dragged row has left the rows or the target index is out of range (spec 4878)', () => {
         expect(buildRowReorderEvent({ rows: NUM.slice(1), draggedId: '1', overIndex: 2, position: 'below', getRowId: getId, treeMode: false })).toBeNull();
         expect(buildRowReorderEvent({ rows: NUM, draggedId: '1', overIndex: 999, position: 'below', getRowId: getId, treeMode: false })).toBeNull();

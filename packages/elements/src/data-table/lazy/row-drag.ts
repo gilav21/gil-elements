@@ -26,6 +26,8 @@ const VIEWPORT = '[data-slot="data-table-viewport"]';
 const MIME = 'application/x-ge-data-table-row';
 /** Distance from the viewport edge (px) where a drag auto-scrolls (Angular's 40 px edge zone). */
 const EDGE = 40;
+/** A drag that fired no `drag` / `dragover` for this long while the pointer moves is over (its `dragend` was lost). */
+const DRAG_SILENCE_MS = 300;
 /** Alt + these keys move the focused row. */
 const MOVE_KEYS: Readonly<Record<string, 'up' | 'down' | undefined>> = { ArrowUp: 'up', ArrowDown: 'down' };
 
@@ -43,6 +45,10 @@ export class RowDragPart<T> {
     /** Listeners that exist only while a drag runs (Escape, the document's drag over, window blur). */
     private dragTeardown: (() => void)[] = [];
     private attached = false;
+    /** `performance.now()` of the drag's last `dragstart` / `drag` / `dragover`: a pointer move after `DRAG_SILENCE_MS` without one ends a drag whose end was lost. */
+    private lastDragEvent = 0;
+    /** `judge`'s verdicts for the current drag, while the drawn rows, the disabled rows and the veto are the same. */
+    private verdicts: { id: string; rows: unknown; veto: unknown; disabled: unknown; map: Map<string, RowDragPosition | null> } | null = null;
 
     constructor(protected readonly host: DataTableCoreHost<T>) {}
 
@@ -139,6 +145,7 @@ export class RowDragPart<T> {
         // Kept drawn for the whole drag: a native `dragend` is not delivered when the source node leaves the window.
         this.host.provider('virtual')?.retain('row-drag', [index]);
         this.scroller = startAutoScroll({ edge: EDGE });
+        this.lastDragEvent = performance.now();
         this.watchDrag();
         this.publish();
     }
@@ -154,8 +161,14 @@ export class RowDragPart<T> {
         this.dragTeardown = [
             disposables.listen(doc, 'dragend', () => this.clear(), true),
             disposables.listen(doc, 'drop', () => this.clear()), // bubble phase: this table's own drop handler (on the root) has run first
-            disposables.listen(doc, 'pointermove', () => this.clear(), true),
+            // A running native drag fires `drag` / `dragover` continuously; a pointer move with none of them for a while means it is over (a pointer move
+            // alone is not proof: a browser may report one during the drag).
+            disposables.listen(doc, 'pointermove', () => {
+                if (performance.now() - this.lastDragEvent >= DRAG_SILENCE_MS) this.clear();
+            }, true),
+            disposables.listen(doc, 'drag', () => (this.lastDragEvent = performance.now()), true),
             disposables.listen<DragEvent>(doc, 'dragover', (event) => {
+                this.lastDragEvent = performance.now();
                 if (!event.composedPath().includes(root)) this.scroller?.stop();
             }, true),
             disposables.listen<KeyboardEvent>(doc, 'keydown', (event) => {
@@ -201,14 +214,32 @@ export class RowDragPart<T> {
      * tree table, a flat drag across depths (`on` becomes `below` in flat mode, Angular), and a tree drop onto the dragged node itself or one of
      * its descendants (AB7); and whatever `rowDragAllowDrop` vetoes (a veto that throws is a veto, reported once).
      */
-    private judge(index: number, raw: RowDragPosition, draggedId = this.dragged?.id): RowDragPosition | null {
+    private judge(index: number, raw: RowDragPosition, from = this.dragged): RowDragPosition | null {
+        if (!from) return null;
+        const { config } = this.host;
+        const rows = this.host.provider('query')?.renderedRows() ?? [];
+        // One verdict per (target, position) while the drawn rows, the disabled rows and the veto stay the same: a `dragover` fires every few
+        // milliseconds over the same half of the same row, and the veto is the consumer's code.
+        const memo = this.verdicts;
+        if (memo?.id !== from.id || memo.rows !== rows || memo.veto !== config.rowDragAllowDrop || memo.disabled !== config.disabledRowIds) {
+            this.verdicts = { id: from.id, rows, veto: config.rowDragAllowDrop, disabled: config.disabledRowIds, map: new Map() };
+        }
+        const map = (this.verdicts as NonNullable<RowDragPart<T>['verdicts']>).map;
+        const key = `${index}:${raw}`;
+        if (!map.has(key)) map.set(key, this.verdict(rows, index, raw, from));
+        return map.get(key) ?? null;
+    }
+
+    /** The verdict of `judge`, computed: the dragged row is found at its known drawn index (looked up by id only when the rows moved under it). */
+    private verdict(rows: readonly T[], index: number, raw: RowDragPosition, from: { id: string; index: number }): RowDragPosition | null {
         const { config } = this.host;
         const query = this.host.provider('query');
-        const rows = query?.renderedRows() ?? [];
         const target = rows[index];
-        const fromIndex = rows.findIndex((r) => String(config.getRowId(r)) === draggedId);
+        const idOf = (row: T | undefined): string | undefined => (row === undefined ? undefined : String(config.getRowId(row)));
+        const fromIndex = idOf(rows[from.index]) === from.id ? from.index : rows.findIndex((r) => idOf(r) === from.id);
         const dragRow = rows[fromIndex];
-        if (!query || target === undefined || dragRow === undefined || draggedId === undefined) return null;
+        const draggedId = from.id;
+        if (!query || target === undefined || dragRow === undefined) return null;
         if (this.host.provider('selection')?.isDisabled(target)) return null;
         let position = raw;
         if (config.enableSubRows) {
@@ -243,10 +274,20 @@ export class RowDragPart<T> {
         const rows = this.host.provider('query')?.renderedRows() ?? [];
         const reorder =
             over && position
-                ? buildRowReorderEvent({ rows, draggedId: dragged.id, overIndex: over.index, position, getRowId: this.host.config.getRowId, treeMode: this.host.config.rowDragMode === 'tree' })
+                ? buildRowReorderEvent({ rows, draggedId: dragged.id, overIndex: over.index, position, getRowId: this.host.config.getRowId, treeMode: this.host.config.rowDragMode === 'tree', parentOf: this.parentOf() })
                 : null;
         this.clear();
         if (reorder) this.commit(reorder, rows.length);
+    }
+
+    /** In a tree table, the parent id of a drawn row (a drop that keeps the drawn index can still change the parent); undefined otherwise. */
+    private parentOf(): ((index: number) => string | null) | undefined {
+        const query = this.host.provider('query');
+        if (!this.host.config.enableSubRows || !query) return undefined;
+        return (index) => {
+            const parent = query.renderedTreeRowAt(index)?.parentId;
+            return parent == null ? null : String(parent);
+        };
     }
 
     /** The one drop path (a drag, a key, `moveRow`): `data` through the model with `localReorder` (one `data-change`), then `row-reorder`, then the announcement. */
@@ -283,6 +324,7 @@ export class RowDragPart<T> {
         if (!this.dragged) return;
         this.dragged = null;
         this.over = null;
+        this.verdicts = null;
         this.host.provider('virtual')?.retain('row-drag', []);
         this.publish();
     }
@@ -301,8 +343,8 @@ export class RowDragPart<T> {
         const selection = this.host.provider('selection');
         const line = rows.map((r, i) => ({ parentId: config.enableSubRows ? (query.renderedTreeRowAt(i)?.parentId ?? null) : null, disabled: selection?.isDisabled(r) ?? false }));
         const step = siblingMove(line, index, direction);
-        const position = step ? this.judge(step.overIndex, step.position, id) : null;
-        const event = step && position ? buildRowReorderEvent({ rows, draggedId: id, overIndex: step.overIndex, position, getRowId: config.getRowId, treeMode: config.rowDragMode === 'tree' }) : null;
+        const position = step ? this.judge(step.overIndex, step.position, { id, index }) : null;
+        const event = step && position ? buildRowReorderEvent({ rows, draggedId: id, overIndex: step.overIndex, position, getRowId: config.getRowId, treeMode: config.rowDragMode === 'tree', parentOf: this.parentOf() }) : null;
         if (!event) return false;
         this.commit(event, rows.length);
         return true;

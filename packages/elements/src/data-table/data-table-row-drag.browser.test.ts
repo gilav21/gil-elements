@@ -224,7 +224,17 @@ describe('row drag: indicators and cleanup', () => {
             expect(source.isConnected).toBe(false);
             source.dispatchEvent(new DragEvent('dragend', { bubbles: true, composed: true })); // dispatched to the removed node: the root never hears it
             expect(table.provider('rowDrag')?.isDragging()).toBe(true);
-            document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true })); // the first pointer event after a native drag
+            // a pointer move while the drag still fires dragover (within 300 ms of the last one) does not end it: a browser may report one mid-drag
+            document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            expect(table.provider('rowDrag')?.isDragging()).toBe(true);
+            // a pointer move after 300 ms without any drag event does
+            const now = performance.now();
+            const clock = vi.spyOn(performance, 'now').mockReturnValue(now + 400);
+            try {
+                document.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            } finally {
+                clock.mockRestore();
+            }
             await settle(table);
             expect(table.provider('rowDrag')?.isDragging()).toBe(false);
             expect(edge(table)).toBeNull();
@@ -260,6 +270,18 @@ describe('row drag: indicators and cleanup', () => {
         table.locale = { ...DATA_TABLE_LOCALES.en, rowDragHint: 'Move with Alt+arrows' };
         await settle(table);
         await vi.waitFor(() => expect(q(table, '[data-slot="table"]').getAttribute('aria-description')).toBe('Move with Alt+arrows'));
+    });
+
+    it('judges a target once per (row, position) during a drag: the veto is not asked again for every dragover', async () => {
+        let asked = 0;
+        const table = await mountDrag({ rowDragAllowDrop: () => (asked++, true) });
+        await dragOver(table, 0, 2, 0.75);
+        for (let i = 0; i < 5; i++) syntheticDrag(cellOf(rowEl(table, 2)), 'dragover', at(rowEl(table, 2), 0.8));
+        expect(asked).toBe(1);
+        syntheticDrag(cellOf(rowEl(table, 2)), 'dragover', at(rowEl(table, 2), 0.2)); // the other half: a new verdict
+        expect(asked).toBe(2);
+        syntheticDrag(q(table, VIEWPORT), 'dragend');
+        await settle(table);
     });
 
     it('a drop reorders through the service\'s reorderData (the one reorder path)', async () => {
