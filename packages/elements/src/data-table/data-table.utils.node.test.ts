@@ -54,7 +54,7 @@ describe('isFilterValueEmpty', () => {
     it.each([[undefined], [null], [''], [[]], [{ start: null, end: null }], [{ start: null }], [{ end: undefined }], [{ start: undefined, end: undefined }], [{}], [{ start: '', end: '' }], [{ start: '', end: null }], [{ end: '' }]])('%j is empty', (v) => {
         expect(isFilterValueEmpty(v)).toBe(true);
     });
-    it.each([['a'], [0], [false], [['a']], [{ start: new Date(), end: null }], [{ end: new Date() }], [new Date()], [{ other: 1 }], [{ start: '2024-01-01', end: '' }]])('%j is not empty', (v) => {
+    it.each([['a'], [0], [false], [['a']], [{ start: new Date(), end: null }], [{ end: new Date() }], [new Date()], [{ other: 1 }], [{ start: '2024-01-01', end: '' }], [{ start: null, end: null, includeBlanks: true }], [{ start: null, mode: 'x' }]])('%j is not empty', (v) => {
         expect(isFilterValueEmpty(v)).toBe(false);
     });
 });

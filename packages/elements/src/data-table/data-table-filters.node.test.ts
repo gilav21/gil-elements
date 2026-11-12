@@ -286,6 +286,8 @@ describe('filter state questions', () => {
 
 describe('sameFilterValue (an equal write is a no-op; conservative since round 10)', () => {
     it('treats every "no filter" spelling as equal', () => {
+        // Round 14: a range-like value with a key of its own is written (it is not "no filter").
+        expect(sameFilterValue(null, { start: null, end: null, includeBlanks: true })).toBe(false);
         expect(sameFilterValue(null, undefined)).toBe(true);
         expect(sameFilterValue(undefined, null)).toBe(true);
         // Round 7: '' (and [], an empty range) is "no filter" too, the isFilterValueEmpty rule.

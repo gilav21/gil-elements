@@ -75,11 +75,11 @@ export function isFilterValueEmpty(value: unknown): boolean {
     if (Array.isArray(value)) return value.length === 0;
     if (value instanceof Date) return false;
     if (typeof value === 'object') {
-        // wave5: a range with no end set ({ start: null }, ends undefined or '', `{}`) filters nothing: it is empty however its keys are spelled.
-        const range = value as { start?: unknown; end?: unknown };
+        // wave5: a PLAIN object whose only keys are `start` / `end` (any subset, `{}` too) with no end set (null, undefined, '') is a range that filters
+        // nothing. Any other key makes it a real value (`{ start: null, end: null, includeBlanks: true }` is a consumer's filter and reaches filterFn).
+        if (Object.getPrototypeOf(value) !== Object.prototype) return false;
         const unset = (end: unknown): boolean => end == null || end === '';
-        if ('start' in range || 'end' in range) return unset(range.start) && unset(range.end);
-        return Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).length === 0;
+        return Object.entries(value).every(([key, end]) => (key === 'start' || key === 'end') && unset(end));
     }
     return false;
 }
