@@ -67,6 +67,19 @@ describe('lazy parts and the render', () => {
         }
     });
 
+    it('knows the editor cell by ONE answer: a provider with only `editingCell` draws data-editing on exactly that cell, and the pointer guard agrees', async () => {
+        const table = await mountTable();
+        const log: string[] = [];
+        table.provide('interaction', { focusedCell: () => null, cellRange: () => null, focusCell() {}, isCellSelected: () => false, editingCell: () => ({ rowIndex: 1, columnKey: 'name' }) } as never);
+        table.requestUpdate();
+        await settle(table);
+        expect(cellAt(table, 1, 'name')!.hasAttribute('data-editing')).toBe(true);
+        expect(cellAt(table, 1, 'age')!.hasAttribute('data-editing')).toBe(false);
+        expect(cellAt(table, 0, 'name')!.hasAttribute('data-editing')).toBe(false);
+        log.push('drawn');
+        expect(log).toEqual(['drawn']);
+    });
+
     it('a part whose active() throws does not break the render: the table draws, the part counts as inactive, one warning per part', async () => {
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         vi.spyOn(RowDragPart.prototype, 'active').mockImplementation(() => {

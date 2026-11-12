@@ -53,10 +53,17 @@ describe('stateView with the step-0 services', () => {
         expect(anyActive(stateView(fakeHost({ config: { enableRowDrag: true }, providers: { rowDrag: { active: () => false, dragState: () => null } } })))).toBe(false);
     });
 
-    it('does not crash on an interaction provider without isEditing (a pre-wave-5 shape) while an editor looks open', () => {
+    it('knows the editor cell from editingCell alone (a pre-wave-5 provider without isEditing): it is marked, another cell is not, nothing throws', () => {
         const state = stateView(fakeHost({ providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'a' }) } } }));
-        expect(() => state.cellState(0, 'a', row)).not.toThrow();
-        expect(state.cellState(0, 'a', row)).toBe(NO_CELL_FLAGS); // not editing as far as it can tell
+        expect(state.cellState(0, 'a', row)).toMatchObject({ editing: true });
+        expect(state.cellState(1, 'a', row)).toBe(NO_CELL_FLAGS);
+    });
+
+    it('never asks the per-cell isEditing: the editor cell is derived from editingCell() in one place', () => {
+        const isEditing = vi.fn(() => false);
+        const open = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'name' }), isEditing } } }));
+        expect(open.cellState(0, 'name', row)).toMatchObject({ editing: true });
+        expect(isEditing).not.toHaveBeenCalled();
     });
 
     it('splits the activity: draggable rows make the rows active but not the cells; range, flash and an open editor make the cells active but not the rows', () => {
@@ -83,15 +90,6 @@ describe('stateView with the step-0 services', () => {
         expect(state.cellState(0, 'name', info('r2', true))).toBe(NO_CELL_FLAGS);
     });
 
-    it('asks the per-cell editing question only while an editor is open', () => {
-        const isEditing = vi.fn(() => false);
-        const closed = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction: { editingCell: () => null, isEditing } } }));
-        for (const key of ['name', 'other']) closed.cellState(0, key, row);
-        expect(isEditing).not.toHaveBeenCalled();
-        const open = stateView(fakeHost({ config: { columns: [{ accessorKey: 'name', editable: true }] }, providers: { interaction: { editingCell: () => ({ rowIndex: 0, columnKey: 'name' }), isEditing } } }));
-        open.cellState(0, 'name', row);
-        expect(isEditing).toHaveBeenCalledTimes(1);
-    });
 
     it('marks the cell that holds the open editor', () => {
         const interaction = { editingCell: () => ({ rowIndex: 2, columnKey: 'name' }), isEditing: (rowIndex: number, columnKey: string) => rowIndex === 2 && columnKey === 'name' };

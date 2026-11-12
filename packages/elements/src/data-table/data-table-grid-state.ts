@@ -86,7 +86,8 @@ export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolea
     // Only a drag part that handles drags makes a row draggable (the step 0 shell answers false: no ghost image, text stays selectable).
     const dragOn = config.enableRowDrag && (rowDrag?.active() ?? false);
     const dragging = dragOn ? (rowDrag?.dragState() ?? null) : null;
-    const editingOpen = interaction?.editingCell?.() != null;
+    const editingAt = interaction?.editingCell?.() ?? null; // ONE answer to "which cell holds the editor": its address, the same the pointer guard (`isEditorCell`) reads
+    const editingOpen = editingAt !== null;
     const cellStateActive = rangeMode || flashable || editingOpen;
     return {
         cellStateActive,
@@ -98,7 +99,7 @@ export function stateView<T>(host: DataTableViewHost<T>, rangeActiveNow?: boolea
             const inRange = rangeMode && (range?.isInRange(rowIndex, key) ?? false);
             const fill = config.enableFillHandle && rangeActive && (range?.isFillPreview(rowIndex, key) ?? false);
             const flash = flashable && !flashOff.has(key) ? formatting?.flash?.(rowId, key) : undefined;
-            const editing = editingOpen && (interaction?.isEditing?.(rowIndex, key) ?? false); // the per-cell question only while an editor is open
+            const editing = editingAt !== null && editingAt.rowIndex === rowIndex && editingAt.columnKey === key;
             if (!inRange && !fill && flash === undefined && !editing) {
                 return selectionMode ? OUT_OF_RANGE_FLAGS : NO_CELL_FLAGS;
             }

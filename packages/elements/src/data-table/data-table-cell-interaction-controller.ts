@@ -256,15 +256,18 @@ export class CellInteractionController<T> {
         this.reconcile();
         // A session whose `hostUpdate` throws is failed like one whose attach threw (reported once, left out from now on, withdrawn): it would throw at every
         // render. The others, and the rest of the update, still run.
+        const failedNow = new Set<CellSession>();
         this.eachBackwards((session) => {
             try {
                 session.hostUpdate?.();
             } catch (error) {
+                failedNow.add(session);
                 this.fail(session, error);
             }
         });
-        // A FAILED session stops its lifecycle but not its value: `keepValue` (guarded, reported once per session) keeps its value rules running.
-        for (const session of this.broken) this.guarded(() => session.keepValue?.(), session);
+        // A FAILED session stops its lifecycle but not its value: `keepValue` (guarded, reported once per session) keeps its value rules running. A session that
+        // failed in THIS update already ran them (its `hostUpdate` is where they threw): not twice, not reported twice.
+        for (const session of this.broken) if (!failedNow.has(session)) this.guarded(() => session.keepValue?.(), session);
     }
 
     private reconcile(): void {
@@ -608,9 +611,11 @@ export class CellInteractionController<T> {
         // captured by its path target, a touch or a captured pointer by a hit test: its pointerup is delivered to the PRESSED element, whatever the finger
         // is over), a release that is not on this table ends the press as a cancel, and the tail offers it and runs the tap. Whether a tap focuses never
         // depends on which sessions define `onPointerUp`.
-        // An UNCLAIMED press that is the control's own, an overlay press, or one a widget stopped (`!bubbled`) is not offered at its release and never taps:
-        // nothing needs its location, so no hit test (a touch tap on an in-cell checkbox costs none).
-        if (!press.claimedBy && (press.bypass || press.overlay || !press.bubbled)) {
+        // THE cell-press rule. An UNCLAIMED press is a cell press only when it is not the control's own, not an overlay press, not one a widget stopped
+        // (`!bubbled`) and began on a body cell; and only a TOUCH can still tap. Anything else is not offered at its release and never taps: nothing needs its
+        // location, so no hit test (a tap on an in-cell checkbox, a column-resize drag released over the body cost none). A mouse press that began in no
+        // cell (a group row) did its focus work at its pointerdown.
+        if (!press.claimedBy && (press.bypass || press.overlay || !press.bubbled || (!press.view.startCell && event.pointerType !== 'touch'))) {
             this.endPress(event.pointerId, press, event, false);
             return;
         }
@@ -629,7 +634,7 @@ export class CellInteractionController<T> {
         }
         // An unclaimed press is offered at its pointerup only when it BEGAN on a body cell: a press that began on a resize handle, a header or a popover
         // and is released over a cell is not a click on that cell.
-        if (press.bubbled && press.view.startCell && this.offer(event, cell, (session) => session.onPointerUp, info)) return;
+        if (press.view.startCell && this.offer(event, cell, (session) => session.onPointerUp, info)) return;
         // A TAP does what a mouse press on the PRESSED element does (`pointerFocus`: it focuses a cell, clears the focus on the body outside any cell, and
         // does nothing on a header, a control or a popover), unless that element is in the open editor's cell. It is a tap while the finger is released
         // within the pressed cell's box plus a small slop; further away it was a drag and focuses nothing. (A claimant is told the cell under the finger.)
@@ -648,8 +653,6 @@ export class CellInteractionController<T> {
 
     private tapFocus(event: PointerEvent, press: Press): void {
         const { pressed } = press.view;
-        // Not a cell press (`bypass`), or one a cell widget stopped at its pointerdown (`!bubbled`): the widget's own, for a touch as for a mouse.
-        if (press.bypass || press.overlay || !press.bubbled) return;
         if (!pressed?.isConnected) {
             // A renderer replaced the DOM between the down and the up: the press's start cell (an address) is still the cell that was tapped, if the finger
             // is where it went down.
@@ -725,13 +728,18 @@ export class CellInteractionController<T> {
     private offer(event: PointerEvent, target: Element | null, handlerOf: (session: CellSession) => CellSession['onPointerDown'], press: PointerPress, owner?: Press): CellSession | undefined {
         const at = cellAddressOf(target);
         // A session that throws is reported (once) and does not claim: the press goes on to the next session and then to the controller's own behaviour.
+        let ended = false;
         return this.sessions.find((session) => {
-            if (this.broken.has(session)) return false;
+            // A press that ended inside an earlier session's `onPointerDown` (a blur, a detach of the table) is offered to NO later session: stop here.
+            if (ended || this.broken.has(session)) return false;
             // With an `owner` (the pointerdown offer) the session being offered is the PROVISIONAL claimant for the duration of its call: a press that ends inside
             // its `onPointerDown` (a blur, a detach of the table) is cancelled to it by the ordinary end path, BEFORE it is detached, exactly once.
             if (owner) owner.claimedBy = session;
             const claimed = this.guarded(() => handlerOf(session)?.call(session, event, at, press)) === true;
-            if (owner && !claimed && this.presses.get(event.pointerId) === owner) owner.claimedBy = null;
+            if (owner && !claimed) {
+                if (this.presses.get(event.pointerId) === owner) owner.claimedBy = null;
+                else ended = true;
+            }
             return claimed;
         });
     }

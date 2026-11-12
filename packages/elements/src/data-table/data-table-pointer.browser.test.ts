@@ -1835,6 +1835,61 @@ describe('the press object a session receives', () => {
     });
 });
 
+describe('a session that ends the press in onPointerDown and does not claim', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('is the last one offered: a LATER session never sees a press that is already over', async () => {
+        const table = await mountTable();
+        const calls: string[] = [];
+        hooks.onPointerDown = () => {
+            calls.push('range');
+            table.remove(); // ends the press, does not claim
+            return false;
+        };
+        editHooks.onPointerDown = () => void calls.push('edit');
+        const cell = cellAt(table, 1, 'name')!;
+        cell.dispatchEvent(pointer('pointerdown', 561, { over: cell }));
+        expect(calls).toEqual(['range']);
+    });
+});
+
+describe('a session whose keepValue throws inside its hostUpdate', () => {
+    it('is reported ONCE in that update (its value rules do not run a second time in the broken loop)', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const table = await mountTable({ enableCellRangeSelection: true });
+        error.mockClear();
+        const keep = vi.spyOn(RangeSession.prototype, 'keepValue').mockImplementation(() => {
+            throw new Error('keepValue failed');
+        });
+        try {
+            table.requestUpdate();
+            await settle(table);
+            expect(keep).toHaveBeenCalledTimes(1); // in its hostUpdate only
+            expect(error).toHaveBeenCalledTimes(1);
+        } finally {
+            keep.mockRestore();
+            error.mockRestore();
+        }
+    });
+});
+
+describe('a column-resize drag released over the body', () => {
+    it('is not located: an unclaimed mouse press with no start cell makes no hit test at its release', async () => {
+        const table = await mountTable({ enableColumnResize: true });
+        const handle = table.querySelector<HTMLElement>('[data-slot="table-head"] [data-slot="data-table-resize-handle"]')!;
+        const target = cellAt(table, 2, 'age')!;
+        const spy = vi.spyOn(Document.prototype, 'elementsFromPoint');
+        try {
+            await mouseDrag(handle, target, { steps: 3 });
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+        }
+    });
+});
+
 describe('a release of a press that is not offered', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
