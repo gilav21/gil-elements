@@ -28,6 +28,7 @@ describe('validateConfig: wave 6', () => {
             check({ enableRowDrag: true, localReorder: true, groupBy: 'name', ...over }).some((m) => m.includes('enable-row-drag with group-by'));
         expect(grouped({})).toBe(true);
         expect(grouped({ localReorder: false })).toBe(false);
+        expect(grouped({ groupBy: 'missing' })).toBe(false);
         expect(grouped({ virtualActive: true })).toBe(false);
         expect(grouped({ enableRowDrag: false })).toBe(false);
     });

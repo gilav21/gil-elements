@@ -40,7 +40,7 @@ export interface ConfigCheckInput<T> {
  * wave6: C. Row drag with local reorder while the table sorts the rows itself (`sortReordersRows`): a drop reorders `data`
  * but the sorted order is drawn, so the row does not move. Grouping has its own warning in `validateConfig`.
  */
-export const ROW_DRAG_SORT_WARNING = `[ge-data-table] enable-row-drag with local-reorder is on while the table is sorted. A drop reorders \`data\`, but the table keeps drawing the sorted order, so the row does not appear to move. Clear the sort while dragging; with a server sort (local-sorting=false) the table draws \`data\` as given.`;
+export const ROW_DRAG_SORT_WARNING = `[ge-data-table] enable-row-drag with local-reorder is on while the table is sorted. A drop reorders \`data\`, but the table keeps drawing the sorted order, so the row does not appear to move. Clear the sort while dragging; with a server sort (local-sorting=false), or in tree mode without enable-sub-row-sorting, the table draws \`data\` as given.`;
 
 /** Whether `validateConfig` scans the row ids for duplicates (so the diagnostics need not scan them again). */
 export function scansRowIds<T>(c: ConfigCheckInput<T>): c is ConfigCheckInput<T> & { data: readonly T[] } {
@@ -101,8 +101,11 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     // `DiagnosticsController.hostUpdate` (a sort click must not re-run these checks).
     // wave6: C (row drag)
     warn(
-        c.enableRowDrag && c.localReorder && isGroupingActive(c.groupBy, !!c.enableSubRows, c.virtualActive),
-        'enable-row-drag with group-by: rows are drawn in their group, so a drop moves a row only inside its group; dropped into another group, it stays in its own (its group value is not changed).',
+        c.enableRowDrag &&
+            c.localReorder &&
+            isGroupingActive(c.groupBy, !!c.enableSubRows, c.virtualActive) &&
+            c.columns.some((col) => String(col.accessorKey) === c.groupBy),
+        'enable-row-drag with group-by: rows are drawn under their group value, which a drop does not change. A row dropped into another group stays in its own, and groups are ordered by their first row in `data`, so a drop can move a whole group.',
     );
     // wave6: end C
     // wave6: A + B (fill handle, paste)
