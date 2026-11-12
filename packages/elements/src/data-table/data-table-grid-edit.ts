@@ -87,8 +87,10 @@ function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overl
                 @change=${(event: Event) => session.change(open, (event.target as { checked?: boolean }).checked)}></ge-checkbox>`;
             break;
         case 'date':
-            // The trigger's own text (the date, or the placeholder) is its name; a label on the host would sit on an element with no role.
-            editor = html`<ge-date-picker data-edit-input .date=${asEditableDate(open.shown)} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
+            // The trigger's own text (the date, or the placeholder) is its name; a label on the host would sit on an element with no role. The
+            // error reaches the trigger (the focusable part, in the picker's shadow root, where no id reference can point) through `invalid` and
+            // `errorMessage` (its aria-invalid and aria-description).
+            editor = html`<ge-date-picker data-edit-input .date=${asEditableDate(open.shown)} .invalid=${invalid} .errorMessage=${message ?? ''}
                 @date-change=${(event: CustomEvent<unknown>) => session.change(open, event.detail)}></ge-date-picker>`;
             break;
         case 'select': {

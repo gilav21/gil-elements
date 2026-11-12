@@ -918,6 +918,25 @@ describe('review round 2', () => {
         expect(input.value).toBe('fooz');
     });
 
+    it('a rejected date reaches the picker trigger: aria-invalid and the message as its description (round 5)', async () => {
+        const rows = ROWS.map((r) => ({ ...r, born: '2020-01-15' }));
+        const born: ColumnDef<SampleRow> = { accessorKey: 'born', header: 'Born', width: '220px', editable: true, editType: 'date', editValidator: () => 'Not that day', valueSetter: (row, v) => ({ ...row, born: v }) };
+        const table = await mount({ data: rows, columns: editColumns({}, [born]) });
+        await startEditingAt(table, 0, 'born');
+        await whenDefined('ge-date-picker');
+        await frames(2);
+        // A pick with the validator refusing: the editor stays open (a date commits on pick) and shows the error.
+        (openEditor(table) as HTMLElement).dispatchEvent(new CustomEvent('date-change', { detail: new Date(2021, 4, 9), bubbles: true, composed: true }));
+        await settle(table);
+        const picker = openEditor(table) as HTMLElement & { updateComplete: Promise<unknown> };
+        await picker.updateComplete;
+        const button = picker.shadowRoot!.querySelector('button')!;
+        expect(button.getAttribute('aria-invalid')).toBe('true');
+        expect(button.getAttribute('aria-description')).toBe('Not that day');
+        const node = (await axTree()).find((n) => n.properties?.some((p) => p.name === 'invalid' && p.value.value === 'true') && n.role?.value === 'button');
+        expect((node as { description?: { value?: string } } | undefined)?.description?.value).toBe('Not that day');
+    });
+
     it('closes the editor, writing nothing, when no row is drawn any more (round 5)', async () => {
         const table = await mount();
         const edits = record(table, 'cell-edit');

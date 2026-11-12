@@ -19,7 +19,14 @@ export abstract class PickerBase extends UiElement {
         locale: {},
         isOpen: { state: true },
         fieldsetDisabled: { state: true },
+        invalid: { type: Boolean, reflect: true },
+        errorMessage: { attribute: 'error-message' },
     };
+
+    /** Marks the value as rejected: the trigger (the focusable part) gets `aria-invalid="true"`. A host's own `aria-invalid` cannot reach it (shadow root). */
+    declare invalid: boolean;
+    /** Why the value is rejected: the trigger's accessible description (`aria-description`), since an id reference cannot cross the shadow root. */
+    declare errorMessage: string;
 
     declare name: string;
     declare placeholder: string;
@@ -49,6 +56,8 @@ export abstract class PickerBase extends UiElement {
         this.locale = 'en';
         this.isOpen = false;
         this.fieldsetDisabled = false;
+        this.invalid = false;
+        this.errorMessage = '';
         this.internals = this.attachInternals?.();
     }
 
@@ -107,7 +116,8 @@ export abstract class PickerBase extends UiElement {
         return html`<div class="picker" data-slot=${this.slotName}>
             <ge-popover ?open=${this.isOpen} @open-change=${this.onOpenChange}>
                 <ge-popover-trigger>
-                    <button type="button" class="trigger" part="trigger" ?disabled=${this.isDisabled} aria-expanded=${this.isOpen ? 'true' : 'false'} aria-haspopup="dialog">
+                    <button type="button" class="trigger" part="trigger" ?disabled=${this.isDisabled} aria-expanded=${this.isOpen ? 'true' : 'false'} aria-haspopup="dialog"
+                        aria-invalid=${this.invalid ? 'true' : nothing} aria-description=${this.errorMessage || nothing}>
                         ${CALENDAR_ICON}${label === null ? html`<span class="placeholder">${this.placeholder}</span>` : html`<span>${label}</span>`}
                     </button>
                 </ge-popover-trigger>
