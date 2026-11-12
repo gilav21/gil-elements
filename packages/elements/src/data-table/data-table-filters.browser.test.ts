@@ -523,6 +523,22 @@ describe('F7 the advanced filter builder', () => {
         await closePopover(table);
     });
 
+    it('shows a condition on an unknown column as that key, selected and disabled, and picking a real column changes it', async () => {
+        const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'gone', operator: 'contains', value: 'a' }] };
+        const table = await mount({ enableAdvancedFilter: true, advancedFilter: group });
+        const trees = record(table, 'advanced-filter-change');
+        await openBuilder(table);
+        const select = inner(table, 'select.column')[0] as unknown as HTMLSelectElement;
+        expect(select.selectedOptions[0]?.textContent).toBe('gone');
+        expect(select.selectedOptions[0]?.disabled).toBe(true);
+        await userEvent.selectOptions(select, 'name');
+        await refresh(table);
+        expect(trees).toHaveLength(1);
+        expect(table.advancedFilter!.rules[0]).toMatchObject({ column: 'name' });
+        expect(inner(table, 'select.column option[data-unknown]')).toHaveLength(0);
+        await closePopover(table);
+    });
+
     it('names every control (D8), and grows them to 44 px on a coarse pointer', async () => {
         const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'Al' }, { type: 'group', combinator: 'or', rules: [] }] };
         const table = await mount({ enableAdvancedFilter: true, advancedFilter: group });

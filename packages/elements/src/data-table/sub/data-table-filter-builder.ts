@@ -1,4 +1,5 @@
-import { html, nothing, svg, unsafeCSS } from 'lit';
+import { html, nothing, unsafeCSS } from 'lit';
+import { chromeIcon } from '../data-table-icons.js';
 import { UiElement } from '@gilav21/elements-base';
 import '../../button/define.js';
 import { addCondition, addGroup, asText, emptyGroup, type FilterBuilderColumn, needsValue, OPERATOR_ORDER, patchCondition, removeRule, setCombinator, updateRule } from '../data-table-filters.js';
@@ -6,7 +7,6 @@ import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels } from '../data-tabl
 import type { FilterCondition, FilterGroup, FilterOperator } from '../data-table.types.js';
 import css from './data-table-filter-builder.css?inline';
 
-const X = svg`<path d="m6 6 12 12" /><path d="M18 6 6 18" />`;
 
 /**
  * The recursive AND/OR editor of the data table's advanced filter (shadcn-angular `ui-data-table-filter-builder`). Fully controlled: every edit
@@ -24,7 +24,11 @@ export class GeDataTableFilterBuilder extends UiElement {
     };
 
     declare group: FilterGroup;
-    /** The columns the first select offers; a condition naming another column shows no option selected (the tree is never rewritten). */
+    /**
+     * The columns the first select offers. A condition naming a column that is not among them (removed, hidden from the builder) shows that
+     * key as a disabled, selected first option, so the select tells the truth and picking any real column fires `change`; the tree is never
+     * rewritten by the builder itself.
+     */
     declare columns: FilterBuilderColumn[];
     declare labels: FilterBuilderLabels;
 
@@ -45,6 +49,7 @@ export class GeDataTableFilterBuilder extends UiElement {
         const value = (event: Event): string => (event.target as HTMLInputElement | HTMLSelectElement).value;
         return html`<div class="condition" data-slot="filter-condition">
             <select class="column" aria-label=${l.columnLabel ?? 'Column'} @change=${(e: Event) => this.emit(patchCondition(this.group, index, { column: value(e) }))}>
+                ${this.columns.some((c) => c.key === rule.column) ? nothing : html`<option value="" disabled selected data-unknown>${rule.column || '(unknown column)'}</option>`}
                 ${this.columns.map((c) => html`<option value=${c.key} ?selected=${c.key === rule.column}>${c.header}</option>`)}
             </select>
             <select class="operator" aria-label=${l.operatorLabel ?? 'Operator'} @change=${(e: Event) => this.emit(patchCondition(this.group, index, { operator: value(e) as FilterOperator }))}>
@@ -54,8 +59,7 @@ export class GeDataTableFilterBuilder extends UiElement {
                 ? html`<input type="text" class="value" placeholder=${l.valuePlaceholder} aria-label=${l.valueLabel ?? 'Value'} .value=${asText(rule.value)} @input=${(e: Event) => this.emit(patchCondition(this.group, index, { value: value(e) }))} />`
                 : nothing}
             <button type="button" class="remove" aria-label=${l.removeCondition} @click=${() => this.emit(removeRule(this.group, index))}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${X}</svg>
-            </button>
+${chromeIcon('x', 'xs')}</button>
         </div>`;
     }
 
