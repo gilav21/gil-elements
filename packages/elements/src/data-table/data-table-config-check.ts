@@ -113,6 +113,12 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         `Columns [${keys(panelWithoutFlag)}] have a filterComponent but no enableFiltering. The header shows no filter trigger and the column filter is not applied; set enableFiltering.`,
     );
     // Only the three built-in panels report values that are not text; a consumer's own panel may well report text the default match handles.
+    // Angular draws a floating component or renderer without `enableFiltering` (cmp 2547) but never applies its value (cmp 1284): kept for parity, warned.
+    const floatingWithoutFlag = c.columns.filter((col) => (col.floatingFilterComponent || col.floatingFilterRenderer) && col.floatingFilter !== false && !col.enableFiltering);
+    warn(
+        floatingWithoutFlag.length > 0,
+        `Columns [${keys(floatingWithoutFlag)}] have a floating filter component or renderer but no enableFiltering. The control is drawn but its value filters nothing; set enableFiltering.`,
+    );
     // Server filtering never matches rows here, so a missing filterFn changes nothing then.
     const panelWithoutFn = c.localFiltering === false ? [] : c.columns.filter((col) => col.enableFiltering && builtInPanelOf(col.filterComponent) !== undefined && !col.filterFn);
     warn(
