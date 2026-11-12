@@ -24,8 +24,10 @@ describe('validateConfig: wave 6', () => {
         expect(check({ [flag]: true, ...withSetter }).some((m) => m.includes('no column has a valueSetter'))).toBe(false);
     });
     it('warns about row drag with an active group-by, not with one the table ignores', () => {
-        const grouped = (over: Partial<ConfigCheckInput<Row>>) => check({ enableRowDrag: true, groupBy: 'name', ...over }).some((m) => m.includes('enable-row-drag with group-by'));
+        const grouped = (over: Partial<ConfigCheckInput<Row>>) =>
+            check({ enableRowDrag: true, localReorder: true, groupBy: 'name', ...over }).some((m) => m.includes('enable-row-drag with group-by'));
         expect(grouped({})).toBe(true);
+        expect(grouped({ localReorder: false })).toBe(false);
         expect(grouped({ virtualActive: true })).toBe(false);
         expect(grouped({ enableRowDrag: false })).toBe(false);
     });

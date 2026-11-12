@@ -57,6 +57,7 @@ export class DiagnosticsController<T> {
             // Only what a check reads is here: each re-run costs the O(rows) id scan.
             enableFillHandle: config.enableFillHandle,
             enableClipboardPaste: config.enableClipboardPaste,
+            localReorder: config.localReorder,
         };
         if (!sameSnapshot(this.last, snapshot)) {
             this.last = snapshot;

@@ -85,12 +85,13 @@ describe('the diagnostics snapshot', () => {
         expect(lastInput()[flag]).toBe(true);
     });
 
-    it('does not re-run the config check when localReorder changes (no snapshot key reads it)', () => {
+    it('re-runs the config check when localReorder changes (the group-by warning reads it)', () => {
         const table = setup({ enableRowDrag: true, localReorder: false });
         table.run();
         table.config['localReorder'] = true;
         table.run();
-        expect(validateConfig).toHaveBeenCalledTimes(1);
+        expect(validateConfig).toHaveBeenCalledTimes(2);
+        expect(lastInput()['localReorder']).toBe(true);
     });
 
     it('still re-runs it when a setting a check reads changes', () => {

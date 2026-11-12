@@ -32,13 +32,15 @@ export interface ConfigCheckInput<T> {
     /** Wave 6 checks: fill and paste write through value setters. */
     enableFillHandle?: boolean;
     enableClipboardPaste?: boolean;
+    /** Row drag writes `data` itself (the group-by warning applies only then). */
+    localReorder?: boolean;
 }
 
 /**
  * wave6: C. Row drag with local reorder while the table sorts the rows itself (`sortReordersRows`): a drop reorders `data`
  * but the sorted order is drawn, so the row does not move. Grouping has its own warning in `validateConfig`.
  */
-export const ROW_DRAG_SORT_WARNING = `[ge-data-table] enable-row-drag with local-reorder is on while the table is sorted. A drop reorders \`data\`, but the table keeps drawing the sorted order, so the row does not appear to move; clear the sort while dragging, or turn local-reorder off and reorder yourself.`;
+export const ROW_DRAG_SORT_WARNING = `[ge-data-table] enable-row-drag with local-reorder is on while the table is sorted. A drop reorders \`data\`, but the table keeps drawing the sorted order, so the row does not appear to move. Clear the sort while dragging; with a server sort (local-sorting=false) the table draws \`data\` as given.`;
 
 /** Whether `validateConfig` scans the row ids for duplicates (so the diagnostics need not scan them again). */
 export function scansRowIds<T>(c: ConfigCheckInput<T>): c is ConfigCheckInput<T> & { data: readonly T[] } {
@@ -99,7 +101,7 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     // `DiagnosticsController.hostUpdate` (a sort click must not re-run these checks).
     // wave6: C (row drag)
     warn(
-        c.enableRowDrag && isGroupingActive(c.groupBy, !!c.enableSubRows, c.virtualActive),
+        c.enableRowDrag && c.localReorder && isGroupingActive(c.groupBy, !!c.enableSubRows, c.virtualActive),
         'enable-row-drag with group-by: rows are drawn in their group, so a drop moves a row only inside its group; dropped into another group, it stays in its own (its group value is not changed).',
     );
     // wave6: end C
