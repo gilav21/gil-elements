@@ -44,6 +44,8 @@ export class QueryController<T> {
     /** `loading` was seen true since the last query: the consumer drives it, and its end (not a data push) is the answer. */
     private loadingSeen = false;
     private cancelAnswerWait: (() => void) | undefined;
+    /** The cancel of an announcement `answered()` already scheduled (a tick later): a newer filter change drops it too. */
+    private cancelSay: (() => void) | undefined;
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
 
@@ -218,7 +220,7 @@ export class QueryController<T> {
         });
         this.host.emit('filter-change', value);
         this.cancelAnnounce?.();
-        this.onRows = null; // a newer filter (also clearing it) drops an announcement still waiting for the previous one's answer
+        this.dropWaiting(); // a newer filter (also clearing it) drops an announcement still waiting for the previous one's answer
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
             // ONE rule with the column and advanced filter announcement: `filteredCount` (server filtering: the total of the ANSWER, so wait for it).
@@ -231,7 +233,7 @@ export class QueryController<T> {
      * (server filtering without `total`) says nothing. A newer call replaces a waiting one.
      */
     private whenCounted(say: (count: number) => void): void {
-        this.onRows = null;
+        this.dropWaiting();
         const now = (): void => {
             const count = this.service.filteredCount();
             if (count !== undefined) say(count);
@@ -317,7 +319,7 @@ export class QueryController<T> {
             const name = String(key);
             // An equal value (a Clear of an empty panel, the same day again, the same text after a debounce) changes nothing: no new object, no page reset, no event.
             if (sameFilterValue(Object.hasOwn(filters, name) ? filters[name] : undefined, value)) return;
-            this.onRows = null; // a newer filter drops an announcement still waiting for the previous one's answer
+            this.dropWaiting(); // a newer filter drops an announcement still waiting for the previous one's answer
             model.batch(() => {
                 model.set('columnFilters', { ...model.get('columnFilters'), [String(key)]: value });
                 this.resetPage();
@@ -326,7 +328,7 @@ export class QueryController<T> {
         changeAdvancedFilter: (group) => {
             // An unchanged tree is no filter change (the same no-op rule as `changeAdvancedFilterOf`): a waiting announcement stays.
             if ((this.host.model.get('advancedFilter') ?? null) === (group ?? null)) return;
-            this.onRows = null;
+            this.dropWaiting();
             changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group);
         },
         whenCounted: (say) => this.whenCounted(say),
@@ -374,7 +376,11 @@ export class QueryController<T> {
         // Without `loading`, the answer's rows (a `data` set from outside) end the wait; `total` is read a tick later, so a consumer may set it
         // after `data`. While the consumer drives `loading`, only its end does (a push during the request is not the answer).
         this.unsubscribeData = this.host.model.subscribe('data', (_, origin) => {
-            if (origin !== 'internal' && !this.loadingSeen && !this.host.config.loading) this.answered();
+            if (origin === 'internal' || !this.awaitingRows) return;
+            // Data arriving WHILE the consumer shows `loading` marks the request as loading-driven, also when loading went true and will go false
+            // in the same task (a cache answering at once): the update that sees loading false then ends the wait.
+            if (this.host.config.loading) this.loadingSeen = true;
+            else if (!this.loadingSeen) this.answered();
         });
     }
 
@@ -397,8 +403,20 @@ export class QueryController<T> {
         this.cancelAnswerWait = undefined;
         const waiting = this.onRows;
         this.onRows = null;
-        if (waiting) this.host.disposables.timeout(waiting, 0);
+        // Kept cancellable: a filter change in the tick before it runs drops it too.
+        if (waiting)
+            this.cancelSay = this.host.disposables.timeout(() => {
+                this.cancelSay = undefined;
+                waiting();
+            }, 0);
         this.host.requestRender();
+    }
+
+    /** A newer filter change: the announcement waiting for the previous one's answer (or already scheduled) is dropped. */
+    private dropWaiting(): void {
+        this.onRows = null;
+        this.cancelSay?.();
+        this.cancelSay = undefined;
     }
 
     detach(): void {
@@ -406,7 +424,7 @@ export class QueryController<T> {
         this.unsubscribeData?.();
         this.cancelAnswerWait?.();
         this.cancelAnswerWait = undefined;
-        this.onRows = null;
+        this.dropWaiting();
         this.awaitingRows = false;
         this.unprovide?.();
         this.cancelFilter?.();

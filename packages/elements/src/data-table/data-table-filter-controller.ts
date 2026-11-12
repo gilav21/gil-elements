@@ -22,7 +22,8 @@ interface ColumnHandlers {
     input: (event: Event) => void;
     toggle: (event: CustomEvent<boolean>) => void;
     /** The header panel's listeners, built for one column object (rebuilt when the consumer replaces the column). */
-    panel?: { readonly column: object; readonly outputs: ComponentOutputs };
+    /** Kept for the consumer's `filterComponentOutputs` OBJECT (the cache key; the column object may be rebuilt every render). */
+    panel?: { readonly own: object | null; readonly outputs: ComponentOutputs };
     /** The floating component's listeners: only the table's `filter-change`. */
     floating: ComponentOutputs;
 }
@@ -159,12 +160,13 @@ export class FilterUiController<T> {
 
     /**
      * The header panel's listeners: the consumer's `filterComponentOutputs`, with its own `filter-change` (if any) COMPOSED with the table's,
-     * consumer first: the table never replaces a handler the consumer gave. Kept in the column's ONE handlers entry (dropped at detach) for its
-     * column object, so the panel's listeners keep their identity across renders.
+     * consumer first: the table never replaces a handler the consumer gave. Kept in the column's ONE handlers entry (by accessorKey, dropped at
+     * detach) for the consumer's `filterComponentOutputs` object, so the panel's listeners keep their identity across renders.
      */
     private panelOutputs(column: ColumnDef<T>): ComponentOutputs {
         const handlers = this.handlersOf(String(column.accessorKey));
-        if (handlers.panel?.column === column) return handlers.panel.outputs;
+        const ownKey = column.filterComponentOutputs ?? null;
+        if (handlers.panel && handlers.panel.own === ownKey) return handlers.panel.outputs;
         const own = column.filterComponentOutputs ?? {};
         const table = handlers.change;
         const consumer = own['filter-change'];
@@ -177,7 +179,7 @@ export class FilterUiController<T> {
                   }
                 : table,
         };
-        handlers.panel = { column, outputs };
+        handlers.panel = { own: ownKey, outputs };
         return outputs;
     }
 
@@ -218,7 +220,7 @@ export class FilterUiController<T> {
                 if (event.target !== event.currentTarget) return; // a popover inside the panel (a month select)
                 if (event.detail) {
                     this.openColumn = key;
-                    const column = this.host.config.columns.find((c) => String(c.accessorKey) === key);
+                    const column = this.host.provider('columns')?.enhancedColumns().find((c) => String(c.accessorKey) === key);
                     if (column) this.prefetch(column);
                 } else if (this.openColumn === key) this.openColumn = null;
                 this.host.requestRender();

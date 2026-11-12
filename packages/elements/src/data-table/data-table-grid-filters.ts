@@ -66,7 +66,10 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
     if (!isUiService(service)) return NO_FILTERS as FiltersView<T>;
     const { config, resolvedLocale: locale } = host;
     const floating = config.enableFloatingFilters && service.hasAnyFloating();
-    const anyTrigger = config.columns.some((c) => service.hasTrigger(c));
+    // The columns as drawn (enhanced): what the header actually shows a trigger on.
+    const anyTrigger = requireProvider(host, 'columns')
+        .enhancedColumns()
+        .some((c) => service.hasTrigger(c));
     if (!floating && !anyTrigger) return NO_FILTERS as FiltersView<T>;
     const filters = host.model.get('columnFilters');
     const valueOf = (key: string): unknown => (Object.hasOwn(filters, key) ? filters[key] : undefined);

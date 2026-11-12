@@ -275,9 +275,11 @@ async function renderJob(browser, theme, group, side) {
                     return null;
                 };
                 if (editing.length > 0)
-                    HTMLElement.prototype.focus = function () {
+                    HTMLElement.prototype.focus = function (...args) {
                         const table = tableOf(this);
+                        // Only an element of a data-edit table is held; anything else on the page focuses as usual.
                         if (table) tried.add(table);
+                        else realFocus.apply(this, args);
                     };
                 try {
                 for (const target of editing) {

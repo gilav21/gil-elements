@@ -49,10 +49,12 @@ describe('getCellValue', () => {
 });
 
 describe('isFilterValueEmpty', () => {
-    it.each([[undefined], [null], [''], [[]], [{ start: null, end: null }]])('%j is empty', (v) => {
+    // Wave 5 review round 9: a range with no end set is empty however its keys are spelled ({ start: null }, undefined ends, `{}`); Angular
+    // asks for both keys (cmp 3981), so `{ start: null }` there filters every row out.
+    it.each([[undefined], [null], [''], [[]], [{ start: null, end: null }], [{ start: null }], [{ end: undefined }], [{ start: undefined, end: undefined }], [{}]])('%j is empty', (v) => {
         expect(isFilterValueEmpty(v)).toBe(true);
     });
-    it.each([['a'], [0], [false], [['a']], [{ start: new Date(), end: null }], [{}]])('%j is not empty', (v) => {
+    it.each([['a'], [0], [false], [['a']], [{ start: new Date(), end: null }], [{ end: new Date() }], [new Date()], [{ other: 1 }]])('%j is not empty', (v) => {
         expect(isFilterValueEmpty(v)).toBe(false);
     });
 });

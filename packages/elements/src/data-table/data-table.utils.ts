@@ -73,8 +73,12 @@ export const specialSlotOf = (column: { accessorKey: PropertyKey }): string => S
 export function isFilterValueEmpty(value: unknown): boolean {
     if (value === undefined || value === null || value === '') return true;
     if (Array.isArray(value)) return value.length === 0;
-    if (typeof value === 'object' && 'start' in value && 'end' in value) {
-        return value.start === null && value.end === null;
+    if (value instanceof Date) return false;
+    if (typeof value === 'object') {
+        // wave5: a range with no end set ({ start: null }, ends undefined, `{}`) filters nothing: it is empty however its keys are spelled.
+        const range = value as { start?: unknown; end?: unknown };
+        if ('start' in range || 'end' in range) return range.start == null && range.end == null;
+        return Object.getPrototypeOf(value) === Object.prototype && Object.keys(value).length === 0;
     }
     return false;
 }

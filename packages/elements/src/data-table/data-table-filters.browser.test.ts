@@ -320,6 +320,38 @@ describe('round 8', () => {
         expect(announcer(table)).toBe('3 rows match the filters');
     });
 
+    it('a cache answering in the same task (loading true, data, loading false) ends the wait at once (round 9)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
+        table.addEventListener('query', () => {
+            table.loading = true;
+            table.data = [...table.data]; // the same total: only the loading cycle says this is the answer
+            table.loading = false;
+        });
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'q');
+        await new Promise((resolve) => setTimeout(resolve, 800)); // well before the 2 s fallback
+        await settle(table);
+        expect(announcer(table)).toBe('500 rows match the filters');
+    });
+
+    it('a filter change right after the answer drops the announcement it had already scheduled (round 9)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
+        let answered = false;
+        table.addEventListener('query', () => {
+            if (answered) return;
+            answered = true;
+            setTimeout(() => {
+                Object.assign(table, { data: [...table.data], total: 3 }); // the answer: the announcement is scheduled a tick later
+                table.provider('query')?.changeColumnFilter('name', 'zz'); // same task: a newer filter
+            }, 700);
+        });
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'q');
+        await new Promise((resolve) => setTimeout(resolve, 850));
+        await settle(table);
+        expect(announcer(table)).toBe('');
+    });
+
     it('an unchanged advanced filter keeps a waiting announcement (no-op before the drop)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, enableAdvancedFilter: true, localFiltering: false, total: 500 });
         table.addEventListener('query', () => setTimeout(() => Object.assign(table, { data: [...table.data], total: 2 }), 800));
@@ -390,6 +422,22 @@ describe('round 6: floating row index, handlers across a reattach', () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true });
         expect(q(table, '[data-kind="filter"]').getAttribute('aria-rowindex')).toBe('2');
         expect(bodyRows(table)[0]!.getAttribute('aria-rowindex')).toBe('3');
+    });
+
+    it('new column objects with the same outputs object keep one composed listener: the consumer handler runs once per change (round 9)', async () => {
+        const consumer = vi.fn();
+        const outputs = { 'filter-change': consumer };
+        const column: ColumnDef<Row> = { ...nameColumn, enableFiltering: true, filterComponent: 'x-text-filter', filterComponentOutputs: outputs };
+        const table = await mount({ columns: [column, roleColumn] });
+        const content = await openPopover(trigger(table, 'name'));
+        await settle(table);
+        table.columns = table.columns.map((c) => ({ ...c })); // new column objects, the same outputs object
+        await settle(table);
+        await typeText(content!.querySelector('x-text-filter')!.querySelector('input')!, 'E');
+        await settle(table);
+        expect(consumer).toHaveBeenCalledTimes(1);
+        expect(table.columnFilters['name']).toBe('E');
+        await closePopover(table);
     });
 
     it('after a detach and reattach the panel still filters, and the consumer handler runs once per change', async () => {
