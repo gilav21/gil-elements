@@ -36,7 +36,7 @@ import { defaultGetRowId } from './data-table.utils.js';
 import './sub/data-table-column-header.js';
 import './sub/data-table-pager.js';
 import { css } from './data-table-styles.js';
-import { warnOnce, warnOncePer } from './data-table-warn.js';
+import { warnOnce, reportOncePer } from './data-table-warn.js';
 
 /** State the element reads out of its services and does not accept back (Angular: signals). */
 const READ_ONLY_STATE = ['editingCell', 'cellEditError'] as const;
@@ -531,11 +531,22 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Clears the advanced filter tree (the column and global filters stay). */
     clearAdvancedFilter(): void {
-        // The query controller writes the model with the page reset; with no query provider (before the first connect, or detached) the value is written
-        // directly (no page to reset without a query), so it is cleared when the table attaches.
+        // The query controller writes the model with the page reset; with no query provider (before the first connect, or detached) the same is written
+        // directly (a no-op when there is no filter), so it is cleared when the table attaches.
         const query = this.provider('query');
         if (query) query.changeAdvancedFilter(null);
-        else this.model.set('advancedFilter', null);
+        else {
+            if ((this.model.get('advancedFilter') ?? null) === null) return;
+            const page = this.model.get('paginationState');
+            this.model.batch(() => {
+                if (page.pageIndex !== 0) {
+                    const next = { ...page, pageIndex: 0 };
+                    this.model.set('paginationState', next);
+                    this.emit('page-change', next); // before the model's advanced-filter-change, like the attached order
+                }
+                this.model.set('advancedFilter', null);
+            });
+        }
     }
 
     // ---- range, fill, clipboard and row drag (wave 6) ---------------------------------------------------------
@@ -882,7 +893,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             try {
                 return controller[slot]?.();
             } catch (error) {
-                warnOncePer(this, `controller-${index}-${slot}`, `[ge-data-table] a controller threw in ${slot}:`, error);
+                reportOncePer(this, `controller-${index}-${slot}`, `[ge-data-table] a controller threw in ${slot}:`, error);
                 return undefined;
             }
         });

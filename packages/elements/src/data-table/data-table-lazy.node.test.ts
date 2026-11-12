@@ -304,7 +304,7 @@ describe('lazyPart', () => {
     });
 
     it('callPart answers the fallback for a part that is not loaded or throws (reported once per key)', () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         try {
             expect(callPart(null, {}, 'k-null', () => true, false)).toBe(false);
             const bad = {

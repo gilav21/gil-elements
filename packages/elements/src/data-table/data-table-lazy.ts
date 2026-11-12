@@ -16,7 +16,7 @@
  *   failed load is latched: `sync` runs on every render and must not re-import (and re-log) every time, so it tries again only
  *   after the flag turned off and on, or after `dispose()` (the next attach).
  */
-import { warnOncePer } from './data-table-warn.js';
+import { reportOncePer } from './data-table-warn.js';
 
 /**
  * Calls the part from a path that must never break (a render, a detach): a part that throws is reported ONCE per `key` and per `scope` (the table: one table's failure never silences another's) and answers `fallback`
@@ -27,7 +27,7 @@ export function callPart<P, R>(part: P | null, scope: object, key: string, call:
     try {
         return call(part);
     } catch (error) {
-        warnOncePer(scope, key, `[ge-data-table] a lazy part threw in ${key}:`, error);
+        reportOncePer(scope, key, `[ge-data-table] a lazy part threw in ${key}:`, error);
         return fallback;
     }
 }

@@ -16,11 +16,11 @@ export function resetWarnOnce(key?: string): void {
 
 const spokenPer = new WeakMap<object, Set<string>>();
 
-/** Like `warnOnce`, but once per `scope` (a table) and key: one table's failure never silences another table's. */
-export function warnOncePer(scope: object, key: string, message: string, ...detail: unknown[]): void {
+/** The error twin of `warnOnce`: `console.error` once per `scope` (a table, a session) and key, for a THROWN error (a bug) that would repeat at every render; one scope's failure never silences another's. */
+export function reportOncePer(scope: object, key: string, message: string, ...detail: unknown[]): void {
     let keys = spokenPer.get(scope);
     if (!keys) spokenPer.set(scope, (keys = new Set<string>())); // the entry is written only for a new scope
     if (keys.has(key)) return;
     keys.add(key);
-    console.warn(message, ...detail);
+    console.error(message, ...detail);
 }

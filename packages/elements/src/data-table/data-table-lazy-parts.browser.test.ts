@@ -81,7 +81,7 @@ describe('lazy parts and the render', () => {
     });
 
     it('a part whose active() throws does not break the render: the table draws, the part counts as inactive, one warning per part', async () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         vi.spyOn(RowDragPart.prototype, 'active').mockImplementation(() => {
             throw new Error('active failed');
         });

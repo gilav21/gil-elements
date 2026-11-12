@@ -62,6 +62,12 @@ export interface RowAddress {
 /** The event came from this table's own DOM and not from a table nested in one of its rows (a detail row's content). */
 export const ownsTarget = (root: Element, target: unknown): boolean => (target as Element | null)?.closest?.('ge-data-table') === root;
 
+/** `target.closest(selector)`, only when the match belongs to THIS table: a table nested in an outer row or cell would otherwise find the OUTER table's row, cell or header above its whole body. */
+export const ownClosest = <E extends Element = Element>(root: Element, target: unknown, selector: string): E | null => {
+    const match = (target as Element | null)?.closest?.<E>(selector) ?? null;
+    return match && ownsTarget(root, match) ? match : null;
+};
+
 /** The elements of `list` that belong to this table, not to a table nested in one of its rows. */
 export const ownElements = <E extends Element>(root: Element, list: Iterable<E>): E[] => [...list].filter((el) => ownsTarget(root, el));
 

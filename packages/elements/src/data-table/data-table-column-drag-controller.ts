@@ -2,7 +2,7 @@ import { startAutoScroll, type AutoScrollController } from '../shared/auto-scrol
 import { onLongPress, onPointerDrag } from '../shared/touch.js';
 import { baseColumnOrder, dropSide, moveByOffset, moveColumnKey, type DropSide } from './data-table-column-order.js';
 import { columnCells, HEAD_SELECTOR as HEAD, pinGroupOf } from './data-table-columns.js';
-import { type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
+import { type DataTableCoreHost, ownClosest, ownEvents, requireProvider } from './data-table-host.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
 
@@ -69,8 +69,8 @@ export class ColumnDragController<T> {
         // Touch waits for a long press (below); a second pointer never starts a drag.
         if (event.pointerType === 'touch' || event.button !== 0 || this.pending || this.drag) return;
         const target = event.target as Element;
-        const key = target.closest<HTMLElement>(DRAGGABLE_HEAD)?.dataset['columnId'];
-        if (key === undefined || target.closest(OWN_PRESS) || !this.groupOf(key)) return;
+        const key = ownClosest<HTMLElement>(this.host.root, target, DRAGGABLE_HEAD)?.dataset['columnId'];
+        if (key === undefined || ownClosest(this.host.root, target, OWN_PRESS) || !this.groupOf(key)) return;
         this.pending = { key, x: event.clientX, y: event.clientY, pointerId: event.pointerId };
         const view = this.host.root.ownerDocument.defaultView ?? window;
         this.stops = [
@@ -206,7 +206,7 @@ export class ColumnDragController<T> {
         const next = moveByOffset(this.baseOrder(), group, key, (event.key === 'ArrowRight') !== this.isRtl() ? 1 : -1);
         if (!next) return false;
         event.preventDefault();
-        const onHandle = target.closest('[data-slot="data-table-resize-handle"]') !== null;
+        const onHandle = ownClosest(this.host.root, target, '[data-slot="data-table-resize-handle"]') !== null;
         this.host.model.set('columnOrder', next);
         this.announceMove(key, next, group);
         // The head nodes are keyed by column, so they moved; a moved node loses focus. Put it back on the same control.

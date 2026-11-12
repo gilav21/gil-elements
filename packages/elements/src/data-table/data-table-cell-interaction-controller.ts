@@ -1,8 +1,9 @@
 import { html, type TemplateResult } from 'lit';
 import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
 import { EditSession } from './data-table-edit-session.js';
-import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
+import { type CellAddress, cellAddressOf, type DataTableCoreHost, ownClosest, ownElements, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { TOUCH_SLOP_PX, withinTouchSlop } from '../shared/touch.js';
+import { reportOncePer } from './data-table-warn.js';
 import { INTERACTIVE_ROLES, INTERACTIVE_TAGS, NATIVE_CONTROLS } from '../shared/interactive-tags.js';
 import { NAVIGATION_KEYS, nearestColumn, nextFocus, pageRows } from './data-table-keys.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
@@ -53,9 +54,10 @@ const CELL = '[data-slot="table-cell"]';
 /** A touch press with no pointer event for this long is taken as lost (its release was swallowed). */
 const STALE_TOUCH_MS = 2000;
 /** A viewport focus within this long of a press's last pointer event is that press's own (a real press focuses the viewport at its pointerdown, within the same event). */
+const SESSION_THREW = '[ge-data-table] a session threw:';
 const FRESH_PRESS_MS = 500;
-/** A press on this element clears the focus: it is the body outside any cell (a group row, the stretch row); the toolbar, header, pager and detail rows do not. */
-const clearsFocus = (target: Element): boolean => target.closest(BODY) !== null && target.closest('[data-kind="detail"]') === null;
+/** A pointer event that carries a position: a synthetic one (`new PointerEvent('pointerdown')`, testing-library's fireEvent) has none (all zero), and its point says nothing about where it landed. */
+const hasPosition = (event: PointerEvent): boolean => event.clientX !== 0 || event.clientY !== 0 || event.screenX !== 0 || event.screenY !== 0;
 /** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
 const CELL_CONTROLS = `${CONTROLS}, a, ${INTERACTIVE_ROLES.map((role) => `[role="${role}"]`).join(', ')}`;
 const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
@@ -103,9 +105,6 @@ export class CellInteractionController<T> {
     readonly services: { readonly range: RangeService };
     /** Sessions that FAILED (their `attach()` or a `hostUpdate()` threw): detached at once and skipped by everything after, until the next attach. */
     private readonly broken = new Set<CellSession>();
-    /** The (session, callback) pairs whose failure was already reported: a callback that runs at every render (`renderOverlay`: `reported`, `keepValue`: `reportedKeep`) reports its first failure only, each on its own set (cleared at detach). */
-    private readonly reported = new Set<CellSession>();
-    private readonly reportedKeep = new Set<CellSession>();
     /**
      * The presses in progress, one per pointer id (several fingers are several presses; a pointerdown never overwrites another pointer's):
      * the roving cell at its pointerdown, so both ends of one press see the same anchor, and the session that claimed it, which alone gets its
@@ -259,8 +258,6 @@ export class CellInteractionController<T> {
         this.clearedAt = null;
         this.captured.clear(); // captures of pointers that had no press
         // (`closing` is empty here: `cancelPresses` above ended every press through `endPress`, which cancels and drops its pending look)
-        this.reported.clear();
-        this.reportedKeep.clear();
         this.tapPending = null;
         this.attachment++;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
@@ -271,7 +268,7 @@ export class CellInteractionController<T> {
         this.reconcile();
         // A FAILED session stops its lifecycle but not its value: `keepValue` (guarded, reported once per session) keeps its value rules running. It runs BEFORE
         // the live sessions' updates, so a session that fails in THIS update (its `hostUpdate` is where its value rules threw) is not run twice nor reported twice.
-        for (const session of this.broken) this.guarded(() => session.keepValue?.(), session, this.reportedKeep);
+        for (const session of this.broken) this.guarded(() => session.keepValue?.(), session, 'keepValue');
         // A session whose `hostUpdate` throws is failed like one whose attach threw (reported once, left out from now on, withdrawn): it would throw at every
         // render. The others, and the rest of the update, still run.
         this.eachBackwards((session) => {
@@ -627,12 +624,12 @@ export class CellInteractionController<T> {
         // cell, so its press is not a cell press either (and the popover keeps its focus).
         // Only the PRIMARY button (the left mouse button, a touch or pen contact) makes a cell press: a right or middle press is not offered to the sessions
         // and moves no focus (the context menu addon handles `contextmenu` itself).
-        const own = event.button === 0 && !(target !== null && (this.controlOf(target) !== null || this.floatsOut(target, event.clientX, event.clientY)));
+        const own = event.button === 0 && !(target !== null && (this.controlOf(target) !== null || (hasPosition(event) && this.floatsOut(target, event.clientX, event.clientY))));
         // An overlay press (the fill handle, a readout) is OFFERED so a session can claim it (`pressed` = the overlay; `at` and the start cell null); unclaimed it does nothing.
         const overlay = own && target !== null && this.overlayOf(target) !== null;
         const startCell = !own || overlay ? null : this.addressOf(target);
         const view: PointerPress = Object.freeze({ anchor, pressed: target, startCell });
-        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', seen: event.timeStamp, overlay, clears: !startCell && target !== null && clearsFocus(target) });
+        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', seen: event.timeStamp, overlay, clears: !startCell && target !== null && this.clearsFocus(target) });
         if (this.presses.size === 1) this.watchPresses();
     }
 
@@ -785,7 +782,7 @@ export class CellInteractionController<T> {
 
     /** What the sessions draw over the grid (the range readout and fill handle); the element calls it after the table, inside the viewport. */
     renderOverlay(): TemplateResult | null {
-        const drawn = this.sessions.map((session) => (this.broken.has(session) ? undefined : this.guarded(() => session.renderOverlay?.(), session)));
+        const drawn = this.sessions.map((session) => (this.broken.has(session) ? undefined : this.guarded(() => session.renderOverlay?.(), session, 'renderOverlay')));
         return drawn.some(Boolean) ? html`${drawn}` : null; // Lit draws nothing for an undefined or null entry
     }
 
@@ -861,19 +858,19 @@ export class CellInteractionController<T> {
 
     /** A session error is a bug, not noise: every one is reported (`console.error`). */
     private report(error: unknown): void {
-        console.error('[ge-data-table] a session threw:', error);
+        console.error(SESSION_THREW, error);
     }
 
     /**
      * Runs a session callback (a pointer handler, a cancel, a detach); one that throws is reported and answers nothing, so no press is ever broken by it.
-     * A callback that runs at every render (`renderOverlay`) passes its session and reports its FIRST failure only.
+     * A callback that runs at every render (`renderOverlay`, `keepValue`) passes its session and its name and reports its FIRST failure only (per session, one mechanism with the parts and controllers: `reportOncePer`).
      */
-    private guarded<R>(call: () => R, every?: CellSession, seen = this.reported): R | undefined {
+    private guarded<R>(call: () => R, every?: CellSession, what = 'callback'): R | undefined {
         try {
             return call();
         } catch (error) {
-            if (!every || !seen.has(every)) this.report(error);
-            if (every) seen.add(every);
+            if (every) reportOncePer(every, what, SESSION_THREW, error);
+            else this.report(error);
             return undefined;
         }
     }
@@ -894,6 +891,12 @@ export class CellInteractionController<T> {
             const session = this.sessions[i] as CellSession;
             if (!this.broken.has(session)) visit(session);
         }
+    }
+
+    /** A press on this element clears the focus: it is the body of THIS table outside any cell (a group row, the stretch row); the toolbar, header, pager and detail rows do not. A table nested in an outer detail row has that row above its whole body: only this table's own rows count. */
+    private clearsFocus(target: Element): boolean {
+        const { root } = this.host;
+        return ownClosest(root, target, BODY) !== null && ownClosest(root, target, '[data-kind="detail"]') === null;
     }
 
     /** The cell `el` is in, only when THIS table owns it: a table nested in an outer cell sees the OUTER cell above its whole body (its header, toolbar, pager), which is not its cell. */
@@ -941,7 +944,7 @@ export class CellInteractionController<T> {
         const at = this.addressOf(target);
         if (at) return this.focusCell(at.rowIndex, at.columnKey, false);
         // A click on the body outside any cell (a group row, the stretch row) clears the focus; the toolbar, header and pager do not.
-        if (clearsFocus(target)) this.clear();
+        if (this.clearsFocus(target)) this.clear();
     }
 
     // ---- keyboard ---------------------------------------------------------------------------------------------------

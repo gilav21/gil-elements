@@ -14,7 +14,7 @@ import {
     treeKeyAction,
     withFlag,
 } from './data-table-expansion.js';
-import { cellAddressOf, type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
+import { cellAddressOf, type DataTableCoreHost, ownClosest, ownEvents, requireProvider } from './data-table-host.js';
 import type { ExpansionService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
 
@@ -88,12 +88,12 @@ export class ExpansionController<T> {
     private readonly onClick = (event: MouseEvent): void => {
         const target = event.target;
         if (!(target instanceof Element)) return;
-        const group = target.closest('[data-kind="group"][data-group-key]');
+        const group = ownClosest(this.host.root, target, '[data-kind="group"][data-group-key]');
         if (group) {
             this.service.toggleGroup(group.getAttribute('data-group-key') ?? '');
             return;
         }
-        const action = target.closest('[data-slot="data-table-icon-button"][data-action]'); // the table's own buttons, not a consumer's cell content with a data-action of its own
+        const action = ownClosest(this.host.root, target, '[data-slot="data-table-icon-button"][data-action]'); // the table's own buttons, not a consumer's cell content with a data-action of its own
         if (!action) return;
         const kind = action.getAttribute('data-action');
         if (kind === 'detail-all') return this.service.toggleAll();

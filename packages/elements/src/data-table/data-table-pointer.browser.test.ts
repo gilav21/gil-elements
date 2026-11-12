@@ -2102,6 +2102,47 @@ describe('a touch tap on a cell', () => {
     });
 });
 
+describe('a nested table inside an OUTER detail row', () => {
+    it('clears its own focus when its group row is pressed (mouse and touch): the outer detail row above it is not its detail row', async () => {
+        const inner = document.createElement('ge-data-table') as GeDataTable;
+        Object.assign(inner, { columns: makeColumns(3), data: makeRows(6, { columns: 3, groups: 2 }), groupBy: 'group', paginationState: { pageIndex: 0, pageSize: 100 }, showToolbar: false });
+        const table = await mountTable({
+            columns: makeColumns(3),
+            data: makeRows(3, { columns: 3 }),
+            enableRowExpansion: true,
+            expandedRows: { r0: true },
+            renderDetail: () => inner,
+            paginationState: { pageIndex: 0, pageSize: 100 },
+            showToolbar: false,
+        });
+        await settle(inner);
+        const group = inner.querySelector<HTMLElement>('[data-kind="group"]')!;
+        expect(group.closest('[data-kind="detail"]')).not.toBeNull(); // the outer detail row is above the whole inner table
+        for (const [id, type] of [[581, 'mouse'], [582, 'touch']] as const) {
+            inner.focusCell(0, 'c0');
+            await settle(inner);
+            expect(inner.focusedCell).not.toBeNull();
+            group.dispatchEvent(pointer('pointerdown', id, { pointerType: type, over: group }));
+            group.dispatchEvent(pointer('pointerup', id, { pointerType: type, over: group }));
+            await settle(inner);
+            expect(inner.focusedCell, type).toBeNull();
+        }
+        expect(table.focusedCell).toBeNull();
+    });
+});
+
+describe('a pointerdown with no coordinates', () => {
+    it('is a press on the cell it lands on (a synthetic event, or a fireEvent of a test library): it is not taken for floating out of the cell', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const span = document.createElement('span');
+        cell.append(span);
+        span.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true, button: 0, pointerId: 583, pointerType: 'mouse' }));
+        document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, composed: true, button: 0, pointerId: 583, pointerType: 'mouse' }));
+        expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+    });
+});
+
 describe('a nested table in an outer cell with the same column key', () => {
     afterEach(() => {
         for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];

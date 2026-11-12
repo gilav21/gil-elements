@@ -50,7 +50,7 @@ describe('the element methods on a DETACHED table', () => {
 
 describe('a failure of the same kind in TWO tables', () => {
     it('is reported for each table: one table\'s warning never silences the other\'s', async () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const tables = [await mountTable(), await mountTable()];
         for (const table of tables) {
             const controller = (table as unknown as { assembled: { controllers: Record<string, () => unknown>[] } }).assembled.controllers[0]!;
@@ -97,7 +97,7 @@ describe('a cellRange parked while the range session was failed', () => {
 
 describe('a controller that throws while drawing', () => {
     it('is reported once and draws nothing (toolbar and overlay alike): the table still renders', async () => {
-        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined);
         const table = await mountTable();
         const controller = (table as unknown as { assembled: { controllers: Record<string, () => unknown>[] } }).assembled.controllers[0]!;
         controller['renderToolbar'] = () => {
@@ -142,6 +142,20 @@ describe('clearAdvancedFilter with no query provider', () => {
         attached.remove(); // detached: no query provider
         attached.clearAdvancedFilter();
         expect(attached.model.get('advancedFilter')).toBeNull();
+    });
+
+    it('on a detached table that is on page 3 resets the page first: page-change(0), then advanced-filter-change (the attached order)', async () => {
+        const table = await mountTable({ data: Array.from({ length: 30 }, (_, i) => ({ id: `r${i}`, name: `n${i}`, age: i })), paginationState: { pageIndex: 3, pageSize: 5 } });
+        table.model.set('advancedFilter', { type: 'group', combinator: 'and', rules: [] });
+        await settle(table);
+        table.remove();
+        const order: string[] = [];
+        table.addEventListener('page-change', (event) => order.push(`page-change:${(event as CustomEvent).detail.pageIndex}`));
+        table.addEventListener('advanced-filter-change', () => order.push('advanced-filter-change'));
+        table.clearAdvancedFilter();
+        expect(table.model.get('advancedFilter')).toBeNull();
+        expect(table.model.get('paginationState').pageIndex).toBe(0);
+        expect(order).toEqual(['page-change:0', 'advanced-filter-change']);
     });
 
     it('a write through the query service marks the filtering trigger, as every filter write does (the loading controller watches the model key)', async () => {
