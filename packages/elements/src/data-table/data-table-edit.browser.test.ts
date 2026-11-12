@@ -145,6 +145,74 @@ describe('E1 opening an editor', () => {
         expect(edits.map((e) => e.detail.newValue)).toEqual(['Carolxyz']);
     });
 
+    it('an unrelated render with a focused editor queues no extra after-render task (round 11)', async () => {
+        const table = await mount();
+        const tasks = vi.spyOn(table, 'afterRender');
+        table.requestUpdate();
+        await settle(table);
+        const baseline = tasks.mock.calls.length; // what one render queues without an editor
+        await startEditingAt(table, 0, 'name');
+        await frames(2);
+        expect(deepActive()).toBe(openEditor(table));
+        tasks.mockClear();
+        table.requestUpdate();
+        await settle(table);
+        expect(tasks.mock.calls.length).toBe(baseline);
+    });
+
+    it("an editComponent's draft follows only the component's own change, not one bubbling from a control inside it (round 11)", async () => {
+        if (!customElements.get('test-check-editor')) {
+            customElements.define(
+                'test-check-editor',
+                class extends HTMLElement {
+                    value: unknown;
+                    connectedCallback(): void {
+                        if (this.firstChild) return;
+                        const box = Object.assign(document.createElement('input'), { type: 'checkbox' });
+                        box.setAttribute('data-edit-input', '');
+                        box.addEventListener('change', () => {
+                            this.value = box.checked ? 'yes' : 'no'; // the component's own value...
+                            this.dispatchEvent(new Event('change')); // ...reported by its own change
+                        });
+                        this.append(box);
+                    }
+                },
+            );
+        }
+        const table = await mount({ columns: editColumns({ name: { editComponent: 'test-check-editor' } }) });
+        await startEditingAt(table, 0, 'name');
+        const box = cellAt(table, 0, 'name')!.querySelector('input[type="checkbox"]') as HTMLInputElement;
+        await userEvent.click(box);
+        await settle(table);
+        // The native change of the inner checkbox (value 'on') bubbled too: only the component's own change set the draft.
+        expect(table.provider('interaction')?.editValue?.()).toBe('yes');
+    });
+
+    it('a commit that locks its row: Tab opens no editor there, and neither does a request for another cell of it (round 11)', async () => {
+        const rows = ROWS.map((r) => ({ ...r, status: 'open' }));
+        const status: ColumnDef<SampleRow> = { accessorKey: 'status', header: 'Status', editable: true, valueSetter: (row, v) => ({ ...row, status: v }) };
+        const columns = [...editColumns(), status].filter((c) => c.accessorKey !== 'id');
+        const table = await mount({ data: rows, columns: [columns[2]!, columns[0]!, columns[1]!], isRowDisabled: (row: SampleRow) => row['status'] === 'locked' }); // status, name, age
+        await startEditingAt(table, 0, 'status');
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.clear(input);
+        await userEvent.type(input, 'locked');
+        await press('{Tab}');
+        await settle(table);
+        expect(table.data[0]!['status']).toBe('locked');
+        expect(table.editingCell).toBeNull();
+        // The other path: an editor open on row 1, which a commit locks, and a request for another cell of the same row.
+        await startEditingAt(table, 1, 'status');
+        const second = openEditor(table) as HTMLInputElement;
+        await userEvent.clear(second);
+        await userEvent.type(second, 'locked');
+        const row1 = table.provider('query')!.renderedRowAt(1)!;
+        expect(table.startEditing(row1, 'name')).toBe(false);
+        await settle(table);
+        expect(table.data[1]!['status']).toBe('locked');
+        expect(table.editingCell).toBeNull();
+    });
+
     it('Shift+Tab in the first editable cell leaves the grid cells in ONE press (round 10)', async () => {
         const table = await mount({ columns: editColumns({ id: { editable: false } }).filter((c) => c.accessorKey !== 'id') }); // name is the first column
         await startEditingAt(table, 0, 'name');

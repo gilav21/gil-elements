@@ -96,7 +96,10 @@ export class GeDataTableMultiselectFilter<O = unknown> extends UiElement {
                         (option) => {
                             const label = this.displayWith(option);
                             const on = chosen.has(this.valueWith(option));
-                            return html`<ge-command-item value=${label} ?selected=${on} @select-item=${() => this.toggle(option)}><span class="option"><ge-checkbox .checked=${on} aria-hidden="true" tabindex="-1" inert></ge-checkbox><span>${label}</span></span></ge-command-item>`;
+                            return html`<ge-command-item value=${label} ?selected=${on} @select-item=${(event: Event) => {
+                                event.stopPropagation(); // the panel's own pick: it never reaches a listener above the panel (the table, the page)
+                                this.toggle(option);
+                            }}><span class="option"><ge-checkbox .checked=${on} aria-hidden="true" tabindex="-1" inert></ge-checkbox><span>${label}</span></span></ge-command-item>`;
                         },
                     )}
                 </ge-command-list>

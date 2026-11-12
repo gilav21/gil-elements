@@ -609,6 +609,23 @@ describe('F4 the multiselect panel', () => {
         await closePopover(table);
     });
 
+    it("an option's select-item stays inside the panel (round 11)", async () => {
+        const table = await mount();
+        const heard = vi.fn();
+        table.addEventListener('select-item', heard);
+        document.addEventListener('select-item', heard);
+        try {
+            const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
+            await userEvent.click(optionRow(panel, 'Manager'));
+            await settle(table);
+            expect(table.columnFilters['role']).toEqual(['Manager']);
+            expect(heard).not.toHaveBeenCalled();
+            await closePopover(table);
+        } finally {
+            document.removeEventListener('select-item', heard);
+        }
+    });
+
     it('takes its heading from `heading` (round 8); `title` stays the global tooltip attribute and draws no heading', async () => {
         const table = await mount({ columns: [nameColumn, { ...roleColumn, filterComponentInputs: { ...(roleColumn.filterComponentInputs as object), heading: 'Pick roles' } }] });
         const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');

@@ -45,7 +45,12 @@ function outputsOf<T>(session: EditSession<T>, open: OpenEditor<T>): ComponentOu
     if (!outputs) {
         outputs = {
             'value-change': (event) => session.setDraft(open, (event as CustomEvent).detail),
-            change: (event) => session.setDraft(open, (event.target as { value?: unknown } | null)?.value),
+            // Only the component's OWN `change` carries its value: a native `change` bubbling up from a control inside it (a light-DOM checkbox) is not.
+            change: (event) => {
+                const component = event.currentTarget;
+                if (event.target !== component && event.composedPath()[0] !== component) return;
+                session.setDraft(open, (component as { value?: unknown } | null)?.value);
+            },
             commit: () => session.commitFrom(open),
             cancel: () => session.cancelFrom(open),
         };

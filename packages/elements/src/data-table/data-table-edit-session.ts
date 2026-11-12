@@ -187,17 +187,29 @@ export class EditSession<T> implements CellSession {
         const column = this.columnOf(open.at.columnKey);
         if (!column?.editable) return this.close(false);
         // The FRESH column (options that arrived, a renderer swapped): the editor draws and maps through it, keeping its draft.
+        let kindChanged = false;
         if (column !== open.column) {
             open.column = column;
             const kind = editKindOf(column);
             if (kind !== open.kind) {
                 open.kind = kind;
+                kindChanged = true;
                 if (kind === 'date') void DATE_PICKER.load();
             }
         }
+        const rowsBefore = this.reconciledWith;
         if (!this.follow(open)) return this.close(false); // not a cancel: handing the focus to the grid would take it from wherever the user is now
-        if (focusedIn) this.keepFocus(open);
+        // The render can move (or redraw) the editor only when the drawn rows changed, the virtual window moved or the editor kind switched:
+        // only then is its focus guarded across the render (an unrelated render queues nothing).
+        const win = host.provider('virtual')?.window();
+        const windowKey = win ? `${win.start}:${win.end}:${win.colStart}:${win.colEnd}` : '';
+        const canMove = kindChanged || this.reconciledWith !== rowsBefore || windowKey !== this.lastWindow;
+        this.lastWindow = windowKey;
+        if (focusedIn && canMove) this.keepFocus(open);
     }
+
+    /** The virtual window the last update saw (rows and columns drawn): a shift can move the editor's row in the DOM. */
+    private lastWindow = '';
 
     /** The column behind a key, as the grid draws it. */
     private columnOf(key: string): EnhancedColumnDef<T> | undefined {
@@ -298,7 +310,8 @@ export class EditSession<T> implements CellSession {
             if (!this.leaveForAnother(current)) return false;
             rowIndex = indexOfRowId(query.renderedRows(), id, (r) => host.config.getRowId(r));
             row = rowIndex === -1 ? undefined : query.renderedRowAt(rowIndex);
-            if (row === undefined) return false;
+            // The commit may have changed the asked record too (a setter that locks a row): it is checked again.
+            if (row === undefined || this.isDisabled(row)) return false;
         } else if (current) {
             return true; // that cell's editor is already open
         }
@@ -324,8 +337,8 @@ export class EditSession<T> implements CellSession {
     }
 
     private isDisabled(row: T): boolean {
-        const host = this.host as { isDisabled?: (row: T) => boolean };
-        return host.isDisabled?.(row) ?? this.host.provider('selection')?.isDisabled(row) ?? false;
+        // The element's own rule (`isRowDisabled` / `disabledRowIds`); a bare core host without one disables nothing.
+        return (this.host as { isDisabled?: (row: T) => boolean }).isDisabled?.(row) ?? false;
     }
 
     /**

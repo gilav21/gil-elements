@@ -57,7 +57,9 @@ export function writeBackDate(picked: Date | null, previous: unknown): unknown {
     if (previous instanceof Date) return Number.isNaN(previous.getTime()) ? new Date(picked) : onPickedDay(previous);
     if (typeof previous === 'string') {
         const dateTime = dateOnlyParts(previous) ? null : DATE_TIME.exec(previous);
-        const shown = dateTime ? new Date(previous) : null;
+        // `YYYY-MM-DD HH:mm[:ss]` (a space, not `T`): parsed with the `T` so every engine reads the time (Safari answers Invalid Date for the
+        // space form); the string written back keeps its own separator (only the date part is replaced).
+        const shown = dateTime ? new Date(`${dateTime[1]}${(dateTime[2] as string).replace(/^ /, 'T')}`) : null;
         if (!dateTime || !shown || Number.isNaN(shown.getTime())) return toLocalDateString(picked);
         // The editor showed the instant's LOCAL day; the string's date part may be another day (a `Z` time near midnight). Moving the written
         // date by the days the user moved keeps the string's own calendar, time and offset exact.
@@ -103,6 +105,8 @@ export function coerceDraft(kind: EditKind, raw: unknown, options?: readonly { r
 export function textDraftFor(raw: string, original: unknown): unknown {
     if (typeof original !== 'number') return raw;
     const trimmed = raw.trim();
+    // A cleared number cell is cleared (null), not set to an empty string: the column stays numeric.
+    if (trimmed === '') return null;
     // Plain decimal text only (locale-neutral): `0x1A`, `1e3`, `Infinity` or `1,5` stay text for the validator to judge.
     return PLAIN_DECIMAL.test(trimmed) ? Number(trimmed) : raw;
 }

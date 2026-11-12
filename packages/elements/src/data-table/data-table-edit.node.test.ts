@@ -232,8 +232,9 @@ describe('textDraftFor: a text editor on a number cell (round 4)', () => {
     });
 
     it('keeps any other text a string', () => {
-        expect(textDraftFor('', 7)).toBe('');
-        expect(textDraftFor('  ', 7)).toBe('  ');
+        // Round 11: clearing a number cell clears it (null), the column stays numeric.
+        expect(textDraftFor('', 7)).toBeNull();
+        expect(textDraftFor('  ', 7)).toBeNull();
         expect(textDraftFor('12abc', 7)).toBe('12abc');
         expect(textDraftFor('Infinity', 7)).toBe('Infinity');
         // Plain decimal text only (round 5): no hex, no exponent, no locale separators, no bare dot forms.
@@ -279,6 +280,12 @@ describe('writeBackDate: the picked day in the type the cell held', () => {
         expect(out).toMatch(/T10:20:30\+05:00$/);
         expect(out.slice(0, 10)).toBe('2024-01-05');
         expect(writeBackDate(new Date(shownDay.getFullYear(), shownDay.getMonth(), shownDay.getDate()), '2024-01-03T23:59:00Z')).toMatch(/^2024-01-0\dT23:59:00Z$/);
+    });
+
+    it('a space-separated date-time keeps its time and its space; it is read the same in every engine (round 11)', () => {
+        const target = new Date(2024, 0, 6); // three days after the shown local day
+        expect(writeBackDate(target, '2024-01-03 10:20')).toBe('2024-01-06 10:20');
+        expect(writeBackDate(target, '2024-01-03 08:05:09')).toBe('2024-01-06 08:05:09');
     });
 
     it('an empty cell gives a Date, an unreadable string a date-only string, and a cleared pick null', () => {
