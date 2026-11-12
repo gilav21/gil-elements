@@ -428,7 +428,7 @@ describe('the fill handle', () => {
 });
 
 describe('touch', () => {
-    it('a swipe scrolls and starts no range; a long press and drag selects without scrolling', async () => {
+    it('a swipe scrolls and starts no range (the long-press timer is cancelled by the movement)', async () => {
         await emulateTouch(true);
         const table = await mountRange({ data: makeRows(60).map((r, i) => ({ ...ROWS[i % 8], ...r })) }, { width: 500, height: 300 });
         const viewport = q(table, '[data-slot="data-table-viewport"]');
@@ -436,11 +436,26 @@ describe('touch', () => {
         await settle(table);
         await vi.waitFor(() => expect(viewport.scrollTop).toBeGreaterThan(0));
         expect(table.cellRange).toBeNull();
-        await scrollGrid(viewport, { top: 0 });
+    });
+
+    it('a long press and drag selects without scrolling', async () => {
+        // A table of its own: a swipe just before could leave a fling running on a slow machine.
+        await emulateTouch(true);
+        const table = await mountRange({ data: makeRows(60).map((r, i) => ({ ...ROWS[i % 8], ...r })) }, { width: 500, height: 300 });
+        const viewport = q(table, '[data-slot="data-table-viewport"]');
+        const moves: TouchEvent[] = []; // read after their dispatch: the part's own listener runs after this one
+        const record = (event: TouchEvent): void => void moves.push(event);
+        window.addEventListener('touchmove', record, { passive: true });
+        try {
+            // (row 2 is clear of the 40 px auto-scroll band at the viewport's bottom edge)
+            await touchLongPressDrag(cell(table, 0, 'name'), cell(table, 2, 'score'), { holdBeforeMs: 650, steps: 6 });
+        } finally {
+            window.removeEventListener('touchmove', record);
+        }
         await settle(table);
-        // (row 2 is clear of the 40 px auto-scroll band at the viewport's bottom edge)
-        await touchLongPressDrag(cell(table, 0, 'name'), cell(table, 2, 'score'), { holdBeforeMs: 650, steps: 6 });
-        await settle(table);
+        // every move the browser let the page cancel was cancelled: the finger selects, it does not pan
+        expect(moves.length).toBeGreaterThan(0);
+        expect(moves.filter((m) => m.cancelable && !m.defaultPrevented)).toHaveLength(0);
         expect(viewport.scrollTop).toBe(0);
         expect(table.cellRange).toEqual({ startRow: 0, startCol: 'name', endRow: 2, endCol: 'score' });
         expect(table.provider('range')?.gestureActive()).toBe(false);
