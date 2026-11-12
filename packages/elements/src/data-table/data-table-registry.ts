@@ -68,25 +68,75 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
     spec('selection', { provides: ['selection'], needs: ['query', 'columns'], reads: ['rows', 'config'], writes: ['selection'] }),
     spec('virtual', { provides: ['virtual'], needs: ['query', 'columns'], reads: ['rows', 'columns', 'config'], writes: ['viewport'] }),
     spec('cell-interaction', {
-        provides: ['interaction'],
+        // `range` is the range session's service, always provided (inert until range selection is switched on); the edit session's methods are on `interaction`.
+        provides: ['interaction', 'range'],
         needs: ['query', 'columns', 'virtual'],
         // Selection and expansion are asked for when a key or a collapse runs, never at attach (their handlers register at priority 50).
         uses: ['selection', 'expansion'],
         reads: ['rows', 'columns', 'viewport', 'selection', 'expansion'],
         writes: ['cell'],
     }),
-    spec('clipboard', { needs: ['query', 'columns', 'interaction'], uses: ['virtual'], reads: ['cell'] }),
+    spec('clipboard', {
+        provides: ['clipboard'],
+        needs: ['query', 'columns', 'interaction'],
+        uses: ['range', 'selection', 'virtual'],
+        reads: ['cell'],
+    }),
     spec('resize', { provides: ['resize'], needs: ['columns'], reads: ['columns'], writes: ['columns', 'viewport'] }),
     spec('column-drag', { needs: ['columns'], reads: ['columns'], writes: ['columns'] }),
-    spec('row-drag', { needs: ['query', 'columns'], uses: ['virtual'], reads: ['rows'], writes: ['rows'] }),
-    spec('formatting', { provides: ['formatting'], needs: ['query', 'columns'], reads: ['rows', 'columns'] }),
+    spec('row-drag', {
+        provides: ['rowDrag'],
+        needs: ['query', 'columns'],
+        uses: ['virtual', 'selection', 'expansion'],
+        reads: ['rows'],
+        writes: ['rows'],
+    }),
+    // `cell` is written by the flash (wave 6): a flashing cell is a cell state change.
+    spec('formatting', { provides: ['formatting'], needs: ['query', 'columns'], reads: ['rows', 'columns'], writes: ['cell'] }),
     spec('footer', { provides: ['footer'], needs: ['query', 'columns'], reads: ['rows', 'columns'] }),
-    spec('filter-ui', { needs: ['columns'], uses: ['query'], reads: ['columns', 'locale'] }),
+    spec('filter-ui', { provides: ['filters'], needs: ['columns'], uses: ['query'], reads: ['columns', 'locale'] }),
     spec('ai', { needs: ['query', 'columns'], uses: ['interaction'], reads: ['locale'] }),
     spec('diagnostics', { uses: ['virtual', 'query'], reads: ['config', 'rows'] }),
     spec('aria', { needs: ['query', 'columns'], uses: ['interaction', 'virtual'], reads: ['rows', 'columns', 'selection', 'cell', 'viewport', 'locale'] }),
     spec('addon-host', { provides: ['addons'], uses: ['query', 'columns', 'interaction'], reads: ['locale'] }),
 ];
+
+/**
+ * The ONE key-priority table of the grid's `keydown` chain (`host.addKeyHandler(priority, fn)`): lower runs first and the first
+ * handler to return true consumes the event. A handler claims a key only inside its own gate (a config flag, a target) and returns
+ * false otherwise; it never claims a combination another row of this table owns. Every owner registers with its constant, never a
+ * literal, so the order is read in one place. Gaps are left for later waves.
+ *
+ * | priority | owner | keys (gate) |
+ * |---|---|---|
+ * | 5 `editor` | wave 5, edit session | EVERY key whose composed path is inside the open editor's cell: the session returns true (so nothing below acts) but calls `preventDefault` only for Enter, Escape and Tab; typing, native copy / paste and a date picker keep their behaviour. False for an event outside the editor cell |
+ * | 10 `clipboard` | wave 6, clipboard | Ctrl/Cmd+C (`enable-copy`), Ctrl/Cmd+V (`enable-clipboard-paste`, not editing); never from a text field |
+ * | 20 `columnResize` | wave 4 (unchanged) | arrows on a column resize handle (header target only) |
+ * | 25 `history` | wave 5, edit session | Ctrl/Cmd+Z, Ctrl/Cmd+Y, Ctrl/Cmd+Shift+Z (`enable-edit-history`, never while editing, never from a text field or outside a cell) |
+ * | 30 `columnDrag` | wave 4 (unchanged) | Alt+Shift+Arrow on a reorderable header (header target only) |
+ * | 35 `range` | wave 6, range session | Escape (only while a range exists), Shift+Arrow / Home / End / PageUp / PageDown, Ctrl/Cmd+A, Ctrl/Cmd+D (`enable-cell-range-selection`, `enable-fill-handle` for Ctrl+D) |
+ * | 40 `rowMove` | wave 6, row-drag | Alt+ArrowUp / Alt+ArrowDown (`enable-row-drag`) |
+ * | 50 `rowControls` | wave 4 | Space (select the focused row), tree ArrowLeft / ArrowRight and the group / detail toggles |
+ * | 60 `editStart` | wave 5, edit session | Enter and F2 on the focused cell (never while editing: priority 5 owns the keys then) |
+ * | 100 `navigation` | wave 4 | arrows, Home, End, PageUp, PageDown without Alt (Shift is the range's at 35 when its gate is on, else plain navigation) |
+ *
+ * Decisions: there is no type-to-edit (wave 5 D13) and no Delete / Backspace handler in either wave, so printable characters and
+ * those two keys are not claimed by any row; a wave that adds one takes the free priority 70 (`reserved`) and amends this table.
+ * Escape: the editor (5) while one is open, else the range (35) when one exists; a popover closes itself before the chain sees it.
+ */
+export const KEY_PRIORITY = Object.freeze({
+    editor: 5,
+    clipboard: 10,
+    columnResize: 20,
+    history: 25,
+    columnDrag: 30,
+    range: 35,
+    rowMove: 40,
+    rowControls: 50,
+    editStart: 60,
+    reserved: 70,
+    navigation: 100,
+} as const);
 
 /** Topics the element itself publishes (an input changed, the locale changed), so no controller has to. */
 const ELEMENT_TOPICS: readonly DataTableTopic[] = ['config', 'locale'];

@@ -2,7 +2,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const DIRECTORY = new URL('.', import.meta.url);
-const SOURCES = readdirSync(DIRECTORY).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
+/** Every source of the folder, `lazy/` and `sub/` included (relative, forward slashes); the addons are what the rules keep out, not part of the core. */
+const SOURCES = (readdirSync(DIRECTORY, { recursive: true }) as string[])
+    .map((name) => name.replaceAll('\\', '/'))
+    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && !name.startsWith('addons/'));
 /** The addon kit is the one core module that is about addons; it still imports none of them. */
 const CORE = SOURCES.filter((name) => name !== 'data-table-addon-kit.ts');
 /** A controller implementation; `data-table-controllers.ts` is the contract and assembler, not one. */
@@ -28,6 +31,11 @@ describe('the table core', () => {
         expect(SOURCES).toContain('data-table-addon-kit.ts');
     });
 
+    it('scans the subfolders too: the lazy parts and the sub-elements follow the same rules', () => {
+        expect(SOURCES).toEqual(expect.arrayContaining(['lazy/range.ts', 'lazy/clipboard.ts', 'lazy/row-drag.ts', 'sub/data-table-pager.ts']));
+        expect(SOURCES.some((name) => name.startsWith('addons/'))).toBe(false);
+    });
+
     it.each(SOURCES)('%s imports nothing from an addon', (name) => {
         for (const specifier of importsOf(read(name))) expect(specifier).not.toMatch(/(^|\/)addons\//);
     });
@@ -44,6 +52,10 @@ describe('the table core', () => {
         for (const name of SOURCES.filter(isController)) {
             expect(importsOf(read(name))).not.toContain('./data-table-controllers.js');
         }
+    });
+
+    it('keeps the cell-write pipeline free of any dictionary: the message of a rejection is a port the element fills', () => {
+        expect(importsOf(read('data-table-cell-write.ts')).filter((specifier) => /locales/.test(specifier))).toEqual([]);
     });
 
     it.each(['data-table-model.ts', 'data-table-cell-write.ts', 'data-table-registry.ts', 'data-table-events.ts', 'data-table-providers.ts'])(

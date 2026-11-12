@@ -53,6 +53,9 @@ export class DiagnosticsController<T> {
             enableRowSelection: config.enableRowSelection,
             enableRowDrag: config.enableRowDrag,
             enableEditHistory: config.enableEditHistory,
+            // Only what a check reads is here: each re-run costs the O(rows) id scan. The wave 5 and wave 6 checks (data-table-config-check.ts) add
+            // their inputs with their code: the fill handle, paste and `localReorder` flags, and the sort fields (only while `enableRowDrag &&
+            // localReorder`) of the row-drag-with-sort check.
         };
         if (!sameSnapshot(this.last, snapshot)) {
             this.last = snapshot;

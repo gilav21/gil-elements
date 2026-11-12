@@ -92,7 +92,7 @@ describe('ge-data-table rendering', () => {
         expect(viewport.getAttribute('tabindex')).toBe('0');
         expect(qa(table, '[data-slot="table-cell"][tabindex]')).toHaveLength(0);
 
-        table.provide('interaction', { focusedCell: () => ({ rowIndex: 1, columnKey: 'age' }), cellRange: () => null, editingCell: () => null, cellEditError: () => null, focusCell() {}, isCellSelected: () => false });
+        table.provide('interaction', { focusedCell: () => ({ rowIndex: 1, columnKey: 'age' }), cellRange: () => null, editingCell: () => null, cellEditError: () => null, focusCell() {}, isCellSelected: () => false, isEditing: () => false });
         table.requestRender();
         await settle(table);
 

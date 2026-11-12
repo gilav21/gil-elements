@@ -1,0 +1,12 @@
+/*
+ * Wave 5, package B (editing): the cell editors and their error message. Bare rules, scoped under `ge-data-table [data-slot=...]`:
+ * they are appended inside the closing brace of the `ge-data-table` layer of data-table.css (see data-table-styles.ts),
+ * so do not wrap them in `@layer` and keep the comment style below.
+ */
+    ge-data-table [data-slot="cell-edit-error"] {
+        margin-top: 0.125rem;
+        padding-inline: 0.25rem;
+        color: var(--destructive);
+        font-size: 0.75rem;
+        line-height: calc(1 / 0.75);
+    }

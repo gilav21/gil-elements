@@ -13,6 +13,7 @@ import type {
     SortDirection,
     SortState,
 } from './data-table.types.js';
+import type { ModelStore } from './data-table-model.js';
 import { getCellValue, isFilterValueEmpty, isSpecialColumnKey, stringifyValue, toAggregatableNumber } from './data-table.utils.js';
 
 export type GlobalFilterFn<T> = (row: T, filter: string, columns: ColumnDef<T>[]) => boolean;
@@ -288,4 +289,26 @@ export function createQueryPipeline<T>(): (input: QueryInput<T>) => QueryOutput<
             : i.data;
         return { filtered, sorted: sort(filtered, stableSorts(i.localSorting ? i.sorts : NO_SORTS), i.columns) };
     };
+}
+
+/** Back to page 0 when not there: the model change, then `page-change` through `emit` (the ONE page-reset rule of every filter write). */
+export function resetPageOf<T>(model: ModelStore<T>, emit: (page: PaginationState) => void): void {
+    const page = model.get('paginationState');
+    if (page.pageIndex === 0) return;
+    const next = { ...page, pageIndex: 0 };
+    model.set('paginationState', next);
+    emit(next);
+}
+
+/**
+ * Replaces the advanced filter tree (`null` clears it), a no-op when it is already that (undefined and null are the same "no filter"). The model change and
+ * the page reset are ONE batch, so `page-change` fires before the model's `advanced-filter-change`. Used by the query service and by the element while no
+ * query service exists (before the first connect, detached), so both orders are the same.
+ */
+export function changeAdvancedFilterOf<T>(model: ModelStore<T>, emit: (page: PaginationState) => void, group: FilterGroup | null): void {
+    if ((model.get('advancedFilter') ?? null) === (group ?? null)) return;
+    model.batch(() => {
+        model.set('advancedFilter', group);
+        resetPageOf(model, emit);
+    });
 }

@@ -1,0 +1,46 @@
+/*
+ * Wave 6, package C (drag and flash): row drag indicators and cell flash. Bare rules, scoped under `ge-data-table [data-slot=...]`:
+ * they are appended inside the closing brace of the `ge-data-table` layer of data-table.css (see data-table-styles.ts),
+ * so do not wrap them in `@layer` and keep the comment style below.
+ */
+    /* Not a retained row: that one is `position: absolute` (data-table-window.css) and must stay so whatever the order of the region files.
+       A row that shows a drop edge is positioned too (the edge is absolute), also when it is not draggable itself (a disabled target, a loading table). */
+    ge-data-table [data-slot="table-row"][data-draggable]:not([data-retained]),
+    ge-data-table [data-slot="table-row"][data-drop-target]:not([data-retained]) {
+        position: relative;
+    }
+    ge-data-table [data-slot="table-row"][data-dragging] {
+        opacity: 0.3;
+        background-color: color-mix(in oklab, var(--primary) 5%, transparent);
+        box-shadow: inset 0 0 0 2px color-mix(in oklab, var(--primary) 30%, transparent);
+    }
+    ge-data-table [data-slot="data-table-drop-edge"] {
+        position: absolute;
+        z-index: 30;
+        pointer-events: none;
+    }
+    ge-data-table [data-slot="data-table-drop-edge"][data-edge="top"],
+    ge-data-table [data-slot="data-table-drop-edge"][data-edge="bottom"] {
+        inset-inline: 0;
+        height: 0.125rem;
+        background-color: var(--primary);
+        box-shadow: 0 0 4px 0 var(--primary);
+    }
+    ge-data-table [data-slot="data-table-drop-edge"][data-edge="top"] {
+        top: 0;
+    }
+    ge-data-table [data-slot="data-table-drop-edge"][data-edge="bottom"] {
+        bottom: 0;
+    }
+    ge-data-table [data-slot="data-table-drop-edge"][data-edge="on"] {
+        inset: 0;
+        border: 2px solid color-mix(in oklab, var(--primary) 50%, transparent);
+        border-radius: calc(var(--radius) - 4px);
+        background-color: color-mix(in oklab, var(--primary) 5%, transparent);
+    }
+    ge-data-table [data-slot="table-cell"][data-flash="up"],
+    ge-data-table [data-slot="table-cell"][data-flash="down"],
+    ge-data-table [data-slot="table-cell"][data-flash="changed"] {
+        /* wave 6 (cell flash): keyframes and colours are decided with the formatting controller */
+        transition: background-color 600ms;
+    }

@@ -3,10 +3,12 @@ import { interpolate } from './data-table.locales.js';
 import type { QueryService } from './data-table-providers.js';
 import {
     activeSorts,
+    changeAdvancedFilterOf,
     createQueryPipeline,
     memoLast,
     nextSortChain,
     pagesLocally,
+    resetPageOf,
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
@@ -190,11 +192,7 @@ export class QueryController<T> {
     }
 
     private resetPage(): void {
-        const page = this.host.model.get('paginationState');
-        if (page.pageIndex === 0) return;
-        const next = { ...page, pageIndex: 0 };
-        this.host.model.set('paginationState', next);
-        this.host.emit('page-change', next);
+        resetPageOf(this.host.model, (page) => this.host.emit('page-change', page));
     }
 
     private applyGlobalFilter(value: string): void {
@@ -282,6 +280,11 @@ export class QueryController<T> {
             if (debounce > 0) this.cancelFilter = this.host.disposables.timeout(() => this.applyGlobalFilter(value), debounce);
             else this.applyGlobalFilter(value);
         },
+        // wave 5, package A (filters) implements the column filter and the count; joint step 0 leaves them inert. They are the only part of this file wave 5
+        // edits. The ADVANCED filter is real already (the `advancedFilter` model key filters the rows): wave 5 A builds on it (announcement, builder UI).
+        changeColumnFilter: () => undefined,
+        changeAdvancedFilter: (group) => changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group),
+        filteredCount: () => undefined,
     };
 
     private visibleDataColumns(): ColumnDef<T>[] {

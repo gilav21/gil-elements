@@ -66,11 +66,19 @@ export function sortControl<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown
     return html`<ge-data-table-column-header .title=${c.header} .column=${key} .direction=${direction} .sortIndex=${index} .shortcuts=${v.reorderable && isReorderable(c) ? REORDER_KEYS : ''} .label=${sortAriaLabel(c.header, direction, index, v.locale)} @sort-request=${(e: CustomEvent<{ direction: SortDirection; multi: boolean }>) => v.onSortRequest(key, e)}></ge-data-table-column-header>`;
 }
 
+/** A renderer result that draws nothing: Lit's `nothing`, `null`, `undefined` or an empty string. */
+export const isEmptyContent = (value: unknown): boolean => value === nothing || value === null || value === undefined || value === '';
+
 function headContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown {
     const special = specialHead(v, c);
     if (special !== undefined) return special;
     const control = sortControl(v, c);
-    return c.headerRenderer ? control : html`<div data-slot="data-table-head-controls">${control}</div>`;
+    const trigger = v.filters.trigger(c);
+    // ONE template always: a header renderer is drawn bare (`data-bare`: the wrapper has no box of its own) until a filter trigger sits beside it. A
+    // different template when the trigger appears would rebuild the consumer's header element (a remount). The price: a header renderer's output is
+    // inside `div[data-slot=data-table-head-controls][data-bare]` (`display: contents`), so a consumer selector such as `[data-slot=table-head] > x`
+    // must be a descendant selector (`[data-slot=table-head] x`).
+    return html`<div data-slot="data-table-head-controls" ?data-bare=${!!c.headerRenderer && isEmptyContent(trigger)}>${control}${trigger}</div>`;
 }
 
 /** A separator's `aria-valuemax` defaults to 100 and clamps the value; a column has no real maximum. */

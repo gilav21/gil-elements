@@ -1,15 +1,17 @@
 import { startAutoScroll, type AutoScrollController } from '../shared/auto-scroll.js';
+import { VALUE_CONTROLS_SELECTOR } from '../shared/interactive-tags.js';
 import { onLongPress, onPointerDrag } from '../shared/touch.js';
 import { baseColumnOrder, dropSide, moveByOffset, moveColumnKey, type DropSide } from './data-table-column-order.js';
 import { columnCells, HEAD_SELECTOR as HEAD, pinGroupOf } from './data-table-columns.js';
-import { type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
+import { type DataTableCoreHost, ownClosest, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
+import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
 
 /** A header is a drag only after the pointer moved this far, so a click on its sort button stays a click. */
 const DRAG_THRESHOLD = 4;
 const DRAGGABLE_HEAD = `${HEAD}[data-draggable]`;
-/** Things inside a header that keep their own press: the resize handle, inputs, checkboxes and header actions. */
-const OWN_PRESS = '[data-slot="data-table-resize-handle"], input, textarea, select, [role="checkbox"], ge-checkbox, ge-input, [data-slot="data-table-header-action"]';
+/** Things inside a header that keep their own press: the VALUE controls (never a button or a link: a click on a sort button stays a click and the header stays draggable from it), the resize handle and the header actions. */
+const OWN_PRESS = `${VALUE_CONTROLS_SELECTOR}, [data-slot="data-table-resize-handle"], [data-slot="data-table-header-action"]`;
 
 interface Drag {
     readonly key: string;
@@ -64,12 +66,27 @@ export class ColumnDragController<T> {
 
     // ---- pointer ----------------------------------------------------------------------------------------------
 
+/**
+     * The draggable header of THIS table that a press path starts in, or null when the press is a VALUE control's own. The path is walked from the deepest node up
+     * to that header (a consumer header component's OPEN shadow root included; a closed root stops at its host, where the tag list applies) and never above it: an
+     * editable wrapper around the table is no control of the header. ONE rule for the mouse press and the touch long press.
+     */
+    private pressedHead(path: readonly EventTarget[]): HTMLElement | null {
+        const head = path.find((node): node is HTMLElement => node instanceof HTMLElement && node.matches(DRAGGABLE_HEAD) && ownsTarget(this.host.root, node));
+        if (!head) return null;
+        for (const node of path) {
+            if (node === head) return head;
+            if (node instanceof Element && node.matches(OWN_PRESS)) return null;
+        }
+        return head;
+    }
+
     private readonly onDown = (event: PointerEvent): void => {
         // Touch waits for a long press (below); a second pointer never starts a drag.
         if (event.pointerType === 'touch' || event.button !== 0 || this.pending || this.drag) return;
-        const target = event.target as Element;
-        const key = target.closest<HTMLElement>(DRAGGABLE_HEAD)?.dataset['columnId'];
-        if (key === undefined || target.closest(OWN_PRESS) || !this.groupOf(key)) return;
+        const head = this.pressedHead(event.composedPath());
+        const key = head?.dataset['columnId'];
+        if (key === undefined || !this.groupOf(key)) return;
         this.pending = { key, x: event.clientX, y: event.clientY, pointerId: event.pointerId };
         const view = this.host.root.ownerDocument.defaultView ?? window;
         this.stops = [
@@ -177,10 +194,10 @@ export class ColumnDragController<T> {
     // ---- touch: a long press picks the header up ----------------------------------------------------------------
 
     private readonly onLongPress = (event: TouchEvent, path: readonly EventTarget[]): void => {
-        const elements = path.filter((node): node is Element => node instanceof Element);
-        const key = elements.find((el) => el.matches(DRAGGABLE_HEAD))?.getAttribute('data-column-id');
+        const head = this.pressedHead(path);
+        const key = head?.getAttribute('data-column-id');
         const touch = event.touches[0];
-        if (key == null || elements.some((el) => el.matches(OWN_PRESS)) || !touch || this.drag || !this.groupOf(key)) return;
+        if (!head || key == null || !touch || this.drag || !this.groupOf(key)) return;
         this.begin(key);
         this.update(touch.clientX, touch.clientY);
         // Non-passive `touchmove` on the window: once the header is picked up the finger moves the column, not the page.
@@ -198,14 +215,14 @@ export class ColumnDragController<T> {
     private handleKey(event: KeyboardEvent): boolean {
         if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return false;
         const target = event.target as Element;
-        const head = target.closest<HTMLElement>(DRAGGABLE_HEAD);
+        const head = ownClosest<HTMLElement>(this.host.root, target, DRAGGABLE_HEAD);
         const key = head?.dataset['columnId'];
         const group = key === undefined ? null : this.groupOf(key);
         if (!head || key === undefined || !group) return false;
         const next = moveByOffset(this.baseOrder(), group, key, (event.key === 'ArrowRight') !== this.isRtl() ? 1 : -1);
         if (!next) return false;
         event.preventDefault();
-        const onHandle = target.closest('[data-slot="data-table-resize-handle"]') !== null;
+        const onHandle = ownClosest(this.host.root, target, '[data-slot="data-table-resize-handle"]') !== null;
         this.host.model.set('columnOrder', next);
         this.announceMove(key, next, group);
         // The head nodes are keyed by column, so they moved; a moved node loses focus. Put it back on the same control.
@@ -223,7 +240,7 @@ export class ColumnDragController<T> {
         const { root, disposables } = this.host;
         this.teardown.push(
             disposables.listen<PointerEvent>(root, 'pointerdown', ownEvents(root, this.onDown)),
-            this.host.addKeyHandler(30, (event) => this.handleKey(event)),
+            this.host.addKeyHandler(KEY_PRIORITY.columnDrag, (event) => this.handleKey(event)),
             disposables.add(onLongPress(root, this.onLongPress)),
         );
     }

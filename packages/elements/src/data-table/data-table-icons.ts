@@ -5,6 +5,7 @@
  * (`iconSet`) can be any glyph, so that path loads `ge-icon` on first use instead.
  */
 import { html, nothing, svg, type TemplateResult } from 'lit';
+import { lazyElement } from './data-table-lazy.js';
 
 const GLYPHS = {
     'arrow-up': svg`<path d="M12 20V4" /><path d="m6 10 6-6 6 6" />`,
@@ -33,12 +34,28 @@ export function chromeIcon(name: ChromeIconName, size: keyof typeof SIZE = 'sm',
     return html`<span data-slot="dt-icon" class=${className ?? nothing}><svg xmlns="http://www.w3.org/2000/svg" width=${px} height=${px} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${GLYPHS[name]}</svg></span>`;
 }
 
-let iconElement: Promise<unknown> | undefined;
+export const iconElement = lazyElement('ge-icon', () => import('../icon/define.js'));
 
-/** Loads `ge-icon` once, for a cell icon picked by name; the element upgrades in place when it is defined. */
+/**
+ * Loads `ge-icon` once, for a cell icon picked by name; the element upgrades in place when it is defined. A failed load is reported once (never an
+ * unhandled rejection) and latched until `resetIconElement()` (a table attach, a no-op unless a failure is latched), so it is retried without re-importing at every render.
+ * The retry is BEST EFFORT: a browser may keep the failed module record and reject the same specifier again without refetching, until the page reloads.
+ */
 export function ensureIconElement(): void {
-    iconElement ??= import('../icon/define.js');
+    // Called for every icon cell at every render: defined, latched-failed or already requested answers at once, with no promise allocated (the memoised
+    // import is in flight or done; a definition that arrives later is seen by `ready()`).
+    if (iconElement.requested() || iconElement.ready()) return; // (a failed load is still `requested`: a latched failure answers at once)
+    void iconElement.load();
 }
+
+let retried = false;
+
+/** Forgets a latched load failure so the next `ensureIconElement()` imports again (called when a table attaches), at most ONCE per page: a chunk that keeps failing is not re-imported (and re-reported) at every connect. */
+export const resetIconElement = (): void => {
+    if (retried) return;
+    retried = iconElement.failed();
+    iconElement.resetIfFailed();
+};
 
 /** A glyph's markup as `ge-icon` stores it, for the test that keeps the two equal. */
 export const chromeGlyphMarkup = (name: ChromeIconName): string => GLYPHS[name].strings.join('');

@@ -90,6 +90,8 @@ export interface DragOptions {
     steps?: number;
     /** Time to hold at the end before the release. */
     holdMs?: number;
+    /** Touch only: time to hold the finger down, without moving, before the first move (the long-press time of a touch range gesture). */
+    holdBeforeMs?: number;
 }
 
 /** Press on `from`, move to `to` (an element, a point or an offset) in `steps` moves, release. Real hit-testing and pointer capture. */
@@ -152,10 +154,11 @@ export async function touchTap(target: Target): Promise<void> {
     await idle();
 }
 
-export async function touchDrag(from: Target, to: Target | Offset, { steps = 8, holdMs = 0 }: DragOptions = {}): Promise<void> {
+export async function touchDrag(from: Target, to: Target | Offset, { steps = 8, holdMs = 0, holdBeforeMs = 0 }: DragOptions = {}): Promise<void> {
     const start = pointOf(from);
     const end = destination(start, to);
     await touch('touchStart', start);
+    if (holdBeforeMs > 0) await new Promise((resolve) => setTimeout(resolve, holdBeforeMs));
     for (let i = 1; i <= steps; i++) await touch('touchMove', { x: start.x + ((end.x - start.x) * i) / steps, y: start.y + ((end.y - start.y) * i) / steps });
     if (holdMs > 0) await new Promise((resolve) => setTimeout(resolve, holdMs));
     await touch('touchEnd');
@@ -272,3 +275,140 @@ export async function withRtl(table: HTMLElement & { updateComplete: Promise<boo
 }
 
 export { useTheme as withTheme };
+
+// ---- wave 5 (filters and editing) helpers: joint step 0; afterwards append-only, in `data-table-edit-fixtures.ts` for new ones ---------
+
+/** Resolves once `tag` is defined: a lazily loaded element (filter panel, builder, date picker) is ready to be asserted on. */
+export const whenDefined = (tag: string): Promise<CustomElementConstructor> => customElements.whenDefined(tag);
+
+/** Focuses `el` and types `text` with real key events (a text input, an editor, a floating filter). */
+export async function typeText(el: HTMLElement, text: string): Promise<void> {
+    el.focus();
+    await userEvent.type(el, text);
+    await frames(1);
+}
+
+/** Two touch taps `gapMs` apart on the same target: a double tap when the gap is inside the table's window (300 ms). */
+export async function touchDoubleTap(target: Target, gapMs = 120): Promise<void> {
+    await touchTap(target);
+    await new Promise((resolve) => setTimeout(resolve, gapMs));
+    await touchTap(target);
+}
+
+/**
+ * Clicks a popover trigger, waits for its content to be drawn and, with `lazyTag`, for that lazily loaded element to be defined.
+ * Resolves with the popover content, or null when none opened.
+ */
+export async function openPopover(trigger: Element, lazyTag?: string): Promise<HTMLElement | null> {
+    await userEvent.click(trigger);
+    await frames(2);
+    if (lazyTag) await whenDefined(lazyTag);
+    await frames(1);
+    return trigger.closest('ge-popover')?.querySelector<HTMLElement>('ge-popover-content') ?? null;
+}
+
+// ---- wave 6 (spreadsheet and drag) helpers --------------------------------------------------------------------------------------------
+
+/**
+ * Touch down, hold `holdBeforeMs` (default: the 600 ms long press) without moving, drag to `to` in `steps` moves, hold `holdMs` at the end (as
+ * `touchDrag` documents it), lift: the touch range gesture.
+ */
+export const touchLongPressDrag = (from: Target, to: Target | Offset, { holdBeforeMs = 600, steps = 8, holdMs = 0 }: DragOptions = {}): Promise<void> => touchDrag(from, to, { steps, holdMs, holdBeforeMs });
+
+export interface FakeClipboard {
+    /** What was last written, or '' . */
+    readonly text: string;
+    /** Every `writeText` call, in order. */
+    readonly writes: string[];
+    /** Every `readText` call count. */
+    readonly reads: { count: number };
+    /** Puts `navigator.clipboard` back; call in `afterEach`. */
+    restore(): void;
+}
+
+/**
+ * Installs a `navigator.clipboard` whose `writeText` and `readText` work on `text` and record their calls. `denyWrite` / `denyRead`
+ * make that method reject like a refused permission; `missing` removes the API (an insecure context, an old browser).
+ */
+export function fakeClipboard({ denyWrite = false, denyRead = false, missing = false, text = '' }: { denyWrite?: boolean; denyRead?: boolean; missing?: boolean; text?: string } = {}): FakeClipboard {
+    const original = Object.getOwnPropertyDescriptor(Navigator.prototype, 'clipboard');
+    const state: { text: string; writes: string[]; reads: { count: number } } = { text, writes: [], reads: { count: 0 } };
+    const denied = (): Promise<never> => Promise.reject(new DOMException('Clipboard permission denied', 'NotAllowedError'));
+    const clipboard = {
+        writeText: (value: string): Promise<void> => {
+            if (denyWrite) return denied();
+            state.writes.push(value);
+            state.text = value;
+            return Promise.resolve();
+        },
+        readText: (): Promise<string> => {
+            state.reads.count++;
+            return denyRead ? denied() : Promise.resolve(state.text);
+        },
+    };
+    // `missing` takes the API away for real: the accessor is removed from the prototype, so `'clipboard' in navigator` is false (restore puts it back).
+    if (missing) Reflect.deleteProperty(Navigator.prototype, 'clipboard');
+    else Object.defineProperty(navigator, 'clipboard', { value: clipboard, configurable: true });
+    return {
+        get text() {
+            return state.text;
+        },
+        writes: state.writes,
+        reads: state.reads,
+        restore() {
+            delete (navigator as { clipboard?: unknown }).clipboard;
+            if (original) Object.defineProperty(Navigator.prototype, 'clipboard', original);
+        },
+    };
+}
+
+/** A native `paste` event carrying `text` as `text/plain`, dispatched on `el`; returns whether it was left alone (not default-prevented). */
+export function dispatchPaste(el: Element, text: string): boolean {
+    const data = new DataTransfer();
+    data.setData('text/plain', text);
+    return el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true, composed: true }));
+}
+
+/** A native `copy` event on `el`; the returned `data` holds what a handler set. */
+export function dispatchCopy(el: Element): { data: DataTransfer; notPrevented: boolean } {
+    const data = new DataTransfer();
+    const notPrevented = el.dispatchEvent(new ClipboardEvent('copy', { clipboardData: data, bubbles: true, cancelable: true, composed: true }));
+    return { data, notPrevented };
+}
+
+/**
+ * A real HTML5 drag and drop from `from` to `to` through the browser (`userEvent.dragAndDrop`). A native drag cannot be paused
+ * half way: for an indicator held at a position use `syntheticDrag`.
+ */
+export async function nativeDrag(from: Element, to: Element): Promise<void> {
+    await userEvent.dragAndDrop(from, to);
+    await frames(2);
+}
+
+/** A synthetic `DragEvent` (`dragstart`, `dragover`, `drop`, `dragend`...) with a real `DataTransfer`, at `x`, `y` of the page, optionally carrying `data` by mime type. */
+export function syntheticDrag(el: Element, type: string, { x, y, data = {} }: { x?: number; y?: number; data?: Record<string, string> } = {}): { event: DragEvent; defaultPrevented: boolean } {
+    const dataTransfer = new DataTransfer();
+    for (const [mime, value] of Object.entries(data)) dataTransfer.setData(mime, value);
+    const rect = el.getBoundingClientRect();
+    const event = new DragEvent(type, {
+        dataTransfer,
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        clientX: x ?? rect.left + rect.width / 2,
+        clientY: y ?? rect.top + rect.height / 2,
+    });
+    el.dispatchEvent(event);
+    return { event, defaultPrevented: event.defaultPrevented };
+}
+
+/** Collects `unhandledrejection` events until `stop()`: the denied-clipboard tests assert that none escaped. */
+export function unhandledRejections(): { readonly reasons: unknown[]; stop(): void } {
+    const reasons: unknown[] = [];
+    const listener = (event: PromiseRejectionEvent): void => {
+        reasons.push(event.reason);
+        event.preventDefault();
+    };
+    window.addEventListener('unhandledrejection', listener);
+    return { reasons, stop: () => window.removeEventListener('unhandledrejection', listener) };
+}

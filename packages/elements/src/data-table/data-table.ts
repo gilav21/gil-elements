@@ -5,23 +5,42 @@ import '../popover/define.js';
 import '../skeleton/define.js';
 import { adoptSheet } from '../shared/adopt-sheet.js';
 import { THEME_ATTRIBUTE, type ThemeName } from '../shared/theme-presets.js';
-import { createCellWriter } from './data-table-cell-write.js';
+import { createCellWriter, type HistoryResult } from './data-table-cell-write.js';
 import { type AssembledControllers, assembleControllers } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
 import { createFactories } from './data-table-factories.js';
+import { rangeModeOn, rangeSelectionDrawn, sanitizeCellRange, warnBadRange } from './data-table-range.js';
 import { renderGrid, renderSkeleton } from './data-table-grid.js';
+import { resetIconElement } from './data-table-icons.js';
+import { neutralRowDrag } from './data-table-row-drag-controller.js';
+import { neutralClipboard } from './data-table-clipboard-controller.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
-import type { DataTableConfig, DataTableProviders } from './data-table-providers.js';
-import { memoLast } from './data-table-query.js';
+import type { ClipboardResult, ClipboardService, DataTableConfig, DataTableProviders, RowDragService } from './data-table-providers.js';
+import { changeAdvancedFilterOf, memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
 import { buildView, type DataTableViewHost } from './data-table-view.js';
 import { type DataTableLocale, dataTableLocaleVersion, interpolate, onDataTableLocaleChange, resolveDataTableLocale } from './data-table.locales.js';
-import type { ColumnDef, DataTableColumnState, DataTableLoadingTrigger, DataTableQuery, DataTableViewState, PaginationState } from './data-table.types.js';
+import type {
+    CellEditError,
+    CellRange,
+    ColumnDef,
+    DataTableColumnState,
+    DataTableLoadingTrigger,
+    DataTableQuery,
+    DataTableViewState,
+    EditingCell,
+    PaginationState,
+    RowReorderEvent,
+} from './data-table.types.js';
 import { defaultGetRowId } from './data-table.utils.js';
 import './sub/data-table-column-header.js';
 import './sub/data-table-pager.js';
 import { css } from './data-table-styles.js';
+import { reportOncePer, warnOncePer } from './data-table-warn.js';
+
+/** State the element reads out of its services and does not accept back (Angular: signals). */
+const READ_ONLY_STATE = ['editingCell', 'cellEditError'] as const;
 
 type Mutable<O> = { -readonly [K in keyof O]: O[K] };
 
@@ -55,6 +74,7 @@ const INPUTS: Readonly<Record<string, readonly [Kind, unknown]>> = {
     columns: ['prop', []],
     getRowId: ['prop', defaultGetRowId],
     globalFilterFn: ['prop', undefined],
+    rowDragAllowDrop: ['prop', undefined],
     getChildren: ['prop', (row: unknown) => (row as { children?: unknown[] } | null)?.children],
     setChildren: ['prop', (row: unknown, children: unknown[]) => ({ ...(row as object), children })],
     aiProvider: ['prop', undefined],
@@ -190,8 +210,13 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         rowAt: (index) => this.provider('query')?.renderedRowAt(index),
         cellValue: (row, column) => this.provider('query')?.cellValue(row, column.accessorKey, column),
         historyEnabled: () => this.enableEditHistory,
+        rejectionMessage: () => this.resolvedLocale.invalidValue,
         emit: (...event) => this.emit(event[0], event[1] as never),
     });
+    /** The step 0 clipboard answers, for a call while no `clipboard` service is provided (detached); built once. */
+    private neutralClip: ClipboardService<T> | undefined;
+    /** A `cellRange` assigned before the first connect, until the range session adopts it (no controller is assembled before the first connect). */
+    private earlyRange: CellRange | null | undefined;
     private built: AssembledControllers | null = null;
     private assembled: AssembledControllers | null = null;
     private releaseStyles: (() => void) | null = null;
@@ -210,9 +235,20 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         // A model state written before the element upgraded is an own property that would shadow the accessor: take it back.
         const early = MODEL_KEYS.filter((key) => Object.hasOwn(this, key)).map((key) => [key, (this as Record<string, unknown>)[key]] as const);
         for (const [key] of early) delete (this as Record<string, unknown>)[key];
+        // The `cellRange` accessor is reclaimed the same way: a range assigned before the upgrade goes through the setter.
+        const rangeBefore = Object.hasOwn(this, 'cellRange') ? { value: (this as Record<string, unknown>)['cellRange'] as CellRange | null } : undefined;
+        if (rangeBefore) delete (this as Record<string, unknown>)['cellRange'];
+        // A read-only accessor assigned before the upgrade would shadow its getter as an own property for ever: drop it.
+        for (const name of READ_ONLY_STATE) {
+            if (Object.hasOwn(this, name)) {
+                delete (this as Record<string, unknown>)[name];
+                this.ignoreReadOnly(name);
+            }
+        }
         Object.assign(this, Object.fromEntries(Object.entries(INPUTS).map(([name, [, value]]) => [name, value])));
         this.store.onFlush(() => this.requestUpdate());
         for (const [key, value] of early) Object.assign(this, { [key]: value });
+        if (rangeBefore) this.cellRange = rangeBefore.value;
     }
 
     /** No controllers, no services: nothing can render, so a property written while detached waits for the next connect. */
@@ -292,6 +328,11 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return this.providers.get(key) as DataTableProviders<T>[K] | undefined;
     }
 
+    /**
+     * Adds a handler to the grid's `keydown` chain; lower priorities run first and the first handler that returns true consumes the event. The grid's own
+     * priorities are the exported `KEY_PRIORITY` table (PUBLIC API: its numbers are fixed, so a consumer's handler keeps its place; place yours relative
+     * to it, e.g. `KEY_PRIORITY.range - 1`). Returns the function that removes it.
+     */
     addKeyHandler(priority: number, fn: (event: KeyboardEvent) => boolean): () => void {
         return this.keyHandlers.add(priority, fn);
     }
@@ -435,6 +476,163 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.provider('columns')?.applyState(states);
     }
 
+    // ---- editing and history (wave 5) -------------------------------------------------------------------------
+
+    /** Opens an editor on the cell of `row` and column `columnKey`; false when none opened (not editable, a disabled row, no such row). */
+    startEditing(row: T, columnKey: string): boolean {
+        return this.provider('interaction')?.startEditing?.(row, columnKey) ?? false;
+    }
+
+    /** Commits the open editor's draft; does nothing with none open. */
+    commitEdit(): void {
+        this.provider('interaction')?.commitEdit?.();
+    }
+
+    /** Drops the open editor's draft without an event. */
+    cancelEdit(): void {
+        this.provider('interaction')?.cancelEdit?.();
+    }
+
+    /**
+     * Undoes the last edit step (needs `enable-edit-history`); `stale` lists the entries whose row or column is gone. Angular's public name (cmp 4966); the
+     * element's `undo` / `redo` fields are the `DataTableCoreHost` members the controllers call (Ctrl+Z), not a second public API: use these.
+     */
+    undoEdit(): HistoryResult {
+        return this.undo();
+    }
+
+    /** Redoes the last undone edit step; Angular's public name (cmp 4979). */
+    redoEdit(): HistoryResult {
+        return this.redo();
+    }
+
+    /** An editor is open. Kept for parity (Angular's `isEditingCell()`, cmp 5749); it is `editingCell !== null`. */
+    isEditingCell(): boolean {
+        return this.editingCell !== null;
+    }
+
+    /** The cell whose editor is open, or null. */
+    get editingCell(): EditingCell | null {
+        return this.provider('interaction')?.editingCell?.() ?? null;
+    }
+
+    /** A read-only state was assigned: ignored, with a one-time warning PER TABLE (one table's mistake never silences another's). */
+    private ignoreReadOnly(name: string): void {
+        warnOncePer(this, `read-only:${name}`, `[ge-data-table] ${name} is read-only: the assignment was ignored.`);
+    }
+
+    /** Read-only (Angular exposes it as a signal): a property binding or an assignment is ignored with a one-time warning, it does not throw. */
+    set editingCell(_value: EditingCell | null) {
+        this.ignoreReadOnly('editingCell');
+    }
+
+    /** The validation error shown on the open editor, or null. */
+    get cellEditError(): CellEditError | null {
+        return this.provider('interaction')?.cellEditError?.() ?? null;
+    }
+
+    /** Read-only, like `editingCell`. */
+    set cellEditError(_value: CellEditError | null) {
+        this.ignoreReadOnly('cellEditError');
+    }
+
+    /** Clears the advanced filter tree (the column and global filters stay). */
+    clearAdvancedFilter(): void {
+        // The query controller writes the model with the page reset; with no query provider (before the first connect, or detached) the same is written
+        // directly (a no-op when there is no filter), so it is cleared when the table attaches.
+        const query = this.provider('query');
+        if (query) query.changeAdvancedFilter(null);
+        else changeAdvancedFilterOf(this.model, (page) => this.emit('page-change', page), null);
+    }
+
+    // ---- range, fill, clipboard and row drag (wave 6) ---------------------------------------------------------
+
+    /**
+     * The selected cell range (rendered row index, column key), or null. Assigning it selects programmatically and fires no event. A
+     * value assigned before the table is attached waits for the range service.
+     */
+    get cellRange(): CellRange | null {
+        const service = this.serviceOf('range'); // the range session's own (the controllers are built at the first connect and kept; a FAILED session keeps its value)
+        if (service) return service.range();
+        return this.earlyRange !== undefined && rangeModeOn(this) ? this.earlyRange : null;
+    }
+
+    set cellRange(range: CellRange | null) {
+        const service = this.serviceOf('range');
+        if (service) {
+            service.setRange(range); // the session checks the value and asks for the render
+            return;
+        }
+        // No range service yet: before the first connect nothing is assembled (a custom plan without the cell-interaction controller never has one, and
+        // then it stays a held value only). The value waits here, checked by the same rules (rows are not known yet), and the range session adopts it
+        // right after the first attach.
+        const next = sanitizeCellRange(range, 0, []); // the columns are looked up by the session at its next update
+        if (next === undefined) warnBadRange(this, range, (this.earlyRange ?? null) !== null);
+        else this.earlyRange = next;
+    }
+
+    /**
+     * How an element method reaches a service, by what it needs. VALUE-holding services (the range VALUE `cellRange`, row-drag `reorderData`, pure on data)
+     * use `serviceOf(key)`: the controller's own (`services`, which outlives a disconnect: the controllers are built once and kept), so
+     * a detached table keeps its value and answers pure questions. Everything that needs the LIVE grid (focus, editing, the clipboard's reads of the
+     * query and columns, `fillDownTo`, the queries) uses `provider(key)`, which is cleared at disconnect: such a call is inert or null while detached
+     * (as on main) instead of reaching controller code that requires providers that are gone. `serviceOf` is undefined before the first connect (and for a
+     * service no controller of a custom plan provides); the range VALUE is never withdrawn, not even when the range session failed.
+     */
+    private serviceOf<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined {
+        return this.built?.service(key);
+    }
+
+    /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
+    fillDownTo(targetEndRow: number): boolean {
+        return this.provider('range')?.fillDownTo(targetEndRow) ?? false;
+    }
+
+    /** Fires `range-chart-open` with the selected range as a chart payload, when there is one. */
+    openRangeChart(): void {
+        this.provider('range')?.openChart();
+    }
+
+    /** The `copy*ToClipboard` methods resolve to what happened: `status` is `done`, `empty`, `denied` (the browser refused), `unavailable` (no clipboard) or `ignored` (the feature is off). */
+    private copyToClipboard(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<ClipboardResult> {
+        return (this.provider('clipboard') ?? (this.neutralClip ??= neutralClipboard<T>(() => this))).copy(scope, row); // no service (detached): the same answers as the step 0 service
+    }
+
+    copyCellToClipboard(): Promise<ClipboardResult> {
+        return this.copyToClipboard('cell');
+    }
+
+    copyRowToClipboard(row: T): Promise<ClipboardResult> {
+        return this.copyToClipboard('row', row);
+    }
+
+    copySelectedToClipboard(): Promise<ClipboardResult> {
+        return this.copyToClipboard('selected');
+    }
+
+    copyCellRangeToClipboard(): Promise<ClipboardResult> {
+        return this.copyToClipboard('range');
+    }
+
+    copyAllToClipboard(): Promise<ClipboardResult> {
+        return this.copyToClipboard('all');
+    }
+
+    /** `data` with the dragged row moved as `event` says (flat or tree), without touching the table; a copy of `data` when row drag is not set up. */
+    reorderData(data: readonly T[], event: RowReorderEvent<T>): T[] {
+        return this.rowDrag().reorderData(data, event);
+    }
+
+    /** The row-drag service: the controller's, which outlives a disconnect; the neutral one (its only copy fallback) before the controllers exist. */
+    private rowDrag(): RowDragService<T> {
+        return (this.serviceOf('rowDrag') as RowDragService<T> | undefined) ?? neutralRowDrag<T>();
+    }
+
+    /** Moves a row one step up or down (the keyboard and button alternative to dragging); false when nothing moved (and while the table is detached). */
+    moveRow(row: T, direction: 'up' | 'down'): boolean {
+        return this.provider('rowDrag')?.moveRow(row, direction) ?? false; // needs the live grid (drawn rows, emits row-reorder): inert while detached
+    }
+
     // ---- lifecycle --------------------------------------------------------------------------------------------
 
     protected override createRenderRoot(): HTMLElement {
@@ -450,11 +648,14 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         if (isServer) return;
         const tree = this.getRootNode();
         this.releaseStyles = adoptSheet(tree instanceof ShadowRoot ? tree : this.ownerDocument, 'ge-data-table', css);
-        // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger) survives.
+        // Built once and kept across reconnects, so what a controller holds (runtime pins, the loading trigger, the range) survives.
         this.built ??= assembleControllers(this, createFactories<T>());
-        this.built.attachAll();
+        const built = this.built;
+        built.attachAll();
+        this.handOverEarlyRange();
+        resetIconElement(); // a failed `ge-icon` load is retried at an attach
         this.lastLocale = this.resolvedLocale;
-        this.assembled = this.built;
+        this.assembled = built;
         this.observer = new MutationObserver(() => {
             this.harvest();
             this.requestUpdate();
@@ -543,6 +744,18 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return super.insertBefore(node, child !== null && this.isHarvested(child) ? null : child);
     }
 
+    /**
+     * A `cellRange` held here (assigned before the first connect) goes to the range session right after the first `attachAll()` (never from an update:
+     * that would request a render while rendering). With no range service at all (a custom plan) it stays a held value.
+     */
+    private handOverEarlyRange(): void {
+        const range = this.serviceOf('range');
+        if (this.earlyRange !== undefined && range) {
+            range.setRange(this.earlyRange);
+            this.earlyRange = undefined;
+        }
+    }
+
     private rendering = false;
 
     protected override update(changed: PropertyValues): void {
@@ -554,11 +767,16 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         }
     }
 
+    /** Whether the range part handles ranges, read ONCE per update (`syncHost`, before the render) so the part is asked once; passed to the view, not public API. */
+    private rangeActive = false;
+
     private syncHost(): void {
+        this.rangeActive = this.provider('range')?.active() ?? false;
         const flags: [string, boolean][] = [
             ['data-row-borders', this.showRowBorders],
             ['data-column-borders', this.showColumnBorders],
-            ['data-range-selection', this.enableCellRangeSelection],
+            // user-select: none on the viewport only while range selection is actually handled (the range service is active), like aria-selected
+            ['data-range-selection', rangeSelectionDrawn(this, this.rangeActive)],
             ['aria-busy', this.skeleton || (this.provider('loading')?.visible() ?? false)],
         ];
         for (const [name, on] of flags) {
@@ -631,6 +849,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             <div data-slot="data-table-toolbar-start">
                 <div data-slot="data-table-filter"><ge-input placeholder=${locale.filterPlaceholder} aria-label=${locale.filterPlaceholder} .value=${this.store.get('globalFilter')}
                     @input=${(event: Event) => query.changeGlobalFilter((event.currentTarget as HTMLInputElement).value)}></ge-input></div>
+                ${this.renderParts('renderToolbar')}
                 ${this.nodes('toolbar-start')}
             </div>
             <div data-slot="data-table-toolbar-end">
@@ -664,16 +883,28 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             : nothing}${busy === null ? nothing : html`<div data-slot="data-table-loader" data-kind="busy" role="status">${box(busy)}</div>`}`;
     }
 
+    /** What each controller draws in the toolbar or over the grid: one that throws is reported once (per controller and slot) and draws nothing, never a broken render. */
+    private renderParts(slot: 'renderToolbar' | 'renderOverlay'): unknown[] {
+        return (this.assembled?.drawing(slot) ?? []).map(([index, controller]) => {
+            try {
+                return controller[slot]?.();
+            } catch (error) {
+                reportOncePer(this, `controller-${index}-${slot}`, `[ge-data-table] a controller threw in ${slot}:`, error);
+                return undefined;
+            }
+        });
+    }
+
     protected override render(): unknown {
         if (isServer) return nothing;
         const locale = this.resolvedLocale;
         if (this.skeleton) return renderSkeleton(this.skeletonRows, locale.loading);
-        const grid = buildView(this);
+        const grid = buildView(this, this.rangeActive);
         const query = requireProvider(this, 'query');
         return html`<output data-slot="data-table-announcer" aria-live="polite" aria-atomic="true">${this.announcement}</output>
             ${this.showToolbar ? this.renderToolbar(locale) : nothing}
             <div data-slot="data-table-viewport" tabindex=${grid.viewportTabbable ? '0' : '-1'} @keydown=${(event: KeyboardEvent) => ownsTarget(this, event.target) && void this.keyHandlers.run(event)}>
-                ${this.renderOverlays(locale)}${renderGrid(grid)}
+                ${this.renderOverlays(locale)}${renderGrid(grid)}${this.renderParts('renderOverlay')}
             </div>
             ${this.slotted.has('footer') ? html`<div data-slot="data-table-footer-slot">${this.nodes('footer')}</div>` : nothing}
             ${this.showPagination

@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AddonSet, type DataTableAddon, type DataTableAddonHost, createAddonHost, defineAddon, parseAddonIds, resolveAddonLocale } from './data-table-addon-kit.js';
 import { createAddonsService } from './data-table-registry.js';
 import { resolveAddonLocale as shared } from '../shared/addon-locale.js';
 import type { DataTableLocale } from './data-table.locales.js';
+
+afterEach(() => vi.restoreAllMocks());
 
 function fakeHost() {
     const listeners = new Set<() => void>();
@@ -99,8 +101,8 @@ describe('AddonSet', () => {
             made.set(id, a);
             return a;
         };
-        const warn = vi.fn();
-        const set = new AddonSet(host, made, warn);
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const set = new AddonSet(host, made);
         return { set, addon, log, warn };
     }
 
@@ -111,6 +113,20 @@ describe('AddonSet', () => {
         expect(log).toEqual([]);
         set.start();
         expect(log).toEqual(['start export {"formats":["csv"]}']);
+    });
+
+it('warns once per TABLE (set) and id, though two tables share one registry: each table with the same typo warns for itself', () => {
+        const { host } = fakeHost();
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const registry = new Map<string, DataTableAddon>();
+        const first = new AddonSet(host, registry);
+        const second = new AddonSet(host, registry);
+        for (const set of [first, second]) {
+            set.start();
+            set.configure('typo', {});
+            set.sync();
+        }
+        expect(warn.mock.calls.filter((call) => String(call[0]).includes('unknown addon "typo"'))).toHaveLength(2);
     });
 
     it('warns about an unknown id, and starts it once its module registers', () => {

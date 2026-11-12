@@ -7,6 +7,14 @@ export function isSecondaryTouch(event: PointerEvent): boolean {
     return event.pointerType === 'touch' && !event.isPrimary;
 }
 
+/** How far (px) a finger may drift from where it went down and still count as holding still (a long press, a tap); further away it is a drag. */
+export const TOUCH_SLOP_PX = 10;
+
+/** Whether a drift of (`dx`, `dy`) px is within the touch slop. */
+export function withinTouchSlop(dx: number, dy: number, slop = TOUCH_SLOP_PX): boolean {
+    return Math.hypot(dx, dy) <= slop;
+}
+
 /** True when the primary pointer is coarse (a finger), where hover previews would only leave stale state behind. */
 export function isTouchDevice(): boolean {
     return globalThis.window?.matchMedia?.('(pointer: coarse)').matches ?? false;
@@ -50,7 +58,7 @@ export function onLongPress(element: HTMLElement, callback: (event: TouchEvent, 
             return;
         }
         const touch = event.touches[0];
-        if (touch && Math.hypot(touch.clientX - start.clientX, touch.clientY - start.clientY) > 10) cancel();
+        if (touch && !withinTouchSlop(touch.clientX - start.clientX, touch.clientY - start.clientY)) cancel();
     };
 
     element.addEventListener('touchstart', onStart, { passive: true });
@@ -200,7 +208,7 @@ function trackContextTouch(): {
             lastTouchAt = Date.now();
             const finger = event.touches[0];
             const multiTouch = event.touches.length !== 1 || !finger;
-            const strayed = !!finger && !!origin && Math.hypot(finger.clientX - origin.x, finger.clientY - origin.y) > CONTEXT_SLOP_PX;
+            const strayed = !!finger && !!origin && !withinTouchSlop(finger.clientX - origin.x, finger.clientY - origin.y);
             if (multiTouch || strayed) travelled = true;
         },
         // A draggable target may be picked up by the browser instead; that hold is a drag, not a press.
@@ -228,9 +236,6 @@ function trackContextTouch(): {
  * a window the menu opens twice on one platform and not at all on the other.
  */
 const SAME_GESTURE_MS = 700;
-
-/** How far a finger may travel and still count as held: the 10px `onLongPress` allows. */
-const CONTEXT_SLOP_PX = 10;
 
 /** Gestures an inner target already answered; ancestors skip them. */
 const claimedGestures = new WeakSet<Event>();

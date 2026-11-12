@@ -260,6 +260,32 @@ async function renderJob(browser, theme, group, side) {
                 // `data-opened` shows a speed dial open; its items animate out, so wait for them to land.
                 for (const target of document.querySelectorAll('ge-speed-dial[data-opened]')) target.show();
                 await Promise.all([...document.querySelectorAll('ge-speed-dial[data-opened]')].map((t) => t.updateComplete));
+                // `data-edit` is `rowIndex,columnKey` of a ge-data-table: that cell's editor is opened, as a double click would. The hook THROWS (with the case id) when the editor does not open: at joint step 0 `startEditing` is inert and always answers false, so NO parity case may use `data-edit` before wave 5 B makes editing real.
+                // `data-edit-error` is a message: the column then refuses every value with it and the edited draft is committed, so the editor shows its error state.
+                // It runs BEFORE the animation wait below, so a transition the open editor starts is awaited too; the table gets its `data-props` first, there, and the generic `data-props` loop skips it.
+                for (const target of document.querySelectorAll('ge-data-table[data-edit]')) {
+                    if (target.dataset.props) Object.assign(target, JSON.parse(target.dataset.props));
+                    await target.updateComplete;
+                    const comma = target.dataset.edit.indexOf(','); // the row index has no comma, a column key may
+                    if (comma === -1) throw new Error(`data-edit="${target.dataset.edit}" needs "rowIndex,columnKey" (case ${target.closest('[data-case]')?.dataset.case ?? 'unknown'})`);
+                    const rowIndex = target.dataset.edit.slice(0, comma);
+                    const columnKey = target.dataset.edit.slice(comma + 1);
+                    const message = target.dataset.editError;
+                    if (message !== undefined) {
+                        target.columns = target.columns.map((c) => (String(c.accessorKey) === columnKey ? { ...c, editValidator: () => message } : c));
+                        await target.updateComplete;
+                    }
+                    const row = target.provider('query').renderedRowAt(Number(rowIndex));
+                    const where = `data-edit="${target.dataset.edit}" (case ${target.closest('[data-case]')?.dataset.case ?? 'unknown'})`;
+                    if (row === undefined) throw new Error(`${where}: there is no row ${rowIndex}`);
+                    if (!target.startEditing(row, columnKey)) throw new Error(`${where}: the editor did not open (is the column editable?)`);
+                    await target.updateComplete;
+                    if (message !== undefined) {
+                        target.provider('interaction').setEditValue(String.fromCharCode(0x200b)); // a zero-width space: a value no validator of the case accepts, invisible if it were ever drawn
+                        target.commitEdit();
+                        await target.updateComplete;
+                    }
+                }
                 // An infinite animation (a spinner, a marquee) never finishes, so waiting on it would hang the run.
                 await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));
                 // `data-items` is the JSON `items` of a simple-mode dock; an entry with `button` gets a click handler, which makes it a button.
@@ -273,7 +299,8 @@ async function renderJob(browser, theme, group, side) {
                     }
                 }
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
-                for (const target of document.querySelectorAll('[data-props]')) Object.assign(target, JSON.parse(target.dataset.props));
+                // A ge-data-table with `data-edit` got its props in the data-edit block above (its columns carry the validator that block added): not again here.
+                for (const target of document.querySelectorAll('[data-props]:not(ge-data-table[data-edit])')) Object.assign(target, JSON.parse(target.dataset.props));
                 // `data-file` is JSON `{name, base64}`: a file-viewer is given that file and the run waits for it to load or fail.
                 for (const target of document.querySelectorAll('ge-file-viewer[data-file]')) {
                     const { name, base64 } = JSON.parse(target.dataset.file);

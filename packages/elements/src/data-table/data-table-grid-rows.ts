@@ -15,6 +15,7 @@ import { cellVarsStyle } from './data-table-columns.js';
 import { allNodesExpanded, type Flags, isFlagged, treeHostKey } from './data-table-expansion.js';
 import { isGroupingActive } from './data-table-group.js';
 import type { BodyView, GridView } from './data-table-grid.js';
+import { NO_CELL_FLAGS, NO_ROW_FLAGS } from './data-table-grid-state.js';
 import { detailId, specialCell, treeHostCell } from './data-table-grid-special.js';
 import { requireProvider } from './data-table-host.js';
 import { chromeIcon, ensureIconElement } from './data-table-icons.js';
@@ -168,19 +169,29 @@ function plainContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInd
     }
 }
 
-function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined): unknown {
+function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined, editing: boolean): unknown {
     const special = specialCell(v, c, row);
     if (special !== undefined) return special;
-    const content = plainContent(v, c, row, rowIndex);
+    // The open editor (wave 5) takes the place of the plain content; the tree-host wrapper stays around it.
+    // `undefined` is "not drawn by the editor view"; a `null` (an editRenderer that draws nothing) is the editor's answer and stays.
+    const editor = editing ? v.edit.cell(c, row, rowIndex) : undefined;
+    const content = editor !== undefined ? editor : plainContent(v, c, row, rowIndex);
     return node && String(c.accessorKey) === v.treeHost ? treeHostCell(v, node, content) : content;
 }
 
-function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined): TemplateResult {
+/** `rowId` is set only while a wave state function can be asked (`cellStateActive || rowStateActive`); `selected` is the row's selection. Plain arguments: no per-row object is built. */
+function bodyCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined, rowId: string | undefined, selected: boolean, disabled: boolean): TemplateResult {
     const key = String(c.accessorKey);
     const focused = v.focusedCell?.rowIndex === rowIndex && v.focusedCell.columnKey === key;
+    // Range, fill, flash and editor state of waves 5 and 6: one shared object per cell (data-table-grid-state.ts). ONE template always carries the bindings
+    // (two templates would make Lit rebuild every cell when a feature turns on: consumer components would remount, focus would drop); while no
+    // feature is active the shared "none" object is bound without a call, so the bindings are same-value comparisons that Lit skips.
+    const state = rowId !== undefined && v.cellStateActive ? v.cellState(rowIndex, key, rowId, selected) : NO_CELL_FLAGS; // draggable rows alone never ask a cell
     return html`<div data-slot="table-cell" role="gridcell" aria-colindex=${v.aria.colIndex(n)} data-column=${key} data-row-index=${rowIndex}
         data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(key) ? specialSlotOf(c) : nothing}
-        data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, row, rowIndex, node)}</div>`;
+        aria-selected=${state.selected ?? nothing} ?data-in-range=${state.inRange} data-range-edge=${state.rangeEdge || nothing} ?data-fill-preview=${state.fillPreview}
+        data-flash=${state.flash ?? nothing} ?data-editable=${c.editable === true && !disabled} ?data-editing=${state.editing}
+        data-border tabindex=${focused ? '0' : nothing} ?data-focused=${focused} style=${cellVarsStyle(c, n)}>${cellContent(v, c, row, rowIndex, node, state.editing)}</div>`;
 }
 
 const filler = html`<div data-slot="table-cell" role="presentation" aria-hidden="true" data-border></div>`;
@@ -203,11 +214,14 @@ function dataRow<T>(v: GridView<T>, row: T, i: number, ordinal: number, node: Fl
     const disabled = v.isDisabled(row);
     const level = node ? treeRowAria(node) : null;
     const wide = v.renderFullWidth?.(row);
+    const rowId = v.cellStateActive || v.rowStateActive ? String(id) : undefined; // plain arguments to the state functions: no per-row object
+    const drag = rowId !== undefined && v.rowStateActive ? v.rowState(i, rowId, disabled) : NO_ROW_FLAGS;
     return html`<div data-slot="table-row" role="row" aria-rowindex=${v.aria.dataRowIndex(ordinal)} aria-selected=${v.selectable ? String(selected) : nothing}
+        draggable=${drag.draggable ? 'true' : nothing} ?data-draggable=${drag.draggable} ?data-dragging=${drag.dragging} ?data-drop-target=${drag.dropEdge !== undefined}
         aria-level=${level?.level ?? nothing} aria-expanded=${level?.expanded == null ? nothing : String(level.expanded)} aria-setsize=${node?.setSize ?? nothing} aria-posinset=${node?.posInSet ?? nothing}
         data-kind="data" data-row-index=${i} data-row-id=${id} data-depth=${node?.depth ?? nothing} style=${rowStyle(node, retainedTop)} ?data-retained=${retainedTop !== undefined}
         data-state=${selected ? 'selected' : nothing} ?data-disabled=${disabled} aria-disabled=${disabled ? 'true' : nothing}>
-        ${claims(wide) ? wideCell(v, wide) : html`${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : bodyCell(v, p.column, p.n, row, i, node)))}${v.hasFlexible ? nothing : filler}`}
+        ${claims(wide) ? wideCell(v, wide) : html`${columnParts(v.columns, v.body.window).map((p) => ('spacer' in p ? columnSpacer(p.spacer) : bodyCell(v, p.column, p.n, row, i, node, rowId, selected, disabled)))}${v.hasFlexible ? nothing : filler}`}${drag.dropEdge ? html`<div data-slot="data-table-drop-edge" data-pointer-transparent data-edge=${drag.dropEdge} aria-hidden="true"></div>` : nothing}
     </div>`;
 }
 

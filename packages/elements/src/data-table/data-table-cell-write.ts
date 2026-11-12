@@ -79,6 +79,8 @@ export interface CellWritePorts<T> {
     rowAt(rowIndex: number): T | undefined;
     cellValue(row: T, column: ColumnDef<T>): unknown;
     historyEnabled(): boolean;
+    /** The message of a rejection whose validator gave none: the table's locale `invalidValue` (the element passes it; this module knows no dictionary). */
+    rejectionMessage(): string;
     emit(
         ...event:
             | [name: 'cell-edit', detail: CellEditEvent<T>]
@@ -86,8 +88,6 @@ export interface CellWritePorts<T> {
             | [name: 'edit-undo' | 'edit-redo', detail: undefined]
     ): void;
 }
-
-export const DEFAULT_REJECTION_MESSAGE = 'Invalid value';
 
 export interface CellWriter<T> {
     /** Results are in request order. Every row is resolved before the first write; one `setData` for all. */
@@ -166,7 +166,7 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
             const oldValue = ports.cellValue(row, column);
             const verdict = column.editValidator?.(value, row) ?? true;
             if (verdict !== true) {
-                const message = typeof verdict === 'string' ? verdict : DEFAULT_REJECTION_MESSAGE;
+                const message = typeof verdict === 'string' ? verdict : ports.rejectionMessage();
                 if (options.report !== false) ports.emit('edit-error', { row, column, value, rowIndex: target.rowIndex, message });
                 results[at] = { status: 'rejected', message, row, column };
                 return;

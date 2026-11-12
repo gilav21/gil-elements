@@ -60,6 +60,34 @@ describe('data-table locales', () => {
         expect(en.resizeColumn).not.toContain('double-click');
     });
 
+    it('has every wave 5 and wave 6 key (joint step 0), with the placeholders the announcements interpolate', () => {
+        const keys = [
+            'filterColumnActive', 'filtersClearedAnnouncement', 'filteredRowsAnnouncement', 'filteredRowOneAnnouncement', 'invalidValue', 'editCell',
+            'undoAnnouncement', 'redoAnnouncement', 'historyStaleAnnouncement', 'copiedAnnouncement', 'copiedAnnouncementOne', 'copyFailedAnnouncement',
+            'pasteResultAnnouncement', 'pasteResultAnnouncementOne', 'pasteRejectedAnnouncement', 'pasteFailedAnnouncement', 'rangeAnnouncement',
+            'rangeReadoutLabel', 'fillAnnouncement', 'rowMovedAnnouncement', 'rowDragHint',
+        ] as const satisfies readonly (keyof DataTableLocale)[];
+        for (const key of keys) expect(en[key], key).toBeTruthy();
+        expect(interpolate(en.filterColumnActive, { column: 'Age' })).toBe('Filter Age, filter applied');
+        expect(interpolate(en.editCell, { column: 'Age' })).toBe('Edit Age');
+        expect(interpolate(en.filteredRowsAnnouncement, { count: 4 })).toBe('4 rows match the filters');
+        expect(interpolate(en.historyStaleAnnouncement, { count: 2 })).toBe('2 changes skipped: their rows or columns no longer exist');
+        expect(interpolate(en.copiedAnnouncement, { count: 6 })).toBe('6 cells copied');
+        expect(interpolate(en.pasteRejectedAnnouncement, { count: 5, rejected: 1 })).toBe('5 cells pasted, 1 rejected');
+        expect(interpolate(en.rangeAnnouncement, { rows: 3, columns: 2 })).toBe('3 rows by 2 columns selected');
+        expect(interpolate(en.rowMovedAnnouncement, { position: 2, total: 9 })).toBe('Row moved to position 2 of 9');
+        expect(interpolate(en.fillAnnouncement, { count: 3 })).toBe('3 rows filled');
+        expect(en.invalidValue).toBe('Invalid value');
+        for (const key of ['columnLabel', 'operatorLabel', 'valueLabel', 'groupLabel'] as const) expect(EN_FILTER_BUILDER_LABELS[key], key).toBeTruthy();
+    });
+
+    it('fills the new keys from English for a dictionary that omits them', () => {
+        registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
+        const resolved = resolveDataTableLocale('de');
+        expect(resolved.invalidValue).toBe(en.invalidValue);
+        expect(resolved.rowDragHint).toBe(en.rowDragHint);
+    });
+
     it('resolves an object as it is, a known id, a region id, and falls back to English', () => {
         expect(resolveDataTableLocale(de)).toBe(de);
         expect(resolveDataTableLocale('xx')).toBe(en);

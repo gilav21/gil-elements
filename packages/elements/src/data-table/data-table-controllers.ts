@@ -1,5 +1,6 @@
 import type { TemplateResult } from 'lit';
 import type { DataTableCoreHost } from './data-table-host.js';
+import type { DataTableProviders } from './data-table-providers.js';
 import { type ControllerId, type ControllerSpec, DEFAULT_ORDER, validatePlan } from './data-table-registry.js';
 
 /** Plain class built as `new XController(host)`, never in the constructor of the element. */
@@ -8,6 +9,8 @@ export interface DataTableController {
     detach(): void;
     /** Runs before every render, so a controller can settle derived state the render reads. */
     hostUpdate?(): void;
+    /** Services this controller owns that must stay reachable while the table is detached or not yet connected (the provider entries are cleared at disconnect). */
+    readonly services?: Partial<DataTableProviders>;
 }
 
 /** A controller that also draws: the element calls these on every render. */
@@ -25,6 +28,10 @@ export type DataTableControllerFactories<T = unknown> = Partial<Record<Controlle
 
 export interface AssembledControllers {
     readonly controllers: readonly DataTableRenderingController[];
+    /** The controllers (with their plan index) that draw in a slot, found ONCE at assembly: a render maps only these, never every controller. */
+    drawing(slot: 'renderToolbar' | 'renderOverlay'): readonly (readonly [number, DataTableRenderingController])[];
+    /** A service a controller exposes through `services` (also while detached), or undefined. */
+    service<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined;
     /** Attaches in plan order. */
     attachAll(): void;
     /** Detaches in reverse order, each even if an earlier one threw; rethrows the first error. */
@@ -44,8 +51,19 @@ export function assembleControllers<T>(
     const problems = validatePlan(built, { strict: false });
     if (problems.length > 0) throw new Error(`[ge-data-table] invalid controller plan:\n${problems.join('\n')}`);
     const controllers = built.map((s) => (factories[s.id] as DataTableControllerFactory<T>)(host));
+    // Which controller owns which `services` key, resolved once (the keys are declared when a controller is built; the VALUES may change, e.g. a withdrawn one).
+    const drawing = {
+        renderToolbar: controllers.flatMap((c, i): [number, DataTableRenderingController][] => (c.renderToolbar ? [[i, c]] : [])),
+        renderOverlay: controllers.flatMap((c, i): [number, DataTableRenderingController][] => (c.renderOverlay ? [[i, c]] : [])),
+    };
+    const ownerOf = new Map<string, DataTableRenderingController>();
+    for (const c of controllers) for (const key of Object.keys(c.services ?? {})) if (!ownerOf.has(key)) ownerOf.set(key, c);
     return {
         controllers,
+        drawing: (slot) => drawing[slot],
+        service<K extends keyof DataTableProviders>(key: K): DataTableProviders[K] | undefined {
+            return ownerOf.get(key)?.services?.[key];
+        },
         attachAll() {
             for (const c of controllers) c.attach();
         },

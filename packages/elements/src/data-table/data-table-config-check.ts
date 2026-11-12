@@ -28,6 +28,8 @@ export interface ConfigCheckInput<T> {
     enableRowDrag?: boolean;
     /** Undo/redo of edits; they find a row again by its id. */
     enableEditHistory?: boolean;
+    // The waves add the inputs of their checks here and in the diagnostics snapshot together with the check (`enableFillHandle`,
+    // `enableClipboardPaste`, `localReorder`, `sortState`, `multiSortState`): nothing reads them yet.
 }
 
 const PREFIX = '[ge-data-table]';
@@ -76,6 +78,11 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         c.enableFloatingFilters && !c.columns.some((col) => col.enableFiltering),
         'enable-floating-filters is true but no column has enableFiltering set. The floating filter row will be empty.',
     );
+
+    // ---- wave 5 (filters and editing): package A and B add their `warn(...)` calls here, each in its own marked block -------------------
+    // ---- wave 6 (spreadsheet and drag): packages A, B and C add theirs here, each in its own marked block -----------------------------
+    // Planned for wave 6: fill handle or paste with no column that has a `valueSetter`; enable-row-drag with an active sort or group-by while
+    // `localReorder` is on (the drop reorders `data` but the table keeps drawing its own order). The flash + default getRowId warning is above.
 
     const noSetter = c.columns.filter((col) => col.editable && !col.valueSetter);
     warn(

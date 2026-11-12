@@ -1,15 +1,18 @@
 import { AriaController } from './data-table-aria-controller.js';
 import { CellInteractionController } from './data-table-cell-interaction-controller.js';
+import { ClipboardController } from './data-table-clipboard-controller.js';
 import { ColumnDragController } from './data-table-column-drag-controller.js';
 import { ColumnsController } from './data-table-columns-controller.js';
 import type { DataTableControllerFactories } from './data-table-controllers.js';
 import { DiagnosticsController } from './data-table-diagnostics-controller.js';
 import { ExpansionController } from './data-table-expansion-controller.js';
+import { FilterUiController } from './data-table-filter-controller.js';
 import { FooterController } from './data-table-footer-controller.js';
 import { FormattingController } from './data-table-formatting-controller.js';
 import { LoadingController } from './data-table-loading-controller.js';
 import { QueryController } from './data-table-query-controller.js';
 import { ResizeController } from './data-table-resize-controller.js';
+import { RowDragController } from './data-table-row-drag-controller.js';
 import { SelectionController } from './data-table-selection-controller.js';
 import { VirtualController } from './data-table-virtual-controller.js';
 
@@ -38,5 +41,16 @@ export function createFactories<T>(): DataTableControllerFactories<T> {
         resize: (host) => new ResizeController(host),
         'column-drag': (host) => new ColumnDragController(host),
         aria: (host) => new AriaController(host),
+
+        // wave 5, package A (filters): filter-ui
+        'filter-ui': (host) => new FilterUiController(host),
+
+        // wave 6, package B (clipboard): clipboard
+        clipboard: (host) => new ClipboardController(host),
+
+        // wave 6, package C (drag and flash): row-drag
+        'row-drag': (host) => new RowDragController(host),
+
+        // wave 7: ai, addon-host (their lines go here)
     };
 }

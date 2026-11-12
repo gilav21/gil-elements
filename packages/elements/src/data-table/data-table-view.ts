@@ -5,8 +5,11 @@
  */
 import { computeGridAria } from './data-table-aria.js';
 import type { GridView } from './data-table-grid.js';
+import { editView } from './data-table-grid-edit.js';
+import { filtersView } from './data-table-grid-filters.js';
 import { columnsView } from './data-table-grid-head.js';
 import { rowsView } from './data-table-grid-rows.js';
+import { stateView } from './data-table-grid-state.js';
 import { windowView } from './data-table-grid-window.js';
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import type { DataTableDisplayRow, FlattenedTreeRow } from './data-table.types.js';
@@ -28,15 +31,19 @@ export interface DataTableViewHost<T> extends DataTableCoreHost<T> {
     slottedNodes(name: string): readonly Node[] | undefined;
 }
 
-export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
+export function buildView<T>(host: DataTableViewHost<T>, rangeActive?: boolean): GridView<T> {
     const footer = host.provider('footer');
     const columns = columnsView(host);
     const win = windowView(host);
     const { source, totalRows, ...rows } = rowsView(host);
+    const filters = filtersView(host);
     const showFooter = footer?.visible() ?? false;
     return {
         ...columns,
         ...rows,
+        ...stateView(host, rangeActive),
+        filters,
+        edit: editView(host),
         focusedCell: win.focusedCell,
         viewportTabbable: win.viewportTabbable,
         locale: host.resolvedLocale,
@@ -44,7 +51,7 @@ export function buildView<T>(host: DataTableViewHost<T>): GridView<T> {
         // A rendered empty state is one real row (with a spanning cell), so it counts and the footer follows it.
         aria: computeGridAria({
             tree: source.mode !== 'flat', // a treegrid only while group headers or tree nodes are drawn (grouping is off under virtual scroll)
-            headerRows: 1,
+            headerRows: 1 + filters.rows, // the floating filter row is a second header row (wave 5)
             totalDataRows: totalRows || 1,
             columnCount: columns.columns.length,
             footerRows: showFooter ? 1 : 0,

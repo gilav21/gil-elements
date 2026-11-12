@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
     clampToRows,
     coercePasteValue,
@@ -9,7 +9,12 @@ import {
     planPaste,
     rangeChartPayload,
     rangeStats,
+    rangeModeOn,
+    warnBadRange,
+    rangeColumnKeys,
+    rangeEdges,
     readRangeColumns,
+    sanitizeCellRange,
 } from './data-table-range.js';
 import type { CellRange, ColumnDef } from './data-table.types.js';
 
@@ -165,5 +170,91 @@ describe('paste coercion and planning', () => {
         ]);
         expect(planPaste([['x']], 0, 'nope', KEYS)).toEqual([]);
         expect(planPaste([], 0, 'q1', KEYS)).toEqual([]);
+    });
+});
+
+describe('rangeEdges', () => {
+    const range = { minRow: 1, maxRow: 3, minCol: 1, maxCol: 2 };
+
+    it('lists the edges a cell touches and nothing for an inner cell', () => {
+        expect(rangeEdges(range, 1, 1)).toBe('top start');
+        expect(rangeEdges(range, 3, 2)).toBe('bottom end');
+        expect(rangeEdges(range, 2, 1)).toBe('start');
+        expect(rangeEdges({ ...range, minCol: 1, maxCol: 3 }, 2, 2)).toBe('');
+    });
+
+    it('gives a one-cell range all four', () => {
+        expect(rangeEdges({ minRow: 2, maxRow: 2, minCol: 0, maxCol: 0 }, 2, 0)).toBe('top bottom start end');
+    });
+});
+
+describe('rangeColumnKeys, rangeModeOn and warnBadRange', () => {
+    it('lists the data columns, hidden or not, and never a special one', () => {
+        expect(rangeColumnKeys([{ accessorKey: 'a' }, { accessorKey: '_selection' }, { accessorKey: 'b' }, { accessorKey: '_actions' }])).toEqual(['a', 'b']);
+    });
+
+    it('warns once per table and kind: another table speaks again, and "previous range stays" and "dropped" are different messages', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const table = {};
+        warnBadRange(table, 1, true);
+        warnBadRange(table, 2, true);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(String(warn.mock.calls[0]?.[0])).toContain('the previous range stays');
+        warnBadRange(table, 3, false);
+        expect(warn).toHaveBeenCalledTimes(2);
+        expect(String(warn.mock.calls[1]?.[0])).toContain('dropped');
+        expect(String(warn.mock.calls[1]?.[0])).not.toContain('stays');
+        warnBadRange({}, 4, true);
+        expect(warn).toHaveBeenCalledTimes(3);
+        warn.mockRestore();
+    });
+
+    it('is range mode with range selection or the fill handle', () => {
+        expect(rangeModeOn({ enableCellRangeSelection: false, enableFillHandle: false })).toBe(false);
+        expect(rangeModeOn({ enableCellRangeSelection: true, enableFillHandle: false })).toBe(true);
+        expect(rangeModeOn({ enableCellRangeSelection: false, enableFillHandle: true })).toBe(true);
+    });
+});
+
+describe('sanitizeCellRange', () => {
+    const range: CellRange = { startRow: 1, startCol: 'q1', endRow: 3, endCol: 'q2' };
+
+    it('turns undefined and null into "no range"', () => {
+        expect(sanitizeCellRange(undefined, 10, KEYS)).toBeNull();
+        expect(sanitizeCellRange(null, 10, KEYS)).toBeNull();
+    });
+
+    it('keeps a good range, copying only its four fields', () => {
+        const result = sanitizeCellRange({ ...range, extra: 1 }, 10, KEYS);
+        expect(result).toEqual(range);
+        expect(result).not.toBe(range);
+        expect(Object.keys(result as object)).toHaveLength(4);
+    });
+
+    it('returns the very same object for a valid range that needs no trimming, and a new one when it is trimmed', () => {
+        expect(sanitizeCellRange(range, 10, KEYS)).toBe(range);
+        expect(sanitizeCellRange(range, 0, [])).toBe(range);
+        expect(sanitizeCellRange({ ...range, endRow: 50 }, 5, KEYS)).not.toBe(range);
+    });
+
+    it.each([
+        ['a string', 'q1'],
+        ['an empty object', {}],
+        ['a fractional row', { ...range, startRow: 1.5 }],
+        ['a negative row', { ...range, endRow: -1 }],
+        ['a numeric column key', { ...range, startCol: 1 }],
+        ['a column that does not exist', { ...range, endCol: 'nope' }],
+    ])('refuses %s', (_name, input) => {
+        expect(sanitizeCellRange(input, 10, KEYS)).toBeUndefined();
+    });
+
+    it('trims rows past the last drawn one, and drops a range wholly past them', () => {
+        expect(sanitizeCellRange({ ...range, endRow: 50 }, 5, KEYS)).toEqual({ ...range, endRow: 4 });
+        expect(sanitizeCellRange({ ...range, startRow: 20, endRow: 30 }, 5, KEYS)).toBeNull();
+    });
+
+    it('leaves rows and columns as they are while they are not known (no rows drawn yet, no column keys)', () => {
+        expect(sanitizeCellRange({ ...range, endRow: 50 }, 0, [])).toEqual({ ...range, endRow: 50 });
+        expect(sanitizeCellRange({ ...range, endCol: 'whatever' }, 10, [])).toEqual({ ...range, endCol: 'whatever' });
     });
 });

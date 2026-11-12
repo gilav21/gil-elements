@@ -1,7 +1,8 @@
 import { createListedRows } from './data-table-expansion.js';
-import { cellAddressOf, type DataTableCoreHost, ownEvents, requireProvider } from './data-table-host.js';
+import { cellAddressOf, type DataTableCoreHost, ownClosest, ownEvents, requireProvider } from './data-table-host.js';
 import type { SelectionService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
+import { KEY_PRIORITY } from './data-table-registry.js';
 import {
     cascadeSelection,
     createIndeterminateIds,
@@ -119,7 +120,7 @@ export class SelectionController<T> {
     private readonly onChange = (event: Event): void => {
         const box = event.target;
         if (!(box instanceof Element) || !box.matches('ge-checkbox')) return;
-        const cell = box.closest('[data-special="selection"]');
+        const cell = ownClosest(this.host.root, box, '[data-special="selection"]');
         if (!cell) return;
         const shift = this.shift;
         this.shift = false;
@@ -143,7 +144,7 @@ export class SelectionController<T> {
 
     /** Shift is only on the click, not on the `change` it causes, so it is read on the way down. */
     private readonly onClick = (event: MouseEvent): void => {
-        this.shift = event.shiftKey && event.target instanceof Element && event.target.closest('[data-special="selection"]') !== null;
+        this.shift = event.shiftKey && event.target instanceof Element && ownClosest(this.host.root, event.target, '[data-special="selection"]') !== null;
     };
 
     private readonly onKey = (event: KeyboardEvent): boolean => {
@@ -169,7 +170,7 @@ export class SelectionController<T> {
             host.model.subscribe('rowSelection', () => host.topics.emit('selection')),
             host.disposables.listen<MouseEvent>(host.root, 'click', ownEvents(host.root, this.onClick), true),
             host.disposables.listen(host.root, 'change', ownEvents(host.root, this.onChange)),
-            host.addKeyHandler(50, this.onKey),
+            host.addKeyHandler(KEY_PRIORITY.rowControls, this.onKey),
         ];
     }
 

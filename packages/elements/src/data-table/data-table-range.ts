@@ -4,7 +4,8 @@
  * among the navigable keys (the data columns, in drawn order).
  */
 import type { CellRange, ColumnDef, RangeAggregateStats, RangeChartPayload } from './data-table.types.js';
-import { computeAggregateValue, getCellValue, stringifyValue, toAggregatableNumber } from './data-table.utils.js';
+import { warnOncePer } from './data-table-warn.js';
+import { computeAggregateValue, getCellValue, isSpecialColumnKey, stringifyValue, toAggregatableNumber } from './data-table.utils.js';
 
 export interface NormalizedRange {
     minRow: number;
@@ -34,6 +35,59 @@ export function isCellInRange(range: NormalizedRange | null, navigableKeys: read
     if (!range) return false;
     const col = navigableKeys.indexOf(columnKey);
     return rowIndex >= range.minRow && rowIndex <= range.maxRow && col >= range.minCol && col <= range.maxCol;
+}
+
+/** The edges of `range` that the cell at (`rowIndex`, column index `col`) touches, space-separated (`top`, `bottom`, `start` = lower column index, `end`); '' for an inner cell. */
+export function rangeEdges(range: NormalizedRange, rowIndex: number, col: number): string {
+    const edges: string[] = [];
+    if (rowIndex === range.minRow) edges.push('top');
+    if (rowIndex === range.maxRow) edges.push('bottom');
+    if (col === range.minCol) edges.push('start');
+    if (col === range.maxCol) edges.push('end');
+    return edges.join(' ');
+}
+
+/**
+ * A range a consumer assigns (`cellRange`), made safe: `undefined` and `null` are "no range"; anything that is not a range (integer rows
+ * from 0, string column keys), or that names a column not among `keys` (when `keys` is known), is refused with `undefined`; rows past the
+ * last of `rowCount` rows are trimmed (a range wholly past them is dropped), and an unknown row count (0) leaves the rows as they are.
+ * Only the four fields are kept.
+ */
+export function sanitizeCellRange(input: unknown, rowCount: number, keys: readonly string[]): CellRange | null | undefined {
+    if (input === null || input === undefined) return null;
+    const { startRow, startCol, endRow, endCol } = input as Partial<CellRange>;
+    const row = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0;
+    if (!row(startRow) || !row(endRow) || typeof startCol !== 'string' || typeof endCol !== 'string') return undefined;
+    if (keys.length > 0 && !(keys.includes(startCol) && keys.includes(endCol))) return undefined;
+    const range: CellRange = { startRow, startCol, endRow, endCol };
+    const clamped = rowCount > 0 ? clampToRows(null, range, rowCount).range : range;
+    // A valid range that needs no trimming and carries nothing else comes back as the SAME object (`table.cellRange = r; table.cellRange === r`).
+    return clamped && sameRange(clamped, range) && Object.keys(input as object).length === 4 ? (input as CellRange) : clamped;
+}
+
+/** Field-wise equality of two ranges (either may be absent). */
+export function sameRange(a: CellRange | null | undefined, b: CellRange | null | undefined): boolean {
+    return a && b ? a.startRow === b.startRow && a.endRow === b.endRow && a.startCol === b.startCol && a.endCol === b.endCol : !a === !b;
+}
+
+/** The keys a range may name: the data columns of the table's `columns`, visible or hidden (visibility only affects drawing), never a special column. */
+export function rangeColumnKeys(columns: readonly { accessorKey: unknown }[]): string[] {
+    return columns.map((c) => String(c.accessorKey)).filter((key) => !isSpecialColumnKey(key));
+}
+
+/** Range SELECTION is drawn and claimed (`data-range-selection`, `aria-selected`, `aria-multiselectable`): the flag is on and the range part handles ranges (the one predicate the element and the state view both use). */
+export const rangeSelectionDrawn = (config: { readonly enableCellRangeSelection: boolean }, rangeActive: boolean): boolean => config.enableCellRangeSelection && rangeActive;
+
+/** Range mode is on: range selection or the fill handle (the one predicate the element and the range session both use). */
+export const rangeModeOn = (config: { readonly enableCellRangeSelection: boolean; readonly enableFillHandle: boolean }): boolean => config.enableCellRangeSelection || config.enableFillHandle;
+
+/**
+ * What an owner of a range says, ONCE per table and kind, when it refuses a value that is not a range of the table (the element before the first connect and the
+ * session after share it). `kept`: the previous valid range stays; otherwise the value was dropped and there is none.
+ */
+export function warnBadRange(scope: object, value: unknown, kept: boolean): void {
+    const what = '[ge-data-table] cellRange is not a range of this table (integer startRow / endRow, and startCol / endCol the keys of data columns); ';
+    warnOncePer(scope, kept ? 'bad-range-kept' : 'bad-range-dropped', what + (kept ? 'ignored, the previous range stays:' : 'dropped, there is no range:'), value);
 }
 
 /** The fill source: the selected range, or the focused cell as a 1x1 range. */
@@ -208,4 +262,21 @@ export function planPaste(grid: readonly (readonly string[])[], startRow: number
             return columnKey === undefined ? [] : [{ rowIndex: startRow + r, columnKey, raw }];
         }),
     );
+}
+
+/**
+ * THE answer to "is this cell selected" (Angular's `isCellSelected`), called with the same inputs by `interaction.isCellSelected` and by the cell's `aria-selected`:
+ * a cell of a selected row (`rowSelected`: already false when row selection is off) is selected; otherwise, with a range, the cell is selected when it is in it
+ * (`inRange`, ignored without one); with none, when it is the focused cell. Plain values: no closure, no lookup per cell.
+ */
+export function cellSelectedBy(
+    range: CellRange | null | undefined,
+    inRange: boolean,
+    focused: { rowIndex: number; columnKey: string } | null,
+    rowIndex: number,
+    columnKey: string,
+    rowSelected: boolean,
+): boolean {
+    if (rowSelected) return true;
+    return range ? inRange : focused?.rowIndex === rowIndex && focused.columnKey === columnKey;
 }
