@@ -25,6 +25,7 @@ import {
     setCombinator,
     toggleSelection,
     updateRule,
+    sameFilterValue,
 } from './data-table-filters.js';
 import { validateConfig } from './data-table-config-check.js';
 import { filterRows } from './data-table-query.js';
@@ -268,6 +269,26 @@ describe('filter state questions', () => {
         const column: ColumnDef<unknown> = { accessorKey: 'a', header: 'A', filterComponentInputs: () => ({ n: ++n }) };
         expect(filterInputsOf(column)).toEqual({ n: 1 });
         expect(filterInputsOf(column)).toEqual({ n: 2 });
+    });
+});
+
+describe('sameFilterValue (round 6: an equal write is a no-op)', () => {
+    it('treats every "no filter" spelling as equal', () => {
+        expect(sameFilterValue(null, undefined)).toBe(true);
+        expect(sameFilterValue(undefined, null)).toBe(true);
+        expect(sameFilterValue(null, '')).toBe(false);
+    });
+
+    it('compares primitives, dates by instant, arrays by member, ranges by key', () => {
+        expect(sameFilterValue('ab', 'ab')).toBe(true);
+        expect(sameFilterValue('ab', 'abc')).toBe(false);
+        expect(sameFilterValue(new Date(2024, 1, 3), new Date(2024, 1, 3))).toBe(true);
+        expect(sameFilterValue(new Date(2024, 1, 3), new Date(2024, 1, 4))).toBe(false);
+        expect(sameFilterValue(['a', 'b'], ['a', 'b'])).toBe(true);
+        expect(sameFilterValue(['a', 'b'], ['b', 'a'])).toBe(false);
+        expect(sameFilterValue({ start: new Date(1), end: null }, { start: new Date(1), end: null })).toBe(true);
+        expect(sameFilterValue({ start: new Date(1), end: null }, { start: new Date(1), end: new Date(2) })).toBe(false);
+        expect(sameFilterValue(['a'], { 0: 'a' })).toBe(false);
     });
 });
 

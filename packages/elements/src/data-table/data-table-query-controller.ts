@@ -13,6 +13,7 @@ import {
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
+import { sameFilterValue } from './data-table-filters.js';
 import { buildGroupedDisplayRows, isGroupingActive, partitionIntoGroups, renumberDataRows, type RowGroup } from './data-table-group.js';
 import { buildTreeIndex, filterTree, flattenTree, sortTree } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
@@ -310,6 +311,10 @@ export class QueryController<T> {
         // `filtering` trigger from the `columnFilters` key. The model fires `column-filters-change`; no other event.
         changeColumnFilter: (key, value) => {
             const { model } = this.host;
+            const filters = model.get('columnFilters');
+            const name = String(key);
+            // An equal value (a Clear of an empty panel, the same day again, the same text after a debounce) changes nothing: no new object, no page reset, no event.
+            if (sameFilterValue(Object.hasOwn(filters, name) ? filters[name] : undefined, value)) return;
             this.onRows = null; // a newer filter drops an announcement still waiting for the previous one's answer
             model.batch(() => {
                 model.set('columnFilters', { ...model.get('columnFilters'), [String(key)]: value });

@@ -286,6 +286,43 @@ describe('a press inside an open header panel never drags its column (round 5)',
     });
 });
 
+describe('an equal column filter write is a no-op (round 6)', () => {
+    it('Clear on an empty panel and the same day picked again fire nothing and keep the page', async () => {
+        const table = await mount({ paginationState: { pageIndex: 0, pageSize: 2 } }, { 'show-pagination': 'true' });
+        const changes = record(table, 'column-filters-change');
+        const panel = await openPanel(table, 'day', 'ge-data-table-date-filter');
+        await userEvent.click(panelButton(panel, 'Clear'));
+        await settle(table);
+        expect(changes).toHaveLength(0);
+        await userEvent.click(calendarDay(panel, 5));
+        await settle(table);
+        expect(changes).toHaveLength(1);
+        const stored = table.columnFilters;
+        table.paginationState = { pageIndex: 1, pageSize: 1 };
+        await settle(table);
+        await userEvent.click(calendarDay(panel, 5));
+        await settle(table);
+        expect(changes).toHaveLength(1);
+        expect(table.columnFilters).toBe(stored);
+        expect(table.paginationState.pageIndex).toBe(1);
+        await closePopover(table);
+    });
+
+    it('the floating input ending a debounce on the text already stored fires nothing', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, filterDebounce: 200 });
+        const changes = record(table, 'column-filters-change');
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'a');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        expect(changes).toHaveLength(1);
+        await typeText(input, 'b');
+        await press('{Backspace}');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await settle(table);
+        expect(changes).toHaveLength(1);
+    });
+});
+
 describe('date panels given a filter restored from JSON (ISO strings)', () => {
     const iso = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 

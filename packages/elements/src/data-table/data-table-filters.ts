@@ -52,6 +52,24 @@ export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] |
     return filterValue.includes(getValue(row));
 }
 
+// ---- filter value equality -----------------------------------------------------------------------------------------------------------
+
+/**
+ * Two column filter values that filter the same: the same primitive (`Object.is`), dates of the same instant, arrays with the same members in the
+ * same order, plain objects (a date range) with the same keys and equal values, and "no filter" in any spelling (`null`, `undefined`, an absent
+ * key). A write of an equal value is a no-op: no new object, no page reset, no event.
+ */
+export function sameFilterValue(a: unknown, b: unknown): boolean {
+    if (a == null || b == null) return a == null && b == null;
+    if (Object.is(a, b)) return true;
+    if (a instanceof Date || b instanceof Date) return a instanceof Date && b instanceof Date && a.getTime() === b.getTime();
+    if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((v, i) => sameFilterValue(v, b[i]));
+    if (typeof a !== 'object' || typeof b !== 'object' || Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) return false;
+    const ka = Object.keys(a as object);
+    const kb = Object.keys(b as object);
+    return ka.length === kb.length && ka.every((k) => Object.hasOwn(b as object, k) && sameFilterValue((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
+}
+
 // ---- the built-in panels -------------------------------------------------------------------------------------------------------------
 
 /** The tags of the three ready-made panels (defined by the lazy `lazy/filter-panels` entry): ONE list, read by the controller and the config check. */
