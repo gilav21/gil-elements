@@ -59,6 +59,35 @@ describe('lazy parts and the render', () => {
         expect(customElements.get('ge-icon')).toBeDefined();
     });
 
+    it('asks the range part once per update (the element reads it in syncHost, the state view reuses it)', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true });
+        await frames(3);
+        await settle(table);
+        const service = table.provider('range') as unknown as { active: () => boolean };
+        const real = service.active;
+        let calls = 0;
+        service.active = () => (calls++, real());
+        try {
+            table.requestUpdate();
+            await settle(table);
+            expect(calls).toBe(1);
+        } finally {
+            service.active = real;
+        }
+    });
+
+    it('reaches the controller-owned services the same way while detached: fillDownTo and copy*ToClipboard go to the controller\'s service, like cellRange and reorderData', async () => {
+        const table = await mountTable({ enableCellRangeSelection: true });
+        const clipboard = table.provider('clipboard') as unknown as { copy: (scope: string) => Promise<unknown> };
+        clipboard.copy = (scope) => Promise.resolve({ status: 'done', cells: scope === 'all' ? 7 : 1 });
+        table.cellRange = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' };
+        table.remove(); // detached: the provider entries are gone, the controller services are not
+        expect(table.provider('clipboard')).toBeUndefined();
+        expect(await table.copyAllToClipboard()).toEqual({ status: 'done', cells: 7 });
+        expect(table.cellRange).toEqual({ startRow: 0, startCol: 'name', endRow: 1, endCol: 'age' });
+        expect(table.fillDownTo(1)).toBe(false); // the controller's range service answers (the shell), not a missing provider
+    });
+
     it('forwards reorderData and moveRow to the controller\'s row-drag service (also after a disconnect), and only the neutral service copies', async () => {
         const fresh = document.createElement('ge-data-table') as unknown as { reorderData(data: number[], event: unknown): number[]; moveRow(row: unknown, direction: string): boolean };
         const data = [1, 2, 3];

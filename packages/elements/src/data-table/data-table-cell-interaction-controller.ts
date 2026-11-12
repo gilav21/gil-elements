@@ -55,10 +55,11 @@ function isPositioned(el: Element, host: Element): boolean {
 /** What a session is told of a press (the controller's own bookkeeping, `claimedBy`, stays out). */
 const pressOf = ({ anchor, pressed, startCell }: Press): PointerPress => ({ anchor, pressed, startCell });
 
-
-/** A press on one of these belongs to the control: it keeps its own focus and click. */
+/**
+ * A press on one of these belongs to the control: it keeps its own focus and click. `data-table-keeps-focus` is the explicit opt-out for a widget in a cell
+ * that manages its own focus (a combobox, a menu button, a custom editor): treated like a control.
+ */
 const CONTROLS = 'input, textarea, select, button, a[href], [role="checkbox"], ge-checkbox, ge-input, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]';
-/** `data-table-keeps-focus` is the explicit opt-out for a widget in a cell that manages its own focus (a combobox, a menu button, a custom editor): treated like a control. */
 const CELL = '[data-slot="table-cell"]';
 /** Inside a cell, also an anchor used as a button or a link, and anything the content made tabbable (the cell itself is never matched: the walk stops at it). */
 const CELL_CONTROLS = `${CONTROLS}, a, [role="button"], [role="link"], [tabindex]:not([tabindex="-1"])`;
@@ -616,16 +617,10 @@ export class CellInteractionController<T> {
         if (!press) return;
         // The document's listener sees a target RETARGETED to the outermost host when this table sits in another component's shadow root: the target
         // is read from the composed path (the first node inside this table), for ownership, the cell address and the tapped cell alike. (Located BEFORE
-        // the press ends: the capture of the pointer is part of the answer.)
-        // A press with no claimant and no start cell (it began on a header, a handle, an overlay, a widget that keeps its focus) needs no cell at its
-        // release: no hit test; only a touch tap may still focus what it pressed.
-        // Nor does one that no healthy session would be offered at its release (none defines `onPointerUp`: the step-0 sessions): only `own` would matter.
-        const offered = press.bubbled && press.startCell && this.sessions.some((session) => !this.broken.has(session) && session.onPointerUp);
-        if (event.type === 'pointerup' && !press.claimedBy && !offered) {
-            this.endPress(event.pointerId, press, event, false);
-            if (event.pointerType === 'touch') this.tapFocus(event, press);
-            return;
-        }
+        // the press ends: the capture of the pointer is part of the answer.) ONE path for every press: `own` is decided once (a mouse that was not
+        // captured by its path target, a touch or a captured pointer by a hit test: its pointerup is delivered to the PRESSED element, whatever the finger
+        // is over), a release that is not on this table ends the press as a cancel, and the tail offers it and runs the tap. Whether a tap focuses never
+        // depends on which sessions define `onPointerUp`.
         const where = event.type === 'pointerup' ? this.locateRelease(event, event.composedPath()) : { own: false, cell: null };
         this.endPress(event.pointerId, press, event, !where.own); // a release elsewhere is a cancel for the claimant; on this table it is routed below
         if (!where.own) return;

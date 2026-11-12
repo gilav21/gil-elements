@@ -1688,38 +1688,55 @@ describe('a touch tap that began outside any cell', () => {
     });
 });
 
-describe('a release that needs no cell', () => {
-    it('makes no hit test: a touch press that began on a header and is released is located by nothing, one that began on a cell is', async () => {
-        const table = await mountTable();
-        const spy = vi.spyOn(Document.prototype, 'elementsFromPoint');
-        try {
-            const head = table.querySelector<HTMLElement>('[data-slot="table-head"]')!;
-            head.dispatchEvent(pointer('pointerdown', 291, { pointerType: 'touch', over: head }));
-            head.dispatchEvent(pointer('pointerup', 291, { pointerType: 'touch', over: head }));
-            expect(spy).not.toHaveBeenCalled();
-            const cell = cellAt(table, 1, 'name')!;
-            // the step-0 sessions define no onPointerUp: nothing would be offered at the release, so a tap on a cell needs no hit test either
-            cell.dispatchEvent(pointer('pointerdown', 293, { pointerType: 'touch', over: cell }));
-            cell.dispatchEvent(pointer('pointerup', 293, { pointerType: 'touch', over: cell }));
-            expect(spy).not.toHaveBeenCalled();
-            // a session that DOES define onPointerUp is offered the release: it needs the cell
-            hooks.onPointerUp = () => undefined;
-            cell.dispatchEvent(pointer('pointerdown', 292, { pointerType: 'touch', over: cell }));
-            cell.dispatchEvent(pointer('pointerup', 292, { pointerType: 'touch', over: cell }));
-            expect(spy).toHaveBeenCalled();
-        } finally {
-            delete hooks.onPointerUp;
-            spy.mockRestore();
-        }
-    });
-
-    it('a touch tap on a cell still focuses it without the hit test (the step-0 sessions)', async () => {
+describe('a touch tap on a cell', () => {
+    it('focuses it with the step-0 sessions (none defines onPointerUp)', async () => {
         const table = await mountTable();
         const cell = cellAt(table, 2, 'age')!;
         cell.dispatchEvent(pointer('pointerdown', 294, { pointerType: 'touch', over: cell }));
         cell.dispatchEvent(pointer('pointerup', 294, { pointerType: 'touch', over: cell }));
         await settle(table);
         expect(table.focusedCell).toEqual({ rowIndex: 2, columnKey: 'age' });
+    });
+});
+
+describe('one release path for every press', () => {
+    afterEach(() => {
+        for (const target of [hooks, editHooks]) for (const key of ['onPointerDown', 'onPointerUp', 'onPointerCancel'] as const) delete target[key];
+    });
+
+    it('a mouse release is located by its path target: no hit test (the cheap check)', async () => {
+        const table = await mountTable();
+        const cell = cellAt(table, 1, 'name')!;
+        const down = pointer('pointerdown', 501, { over: cell });
+        const up = pointer('pointerup', 501, { over: cell });
+        const spy = vi.spyOn(Document.prototype, 'elementsFromPoint');
+        try {
+            cell.dispatchEvent(down);
+            cell.dispatchEvent(up);
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            spy.mockRestore();
+        }
+    });
+
+    it('a touch tap released over a FOREIGN element on top of the cell focuses nothing, with or without a session that defines onPointerUp (same result)', async () => {
+        for (const withUp of [false, true]) {
+            const table = await mountTable();
+            table.focusCell(0, 'name');
+            await settle(table);
+            if (withUp) hooks.onPointerUp = () => undefined;
+            const cell = cellAt(table, 2, 'age')!;
+            const box = cell.getBoundingClientRect();
+            const foreign = document.createElement('div'); // not part of the table, drawn over the cell
+            foreign.style.cssText = `position:fixed;left:${box.left}px;top:${box.top}px;width:${box.width}px;height:${box.height}px;z-index:9999`;
+            document.body.append(foreign);
+            cell.dispatchEvent(pointer('pointerdown', withUp ? 503 : 502, { pointerType: 'touch', over: cell }));
+            cell.dispatchEvent(pointer('pointerup', withUp ? 503 : 502, { pointerType: 'touch', over: foreign })); // the touch pointerup goes to the pressed cell, the finger is over the foreign element
+            await settle(table);
+            expect(table.focusedCell, `withUp=${withUp}`).toEqual({ rowIndex: 0, columnKey: 'name' });
+            foreign.remove();
+            table.remove();
+        }
     });
 });
 

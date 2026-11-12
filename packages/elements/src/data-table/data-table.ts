@@ -567,17 +567,22 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** Fills the range's source rows down to `targetEndRow`; false when nothing was written (or range / fill are off). */
     fillDownTo(targetEndRow: number): boolean {
-        return this.provider('range')?.fillDownTo(targetEndRow) ?? false;
+        return this.rangeService()?.fillDownTo(targetEndRow) ?? false;
     }
 
     /** Fires `range-chart-open` with the selected range as a chart payload, when there is one. */
     openRangeChart(): void {
-        this.provider('range')?.openChart();
+        this.rangeService()?.openChart();
+    }
+
+    /** The clipboard service of the controller (it outlives a disconnect, like `rowDrag` and the range service); the provider entry only before the controllers exist. */
+    private clipboardService(): DataTableProviders<T>['clipboard'] | undefined {
+        return this.built?.service('clipboard') ?? this.provider('clipboard');
     }
 
     /** The `copy*ToClipboard` methods resolve to what happened: `status` is `done`, `empty`, `denied` (the browser refused), `unavailable` (no clipboard) or `ignored` (the feature is off). */
     private copyToClipboard(scope: 'cell' | 'row' | 'selected' | 'range' | 'all', row?: T): Promise<ClipboardResult> {
-        return this.provider('clipboard')?.copy(scope, row) ?? Promise.resolve({ status: 'unavailable' });
+        return this.clipboardService()?.copy(scope, row) ?? Promise.resolve({ status: 'unavailable' });
     }
 
     copyCellToClipboard(): Promise<ClipboardResult> {
@@ -750,12 +755,16 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         }
     }
 
+    /** Whether the range part handles ranges, read ONCE per update (`syncHost`, before the render) so the part is asked once; the state view reads it. */
+    rangeActive = false;
+
     private syncHost(): void {
+        this.rangeActive = this.provider('range')?.active() ?? false;
         const flags: [string, boolean][] = [
             ['data-row-borders', this.showRowBorders],
             ['data-column-borders', this.showColumnBorders],
             // user-select: none on the viewport only while range selection is actually handled (the range service is active), like aria-selected
-            ['data-range-selection', rangeSelectionDrawn(this, this.provider('range'))],
+            ['data-range-selection', rangeSelectionDrawn(this, this.rangeActive)],
             ['aria-busy', this.skeleton || (this.provider('loading')?.visible() ?? false)],
         ];
         for (const [name, on] of flags) {

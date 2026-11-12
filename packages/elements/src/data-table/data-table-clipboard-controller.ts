@@ -19,6 +19,9 @@ export class ClipboardController<T> {
         pasteText: () => ({ status: 'unavailable' }),
     };
 
+    /** The clipboard service outlives a disconnect (the controller is built once), unlike its provider entry: the element's `copy*ToClipboard` read it here. */
+    readonly services = { clipboard: this.service };
+
     attach(): void {
         this.unprovide = this.host.provide('clipboard', this.service);
     }
