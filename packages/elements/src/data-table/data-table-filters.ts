@@ -87,15 +87,22 @@ export const isFilterActive = (filters: Readonly<Record<string, unknown>>, key: 
 /** The header draws a filter trigger: `enableFiltering` and a panel (`filterComponent`), never on a special column (Angular html 633). */
 export const hasFilterTrigger = <T>(column: ColumnDef<T>): boolean => !!column.enableFiltering && !!column.filterComponent && !isSpecialColumnKey(column.accessorKey);
 
-/** The floating row draws a control for this column (cmp 2538): not opted out, not special, and a component, a renderer or `enableFiltering`. */
+/**
+ * The column gets the DEFAULT floating text input: `enableFiltering` and no built-in structured header panel. DEVIATION from Angular (cmp 2549,
+ * which draws the text input there too): a date, date-range or multiselect column's filter value is not text, so a text input would write a
+ * string its `filterFn` cannot read; only an explicit floating component or renderer draws in that cell.
+ */
+const hasDefaultFloatingInput = <T>(column: ColumnDef<T>): boolean => !!column.enableFiltering && builtInPanelOf(column.filterComponent) === undefined;
+
+/** The floating row draws a control for this column (cmp 2538): not opted out, not special, and a component, a renderer or the default input. */
 export function hasFloatingFilter<T>(column: ColumnDef<T>): boolean {
     if (column.floatingFilter === false || isSpecialColumnKey(column.accessorKey)) return false;
-    return !!column.floatingFilterComponent || !!column.floatingFilterRenderer || !!column.enableFiltering;
+    return !!column.floatingFilterComponent || !!column.floatingFilterRenderer || hasDefaultFloatingInput(column);
 }
 
 /** Some column asks for the floating row (cmp 2523, Angular's test, which also counts a bare `floatingFilter: true`). */
 export const hasAnyFloatingFilter = <T>(columns: readonly ColumnDef<T>[]): boolean =>
-    columns.some((c) => !isSpecialColumnKey(c.accessorKey) && (c.floatingFilter === true || !!c.floatingFilterComponent || !!c.floatingFilterRenderer || (!!c.enableFiltering && c.floatingFilter !== false)));
+    columns.some((c) => !isSpecialColumnKey(c.accessorKey) && (c.floatingFilter === true || !!c.floatingFilterComponent || !!c.floatingFilterRenderer || (hasDefaultFloatingInput(c) && c.floatingFilter !== false)));
 
 /** `filterComponentInputs`, read afresh (a factory is called on every render, cmp 3943). */
 export const filterInputsOf = <T>(column: ColumnDef<T>): Record<string, unknown> =>

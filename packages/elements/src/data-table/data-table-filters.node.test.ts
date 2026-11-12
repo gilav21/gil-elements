@@ -255,6 +255,13 @@ describe('filter state questions', () => {
         expect(hasFloatingFilter(col({ floatingFilterRenderer: () => 'r' }))).toBe(true);
         expect(hasFloatingFilter(col({}))).toBe(false);
         expect(hasFloatingFilter(col({ floatingFilter: true }))).toBe(false);
+        // Round 12 (deviation from Angular): a built-in structured header panel gets no default text input; an explicit floating control still draws.
+        for (const tag of ['ge-data-table-date-filter', 'ge-data-table-date-range-filter', 'GE-DATA-TABLE-MULTISELECT-FILTER']) {
+            expect(hasFloatingFilter(col({ enableFiltering: true, filterComponent: tag }))).toBe(false);
+            expect(hasAnyFloatingFilter([col({ enableFiltering: true, filterComponent: tag })])).toBe(false);
+            expect(hasFloatingFilter(col({ enableFiltering: true, filterComponent: tag, floatingFilterRenderer: () => 'r' }))).toBe(true);
+        }
+        expect(hasFloatingFilter(col({ enableFiltering: true, filterComponent: 'x-text-filter' }))).toBe(true);
     });
     it('hasAnyFloatingFilter counts what asks for the row, special columns aside', () => {
         expect(hasAnyFloatingFilter<unknown>([{ accessorKey: 'a', header: 'A' }])).toBe(false);

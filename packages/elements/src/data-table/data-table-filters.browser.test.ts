@@ -609,6 +609,15 @@ describe('F4 the multiselect panel', () => {
         await closePopover(table);
     });
 
+    it('a column with a built-in structured panel gets no default floating text input; a text column does (round 12)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, dateColumn, roleColumn], enableFloatingFilters: true });
+        const cells = qa(table, '[data-kind="filter"] > [data-slot="table-head"]');
+        expect(cells[0]!.querySelector('ge-input')).not.toBeNull();
+        expect(cells[1]!.querySelector('ge-input')).toBeNull();
+        expect(cells[1]!.getAttribute('role')).toBe('presentation');
+        expect(cells[2]!.querySelector('ge-input')).toBeNull();
+    });
+
     it('Alt+Shift+Arrow typed in the panel search input is the input own: no column move (round 12)', async () => {
         const table = await mount({ enableColumnReorder: true });
         const panel = await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
