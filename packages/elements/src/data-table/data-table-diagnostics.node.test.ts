@@ -107,6 +107,36 @@ describe('the diagnostics snapshot', () => {
         expect(lastInput()['sortActive']).toBe(expected);
     });
 
+    it.each([
+        ['localSorting', false],
+        ['enableMultiSort', true],
+    ])('re-runs with a fresh sortActive when %s changes at runtime', (flag, value) => {
+        const table = setup({ enableRowDrag: true, localReorder: true });
+        table.run();
+        expect(lastInput()['sortActive']).toBe(true);
+        table.config[flag] = value;
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(2);
+        expect(lastInput()['sortActive']).toBe(false);
+    });
+
+    it('re-runs when the columns lose the sorted column at runtime', () => {
+        const table = setup({ enableRowDrag: true, localReorder: true });
+        table.run();
+        table.config['columns'] = [{ accessorKey: 'b' }];
+        table.run();
+        expect(lastInput()['sortActive']).toBe(false);
+    });
+
+    it.each([
+        ['a plain group-by', {}, true],
+        ['group-by with sub-rows (ignored)', { enableSubRows: true }, false],
+    ])('groupingActive is resolved: %s', (_name, config, expected) => {
+        const table = setup({ enableRowDrag: true, localReorder: true, groupBy: 'a', ...config });
+        table.run();
+        expect(lastInput()['groupingActive']).toBe(expected);
+    });
+
     it('re-runs when the sort is turned back on', () => {
         const table = setup({ enableRowDrag: true, localReorder: true });
         table.sort('a', null);

@@ -1,5 +1,6 @@
 import { type ConfigCheckInput, validateConfig } from './data-table-config-check.js';
 import type { DataTableCoreHost } from './data-table-host.js';
+import { isGroupingActive } from './data-table-group.js';
 import { activeSorts, sortReordersRows } from './data-table-query.js';
 import { findDuplicateRowIds } from './data-table.utils.js';
 
@@ -72,7 +73,8 @@ export class DiagnosticsController<T> {
             // Only a sort the table itself applies hides a reorder (a server sort draws `data` in its own order).
             if (config.localReorder) {
                 const sorts = activeSorts(config.enableMultiSort, model.get('sortState'), model.get('multiSortState'));
-                snapshot.sortActive = sortReordersRows(sorts, config.columns, config.localSorting, !!config.enableSubRows, !!config.enableSubRowSorting);
+                snapshot.sortActive = sortReordersRows(sorts, config.columns, config.localSorting, config.enableSubRows, config.enableSubRowSorting);
+                snapshot.groupingActive = isGroupingActive(config.groupBy, config.enableSubRows, virtualActive);
             }
         }
         if (!sameSnapshot(this.last, snapshot)) {

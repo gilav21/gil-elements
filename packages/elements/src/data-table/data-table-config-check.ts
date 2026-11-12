@@ -33,8 +33,13 @@ export interface ConfigCheckInput<T> {
     enableClipboardPaste?: boolean;
     /** Wave 6 row-drag check; set by the diagnostics snapshot only while `enableRowDrag`. */
     localReorder?: boolean;
-    /** A LOCAL sort is in force (`localSorting` and `activeSorts(...)` non-empty, single or multi as the table decides); set by the diagnostics snapshot only while `enableRowDrag && localReorder`. */
+    /**
+     * The table itself reorders the rows by a sort (`sortReordersRows`: local sorting, sub-row sorting in tree mode, a known
+     * column; single or multi as the table decides). Set by the diagnostics snapshot only while `enableRowDrag && localReorder`.
+     */
     sortActive?: boolean;
+    /** Grouping is in force (`isGroupingActive`: `groupBy` set, no sub-rows, no virtual scroll); only while `enableRowDrag && localReorder`. */
+    groupingActive?: boolean;
 }
 
 const PREFIX = '[ge-data-table]';
