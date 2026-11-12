@@ -31,15 +31,14 @@ export interface ConfigCheckInput<T> {
     /** Wave 6 checks: fill and paste write through value setters. */
     enableFillHandle?: boolean;
     enableClipboardPaste?: boolean;
-    /** Wave 6 row-drag check; set by the diagnostics snapshot only while `enableRowDrag`. */
+    /** Wave 6 row-drag check. */
     localReorder?: boolean;
     /**
-     * The table itself reorders the rows by a sort (`sortReordersRows`: local sorting, sub-row sorting in tree mode, a known
-     * column; single or multi as the table decides). Set by the diagnostics snapshot only while `enableRowDrag && localReorder`.
+     * For the row-drag check only: row drag with local reorder is on AND the table itself reorders the rows by a sort
+     * (`sortReordersRows`: local sorting, sub-row sorting in tree mode, a known column). False otherwise, so it says nothing
+     * about sorting in general. Grouping: `isGroupingActive(groupBy, enableSubRows, virtualActive)` from the inputs above.
      */
-    sortActive?: boolean;
-    /** Grouping is in force (`isGroupingActive`: `groupBy` set, no sub-rows, no virtual scroll); only while `enableRowDrag && localReorder`. */
-    groupingActive?: boolean;
+    rowDragSorted?: boolean;
 }
 
 const PREFIX = '[ge-data-table]';

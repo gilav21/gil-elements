@@ -1,22 +1,13 @@
 import { type ConfigCheckInput, validateConfig } from './data-table-config-check.js';
 import type { DataTableCoreHost } from './data-table-host.js';
-import { isGroupingActive } from './data-table-group.js';
-import { activeSorts, sortReordersRows } from './data-table-query.js';
+import { sortReordersRows } from './data-table-query.js';
 import { findDuplicateRowIds } from './data-table.utils.js';
 
 const VIEWPORT = '[data-slot="data-table-viewport"]';
 
-/**
- * The settings the checks read, compared by value so an unrelated render re-runs nothing (the duplicate-id scan is O(rows)).
- * Some keys are present only under a setting, so the key sets are compared too.
- */
-function sameSnapshot(a: object | null, b: object): boolean {
-    if (a === null) return false;
-    const ka = Object.keys(a);
-    const kb = Object.keys(b);
-    const av = a as Record<string, unknown>;
-    const bv = b as Record<string, unknown>;
-    return ka.length === kb.length && kb.every((key) => key in av && Object.is(av[key], bv[key]));
+/** The settings the checks read, compared by value so an unrelated render re-runs nothing (the duplicate-id scan is O(rows)). Every key is always set. */
+function sameSnapshot<S extends object>(a: S | null, b: S): boolean {
+    return a !== null && (Object.keys(b) as (keyof S)[]).every((key) => Object.is(a[key], b[key]));
 }
 
 /**
@@ -66,17 +57,13 @@ export class DiagnosticsController<T> {
             // Only what a check reads (or a wave check about to land reads) is here: each re-run costs the O(rows) id scan.
             enableFillHandle: config.enableFillHandle,
             enableClipboardPaste: config.enableClipboardPaste,
+            localReorder: config.localReorder,
+            // Resolved to one boolean, and false outside row drag with local reorder, so a sort change re-runs nothing there.
+            rowDragSorted:
+                config.enableRowDrag &&
+                config.localReorder &&
+                sortReordersRows(config.enableMultiSort, model.get('sortState'), model.get('multiSortState'), config.columns, config.localSorting, config.enableSubRows, config.enableSubRowSorting),
         };
-        // The row-drag checks read these; outside row drag a sort change must not re-run the checks.
-        if (config.enableRowDrag) {
-            snapshot.localReorder = config.localReorder;
-            // Only a sort the table itself applies hides a reorder (a server sort draws `data` in its own order).
-            if (config.localReorder) {
-                const sorts = activeSorts(config.enableMultiSort, model.get('sortState'), model.get('multiSortState'));
-                snapshot.sortActive = sortReordersRows(sorts, config.columns, config.localSorting, config.enableSubRows, config.enableSubRowSorting);
-                snapshot.groupingActive = isGroupingActive(config.groupBy, config.enableSubRows, virtualActive);
-            }
-        }
         if (!sameSnapshot(this.last, snapshot)) {
             this.last = snapshot;
             this.check(snapshot);

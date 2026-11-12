@@ -6,9 +6,9 @@ vi.mock('./data-table-config-check.js', () => ({ validateConfig }));
 import { DiagnosticsController } from './data-table-diagnostics-controller.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 
-/** A host whose sort state is replaced between renders, the way a header click does. */
 type Sort = { column: string; direction: 'asc' | 'desc' | null };
 
+/** A host whose sort state is replaced between renders, the way a header click does. */
 function setup(config: Record<string, unknown>): {
     run(): void;
     sort(column: string, direction?: Sort['direction']): void;
@@ -24,9 +24,12 @@ function setup(config: Record<string, unknown>): {
         localPagination: true,
         showPagination: true,
         enableVirtualScroll: false,
+        enableRowDrag: false,
         localReorder: true,
         localSorting: true,
         enableMultiSort: false,
+        enableSubRows: false,
+        enableSubRowSorting: false,
         ...config,
     };
     const host = {
@@ -46,13 +49,14 @@ function setup(config: Record<string, unknown>): {
 }
 
 const lastInput = (): Record<string, unknown> => validateConfig.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+const DRAG = { enableRowDrag: true, localReorder: true };
 
 describe('the diagnostics snapshot', () => {
     beforeEach(() => validateConfig.mockClear());
 
     it.each([
         ['row drag off', { enableRowDrag: false }],
-        ['row drag with local reorder', { enableRowDrag: true, localReorder: true }],
+        ['row drag with local reorder', DRAG],
         ['row drag without local reorder', { enableRowDrag: true, localReorder: false }],
     ])('does not re-run the config check when only the sorted column changes (%s)', (_name, config) => {
         const table = setup(config);
@@ -64,14 +68,29 @@ describe('the diagnostics snapshot', () => {
         expect(validateConfig).toHaveBeenCalledTimes(1);
     });
 
-    it('re-runs it when the sort is turned off or on during row drag with local reorder, and passes sortActive', () => {
-        const table = setup({ enableRowDrag: true, localReorder: true });
+    it('does not re-run when a sort is cleared or applied without row drag', () => {
+        const table = setup({ enableRowDrag: false });
         table.run();
-        expect(lastInput()['sortActive']).toBe(true);
+        expect(lastInput()['rowDragSorted']).toBe(false);
+        table.sort('a', null);
+        table.run();
+        table.sort('a', 'asc');
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(1);
+    });
+
+    it('re-runs when the sort is cleared and re-applied during row drag with local reorder', () => {
+        const table = setup(DRAG);
+        table.run();
+        expect(lastInput()['rowDragSorted']).toBe(true);
         table.sort('a', null);
         table.run();
         expect(validateConfig).toHaveBeenCalledTimes(2);
-        expect(lastInput()['sortActive']).toBe(false);
+        expect(lastInput()['rowDragSorted']).toBe(false);
+        table.sort('a', 'asc');
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(3);
+        expect(lastInput()['rowDragSorted']).toBe(true);
     });
 
     it.each([
@@ -81,116 +100,58 @@ describe('the diagnostics snapshot', () => {
         ['multi-sort on with a chain entry', { enableMultiSort: true }, [{ column: 'b', direction: 'asc' }], true],
         ['multi-sort on with only a direction-less entry', { enableMultiSort: true }, [{ column: 'b', direction: null }], false],
         ['a server sort (localSorting off)', { localSorting: false }, null, false],
-    ] as const)('sortActive follows the table’s own rule: %s', (_name, config, chain, expected) => {
-        const table = setup({ enableRowDrag: true, localReorder: true, ...config });
+        ['tree mode without sub-row sorting', { enableSubRows: true }, null, false],
+        ['tree mode with sub-row sorting', { enableSubRows: true, enableSubRowSorting: true }, null, true],
+        ['local reorder off', { localReorder: false }, null, false],
+    ] as const)('rowDragSorted follows the table’s own rule: %s', (_name, config, chain, expected) => {
+        const table = setup({ ...DRAG, ...config });
         if (chain) table.multiSort([...chain]);
         table.run();
-        expect(lastInput()['sortActive']).toBe(expected);
+        expect(lastInput()['rowDragSorted']).toBe(expected);
     });
 
     it.each([
         ['an empty sorted column', ''],
         ['a column that is not in the columns', 'removed'],
     ])('%s is not a sort', (_name, column) => {
-        const table = setup({ enableRowDrag: true, localReorder: true });
+        const table = setup(DRAG);
         table.sort(column, 'asc');
         table.run();
-        expect(lastInput()['sortActive']).toBe(false);
-    });
-
-    it.each([
-        ['without sub-row sorting', false, false],
-        ['with sub-row sorting', true, true],
-    ])('in tree mode a sort counts only with sub-row sorting (%s)', (_name, subRowSorting, expected) => {
-        const table = setup({ enableRowDrag: true, localReorder: true, enableSubRows: true, enableSubRowSorting: subRowSorting });
-        table.run();
-        expect(lastInput()['sortActive']).toBe(expected);
+        expect(lastInput()['rowDragSorted']).toBe(false);
     });
 
     it.each([
         ['localSorting', false],
         ['enableMultiSort', true],
-    ])('re-runs with a fresh sortActive when %s changes at runtime', (flag, value) => {
-        const table = setup({ enableRowDrag: true, localReorder: true });
+    ])('re-runs with a fresh rowDragSorted when %s changes at runtime', (flag, value) => {
+        const table = setup(DRAG);
         table.run();
-        expect(lastInput()['sortActive']).toBe(true);
         table.config[flag] = value;
         table.run();
         expect(validateConfig).toHaveBeenCalledTimes(2);
-        expect(lastInput()['sortActive']).toBe(false);
+        expect(lastInput()['rowDragSorted']).toBe(false);
     });
 
-    it('re-runs when the columns lose the sorted column at runtime', () => {
-        const table = setup({ enableRowDrag: true, localReorder: true });
+    it('follows the columns: losing the sorted column clears it, keeping it does not', () => {
+        const table = setup(DRAG);
         table.run();
+        table.config['columns'] = [{ accessorKey: 'a' }];
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(2);
+        expect(lastInput()['rowDragSorted']).toBe(true);
         table.config['columns'] = [{ accessorKey: 'b' }];
         table.run();
-        expect(lastInput()['sortActive']).toBe(false);
-    });
-
-    it.each([
-        ['a plain group-by', {}, true],
-        ['group-by with sub-rows (ignored)', { enableSubRows: true }, false],
-    ])('groupingActive is resolved: %s', (_name, config, expected) => {
-        const table = setup({ enableRowDrag: true, localReorder: true, groupBy: 'a', ...config });
-        table.run();
-        expect(lastInput()['groupingActive']).toBe(expected);
-    });
-
-    it('re-runs when the sort is turned back on', () => {
-        const table = setup({ enableRowDrag: true, localReorder: true });
-        table.sort('a', null);
-        table.run();
-        expect(lastInput()['sortActive']).toBe(false);
-        table.sort('a', 'asc');
-        table.run();
-        expect(validateConfig).toHaveBeenCalledTimes(2);
-        expect(lastInput()['sortActive']).toBe(true);
-    });
-
-    it('sortActive appears and disappears with localReorder during row drag, each a re-run', () => {
-        const table = setup({ enableRowDrag: true, localReorder: false });
-        table.run();
-        expect(lastInput()).not.toHaveProperty('sortActive');
-        table.config['localReorder'] = true;
-        table.run();
-        expect(validateConfig).toHaveBeenCalledTimes(2);
-        expect(lastInput()['sortActive']).toBe(true);
-        table.config['localReorder'] = false;
-        table.run();
         expect(validateConfig).toHaveBeenCalledTimes(3);
-        expect(lastInput()).not.toHaveProperty('sortActive');
+        expect(lastInput()['rowDragSorted']).toBe(false);
     });
 
-    it('leaves the sort out without row drag, and localReorder too', () => {
-        const table = setup({ enableRowDrag: false });
-        table.run();
-        expect(lastInput()).not.toHaveProperty('sortActive');
-        expect(lastInput()).not.toHaveProperty('localReorder');
-        table.sort('a', null);
-        table.run();
-        expect(validateConfig).toHaveBeenCalledTimes(1);
-    });
-
-    it.each(['enableFillHandle', 'enableClipboardPaste'])('re-runs the config check when %s changes and passes it', (flag) => {
+    it.each(['enableFillHandle', 'enableClipboardPaste', 'localReorder'])('re-runs the config check when %s changes and passes it', (flag) => {
         const table = setup({ [flag]: false });
         table.run();
         table.config[flag] = true;
         table.run();
         expect(validateConfig).toHaveBeenCalledTimes(2);
         expect(lastInput()[flag]).toBe(true);
-    });
-
-    it('passes localReorder only during row drag', () => {
-        const table = setup({ enableRowDrag: false, localReorder: false });
-        table.run();
-        table.config['localReorder'] = true;
-        table.run();
-        expect(validateConfig).toHaveBeenCalledTimes(1);
-        table.config['enableRowDrag'] = true;
-        table.run();
-        expect(validateConfig).toHaveBeenCalledTimes(2);
-        expect(lastInput()['localReorder']).toBe(true);
     });
 
     it('still re-runs it when a setting a check reads changes', () => {

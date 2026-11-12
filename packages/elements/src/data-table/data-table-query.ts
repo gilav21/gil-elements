@@ -164,14 +164,27 @@ export function activeSorts(multi: boolean, sortState: SortState, multiSortState
     return sortState.column && sortState.direction ? [sortState] : [];
 }
 
+/** Whether the table sorts rows itself: local sorting, and in tree mode only with sub-row sorting. The one gate the tree and the diagnostics share. */
+export function localSortApplies(localSorting: boolean, tree: boolean, subRowSorting: boolean): boolean {
+    return localSorting && (!tree || subRowSorting);
+}
+
 /**
- * Whether the table itself reorders the rows by a sort: a local sort, in tree mode only with sub-row sorting, on at least
- * one known column (`buildSortComparator` skips the others). `sorts` is `activeSorts(...)`. Mirrors the gates of the
- * pipeline (`createQueryPipeline`'s `localSorting`) and of the tree (`QueryController.tree`): change them together.
+ * Whether the table itself reorders the rows by a sort: `localSortApplies`, and a sort in force (`activeSorts`' rule) on
+ * at least one known column (`buildSortComparator` skips the others). Allocates nothing.
  */
-export function sortReordersRows<T>(sorts: readonly SortState[], columns: readonly ColumnDef<T>[], localSorting: boolean, tree: boolean, subRowSorting: boolean): boolean {
-    if (!localSorting || (tree && !subRowSorting)) return false;
-    return sorts.some((sort) => columns.some((column) => String(column.accessorKey) === sort.column));
+export function sortReordersRows<T>(
+    multi: boolean,
+    sortState: SortState,
+    multiSortState: readonly SortState[],
+    columns: readonly ColumnDef<T>[],
+    localSorting: boolean,
+    tree: boolean,
+    subRowSorting: boolean,
+): boolean {
+    if (!localSortApplies(localSorting, tree, subRowSorting)) return false;
+    const known = (sort: SortState): boolean => !!sort.column && !!sort.direction && columns.some((column) => String(column.accessorKey) === sort.column);
+    return multi ? multiSortState.some(known) : known(sortState);
 }
 
 function compareValues(a: unknown, b: unknown): number {
@@ -297,7 +310,7 @@ export function createQueryPipeline<T>(): (input: QueryInput<T>) => QueryOutput<
         const filtered = i.localFiltering
             ? filter(i.data, i.columns, i.globalFilter, i.globalFilterFn, i.columnFilters, i.advancedFilter)
             : i.data;
-        // The local-sorting gate; `sortReordersRows` mirrors it.
+        // `localSortApplies(localSorting, false, _)`: the flat path's gate.
         return { filtered, sorted: sort(filtered, stableSorts(i.localSorting ? i.sorts : NO_SORTS), i.columns) };
     };
 }

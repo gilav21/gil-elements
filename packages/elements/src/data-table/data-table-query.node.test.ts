@@ -12,24 +12,34 @@ import {
     nextSortChain,
     pagesLocally,
     slicePage,
+    localSortApplies,
     sortReordersRows,
     sortRows,
     type QueryInput,
 } from './data-table-query.js';
 import type { ColumnDef, FilterGroup } from './data-table.types.js';
 
-describe('sortReordersRows', () => {
+describe('localSortApplies / sortReordersRows', () => {
     const cols = [{ accessorKey: 'a' }, { accessorKey: 'b' }] as ColumnDef<unknown>[];
-    const asc = [{ column: 'a', direction: 'asc' as const }];
+    const asc = { column: 'a', direction: 'asc' as const };
+    const none = { column: '', direction: null };
     it.each([
-        ['a local sort on a known column', asc, true, false, false, true],
-        ['no sorts', [], true, false, false, false],
-        ['a server sort', asc, false, false, false, false],
-        ['tree mode without sub-row sorting', asc, true, true, false, false],
-        ['tree mode with sub-row sorting', asc, true, true, true, true],
-        ['only unknown columns', [{ column: 'zz', direction: 'asc' as const }], true, false, false, false],
-    ])('%s', (_name, sorts, local, tree, sub, expected) => {
-        expect(sortReordersRows(sorts, cols, local, tree, sub)).toBe(expected);
+        [true, false, false, true],
+        [false, false, true, false],
+        [true, true, false, false],
+        [true, true, true, true],
+    ])('localSortApplies(local %s, tree %s, sub %s) is %s', (local, tree, sub, expected) => {
+        expect(localSortApplies(local, tree, sub)).toBe(expected);
+    });
+    it.each([
+        ['a local single sort on a known column', false, asc, [], true, true],
+        ['no sort', false, none, [], true, false],
+        ['a server sort', false, asc, [], false, false],
+        ['an unknown column', false, { column: 'zz', direction: 'asc' as const }, [], true, false],
+        ['multi: the chain, not the single sort', true, asc, [], true, false],
+        ['multi: a known chain entry', true, none, [{ column: 'b', direction: 'desc' as const }], true, true],
+    ])('%s', (_name, multi, single, chain, local, expected) => {
+        expect(sortReordersRows(multi, single, chain, cols, local, false, false)).toBe(expected);
     });
 });
 
