@@ -23,6 +23,12 @@ describe('validateConfig: wave 6', () => {
         const withSetter = { columns: [{ accessorKey: 'name' as const, header: 'N', valueSetter: (row: Row) => row }] };
         expect(check({ [flag]: true, ...withSetter }).some((m) => m.includes('no column has a valueSetter'))).toBe(false);
     });
+    it('warns about row drag with an active group-by, not with one the table ignores', () => {
+        const grouped = (over: Partial<ConfigCheckInput<Row>>) => check({ enableRowDrag: true, groupBy: 'name', ...over }).some((m) => m.includes('enable-row-drag with group-by'));
+        expect(grouped({})).toBe(true);
+        expect(grouped({ virtualActive: true })).toBe(false);
+        expect(grouped({ enableRowDrag: false })).toBe(false);
+    });
 });
 
 describe('validateConfig', () => {

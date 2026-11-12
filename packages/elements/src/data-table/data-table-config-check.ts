@@ -2,6 +2,7 @@
  * Development diagnostics: conflicting or ineffective option combinations, as plain messages. The caller decides
  * whether and how to print them (dev builds only, once per change).
  */
+import { isGroupingActive } from './data-table-group.js';
 import type { ColumnDef } from './data-table.types.js';
 import { defaultGetRowId, findDuplicateRowIds } from './data-table.utils.js';
 
@@ -35,7 +36,7 @@ export interface ConfigCheckInput<T> {
 
 /**
  * wave6: C. Row drag with local reorder while the table sorts the rows itself (`sortReordersRows`): a drop reorders `data`
- * but the sorted order is drawn, so the row does not move. Grouping alone is fine (groups keep `data` order inside).
+ * but the sorted order is drawn, so the row does not move. Grouping has its own warning in `validateConfig`.
  */
 export const ROW_DRAG_SORT_WARNING = `[ge-data-table] enable-row-drag with local-reorder is on while the table is sorted. A drop reorders \`data\`, but the table keeps drawing the sorted order, so the row does not appear to move; clear the sort while dragging, or turn local-reorder off and reorder yourself.`;
 
@@ -94,7 +95,14 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
 
     // ---- wave 5 (filters and editing): package A and B add their `warn(...)` calls here, each in its own marked block -------------------
     // ---- wave 6 (spreadsheet and drag): packages A, B and C add theirs here, each in its own marked block -----------------------------
-    // The flash + default getRowId warning is above; the row-drag-with-sort warning is `rowDragSortWarning` (checked per render, cheaply).
+    // The flash + default getRowId warning is above; the row-drag-with-sort warning is `ROW_DRAG_SORT_WARNING`, checked per render by
+    // `DiagnosticsController.hostUpdate` (a sort click must not re-run these checks).
+    // wave6: C (row drag)
+    warn(
+        c.enableRowDrag && isGroupingActive(c.groupBy, !!c.enableSubRows, c.virtualActive),
+        'enable-row-drag with group-by: rows are drawn in their group, so a drop moves a row only inside its group; dropped into another group, it stays in its own (its group value is not changed).',
+    );
+    // wave6: end C
     // wave6: A + B (fill handle, paste)
     warn(
         (c.enableFillHandle || c.enableClipboardPaste) && !c.columns.some((col) => col.valueSetter),

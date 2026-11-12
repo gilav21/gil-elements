@@ -181,7 +181,7 @@ export function localSortApplies(localSorting: boolean, tree: boolean, subRowSor
 
 /**
  * Whether the table itself reorders the rows by a sort: `localSortApplies`, and at least one step `buildSortComparator`
- * would not skip (`sortStepColumn`). Allocates only when a sort is set.
+ * would not skip (`sortStepColumn`'s rule).
  */
 export function sortReordersRows<T>({ multi, sortState, multiSortState, columns, localSorting, tree, subRowSorting }: {
     multi: boolean;
@@ -193,10 +193,9 @@ export function sortReordersRows<T>({ multi, sortState, multiSortState, columns,
     subRowSorting: boolean;
 }): boolean {
     if (!localSortApplies(localSorting, tree, subRowSorting)) return false;
-    const steps: readonly SortState[] = multi ? multiSortState : [sortState];
-    if (!steps.some(sortCounts)) return false;
-    const byKey = indexColumns(columns);
-    return steps.some((sort) => sortStepColumn(sort, byKey) !== undefined);
+    // `sortStepColumn`'s rule (a counting step on a known column), without building the column index.
+    const applies = (sort: SortState): boolean => sortCounts(sort) && columns.some((column) => String(column.accessorKey) === sort.column);
+    return multi ? multiSortState.some(applies) : applies(sortState);
 }
 
 function compareValues(a: unknown, b: unknown): number {

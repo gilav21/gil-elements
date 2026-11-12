@@ -85,6 +85,14 @@ describe('the diagnostics snapshot', () => {
         expect(lastInput()[flag]).toBe(true);
     });
 
+    it('does not re-run the config check when localReorder changes (no snapshot key reads it)', () => {
+        const table = setup({ enableRowDrag: true, localReorder: false });
+        table.run();
+        table.config['localReorder'] = true;
+        table.run();
+        expect(validateConfig).toHaveBeenCalledTimes(1);
+    });
+
     it('still re-runs it when a setting a check reads changes', () => {
         const table = setup({ enableRowDrag: false });
         table.run();
@@ -103,7 +111,6 @@ describe('the row-drag-with-sort warning', () => {
 
     it.each([
         ['a single sort, multi-sort off', { enableMultiSort: false }, null, true],
-        ['a stale multi chain while multi-sort is off', { enableMultiSort: false }, [{ column: 'b', direction: 'asc' }], true],
         ['multi-sort on with an empty chain (the single sort is ignored)', { enableMultiSort: true }, [], false],
         ['multi-sort on with a chain entry', { enableMultiSort: true }, [{ column: 'b', direction: 'asc' }], true],
         ['multi-sort on with only a direction-less entry', { enableMultiSort: true }, [{ column: 'b', direction: null }], false],
@@ -119,6 +126,14 @@ describe('the row-drag-with-sort warning', () => {
         expect(warnedDragSort()).toBe(expected);
     });
 
+    it('ignores a stale multi chain while multi-sort is off (the single sort decides)', () => {
+        const table = setup(DRAG);
+        table.sort('a', null);
+        table.multiSort([{ column: 'b', direction: 'asc' }]);
+        table.run();
+        expect(warnedDragSort()).toBe(false);
+    });
+
     it.each([
         ['an empty sorted column', ''],
         ['a column that is not in the columns', 'removed'],
@@ -129,7 +144,7 @@ describe('the row-drag-with-sort warning', () => {
         expect(warnedDragSort()).toBe(false);
     });
 
-    it('is not about grouping: a group-by without a sort is fine (drops inside a group move the row)', () => {
+    it('is not about grouping (that warning is validateConfig’s): a group-by without a sort does not print it', () => {
         const table = setup({ ...DRAG, groupBy: 'a' });
         table.sort('a', null);
         table.run();

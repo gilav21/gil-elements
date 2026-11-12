@@ -54,7 +54,7 @@ export class DiagnosticsController<T> {
             enableRowSelection: config.enableRowSelection,
             enableRowDrag: config.enableRowDrag,
             enableEditHistory: config.enableEditHistory,
-            // Only what a check reads (or a wave check about to land reads) is here: each re-run costs the O(rows) id scan.
+            // Only what a check reads is here: each re-run costs the O(rows) id scan.
             enableFillHandle: config.enableFillHandle,
             enableClipboardPaste: config.enableClipboardPaste,
         };
@@ -62,8 +62,9 @@ export class DiagnosticsController<T> {
             this.last = snapshot;
             this.check(snapshot);
         }
-        // Outside the snapshot: a sort click must not re-run the O(rows) checks. Cheap, and allocates only while sorted.
+        // Outside the snapshot: a sort click must not re-run the O(rows) checks. Skipped once printed.
         if (
+            !this.printed.has(ROW_DRAG_SORT_WARNING) &&
             config.enableRowDrag &&
             config.localReorder &&
             sortReordersRows({
