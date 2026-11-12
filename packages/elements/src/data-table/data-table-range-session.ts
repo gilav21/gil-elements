@@ -151,9 +151,11 @@ export class RangeSession<T> implements CellSession {
             return;
         }
         warnBadRange(this.held);
-        // The previous VALID range (the last that passed, still remembered in `checked`) stays; a change of columns re-checks it at the next update.
-        const previous = this.checked && { ...this.checked.range };
+        // The last range that PASSED is restored only if it is a different range and passes against the CURRENT columns; else the range is dropped.
+        const last = this.checked?.range;
+        const previous = last && !sameRange(last, this.held) && sanitizeCellRange(last, 0, keys) !== undefined ? { ...last } : null;
         this.held = previous;
+        this.checked = previous && { range: { ...previous }, columns };
         this.setPartRange(previous);
     }
 
@@ -200,6 +202,7 @@ export class RangeSession<T> implements CellSession {
             // in either order (`cellRange = r; enableCellRangeSelection = false` or the reverse), and an assignment made in the tick of the turn-off
             // is not part of the mode that ends: it waits for the next time the mode is on.
             if (!this.assignedSince) this.held = null;
+            this.checked = null; // the last valid range belongs to the mode that ended
         }
         // (off and never on: a value assigned before the mode was switched on waits in `held`)
         this.wasOn = on;

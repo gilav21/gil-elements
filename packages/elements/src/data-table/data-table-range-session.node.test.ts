@@ -8,7 +8,7 @@ function session(columns: { accessorKey: string }[], rows = 10) {
     const requestRender = vi.fn();
     const config = { columns, enableCellRangeSelection: true, enableFillHandle: false };
     const context = { host: { config, requestRender }, rowCount: () => rows } as unknown as InteractionContext<unknown>;
-    return { range: new RangeSession(context), requestRender };
+    return { range: new RangeSession(context), requestRender, config };
 }
 
 describe('RangeSession column validation', () => {
@@ -71,6 +71,38 @@ describe('RangeSession keeps the last VALID range', () => {
         range.rangeService.setRange({ startRow: 2, startCol: 'a', endRow: 3, endCol: 'zzz' });
         range.hostUpdate();
         expect(range.rangeService.range()).toBeNull(); // cleared on purpose: nothing to go back to
+        warn.mockRestore();
+    });
+});
+
+describe('RangeSession and the last valid range after the columns or the mode change', () => {
+    it('a range on columns that were removed is dropped, not kept for ever as the "previous" one (warned)', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        resetBadRangeWarning();
+        const { range, config } = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]);
+        range.rangeService.setRange({ startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' });
+        range.hostUpdate();
+        config.columns = [{ accessorKey: 'c' }, { accessorKey: 'd' }];
+        range.hostUpdate();
+        expect(range.rangeService.range()).toBeNull();
+        expect(warn).toHaveBeenCalledTimes(1);
+        range.hostUpdate();
+        expect(range.rangeService.range()).toBeNull();
+        warn.mockRestore();
+    });
+
+    it('turning the mode off forgets it: after off and on, a bad assignment is dropped, not replaced by the old mode\'s range', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const { range, config } = session([{ accessorKey: 'a' }, { accessorKey: 'b' }]);
+        range.rangeService.setRange({ startRow: 0, startCol: 'a', endRow: 1, endCol: 'b' });
+        range.hostUpdate();
+        config.enableCellRangeSelection = false;
+        range.hostUpdate();
+        config.enableCellRangeSelection = true;
+        range.hostUpdate();
+        range.rangeService.setRange({ startRow: 2, startCol: 'a', endRow: 3, endCol: 'zzz' });
+        range.hostUpdate();
+        expect(range.rangeService.range()).toBeNull();
         warn.mockRestore();
     });
 });

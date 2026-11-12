@@ -587,8 +587,8 @@ describe('a failed session is withdrawn: its presses end, its neutral services t
         });
         try {
             const table = await mountTable();
-            expect(table.provider('interaction')!.editingCell()).toBeNull();
-            expect(table.provider('interaction')!.startEditing(table.data[0]!, 'name')).toBe(false);
+            expect(table.provider('interaction')!.editingCell?.()).toBeNull();
+            expect(table.provider('interaction')!.startEditing?.(table.data[0]!, 'name')).toBe(false);
             attach.mockRestore();
             table.remove();
             document.body.append(table);
@@ -1230,12 +1230,12 @@ describe('the merged interaction service delegates to the sessions', () => {
         });
         try {
             const table = await mountTable();
-            expect(table.provider('interaction')!.editingCell()).toEqual({ rowIndex: 7, columnKey: 'q' });
+            expect(table.provider('interaction')!.editingCell?.()).toEqual({ rowIndex: 7, columnKey: 'q' });
             // a reconnect (the controller attaches again) does not put a stale snapshot back
             table.remove();
             document.body.append(table);
             await settle(table);
-            expect(table.provider('interaction')!.editingCell()).toEqual({ rowIndex: 7, columnKey: 'q' });
+            expect(table.provider('interaction')!.editingCell?.()).toEqual({ rowIndex: 7, columnKey: 'q' });
         } finally {
             attach.mockRestore();
             error.mockRestore();
@@ -1769,6 +1769,55 @@ describe('a touch tap on a widget that stops pointerup', () => {
         expect(table.focusedCell).toBeNull();
         tap(382, plain);
         expect(table.focusedCell).toEqual({ rowIndex: 1, columnKey: 'name' });
+    });
+});
+
+describe('a tap left pending by a stopped pointerup', () => {
+    const controllerOf = (table: GeDataTable): Record<string, unknown> =>
+        (table as unknown as { assembled: { controllers: Record<string, unknown>[] } }).assembled.controllers.find((c) => 'tapPending' in c)!;
+    const tap = (el: Element, id: number): void => {
+        el.dispatchEvent(pointer('pointerdown', id, { pointerType: 'touch', over: el }));
+        el.dispatchEvent(pointer('pointerup', id, { pointerType: 'touch', over: el }));
+    };
+
+    it('is dropped at the next pointerdown and at detach (no event or press outlives it)', async () => {
+        const table = await mountTable();
+        const controller = controllerOf(table); // the controller outlives the detach
+        const cell = cellAt(table, 1, 'name')!;
+        const stopper = document.createElement('span');
+        stopper.addEventListener('pointerup', (event) => event.stopPropagation());
+        cell.append(stopper);
+        tap(stopper, 481);
+        expect(controller['tapPending']).not.toBeNull();
+        stopper.dispatchEvent(pointer('pointerdown', 482, { pointerType: 'touch', over: stopper }));
+        expect(controller['tapPending']).toBeNull();
+        stopper.dispatchEvent(pointer('pointerup', 482, { pointerType: 'touch', over: stopper }));
+        expect(controller['tapPending']).not.toBeNull();
+        table.remove();
+        expect(controller['tapPending']).toBeNull();
+    });
+});
+
+describe('a release a window-level capture listener swallowed', () => {
+    it('does not leave "a pointer is down": a key anywhere (the Tab in from outside) clears it and the Tab-in focuses a cell', async () => {
+        const table = await mountTable();
+        const swallow = (event: Event): void => event.stopImmediatePropagation();
+        window.addEventListener('pointerup', swallow, true);
+        const outside = document.createElement('button');
+        document.body.append(outside);
+        try {
+            const cell = cellAt(table, 1, 'name')!;
+            cell.dispatchEvent(pointer('pointerdown', 491, { over: cell }));
+            cell.dispatchEvent(pointer('pointerup', 491, { over: cell })); // swallowed: nothing hears it
+        } finally {
+            window.removeEventListener('pointerup', swallow, true);
+        }
+        outside.focus();
+        outside.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }));
+        table.querySelector<HTMLElement>('[data-slot="data-table-viewport"]')!.focus(); // what the Tab does
+        await frames(2);
+        expect((document.activeElement as HTMLElement).matches('[data-slot="table-cell"]')).toBe(true);
+        outside.remove();
     });
 });
 

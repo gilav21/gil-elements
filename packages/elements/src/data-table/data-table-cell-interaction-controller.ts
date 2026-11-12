@@ -117,9 +117,9 @@ export class CellInteractionController<T> {
      * (a release outside), or by `detach()`.
      */
     private readonly presses = new Map<number, Press>();
-    /** The pointerup / pointercancel the document saw for a press the root did not hear, until the deferred close handles it (the same pointer may press again first). */
-    /** The tap the capture listener decided on, for the bubble listener of the SAME event (matched by identity, so a stale one is never used). */
+    /** The tap the capture listener decided on, for the bubble listener of the SAME event (by identity); dropped when used, at the next pointerdown and at detach. */
     private tapPending: { event: PointerEvent; press: Press } | null = null;
+    /** The pointerup / pointercancel the document saw for a press the root did not hear, until the deferred close handles it (the same pointer may press again first). */
     private readonly closing = new Map<number, { event: PointerEvent; cancel: () => void }>();
     /** The pointers that hold pointer capture on an element of this table (any depth, closed shadow roots included), from its composed capture events. */
     private readonly captured = new Set<number>();
@@ -216,7 +216,8 @@ export class CellInteractionController<T> {
                 this.within = false;
                 this.cancelPresses();
             }),
-            disposables.listen(root, 'keydown', () => (this.pointer = false), true),
+            // Any key anywhere (a Tab in from outside included) ends "a pointer is down" for the focus guard: a release that a page-level capture listener swallowed must not skip the Tab-in focus.
+            disposables.listen(root.ownerDocument, 'keydown', () => (this.pointer = false), true),
             disposables.listen<FocusEvent>(root, 'focusin', ownEvents(root, (event: FocusEvent) => this.onFocusIn(event))),
             disposables.listen<FocusEvent>(root, 'focusout', ownEvents(root, (event: FocusEvent) => this.onFocusOut(event))),
             disposables.add(() => this.observer?.disconnect()),
@@ -264,6 +265,7 @@ export class CellInteractionController<T> {
         // (`closing` is empty here: `cancelPresses` above ended every press through `endPress`, which cancels and drops its pending look)
         this.reported.clear();
         this.reportedKeep.clear();
+        this.tapPending = null;
         this.attachment++;
         this.rowAtExpansion = null; // a row noted for the attach that is ending is not the next attach's
     }
@@ -552,6 +554,7 @@ export class CellInteractionController<T> {
     }
 
     private onRootDown(event: PointerEvent): void {
+        this.tapPending = null; // a tap the last release left (its bubble listener never ran) is not this press's
         if (this.clearedAt === event.timeStamp) this.within = true; // the root heard it: it is a press inside
         this.clearedAt = null;
         if (ownsTarget(this.host.root, event.target)) this.recordPress(event); // a nested table records its own presses
@@ -722,6 +725,7 @@ export class CellInteractionController<T> {
         this.closing.get(pointerId)?.cancel(); // the root heard the release itself: the document's look is not needed
         this.closing.delete(pointerId);
         this.pointer = this.presses.size > 0;
+        if (this.tapPending?.press === press) this.tapPending = null;
         if (notify) this.notifyCancel(press, event);
     }
 
