@@ -273,10 +273,21 @@ describe('filter state questions', () => {
 
 describe('the package A config checks', () => {
     const base = { localPagination: true, showPagination: true, enableVirtualScroll: false, virtualActive: false, total: undefined };
-    it('warns for a panel without enableFiltering, and for a panel without a filterFn', () => {
-        const warnings = validateConfig<unknown>({ ...base, columns: [{ accessorKey: 'a', header: 'A', filterComponent: 'x-f' }, { accessorKey: 'b', header: 'B', enableFiltering: true, filterComponent: 'x-f' }] });
+    it('warns for a panel without enableFiltering, and for a BUILT-IN panel without a filterFn', () => {
+        const warnings = validateConfig<unknown>({
+            ...base,
+            columns: [
+                { accessorKey: 'a', header: 'A', filterComponent: 'x-f' },
+                { accessorKey: 'b', header: 'B', enableFiltering: true, filterComponent: 'ge-data-table-date-filter' },
+                { accessorKey: 'c', header: 'C', enableFiltering: true, filterComponent: 'ge-data-table-multiselect-filter' },
+            ],
+        });
         expect(warnings.filter((w) => w.includes('[a] have a filterComponent but no enableFiltering'))).toHaveLength(1);
-        expect(warnings.filter((w) => w.includes('[b] have a filterComponent but no filterFn'))).toHaveLength(1);
+        expect(warnings.filter((w) => w.includes('[b, c] have a built-in filter panel but no filterFn'))).toHaveLength(1);
+    });
+    it('does not ask a consumer panel for a filterFn: it may report text the default match handles', () => {
+        const columns: ColumnDef<unknown>[] = [{ accessorKey: 'a', header: 'A', enableFiltering: true, filterComponent: 'x-text-filter' }];
+        expect(validateConfig<unknown>({ ...base, columns }).filter((w) => w.includes('filterFn'))).toEqual([]);
     });
     it('is quiet for a panel with both', () => {
         const columns: ColumnDef<unknown>[] = [{ accessorKey: 'a', header: 'A', enableFiltering: true, filterComponent: 'x-f', filterFn: () => true }];

@@ -109,10 +109,12 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
         panelWithoutFlag.length > 0,
         `Columns [${keys(panelWithoutFlag)}] have a filterComponent but no enableFiltering. The header shows no filter trigger and the column filter is not applied; set enableFiltering.`,
     );
-    const panelWithoutFn = c.columns.filter((col) => col.enableFiltering && col.filterComponent && !col.filterFn);
+    // Only the three built-in panels report values that are not text; a consumer's own panel may well report text the default match handles.
+    const BUILT_IN_PANELS = ['ge-data-table-date-filter', 'ge-data-table-date-range-filter', 'ge-data-table-multiselect-filter'];
+    const panelWithoutFn = c.columns.filter((col) => col.enableFiltering && BUILT_IN_PANELS.includes(col.filterComponent?.toLowerCase() ?? '') && !col.filterFn);
     warn(
         panelWithoutFn.length > 0,
-        `Columns [${keys(panelWithoutFn)}] have a filterComponent but no filterFn. A panel value that is not text (a date, a list) is matched as text and filters every row out; pair the panel with its filter function (dateFilterFn, dateRangeFilterFn, multiselectFilterFn).`,
+        `Columns [${keys(panelWithoutFn)}] have a built-in filter panel but no filterFn. A panel value that is not text (a date, a list) is matched as text and filters every row out; pair the panel with its filter function (dateFilterFn, dateRangeFilterFn, multiselectFilterFn).`,
     );
     // wave5: end of package A.
     // ---- wave 6 (spreadsheet and drag): packages A, B and C add theirs here, each in its own marked block -----------------------------
