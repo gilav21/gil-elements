@@ -179,14 +179,30 @@ export class EditSession<T> implements CellSession {
         if (!open) return;
         const { host } = this;
         const focusedIn = composedContains(host.cellAt(open.at.rowIndex, open.at.columnKey), this.context.deepActive());
-        const column = requireProvider(host, 'columns')
-            .enhancedColumns()
-            .find((c) => String(c.accessorKey) === open.at.columnKey);
-        if (!column?.editable) return this.close(false);
-        const verdict = reconcileEditor(open.at, open.rowId, requireProvider(host, 'query').renderedRows(), (row) => host.config.getRowId(row));
-        if (verdict.kind === 'drop') return this.close(false); // not a cancel: handing the focus to the grid would take it from wherever the user is now
-        if (verdict.kind === 'move') this.moveTo(open, verdict.rowIndex);
+        if (!this.columnOf(open.at.columnKey)?.editable) return this.close(false);
+        if (!this.follow(open)) return this.close(false); // not a cancel: handing the focus to the grid would take it from wherever the user is now
         if (focusedIn) this.keepFocus(open);
+    }
+
+    /** The column behind a key, as the grid draws it. */
+    private columnOf(key: string): EnhancedColumnDef<T> | undefined {
+        return requireProvider(this.host, 'columns')
+            .enhancedColumns()
+            .find((c) => String(c.accessorKey) === key);
+    }
+
+    /** The drawn rows the editor was last reconciled against: the same array again (a commit right after an update) needs no second scan. */
+    private reconciledWith: readonly T[] | null = null;
+
+    /** The editor follows its row (`reconcileEditor`); false when the row is gone (the caller closes it). One scan per drawn-rows array. */
+    private follow(open: OpenEditor<T>): boolean {
+        const rows = requireProvider(this.host, 'query').renderedRows();
+        if (rows === this.reconciledWith) return true;
+        const verdict = reconcileEditor(open.at, open.rowId, rows, (row) => this.host.config.getRowId(row));
+        if (verdict.kind === 'drop') return false;
+        if (verdict.kind === 'move') this.moveTo(open, verdict.rowIndex);
+        this.reconciledWith = rows;
+        return true;
     }
 
     /**
@@ -243,9 +259,7 @@ export class EditSession<T> implements CellSession {
     private startAt(rowIndex: number, columnKey: string): boolean {
         if (!this.attached || isSpecialColumnKey(columnKey)) return false;
         const { host } = this;
-        const column = requireProvider(host, 'columns')
-            .enhancedColumns()
-            .find((c) => String(c.accessorKey) === columnKey);
+        const column = this.columnOf(columnKey);
         if (!column?.editable) return false;
         const query = requireProvider(host, 'query');
         const row = query.renderedRowAt(rowIndex);
@@ -264,6 +278,7 @@ export class EditSession<T> implements CellSession {
             errorId: `ge-dt-${++uid}-edit-error`,
         };
         this.open = open;
+        this.reconciledWith = query.renderedRows(); // opened from these rows: nothing to follow until they change
         this.changed();
         if (open.kind === 'date') void DATE_PICKER.load();
         this.context.afterRender(() => void this.focusEditor(open));
@@ -285,13 +300,10 @@ export class EditSession<T> implements CellSession {
         if (!open) return 'none';
         const { host } = this;
         const query = requireProvider(host, 'query');
-        const rows = query.renderedRows();
-        const verdict = reconcileEditor(open.at, open.rowId, rows, (row) => host.config.getRowId(row));
-        if (verdict.kind === 'drop') {
+        if (!this.follow(open)) {
             this.close(false);
             return 'cancelled';
         }
-        if (verdict.kind === 'move') this.moveTo(open, verdict.rowIndex);
         if (open.badInput) {
             // Unreadable number text: nothing is written (its value reads '' and would wipe the cell); the editor stays open and says so. No
             // `edit-error`: that event is the validator's verdict on a value, and there is no value here.
@@ -300,7 +312,7 @@ export class EditSession<T> implements CellSession {
             return 'rejected';
         }
         const row = query.renderedRowAt(open.at.rowIndex);
-        const column = host.provider('columns')?.enhancedColumns().find((c) => String(c.accessorKey) === open.at.columnKey);
+        const column = this.columnOf(open.at.columnKey);
         if (row === undefined || !column) {
             this.close(refocus);
             return 'cancelled';

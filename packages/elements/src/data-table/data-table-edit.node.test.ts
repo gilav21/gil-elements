@@ -318,7 +318,9 @@ describe('historyKey (Angular spec 6974-7010)', () => {
         expect(historyKey({ ...base, key: 'ז', code: 'KeyZ', shiftKey: true })).toBe('redo');
         expect(historyKey({ ...base, key: 'ט', code: 'KeyY' })).toBe('redo');
         expect(historyKey({ ...base, key: 'ש', code: 'KeyA' })).toBeNull();
-        // A Latin key wins over its position (an AZERTY or Dvorak layout puts z elsewhere).
+        // A Latin key wins over its position (an AZERTY or Dvorak layout puts z elsewhere), and so does ASCII punctuation (round 6).
         expect(historyKey({ ...base, key: 'w', code: 'KeyZ' })).toBeNull();
+        expect(historyKey({ ...base, key: ';', code: 'KeyZ' })).toBeNull();
+        expect(historyKey({ ...base, key: 'Dead', code: 'KeyZ' })).toBeNull();
     });
 });

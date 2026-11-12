@@ -1,13 +1,11 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { chromeIcon } from './data-table-icons.js';
 import { BUILT_IN_FILTER_PANELS, builderColumns, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive } from './data-table-filters.js';
-import { memoLast } from './data-table-query.js';
-import type { FilterBuilderLabels } from './data-table.locales.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
-import { countConditions } from './data-table-query.js';
-import { EN_FILTER_BUILDER_LABELS, interpolate } from './data-table.locales.js';
+import { countConditions, memoLast } from './data-table-query.js';
+import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels, interpolate } from './data-table.locales.js';
 import type { ColumnDef, ComponentOutputs, FilterGroup } from './data-table.types.js';
 
 

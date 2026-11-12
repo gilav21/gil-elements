@@ -204,8 +204,10 @@ export function createDoubleTap(delay = 300, slop = 10): DoubleTap {
  */
 export function historyKey(event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'> & { code?: string }): 'undo' | 'redo' | null {
     if (!(event.ctrlKey || event.metaKey) || event.altKey) return null;
-    const latin = /^[a-z]$/i.test(event.key);
-    const key = latin ? event.key.toLowerCase() : event.code === 'KeyZ' ? 'z' : event.code === 'KeyY' ? 'y' : '';
+    // The physical key only for a single NON-ASCII character (a non-Latin layout): ASCII punctuation (`;` where Dvorak has KeyZ) is its own key.
+    const nonLatin = event.key.length === 1 && event.key.charCodeAt(0) > 0x7f;
+    const physical = event.code === 'KeyZ' ? 'z' : event.code === 'KeyY' ? 'y' : '';
+    const key = nonLatin ? physical : event.key.toLowerCase();
     if (key === 'z') return event.shiftKey ? 'redo' : 'undo';
     if (key === 'y' && !event.shiftKey) return 'redo';
     return null;
