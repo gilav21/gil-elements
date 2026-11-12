@@ -1204,6 +1204,24 @@ describe('F7 the advanced filter builder', () => {
             expect(table.advancedFilter!.rules).toEqual([{ type: 'group', combinator: 'or', rules: [cond('role', 'Eng')] }]);
         });
 
+        it('closing the popover within the debounce reports the value outside the render: no change-in-update, one query (round 16)', async () => {
+            const group: FilterGroup = { type: 'group', combinator: 'and', rules: [cond('name', '')] };
+            const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 1000 });
+            const queries = record(table, 'query');
+            await openBuilder(table);
+            await typeText(inner(table, 'input.value')[0]!, 'Al');
+            const warn = vi.spyOn(console, 'warn');
+            try {
+                await closePopover(table);
+                await settle(table);
+                expect(warn.mock.calls.filter((args) => String(args[0]).includes('change-in-update'))).toEqual([]);
+            } finally {
+                warn.mockRestore();
+            }
+            expect(table.advancedFilter).toEqual({ type: 'group', combinator: 'and', rules: [cond('name', 'Al')] });
+            expect(queries).toHaveLength(1);
+        });
+
         it('values typed at the top level and in a nested group, then the popover closed within the debounce, are both kept (one change)', async () => {
             const group: FilterGroup = { type: 'group', combinator: 'and', rules: [cond('name', ''), { type: 'group', combinator: 'or', rules: [cond('role', '')] }] };
             const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 1000 });

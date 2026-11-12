@@ -152,9 +152,14 @@ export class FilterUiController<T> {
 
     private readonly onBuilderToggle = (event: CustomEvent<boolean>): void => {
         if (event.target !== event.currentTarget) return; // a popover inside the builder
+        if (!event.detail) {
+            // The typed value still waiting on the debounce is reported NOW, from this event, before the render that removes the builder: its own
+            // disconnect flush would write the filter DURING the table's render (a change in update).
+            this.builder?.flush?.();
+            this.builder = undefined;
+        }
         this.builderOpen = event.detail;
         if (event.detail) this.prefetchBuilder();
-        else this.builder = undefined;
         this.host.requestRender();
     };
 
