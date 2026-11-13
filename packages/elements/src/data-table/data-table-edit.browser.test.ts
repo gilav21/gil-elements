@@ -96,6 +96,26 @@ describe('E1 opening an editor', () => {
         expect(edits).toHaveLength(0);
     });
 
+    it('a text editor on a boolean or a 1e-7 number cell: its own text committed back writes nothing (round 25)', async () => {
+        const columns: ColumnDef<SampleRow>[] = [
+            ...editColumns(),
+            { accessorKey: 'flag', header: 'Flag', editable: true, accessorFn: () => true, valueSetter: (row) => ({ ...row }) },
+            { accessorKey: 'tiny', header: 'Tiny', editable: true, accessorFn: () => 1e-7, valueSetter: (row) => ({ ...row }) },
+        ];
+        const table = await mount({ columns });
+        const edits = record(table, 'cell-edit');
+        for (const key of ['flag', 'tiny']) {
+            await startEditingAt(table, 0, key);
+            const input = openEditor(table) as HTMLInputElement;
+            await userEvent.type(input, 'x');
+            await press('{Backspace}');
+            await press('{Enter}');
+            await settle(table);
+            expect(table.editingCell).toBeNull();
+        }
+        expect(edits).toHaveLength(0);
+    });
+
     it('an editor closed from outside (column no longer editable, row gone) gives the focus back to the grid (round 23)', async () => {
         const table = await mount();
         await startEditingAt(table, 1, 'name');

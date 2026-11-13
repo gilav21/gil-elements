@@ -119,6 +119,10 @@ describe('decideCommit (Angular spec 1129-1266)', () => {
         expect(decideCommit('2024-01-03T00:00:00.000Z', when, null, at, 'text')).toEqual({ action: 'cancel' });
         expect(decideCommit('{"a":1}', { a: 1 }, null, at, 'text')).toEqual({ action: 'cancel' });
         expect(decideCommit('{"a":2}', { a: 1 }, null, at, 'text')).toEqual({ action: 'write', report: true });
+        // Round 25: any non-string cell (a boolean, a number) follows the same rule.
+        expect(decideCommit('true', true, null, at, 'text')).toEqual({ action: 'cancel' });
+        expect(decideCommit('1e-7', 1e-7, null, at, 'text')).toEqual({ action: 'cancel' });
+        expect(decideCommit('false', true, null, at, 'text')).toEqual({ action: 'write', report: true });
         // Round 12: a number editor shares the empty rule (null, undefined, '' empty); 0 stays a value.
         expect(decideCommit(null, undefined, null, at, 'number')).toEqual({ action: 'cancel' });
         expect(decideCommit(null, '', null, at, 'number')).toEqual({ action: 'cancel' });

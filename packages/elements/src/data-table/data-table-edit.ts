@@ -137,9 +137,9 @@ export function decideCommit(draft: unknown, stored: unknown, error: CellEditErr
     if (sameEditValue(draft, stored)) return { action: 'cancel' };
     // A text or number editor shows an empty cell (null, undefined, '') as an empty field: typing then deleting leaves it as it was. 0 is a value.
     if ((kind === 'text' || kind === 'number') && isEmptyText(draft) && isEmptyText(stored)) return { action: 'cancel' };
-    // An object cell (a Date, a plain object) is shown as its text (`stringifyValue`): that same text committed back changed nothing, and the
-    // cell keeps its object (never the string).
-    if (typeof draft === 'string' && stored !== null && typeof stored === 'object' && draft === stringifyValue(stored)) return { action: 'cancel' };
+    // A cell that is not a string (a boolean, a number such as 1e-7, a Date, an object) is shown as its text (`stringifyValue`): that same text
+    // committed back changed nothing, and the cell keeps its own value (never the string).
+    if (typeof draft === 'string' && stored != null && typeof stored !== 'string' && draft === stringifyValue(stored)) return { action: 'cancel' };
     const reported = error !== null && error.rowIndex === at.rowIndex && error.columnKey === at.columnKey && sameEditValue(error.value, draft);
     return { action: 'write', report: !reported };
 }
