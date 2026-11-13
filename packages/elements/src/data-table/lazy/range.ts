@@ -22,7 +22,7 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { startAutoScroll, type AutoScrollController } from '../../shared/auto-scroll.js';
 import { onLongPress } from '../../shared/touch.js';
 import type { InteractionContext, PointerPress } from '../data-table-cell-session.js';
-import { CELL_SELECTOR, onGrid, rowIdsAt } from '../data-table-clipboard-grid.js';
+import { CELL_SELECTOR, editorOpen, onGrid, rowIdsAt } from '../data-table-clipboard-grid.js';
 import { buildFillValues } from '../data-table-fill.js';
 import { fillOutcome, type FillInput, planFill, repeatFirst } from '../data-table-fill-apply.js';
 import { type CellAddress, cellAddressOf, ownClosest, ownElements, ownsTarget, shortcutLetter, VIEWPORT } from '../data-table-host.js';
@@ -516,9 +516,10 @@ export class RangePart<T> {
     private onKey(event: KeyboardEvent): boolean {
         if (event.defaultPrevented || event.isComposing || event.altKey || !this.inGrid(event)) return false;
         if (event.key === 'Escape') return this.onEscape(event);
-        // A focus move WITHOUT Shift (an arrow, Home / End, a page key, Tab) ends the range, as in a spreadsheet: the next Shift+key starts a new one
-        // anchored at the cell the focus moved to. The key goes on to navigation (false: not consumed here).
-        if (this.range && !this.drag && (event.key === 'Tab' || (!event.shiftKey && NAVIGATION_KEYS.has(event.key)))) {
+        // A focus move WITHOUT Shift (an arrow, Home / End, a page key) ends the range, as in a spreadsheet: the next Shift+key starts a new one
+        // anchored at the cell the focus moved to. The key goes on to navigation (false: not consumed here). Not Tab (with or without Shift): Tab
+        // moves the focus OUT of the grid, to the readout's Chart button too, which must still be there (its keyboard path, WCAG 2.1.1).
+        if (this.range && !this.drag && !event.shiftKey && NAVIGATION_KEYS.has(event.key)) {
             this.setOwn(null);
             return false;
         }
@@ -588,7 +589,8 @@ export class RangePart<T> {
         const { host } = this.context;
         const query = host.provider('query');
         const columns = host.provider('columns')?.enhancedColumns() ?? [];
-        if (!query || host.config.loading) return false; // no write into rows that are being replaced (like a paste or a row drag)
+        // No write into rows that are being replaced (like a paste or a row drag), nor under an open editor (like a paste and Ctrl+D).
+        if (!query || host.config.loading || editorOpen(host)) return false;
         const plan = planFill<T>({
             source,
             target,

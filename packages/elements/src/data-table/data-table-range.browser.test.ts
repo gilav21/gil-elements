@@ -175,8 +175,6 @@ describe('range selection by keys', () => {
             await vi.waitFor(() => expect(clipboard.writes).toEqual(['n5']));
             await press('{Shift>}{ArrowDown}{/Shift}');
             expect(table.cellRange).toEqual({ startRow: 5, startCol: 'name', endRow: 6, endCol: 'name' });
-            await press('{Tab}');
-            expect(table.cellRange).toBeNull();
         } finally {
             clipboard.restore();
         }
@@ -663,19 +661,35 @@ describe('review fixes', () => {
         expect(table.cellRange).toEqual({ startRow: 1, startCol: 'name', endRow: 2, endCol: 'score' });
     });
 
-    it('Tab and Shift+Tab both end the range; Shift+arrows still extend it', async () => {
-        const table = await mountRange();
-        await focusAt(table, 1, 'name');
-        await press('{Shift>}{ArrowDown}{/Shift}');
-        expect(table.cellRange).not.toBeNull();
-        await focusAt(table, 1, 'name');
+    it('Tab keeps the range, so the keyboard reaches the readout\'s Chart button and Enter opens the chart', async () => {
+        const table = await mountRange({ enableRangeActions: true });
+        await focusAt(table, 0, 'score');
+        await press('{Shift>}{ArrowDown}{ArrowDown}{/Shift}');
+        expect(table.cellRange).toEqual({ startRow: 0, startCol: 'score', endRow: 2, endCol: 'score' });
+        const charts: RangeChartPayload[] = [];
+        table.addEventListener('range-chart-open', (event) => charts.push((event as CustomEvent<RangeChartPayload>).detail));
+        const button = q(table, '[data-slot="range-chart"]');
+        let reached = false;
+        for (let i = 0; i < 6 && !reached; i++) {
+            await press('{Tab}');
+            reached = button.contains(document.activeElement) || document.activeElement === button;
+        }
+        expect(reached).toBe(true);
+        expect(table.cellRange).toEqual({ startRow: 0, startCol: 'score', endRow: 2, endCol: 'score' });
+        await press('{Enter}');
+        expect(charts).toHaveLength(1);
+        // Shift+Tab goes back without ending the range either
         await press('{Shift>}{Tab}{/Shift}');
-        expect(table.cellRange).toBeNull();
-        await focusAt(table, 1, 'name');
-        await press('{Shift>}{ArrowDown}{/Shift}');
-        await focusAt(table, 1, 'name');
-        await press('{Tab}');
-        expect(table.cellRange).toBeNull();
+        expect(table.cellRange).not.toBeNull();
+    });
+
+    it('fillDownTo writes nothing while an editor is open (like a paste and Ctrl+D)', async () => {
+        const table = await mountRange({ enableFillHandle: true });
+        await focusAt(table, 0, 'score');
+        (table.provider('interaction') as { editingCell(): unknown }).editingCell = () => ({ rowIndex: 3, columnKey: 'label' }); // an editor is open
+        const data = table.data;
+        expect(table.fillDownTo(2)).toBe(false);
+        expect(table.data).toBe(data);
     });
 });
 

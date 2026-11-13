@@ -746,6 +746,12 @@ Recommendation (D2): **lazy, flag-gated `import()` for range + fill, paste and r
 - Row drag: a link or image drag that starts inside a draggable row is cancelled, and a press on a control can still start a row drag (the pointerdown origin is not recorded; `dragstart` judges by its own target).
 - Fill handle: a `dir` change inherited from an ancestor (not on the table itself) does not re-measure the handle.
 - One shared, memoised column-by-key lookup for fill, paste and copy.
+- Tree drop `below` an expanded parent lands after its whole subtree while the indicator shows it above the parent's first child (needs a design decision: indicator or landing place).
+- A transient `columns = []` (columns re-assigned in two steps) drops the range.
+- The row-drag verdict memo ignores `isRowDisabled`, `rowDragMode` and `enableSubRows` changing mid-drag.
+- The readout stats memo is keyed on array identity: a resize that rebuilds the arrays recomputes them every frame.
+- One central "the rows under the range moved" check in the range session, instead of the fill / paste / drop patches (it would also cover undo, redo and a data refresh).
+- After a fill or a paste, Shift+Arrow extends from the range's start while Shift+click extends from the focused cell: one anchor rule.
 
 ### Candidate Angular bugs (verified only by reading; nothing filed; verify against a running Angular build before filing)
 - **AB1** cmp 4494, 4502 (-> 4256), 4482 (-> 4532) and 4439 (-> 2747): the copy and paste promises are neither awaited nor caught; with permission denied (or `readText` unsupported) the handler has already called `preventDefault`, nothing is copied or pasted, the user gets no feedback and an unhandled rejection is raised.
