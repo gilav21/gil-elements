@@ -359,10 +359,11 @@ export class QueryController<T> {
             const { model } = this.host;
             const filters = model.get('columnFilters');
             const name = String(key);
-            // An equal value (a Clear of an empty panel, the same day again, the same text after a debounce) changes nothing: no new object, no page reset, no event.
+            // An equal value (a Clear of an empty panel, the same day again, the same text after a debounce, a fresh copy of the same range) changes
+            // nothing: no new object, no page reset, no event, and a waiting announcement stays.
             if (sameFilterValue(Object.hasOwn(filters, name) ? filters[name] : undefined, value)) return;
             // A newer filter drops the announcements of earlier ones; its number is taken BEFORE the write, so the filter controller, which hears the
-            // write, reads it (`filterSeq`) for its own announcement.
+            // write and hands it to `announceFilters`, announces this change.
             this.filterChanged();
             model.batch(() => {
                 model.set('columnFilters', { ...filters, [name]: value });

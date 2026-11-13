@@ -223,6 +223,34 @@ describe('F3 the date-range panel', () => {
         await closePopover(table);
     });
 
+    it('a built-in preset picked again within 500 ms changes nothing: the count is announced once, the page is not reset (round 21)', async () => {
+        const today = new Date();
+        const back = (days: number): Date => new Date(today.getFullYear(), today.getMonth(), today.getDate() - days);
+        const rows: Row[] = [
+            { id: '1', name: 'Alice', role: 'Engineer', day: back(1) },
+            { id: '2', name: 'Bob', role: 'Designer', day: back(2) },
+            { id: '3', name: 'Carol', role: 'Engineer', day: back(10) },
+        ];
+        const table = await mount({ columns: [nameColumn, rangeColumn], data: rows, pageSize: 1, pageSizeOptions: [1] });
+        const spoken: string[] = [];
+        new MutationObserver(() => spoken.push((q(table, '[data-slot="data-table-announcer"]').textContent ?? '').replaceAll('​', '').trim())).observe(
+            q(table, '[data-slot="data-table-announcer"]'),
+            { childList: true, characterData: true, subtree: true },
+        );
+        const panel = await openPanel(table, 'day', 'ge-data-table-date-range-filter');
+        await userEvent.click(panelButton(panel, 'Last 7 days'));
+        await settle(table);
+        table.paginationState = { pageIndex: 1, pageSize: 1 }; // the user went on to the second match
+        await settle(table);
+        await userEvent.click(panelButton(panel, 'Last 7 days')); // the same preset again: a fresh, equal range
+        await settle(table);
+        expect(table.paginationState.pageIndex).toBe(1);
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        await settle(table);
+        expect(spoken.filter((s) => s !== '')).toEqual(['2 rows match the filters']);
+        await closePopover(table);
+    });
+
     it('applies a preset at once; custom presets replace the built-in ones', async () => {
         const range = { start: dayOf(1), end: dayOf(3) };
         const table = await mount({ columns: [nameColumn, { ...rangeColumn, filterComponentInputs: { presets: [{ label: 'Early', range }] } }] });

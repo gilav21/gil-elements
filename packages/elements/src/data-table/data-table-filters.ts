@@ -110,17 +110,19 @@ export function sameStructure(a: unknown, b: unknown, stack: unknown[] = []): bo
 // ---- filter value equality -----------------------------------------------------------------------------------------------------------
 
 /**
- * Two column filter values that are CERTAINLY the same filter, so writing one over the other is a no-op (no new object, no page reset, no event).
- * Conservative on purpose: only (a) both "no filter" (the `isFilterValueEmpty` rule: null, undefined, an absent key, `''`, `[]`, an empty range),
- * (b) the same primitive (`Object.is`), or (c) two dates of the same instant. Any array or object (a Set, a Map, a class instance, a range, and
- * the SAME array mutated and re-emitted) counts as a change, as in Angular: the table writes it and re-filters.
+ * Two column filter values that are CERTAINLY the same filter, so writing one over the other is a no-op (no new object, no page reset, no event,
+ * no new announcement). Only (a) both "no filter" (the `isFilterValueEmpty` rule: null, undefined, an absent key, `''`, `[]`, an empty range),
+ * (b) the same primitive (`Object.is`), (c) two dates of the same instant, or (d) a FRESH copy structurally equal to the stored value (a preset
+ * picked again, a panel re-emitting an equal new array). The SAME array or object re-emitted counts as a change, as in Angular: it may have been
+ * mutated in place, so its content says nothing; the table writes it and re-filters.
  */
 export function sameFilterValue(a: unknown, b: unknown): boolean {
     const emptyA = isFilterValueEmpty(a);
     if (emptyA || isFilterValueEmpty(b)) return emptyA && isFilterValueEmpty(b);
     if (a instanceof Date && b instanceof Date) return a.getTime() === b.getTime();
     const primitive = (v: unknown): boolean => v === null || (typeof v !== 'object' && typeof v !== 'function');
-    return primitive(a) && primitive(b) && Object.is(a, b);
+    if (primitive(a) || primitive(b)) return primitive(a) && primitive(b) && Object.is(a, b);
+    return a !== b && sameStructure(a, b);
 }
 
 // ---- the built-in panels -------------------------------------------------------------------------------------------------------------

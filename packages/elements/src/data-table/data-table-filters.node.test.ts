@@ -402,14 +402,15 @@ describe('sameFilterValue (an equal write is a no-op; conservative since round 1
         expect(sameFilterValue(new Date(2024, 1, 3), new Date(2024, 1, 4))).toBe(false);
     });
 
-    it('counts any array or object as a change, as Angular re-filters on every write (round 10)', () => {
-        expect(sameFilterValue(['a', 'b'], ['a', 'b'])).toBe(false);
+    it('counts the SAME array or object re-emitted as a change (round 10), a fresh structurally equal copy as no change (round 21)', () => {
         const same = ['a'];
-        expect(sameFilterValue(same, same)).toBe(false); // the SAME array, mutated and re-emitted
+        expect(sameFilterValue(same, same)).toBe(false); // the SAME array, maybe mutated and re-emitted
+        expect(sameFilterValue(['a', 'b'], ['a', 'b'])).toBe(true); // a fresh equal copy (a preset picked again)
+        expect(sameFilterValue({ start: new Date(1), end: null }, { start: new Date(1), end: null })).toBe(true);
+        expect(sameFilterValue(['a', 'b'], ['b', 'a'])).toBe(false);
         expect(sameFilterValue(new Set(['a']), new Set(['b']))).toBe(false);
-        expect(sameFilterValue(new Set(['a']), new Set(['a']))).toBe(false);
+        expect(sameFilterValue(new Set(['a']), new Set(['a']))).toBe(false); // not plain data: by identity
         expect(sameFilterValue([''], [null])).toBe(false);
-        expect(sameFilterValue({ start: new Date(1), end: null }, { start: new Date(1), end: null })).toBe(false);
         expect(sameFilterValue(/a/, /a/)).toBe(false);
         expect(sameFilterValue('2024-01-01', new Date(2024, 0, 1))).toBe(false);
     });
