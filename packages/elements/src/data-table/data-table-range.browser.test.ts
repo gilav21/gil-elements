@@ -597,18 +597,13 @@ describe('touch', () => {
         expect((table.data as Row[])[1]?.name).toBe('n1');
     });
 
-    it('fill handle only: a swipe that scrolls keeps the range a fill left; a tap ends it', async () => {
+    it('fill handle only: a tap on a body cell ends the range a fill left', async () => {
         await emulateTouch(true);
-        const table = await mountRange({ enableCellRangeSelection: false, enableFillHandle: true, data: makeRows(60).map((r, i) => ({ ...ROWS[i % 8], ...r })) }, { width: 500, height: 300 });
+        const table = await mountRange({ enableCellRangeSelection: false, enableFillHandle: true });
         await focusAt(table, 0, 'score');
         expect(table.fillDownTo(2)).toBe(true);
         await settle(table);
         expect(table.provider('range')?.normalized()).not.toBeNull();
-        await touchDrag(cell(table, 1, 'name'), { dx: 0, dy: -80 }, { steps: 6 });
-        await settle(table);
-        expect(table.provider('range')?.normalized()).not.toBeNull();
-        await new Promise((resolve) => setTimeout(resolve, 600)); // let the swipe's fling settle
-        await settle(table);
         await touchTap(cell(table, 4, 'name'));
         await settle(table);
         expect(table.provider('range')?.normalized()).toBeNull();
@@ -622,6 +617,19 @@ describe('touch', () => {
         await touchLongPressDrag(cell(table, 2, 'name'), cell(table, 4, 'label'), { holdBeforeMs: 650, steps: 4 });
         await settle(table);
         expect(table.cellRange).toEqual({ startRow: 1, startCol: 'name', endRow: 2, endCol: 'score' });
+    });
+
+    // Last of the touch tests: this swipe's fling must not scroll the table of a later touch test.
+    it('fill handle only: a swipe that scrolls keeps the range a fill left', async () => {
+        await emulateTouch(true);
+        const table = await mountRange({ enableCellRangeSelection: false, enableFillHandle: true, data: makeRows(60).map((r, i) => ({ ...ROWS[i % 8], ...r })) }, { width: 500, height: 300 });
+        await focusAt(table, 0, 'score');
+        expect(table.fillDownTo(2)).toBe(true);
+        await settle(table);
+        expect(table.provider('range')?.normalized()).not.toBeNull();
+        await touchDrag(cell(table, 1, 'name'), { dx: 0, dy: -80 }, { steps: 6 });
+        await settle(table);
+        expect(table.provider('range')?.normalized()).not.toBeNull();
     });
 });
 
