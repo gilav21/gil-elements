@@ -187,6 +187,10 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 - `register-addon.mjs` `option()` accepts a following flag (`--base --component`) as a value.
 - The element reaches the `addons` service through more than one accessor (the addon host part and the busy port); keep one private accessor.
 
+### Package D follow-ups (triaged out of PR #80)
+- `ge-input` feature: `readonly` and `enterkeyhint` (forwarded to the inner input), so the NL box can be readonly while a question runs and show "go" on a virtual keyboard (spec D.2); today it stays editable (a changed question replaces the running one) and sets no hint.
+- `aiTimeout` config input (spec D.3): the per-request timeout is fixed at 60 s (`AI_TIMEOUT_MS` in `data-table-ai.ts`).
+
 ## H. Work packages (strict file ownership after step 0)
 
 Merge order: Step 0 -> A, B, C, D in parallel (disjoint files) -> integration PR (cross-addon browser tests, `full`-style smoke with all addons on one table, axe, size budget lines, parity cases finalised).
