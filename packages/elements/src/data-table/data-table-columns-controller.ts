@@ -37,12 +37,16 @@ export class ColumnsController<T> {
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
 
+    /** `(pointer: coarse)`, asked once (lazily); undefined where there is no `matchMedia`. */
+    private coarse: MediaQueryList | undefined;
+
     private current(): ColumnLayout<T> {
         const { config, model } = this.host;
         // wave 7: the `_actions` column is drawn while an addon has registered a row action (a kebab), as wide as its buttons.
         const actions = this.host.provider('addons')?.cellActions.slots.length ?? 0;
         // The buttons' drawn size: 2.75rem under a coarse pointer (data-table.css), else 2rem; asked only while there are buttons.
-        const buttonPx = actions > 0 && globalThis.matchMedia?.('(pointer: coarse)').matches ? 44 : 32;
+        // ONE media query list per controller, made when row actions first exist; each read is just `.matches`.
+        const buttonPx = actions > 0 && (this.coarse ??= globalThis.matchMedia?.('(pointer: coarse)'))?.matches ? 44 : 32;
         return this.layout(config.columns, model.get('columnWidths'), this.live, model.get('columnVisibility'), model.get('columnOrder'), this.pins, config.enableRowSelection, config.enableRowExpansion, actions, buttonPx);
     }
 

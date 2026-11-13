@@ -30,6 +30,15 @@ function expandedOf(slot: { readonly id: string; readonly expanded?: unknown }, 
     }
 }
 
+/** Runs a slot's `onClick`; one that throws is reported once (per slot) instead of escaping the click listener. */
+function clickOf(slot: { readonly id: string }, run: () => void): void {
+    try {
+        run();
+    } catch (error) {
+        reportOncePer(slot, 'onClick', `[ge-data-table] the "onClick" of action "${slot.id}" threw:`, error);
+    }
+}
+
 export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
     const addons = host.provider('addons');
     const cells = addons?.cellActions.slots ?? [];
@@ -51,7 +60,7 @@ export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
             return cells.map(
                 (slot) =>
                     html`<button type="button" data-slot="data-table-icon-button" data-size="lg" data-action-id=${slot.id} aria-label=${slot.ariaLabel ?? locale.rowActions} aria-haspopup=${slot.haspopup ?? nothing}
-                        aria-expanded=${expandedOf(slot, () => slot.expanded?.(context()))} tabindex=${roving ? '-1' : nothing} @click=${(event: Event) => slot.onClick(event, context())}>${slot.icon ?? chromeIcon('more-vertical')}</button>`,
+                        aria-expanded=${expandedOf(slot, () => slot.expanded?.(context()))} tabindex=${roving ? '-1' : nothing} @click=${(event: Event) => clickOf(slot, () => slot.onClick(event, context()))}>${slot.icon ?? chromeIcon('more-vertical')}</button>`,
             );
         },
         head: (drawn) => {
@@ -61,7 +70,7 @@ export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
             return heads.map(
                 (slot) =>
                     html`<button type="button" data-slot="data-table-header-action" data-action-id=${slot.id} aria-label=${interpolate(slot.ariaLabel ?? locale.columnMenu, { column: column.header })} aria-haspopup=${slot.haspopup ?? nothing}
-                        aria-expanded=${expandedOf(slot, () => slot.expanded?.(column))} @click=${(event: Event) => slot.onClick(event, column)}>${slot.icon ?? chromeIcon('more-vertical', 'xs')}</button>`,
+                        aria-expanded=${expandedOf(slot, () => slot.expanded?.(column))} @click=${(event: Event) => clickOf(slot, () => slot.onClick(event, column))}>${slot.icon ?? chromeIcon('more-vertical', 'xs')}</button>`,
             );
         },
     };

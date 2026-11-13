@@ -372,6 +372,27 @@ describe('AddonSet: final review', () => {
     });
 });
 
+describe('AddonSet: final review 6', () => {
+    it('a disposer that throws is reported, and the other addons are still torn down', () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const host = {
+            subscribe: () => () => {
+                throw new Error('unsubscribe failed');
+            },
+        } as unknown as DataTableAddonHost;
+        const set = new AddonSet(host, new Map());
+        const stopped = vi.fn();
+        set.start();
+        set.use({ id: 'bad', setup: (h) => void h.subscribe('rows', () => undefined) });
+        set.use({ id: 'good', setup: () => stopped });
+        expect(() => set.stop()).not.toThrow();
+        expect(stopped).toHaveBeenCalledTimes(1);
+        expect(error).toHaveBeenCalledTimes(1);
+        set.start(); // `active` was cleared: both start again
+        expect(stopped).toHaveBeenCalledTimes(1);
+    });
+});
+
 describe('AddonSet: an addon that throws', () => {
     const boom = (): never => {
         throw new Error('boom');

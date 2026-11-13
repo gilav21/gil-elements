@@ -415,6 +415,54 @@ describe('the action buttons addons register', () => {
         }
     });
 
+    it('asks matchMedia for the coarse pointer once, not at every column read (final review 6)', async () => {
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable(); // (the virtual controller asks once at its attach: not counted)
+        table.use(addon);
+        const media = vi.spyOn(window, 'matchMedia');
+        try {
+            runs[0]!.host.registerCellAction({ id: 'one', onClick: () => undefined });
+            await settle(table);
+            const columns = runs[0]!.host.provider('columns')!;
+            for (let i = 0; i < 5; i++) columns.enhancedColumns();
+            table.requestUpdate();
+            await settle(table);
+            expect(media.mock.calls.filter(([query]) => query === '(pointer: coarse)').length).toBeLessThanOrEqual(1);
+        } finally {
+            media.mockRestore();
+        }
+    });
+
+    it('reports a throwing onClick of a row or header action once per slot, with no uncaught error (final review 6)', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const uncaught: ErrorEvent[] = [];
+        const onError = (event: ErrorEvent): void => {
+            uncaught.push(event);
+            event.preventDefault();
+        };
+        window.addEventListener('error', onError);
+        try {
+            const { addon, runs } = probe(uniqueId());
+            const table = await mountTable();
+            table.use(addon);
+            const boom = (): never => {
+                throw new Error('click failed');
+            };
+            runs[0]!.host.registerCellAction({ id: 'row', onClick: boom });
+            runs[0]!.host.registerHeaderAction({ id: 'head', onClick: boom });
+            await settle(table);
+            const row = qa(table, '[data-action-id="row"]');
+            row[0]!.click();
+            row[1]!.click();
+            headCell(table, 'age').querySelector<HTMLElement>('[data-action-id="head"]')!.click();
+            expect(uncaught).toEqual([]);
+            expect(error).toHaveBeenCalledTimes(2); // once per slot
+        } finally {
+            window.removeEventListener('error', onError);
+            error.mockRestore();
+        }
+    });
+
     it('keeps a header action visible while its menu is open (aria-expanded) (final review 5)', async () => {
         await parkMouse();
         const { addon, runs } = probe(uniqueId());

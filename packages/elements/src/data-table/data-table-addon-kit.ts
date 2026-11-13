@@ -163,8 +163,11 @@ export class AddonSet<T = unknown> {
 
     stop(): void {
         this.started = false;
-        for (const { teardown } of this.active.values()) teardown();
-        this.active.clear();
+        try {
+            for (const { teardown } of this.active.values()) teardown();
+        } finally {
+            this.active.clear();
+        }
     }
 
     /** The API the running addon `id` exposed, or undefined. */
@@ -220,7 +223,7 @@ export class AddonSet<T = unknown> {
         const release = (): void => {
             live = false;
             this.apis.delete(id);
-            for (const dispose of [...owned].reverse()) dispose();
+            for (const dispose of [...owned].reverse()) guard('a release', dispose); // one failing disposer does not stop the others
             owned.clear();
             this.busy?.(id, null); // a busy label the addon left behind goes with it
         };

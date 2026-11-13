@@ -173,6 +173,12 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 - The columns controller looks up the `addons` provider on every `current()` call.
 - The row action context (`rowContext`) is built per slot per row; build it once per row.
 - `scripts/register-addon.mjs` inserts several ids in reverse order (each after the same anchor line).
+- Addons restart when the table moves in the DOM (disconnect, connect), so a stored `table.addon()` API goes dead: document "fetch it again after a move".
+- The "unknown addon" warning fires in the supported register-later flow (attribute set before the addon's module loads).
+- A bundle covering several ids can expose only one API (under its own id).
+- The auto `_actions` width is computed in px in JS; it should be CSS (rem and density aware).
+- Every row action button of a slot has the same accessible name; a `{row}`-aware locale key is wave 8.
+- `getDataTableAddon` is unused outside tests.
 - The element reaches the `addons` service through more than one accessor (the addon host part and the busy port); keep one private accessor.
 
 ## H. Work packages (strict file ownership after step 0)
