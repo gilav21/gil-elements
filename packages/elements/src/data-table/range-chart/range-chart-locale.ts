@@ -15,6 +15,8 @@ export interface RangeChartLocale {
     negativeNote: string;
     /** Accessible name of the chart; `{title}`, `{type}` and `{series}` (the charted series names) are filled in. */
     chartLabel: string;
+    /** The same when no charted series has a name: `{title}` and `{type}`. */
+    chartLabelNoSeries: string;
     /** Caption of the visually hidden data table. `{shown}` and `{total}` are filled in when the table is capped. */
     dataTable: string;
     dataTableCapped: string;
@@ -39,6 +41,7 @@ export const RANGE_CHART_LOCALES: Record<string, RangeChartLocale | undefined> &
         series: 'Series',
         negativeNote: 'Negative values are left out of the pie.',
         chartLabel: '{title}, {type} chart: {series}',
+        chartLabelNoSeries: '{title}, {type} chart',
         dataTable: 'Chart data',
         dataTableCapped: 'Chart data, first {shown} of {total} rows',
         category: 'Category',

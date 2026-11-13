@@ -94,8 +94,9 @@ export class GeDataTableRangeChart extends UiElement {
 
     protected override willUpdate(changed: PropertyValues<this>): void {
         if (changed.has('for') && this.isConnected) this.listen();
-        // a new payload starts from its first series (the chart type stays); not on the first one, nor when the index is set with it
-        if (changed.has('payload') && changed.get('payload') !== undefined && !changed.has('seriesIndex')) this.seriesIndex = 0;
+        // a new payload starts from its first series (the chart type stays); not the first real one (a series-index set before the
+        // first range is kept), nor when the index is set with it
+        if (changed.has('payload') && changed.get('payload') != null && !changed.has('seriesIndex')) this.seriesIndex = 0;
     }
 
     /** Listens on the root node rather than on the table, so a table mounted, replaced or given its id after this element still works. */
@@ -114,8 +115,8 @@ export class GeDataTableRangeChart extends UiElement {
     }
 
     private readonly onRangeChartOpen = (event: Event): void => {
-        const target = event.target;
-        if (!this.for || !(target instanceof Element) || target.id !== this.for) return;
+        // the path, not the (retargeted) target: a table inside a nested shadow root is found too
+        if (!this.for || !event.composedPath().some((node) => node instanceof Element && node.id === this.for)) return;
         const detail = (event as CustomEvent<RangeChartData | null>).detail;
         if (!detail) return;
         this.payload = detail;
@@ -140,7 +141,8 @@ export class GeDataTableRangeChart extends UiElement {
     };
 
     private pickType(type: RangeChartType): void {
-        if (this.chartType === type) return;
+        // the drawn type, not the property: `stacked` with one series (or a typo) draws bar, whose switch then changes nothing
+        if (effectiveChartType(this.payload, this.chartType) === type) return;
         this.chartType = type;
         this.dispatchEvent(new CustomEvent<RangeChartType>('chart-type-change', { detail: type, bubbles: true, composed: true }));
     }
@@ -221,7 +223,8 @@ export class GeDataTableRangeChart extends UiElement {
     private chartLabel(t: RangeChartLocale, type: RangeChartType, index: number): string {
         const series = this.payload?.series ?? [];
         const names = type === 'stacked' ? series.map((s) => s.name) : [series[index]?.name ?? ''];
-        return interpolate(t.chartLabel, { title: this.heading || t.title, type: t[type], series: names.filter(Boolean).join(', ') });
+        const named = names.filter(Boolean).join(', ');
+        return interpolate(named ? t.chartLabel : t.chartLabelNoSeries, { title: this.heading || t.title, type: t[type], series: named });
     }
 
     private dataTable(t: RangeChartLocale, type: RangeChartType, index: number): TemplateResult | typeof nothing {

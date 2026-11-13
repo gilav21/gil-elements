@@ -9,6 +9,9 @@
 ge-dialog-content::part(panel) {
     width: 100%;
     max-width: calc(100vw - 2rem);
+    /* a short viewport scrolls the box instead of cutting off its top and bottom */
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
 }
 @media (min-width: 640px) {
     ge-dialog-content::part(panel) {

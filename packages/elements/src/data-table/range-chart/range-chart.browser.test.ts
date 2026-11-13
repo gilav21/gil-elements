@@ -5,7 +5,7 @@
  */
 import axe from 'axe-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import '@gilav21/elements-base/tokens.css';
 import './define.js';
 import '../define.js';
@@ -272,6 +272,66 @@ describe('review fixes', () => {
         expect(el.seriesIndex).toBe(0);
         expect(select.value).toBe(0);
         expect(shownSeries(el)).toBe('Q1');
+    });
+});
+
+describe('final review fixes', () => {
+    const payload: RangeChartPayload = { categories: ['a', 'b'], series: [{ name: 'Q1', values: [1, 2] }, { name: 'Q2', values: [30, 40] }] };
+
+    it('keeps a series-index set before the first range arrives', async () => {
+        const table = await mountTable<Row>({ columns: COLUMNS, data: ROWS }, { id: 'early' });
+        const page = await mount(`<ge-data-table-range-chart for="early" series-index="1"></ge-data-table-range-chart>`);
+        const el = page.querySelector<GeDataTableRangeChart>('ge-data-table-range-chart')!;
+        await settle(el);
+        table.dispatchEvent(new CustomEvent('range-chart-open', { detail: payload, bubbles: true, composed: true }));
+        await settle(el);
+        expect(el.seriesIndex).toBe(1);
+        const bar = root(el).querySelector('ge-bar-chart') as HTMLElement & { data: { value: number }[] };
+        expect(bar.data.map((d) => d.value)).toEqual([30, 40]);
+    });
+
+    it('changes nothing when the switch of the drawn type is clicked', async () => {
+        const el = await chart(SINGLE, 'open chart-type="stacked"');
+        const types: string[] = [];
+        el.addEventListener('chart-type-change', (event) => types.push((event as CustomEvent<string>).detail));
+        await userEvent.click(switchFor(el, 'bar'));
+        await settle(el);
+        expect(types).toEqual([]);
+        expect(el.chartType).toBe('stacked');
+    });
+
+    it('names the figure without a dangling colon when the series has no name', async () => {
+        const el = await chart({ categories: ['a'], series: [{ name: '', values: [1] }] });
+        expect(figure(el).getAttribute('aria-label')).toBe('Chart, Bar chart');
+    });
+
+    it('scrolls the panel on a short viewport, with the heading reachable', async () => {
+        await page.viewport(1280, 300);
+        try {
+            const el = await chart(MULTI);
+            const box = panel(el)!;
+            expect(box.getBoundingClientRect().height).toBeLessThanOrEqual(300);
+            expect(box.scrollHeight).toBeGreaterThan(box.clientHeight);
+            box.scrollTop = 0;
+            const title = root(el).querySelector('ge-dialog-content')!.shadowRoot!.querySelector('ge-dialog-title')!;
+            expect(title.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
+        } finally {
+            await page.viewport(1280, 800);
+        }
+    });
+
+    it('opens for a table inside a nested shadow root', async () => {
+        const wrapper = await mount('<div id="outer"></div><ge-data-table-range-chart for="deep"></ge-data-table-range-chart>');
+        const el = wrapper.querySelector<GeDataTableRangeChart>('ge-data-table-range-chart')!;
+        const inner = wrapper.querySelector('#outer')!.attachShadow({ mode: 'open' });
+        inner.innerHTML = '<div id="mid"></div>';
+        const deeper = inner.querySelector('#mid')!.attachShadow({ mode: 'open' });
+        deeper.innerHTML = '<div id="deep"></div>';
+        await settle(el);
+        deeper.querySelector('#deep')!.dispatchEvent(new CustomEvent('range-chart-open', { detail: payload, bubbles: true, composed: true }));
+        await settle(el);
+        expect(el.open).toBe(true);
+        expect(el.payload).toEqual(payload);
     });
 });
 
