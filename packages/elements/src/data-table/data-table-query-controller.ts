@@ -347,7 +347,7 @@ export class QueryController<T> {
         // The filter UI hands over each column / advanced write it hears: the latest one speaks.
         announceFilters: () => this.announceFilters(),
         filtersRestored: (globalChanged) => {
-            this.dropPendingGlobal(); // the restore wrote the global text: a typed one still waiting would overwrite it
+            if (globalChanged) this.dropPendingGlobal(); // the restore replaced the global text: a typed one still waiting would overwrite it
             const global = this.host.model.get('globalFilter');
             // ONE announcement for the restore (it replaces the filter UI's for the batch's own write): a new global text speaks as the global
             // filter does (its count reflects every filter); otherwise (an emptied global text too) the overall count, or that every filter is cleared.

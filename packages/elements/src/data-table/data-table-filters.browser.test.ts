@@ -399,6 +399,16 @@ describe('round 8', () => {
         expect(spoken.filter((s) => s !== '')).toEqual([]);
     });
 
+    it('a global filter typed, then a restore that leaves the global text alone: the typed text still applies (round 22)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn], filterDebounce: 300 });
+        const state = table.getViewState()!;
+        table.provider('query')?.changeGlobalFilter('Al'); // waits on the debounce
+        table.applyViewState({ ...structuredClone(state), columnFilters: { name: 'a' } }); // the global text stays as it was
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await settle(table);
+        expect(table.globalFilter).toBe('Al');
+    });
+
     it('a global filter typed, then replaced from outside within the debounce, keeps the outside value (round 18)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn], filterDebounce: 300 });
         const state = table.getViewState()!;
