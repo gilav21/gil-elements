@@ -84,12 +84,22 @@ describe('QueryService wave 7 additions', () => {
         expect(model.get('paginationState').pageIndex).toBe(0);
     });
 
-    it('applyFilters keeps a typed global text still waiting on the debounce when its global text is not written (final review)', () => {
+    it('applyFilters with a globalFilter key drops a typed global text still waiting on the debounce, even when the value equals the current one (final review)', () => {
         const queue = new Set<() => void>();
         const timeout = (fn: () => void) => (queue.add(fn), () => void queue.delete(fn));
         const { query, model } = setup({ filterDebounce: 100, timeout });
         query.changeGlobalFilter('Bo'); // waits on the debounce
-        query.applyFilters({ globalFilter: '', columnFilters: { team: 'x' } }); // '' is the current text: not written
+        query.applyFilters({ globalFilter: '' }); // the caller sets the global filter explicitly ('' is the current text)
+        for (const fn of [...queue]) fn();
+        expect(model.get('globalFilter')).toBe('');
+    });
+
+    it('applyFilters without a globalFilter key keeps a typed global text still waiting on the debounce (final review)', () => {
+        const queue = new Set<() => void>();
+        const timeout = (fn: () => void) => (queue.add(fn), () => void queue.delete(fn));
+        const { query, model } = setup({ filterDebounce: 100, timeout });
+        query.changeGlobalFilter('Bo');
+        query.applyFilters({ columnFilters: { team: 'x' } });
         for (const fn of [...queue]) fn();
         expect(model.get('globalFilter')).toBe('Bo');
         expect(model.get('columnFilters')).toEqual({ team: 'x' });

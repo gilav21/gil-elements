@@ -205,7 +205,7 @@ export class AddonSet<T = unknown> {
             }
         };
         // Everything the addon registers through its host (slots, subscriptions) is recorded, so a teardown, or a setup that threw, releases it all;
-        // once the addon is torn down its host registers, emits and subscribes nothing.
+        // once the addon is torn down its host registers, emits, subscribes, announces and renders nothing, and provides no service.
         const owned = new Set<() => void>();
         const own = (register: () => () => void): (() => void) => {
             if (!live) return () => undefined;
@@ -228,6 +228,9 @@ export class AddonSet<T = unknown> {
             registerCellAction: { value: (slot: CellActionSlot<T>) => own(() => this.host.registerCellAction(slot)) },
             registerHeaderAction: { value: (slot: HeaderActionSlot<T>) => own(() => this.host.registerHeaderAction(slot)) },
             emit: { value: (name: string, detail?: unknown): void => void (live && this.host.emit(name, detail as never)) },
+            announce: { value: (message: string): void => void (live && this.host.announce(message)) },
+            requestRender: { value: (): void => void (live && this.host.requestRender()) },
+            provider: { value: (key: DataTableAddonServiceKey) => (live ? this.host.provider(key) : undefined) },
             setBusy: { value: (label: string | null): void => void (live && (this.busy ? this.busy(id, label) : this.host.setBusy(label))) },
         }) as DataTableAddonHost<T>;
         let teardown: void | (() => void);
@@ -260,8 +263,9 @@ export class AddonSet<T = unknown> {
         const wanted = new Map([...this.used].map(([id, { addon }]) => [id, addon]));
         for (const id of this.ids) {
             const addon = this.registry.get(id);
-            if (addon) wanted.set(id, addon);
-            else warnOncePer(this, `unknown-addon:${id}`, `[ge-data-table] unknown addon "${id}": import its define module first.`); // once per set (one table) and id: another table with the same typo warns for itself
+            if (addon) {
+                if (!wanted.has(id)) wanted.set(id, addon); // a use()d addon wins over the registry's (as its options win in merge())
+            } else warnOncePer(this, `unknown-addon:${id}`, `[ge-data-table] unknown addon "${id}": import its define module first.`); // once per set (one table) and id: another table with the same typo warns for itself
         }
         for (const [id, bundle] of [...wanted]) {
             if (bundle.covers && this.optionsFor(id, bundle) !== false) for (const covered of bundle.covers) wanted.delete(covered);

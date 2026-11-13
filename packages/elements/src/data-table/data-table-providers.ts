@@ -135,8 +135,9 @@ export interface QueryService<T> {
     /** Wave 7: the row's id (`getRowId`). */
     rowId(row: T): string;
     /**
-     * Wave 7: replaces the global filter and / or the column filters (a key left out keeps its value) in ONE model batch with the page reset to 0,
-     * fires one `filter-change` and announces the result like a column filter change (the NL filter and the AI use it).
+     * Wave 7: replaces the global filter and / or the column filters (a key left out keeps its value; an equal value is not written) in ONE model
+     * batch with the page reset to 0, fires `filter-change` when the global text changed, and announces the result like a column filter change (the
+     * NL filter and the AI use it). A `globalFilter` key drops a typed global text still waiting on the debounce, whatever its value.
      */
     applyFilters(spec: { readonly globalFilter?: string; readonly columnFilters?: Readonly<Record<string, unknown>> }): void;
     sortDirection(columnKey: string | keyof T): SortDirection;

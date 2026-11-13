@@ -6,16 +6,28 @@ import { html, nothing } from 'lit';
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import { chromeIcon } from './data-table-icons.js';
 import { interpolate } from './data-table.locales.js';
-import type { ColumnDef } from './data-table.types.js';
+import { reportOncePer } from './data-table-warn.js';
+import type { ColumnDef, FlattenedTreeRow, RowActionContext } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 
 export interface ActionsView<T> {
-    /** The row's buttons; undefined while no addon registered one, so a consumer's own `_actions` column draws its content as before. `roving`: see `tabStop`. */
-    cell(row: T, rowIndex: number, disabled: boolean, roving: boolean): unknown;
+    /** The row's buttons; undefined while no addon registered one, so a consumer's own `_actions` column draws its content as before. `roving`: see `tabStop`; `node`: the tree node in tree mode. */
+    cell(row: T, rowIndex: number, disabled: boolean, roving: boolean, node?: FlattenedTreeRow<T>): unknown;
     /** The consumer defined its own `_actions` column: its content is drawn, then the buttons. */
     readonly consumerColumn: boolean;
     /** The header's buttons; nothing for the table's own columns. */
     head(column: ColumnDef<T>): unknown;
+}
+
+/** A slot's `aria-expanded`: absent without `expanded`; a slot whose `expanded` throws is reported once (per slot) and drawn without it. */
+function expandedOf(slot: { readonly id: string; readonly expanded?: unknown }, read: () => boolean | undefined): string | typeof nothing {
+    if (!slot.expanded) return nothing;
+    try {
+        return String(read());
+    } catch (error) {
+        reportOncePer(slot, 'expanded', `[ge-data-table] the "expanded" of action "${slot.id}" threw; drawn without aria-expanded:`, error);
+        return nothing;
+    }
 }
 
 export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
@@ -28,14 +40,18 @@ export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
         consumerColumn: host.config.columns.some((c) => c.accessorKey === '_actions'),
         // Row buttons follow the rule of every in-cell control: out of the tab order while a roving cell exists (one tab stop per grid; the keyboard
         // reaches a row's actions through the context-menu key), in it otherwise.
-        cell: (row, rowIndex, disabled, roving) => {
+        cell: (row, rowIndex, disabled, roving, node) => {
             if (cells.length === 0) return undefined;
             if (disabled) return nothing;
-            const context = () => requireProvider(host, 'query').rowContext(row, rowIndex);
+            // In tree mode the context carries the node, as Angular's `buildRowActionContext` does.
+            const context = (): RowActionContext<T> => {
+                const base = requireProvider(host, 'query').rowContext(row, rowIndex);
+                return node ? { ...base, depth: node.depth, isLeaf: node.isLeaf, parentRow: node.parentRow, isExpanded: node.isExpanded } : base;
+            };
             return cells.map(
                 (slot) =>
                     html`<button type="button" data-slot="data-table-icon-button" data-size="lg" data-action-id=${slot.id} aria-label=${slot.ariaLabel ?? locale.rowActions} aria-haspopup=${slot.haspopup ?? nothing}
-                        aria-expanded=${slot.expanded ? String(slot.expanded(context())) : nothing} tabindex=${roving ? '-1' : nothing} @click=${(event: Event) => slot.onClick(event, context())}>${slot.icon ?? chromeIcon('more-vertical')}</button>`,
+                        aria-expanded=${expandedOf(slot, () => slot.expanded?.(context()))} tabindex=${roving ? '-1' : nothing} @click=${(event: Event) => slot.onClick(event, context())}>${slot.icon ?? chromeIcon('more-vertical')}</button>`,
             );
         },
         head: (column) =>
@@ -44,7 +60,7 @@ export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
                 : heads.map(
                       (slot) =>
                           html`<button type="button" data-slot="data-table-header-action" data-action-id=${slot.id} aria-label=${interpolate(slot.ariaLabel ?? locale.columnMenu, { column: column.header })} aria-haspopup=${slot.haspopup ?? nothing}
-                              aria-expanded=${slot.expanded ? String(slot.expanded(column)) : nothing} @click=${(event: Event) => slot.onClick(event, column)}>${slot.icon ?? chromeIcon('more-vertical', 'xs')}</button>`,
+                              aria-expanded=${expandedOf(slot, () => slot.expanded?.(column))} @click=${(event: Event) => slot.onClick(event, column)}>${slot.icon ?? chromeIcon('more-vertical', 'xs')}</button>`,
                   ),
     };
 }

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { DataTableAddon, DataTableAddonHost } from './data-table-addon-kit.js';
 import { registerDataTableAddon } from './data-table-addon-registry.js';
 import type { GeDataTable } from './data-table.js';
-import { bodyRows, headCell, mountTable, q, qa, SAMPLE_COLUMNS, SAMPLE_ROWS, settle, stubDownload, trackTable, type DownloadStub, type SampleRow } from './data-table-fixtures.js';
+import { bodyRows, headCell, makeRows, mountTable, q, qa, SAMPLE_COLUMNS, SAMPLE_ROWS, settle, stubDownload, trackTable, type DownloadStub, type SampleRow } from './data-table-fixtures.js';
 import { mouseDrag, parkMouse } from './data-table-input-fixtures.js';
 import type { RowActionContext } from './data-table.types.js';
 
@@ -330,6 +330,37 @@ describe('the action buttons addons register', () => {
         expect(cells.map((c) => c.querySelectorAll('[data-action-id="menu"]').length)).toEqual([1, 1, 0, 1]);
         const buttonAfterContent = cells[0]!.lastElementChild;
         expect(buttonAfterContent?.getAttribute('data-action-id')).toBe('menu');
+    });
+
+    it('reports a throwing slot callback once and still draws the table and the button (final review)', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable();
+        table.use(addon);
+        runs[0]!.host.registerCellAction({ id: 'bad', expanded: () => { throw new Error('expanded failed'); }, onClick: () => undefined });
+        runs[0]!.host.registerHeaderAction({ id: 'bad-head', expanded: () => { throw new Error('expanded failed'); }, onClick: () => undefined });
+        await settle(table);
+        table.requestUpdate();
+        await settle(table);
+        expect(bodyRows(table)).toHaveLength(4);
+        const buttons = qa(table, '[data-action-id="bad"]');
+        expect(buttons).toHaveLength(4);
+        expect(buttons.some((b) => b.hasAttribute('aria-expanded'))).toBe(false);
+        expect(headCell(table, 'age').querySelector('[data-action-id="bad-head"]')).not.toBeNull();
+        expect(error).toHaveBeenCalledTimes(2); // once per slot
+        error.mockRestore();
+    });
+
+    it('gives a tree row action its node: depth, leaf, parent and expansion (final review)', async () => {
+        const { addon, runs } = probe(uniqueId());
+        const data = makeRows(2, { children: 1 });
+        const table = await mountTable({ data, enableSubRows: true, subRowDefaultExpanded: true });
+        table.use(addon);
+        const clicks: RowActionContext<SampleRow>[] = [];
+        runs[0]!.host.registerCellAction({ id: 'menu', onClick: (_event, context) => clicks.push(context) });
+        await settle(table);
+        qa(table, '[data-action-id="menu"]')[1]!.click(); // r0's child
+        expect(clicks[0]).toMatchObject({ row: (data[0]!['children'] as SampleRow[])[0], index: 1, depth: 1, isLeaf: true, parentRow: data[0], isExpanded: false });
     });
 
     it("leaves a consumer's own actions column as it was while no addon registers a row action", async () => {

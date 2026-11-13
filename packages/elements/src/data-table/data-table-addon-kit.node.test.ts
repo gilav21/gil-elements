@@ -315,6 +315,50 @@ describe('AddonSet: which addon object runs (review)', () => {
     });
 });
 
+describe('AddonSet: final review', () => {
+    it('keeps a use()d addon over the registry addon of the same id, also when the registry entry arrives later', () => {
+        const { host } = fakeHost();
+        const log: string[] = [];
+        const make = (name: string): DataTableAddon => ({ id: 'export', setup: () => (log.push(`start ${name}`), () => log.push(`stop ${name}`)) });
+        const registry = new Map<string, DataTableAddon>();
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const set = new AddonSet(host, registry);
+        set.start();
+        set.use(make('mine'));
+        set.configure('export', {});
+        registry.set('export', make('registry'));
+        set.sync();
+        expect(log).toEqual(['start mine']);
+    });
+
+    it('after the teardown, the addon host announces, renders and provides nothing', () => {
+        const announce = vi.fn();
+        const requestRender = vi.fn();
+        const service = createAddonsService<unknown>(() => {});
+        const base = createAddonHost<unknown>({
+            root: {} as HTMLElement,
+            resolvedLocale: () => ({ code: 'en' }) as DataTableLocale,
+            emit: vi.fn(),
+            announce,
+            requestRender,
+            subscribe: () => () => {},
+            provider: () => ({}) as never,
+            addons: () => service,
+        });
+        const set = new AddonSet(base, new Map());
+        let kept: DataTableAddonHost | undefined;
+        set.start();
+        const off = set.use({ id: 'a', setup: (h) => void (kept = h) });
+        expect(kept!.provider('query')).toBeDefined();
+        off();
+        kept!.announce('late');
+        kept!.requestRender();
+        expect(announce).not.toHaveBeenCalled();
+        expect(requestRender).not.toHaveBeenCalled();
+        expect(kept!.provider('query')).toBeUndefined();
+    });
+});
+
 describe('AddonSet: an addon that throws', () => {
     const boom = (): never => {
         throw new Error('boom');

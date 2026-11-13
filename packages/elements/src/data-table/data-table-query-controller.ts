@@ -301,8 +301,11 @@ export class QueryController<T> {
         },
         rawRows: () => this.host.model.get('data'),
         rowId: (row) => this.host.config.getRowId(row),
-        applyFilters: ({ globalFilter, columnFilters }) => {
+        applyFilters: (spec) => {
+            const { globalFilter, columnFilters } = spec;
             const { model } = this.host;
+            // The caller sets the global filter explicitly: a typed text still waiting on the debounce is dropped, whether or not the value differs.
+            if (Object.hasOwn(spec, 'globalFilter')) this.dropPendingGlobal();
             // Only the parts given, and only when they differ (per key for the column filters): an equal spec writes nothing, resets no page, fires nothing.
             const globalChanged = globalFilter !== undefined && globalFilter !== model.get('globalFilter');
             const current = model.get('columnFilters');
@@ -312,7 +315,6 @@ export class QueryController<T> {
                     (key) => Object.hasOwn(current, key) !== Object.hasOwn(columnFilters, key) || !sameFilterValue(current[key], columnFilters[key]),
                 );
             if (!globalChanged && !columnsChanged) return;
-            if (globalChanged) this.dropPendingGlobal(); // a typed text still waiting on the debounce would overwrite the one written now
             model.batch(() => {
                 if (globalChanged) model.set('globalFilter', globalFilter);
                 if (columnsChanged) model.set('columnFilters', { ...columnFilters });

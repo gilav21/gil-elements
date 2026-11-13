@@ -163,6 +163,11 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 ### Step 0 follow-ups (triaged out of PR #76)
 - The throwing-addon report (`reportOncePer`) is keyed per addon id, so a later, different failure of the same addon (another phase) is swallowed.
 - The base addon host (`createAddonHost`, outside an `AddonSet`) has a no-op `expose` and sets busy under the owner `''`.
+- A re-entrant `sync()` during an addon's `setup` (it registers another addon, or changes the attribute) can launch a second instance of it.
+- Keyboard path to the row actions of third-party addons (D11 makes row buttons `tabindex=-1`, reachable only through the context-menu addon's key): tabbable kebabs or a navigable `_actions` cell. Needs a decision.
+- `exportData({ onlyVisible: false })` dedupes keys with its own loop; reuse `indexColumns` from the drawn path.
+- `data-table-grid-actions.ts` inlines the roving tab rule; reuse `tabStop` from `data-table-grid-special.ts`.
+- `selectedRows` stays duplicated (element getter and selection service) on purpose: the getter must work detached.
 
 ## H. Work packages (strict file ownership after step 0)
 
