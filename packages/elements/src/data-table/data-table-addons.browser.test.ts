@@ -4,6 +4,7 @@ import type { DataTableAddon, DataTableAddonHost } from './data-table-addon-kit.
 import { registerDataTableAddon } from './data-table-addon-registry.js';
 import type { GeDataTable } from './data-table.js';
 import { bodyRows, headCell, mountTable, q, qa, SAMPLE_COLUMNS, SAMPLE_ROWS, settle, stubDownload, trackTable, type DownloadStub, type SampleRow } from './data-table-fixtures.js';
+import { mouseDrag, parkMouse } from './data-table-input-fixtures.js';
 import type { RowActionContext } from './data-table.types.js';
 
 /** An addon that hands its host (and options) to the test. */
@@ -101,6 +102,22 @@ describe('use() and the addon host', () => {
         expect(bodyRows(table).map((r) => r.textContent?.trim())).toEqual([expect.stringContaining('Alice')]);
     });
 
+    it('keeps the busy overlay while another addon is busy, and drops a busy addon label at its teardown (review)', async () => {
+        const one = probe(uniqueId());
+        const two = probe(uniqueId());
+        const table = await mountTable();
+        table.use(one.addon);
+        const offTwo = table.use(two.addon);
+        one.runs[0]!.host.setBusy('Exporting…');
+        two.runs[0]!.host.setBusy('Pivoting…');
+        one.runs[0]!.host.setBusy(null);
+        await settle(table);
+        expect(q(table, '[data-kind="busy"]').textContent).toContain('Pivoting…');
+        offTwo();
+        await settle(table);
+        expect(table.querySelector('[data-kind="busy"]')).toBeNull();
+    });
+
     it('shows the busy overlay with the label an addon sets, and clears it', async () => {
         const { addon, runs } = probe(uniqueId());
         const table = await mountTable();
@@ -193,6 +210,22 @@ describe('the action buttons addons register', () => {
         off();
         await settle(table);
         expect(table.querySelector('[data-column="_actions"]')).toBeNull();
+    });
+
+    it('draws the header button as the header action the core already handles: hidden until hover, and a press-and-drag on it does not reorder (review)', async () => {
+        await parkMouse();
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable({ enableColumnReorder: true }, {}, { width: 700, height: 400 });
+        table.use(addon);
+        runs[0]!.host.registerHeaderAction({ id: 'col', onClick: () => undefined });
+        await settle(table);
+        const kebab = headCell(table, 'name').querySelector<HTMLElement>('[data-action-id="col"]')!;
+        expect(kebab.dataset['slot']).toBe('data-table-header-action');
+        expect(getComputedStyle(kebab).opacity).toBe('0');
+        await mouseDrag(kebab, headCell(table, 'age'), { holdMs: 100 });
+        await settle(table);
+        expect(table.columnOrder).toEqual([]);
+        await parkMouse();
     });
 
     it('draws aria-expanded from the slot, per row and per column, and none without `expanded`', async () => {

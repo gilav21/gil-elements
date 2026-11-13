@@ -299,12 +299,21 @@ export class QueryController<T> {
         applyFilters: ({ globalFilter, columnFilters }) => {
             const { model } = this.host;
             if (globalFilter !== undefined) this.dropPendingGlobal(); // a typed text still waiting on the debounce would overwrite this one
+            // Only the parts given, and only when they differ (per key for the column filters): an equal spec writes nothing, resets no page, fires nothing.
+            const globalChanged = globalFilter !== undefined && globalFilter !== model.get('globalFilter');
+            const current = model.get('columnFilters');
+            const columnsChanged =
+                columnFilters !== undefined &&
+                [...new Set([...Object.keys(current), ...Object.keys(columnFilters)])].some(
+                    (key) => Object.hasOwn(current, key) !== Object.hasOwn(columnFilters, key) || !sameFilterValue(current[key], columnFilters[key]),
+                );
+            if (!globalChanged && !columnsChanged) return;
             model.batch(() => {
-                if (globalFilter !== undefined) model.set('globalFilter', globalFilter);
-                if (columnFilters !== undefined) model.set('columnFilters', { ...columnFilters });
+                if (globalChanged) model.set('globalFilter', globalFilter);
+                if (columnsChanged) model.set('columnFilters', { ...columnFilters });
                 this.resetPage();
             });
-            this.host.emit('filter-change', model.get('globalFilter'));
+            if (globalChanged) this.host.emit('filter-change', globalFilter);
             this.announceFilters();
         },
         sortDirection: (key) => this.sorts().find((s) => s.column === String(key))?.direction ?? null,

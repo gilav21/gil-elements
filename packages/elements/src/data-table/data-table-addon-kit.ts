@@ -119,7 +119,7 @@ function sameValue(a: unknown, b: unknown): boolean {
  */
 export class AddonSet<T = unknown> {
     private readonly used = new Map<string, { addon: DataTableAddon<T>; options: unknown }>();
-    private readonly active = new Map<string, { teardown: () => void; options: unknown }>();
+    private readonly active = new Map<string, { addon: DataTableAddon<T>; teardown: () => void; options: unknown }>();
     /** What each running addon exposed (`host.expose`), by addon id. */
     private readonly apis = new Map<string, object>();
     private ids: readonly string[] = [];
@@ -130,14 +130,17 @@ export class AddonSet<T = unknown> {
     constructor(
         private readonly host: DataTableAddonHost<T>,
         private readonly registry: ReadonlyMap<string, DataTableAddon<T>>,
+        /** Where an addon's busy label goes, by addon id (`null` clears it); cleared at the addon's teardown. Without it, `host.setBusy`. */
+        private readonly busy?: (owner: string, label: string | null) => void,
     ) {}
 
-    /** Adds an addon (with options) regardless of the attribute; the returned function removes it. */
+    /** Adds an addon (with options) regardless of the attribute; the returned function removes it (not an addon that replaced it under the same id). */
     use(addon: DataTableAddon<T>, options?: unknown): () => void {
         this.used.set(addon.id, { addon, options });
         this.merge();
         this.sync();
         return () => {
+            if (this.used.get(addon.id)?.addon !== addon) return;
             this.used.delete(addon.id);
             this.merge();
             this.sync();
@@ -173,7 +176,8 @@ export class AddonSet<T = unknown> {
         const wanted = this.wanted();
         for (const [id, running] of this.active) {
             const addon = wanted.get(id);
-            if (addon && this.optionsFor(id, addon) === running.options) continue;
+            // Kept only while the SAME addon object is wanted with the same options: a use() override or a replaced registry entry restarts it.
+            if (addon === running.addon && this.optionsFor(id, addon) === running.options) continue;
             running.teardown();
             this.active.delete(id);
         }
@@ -203,6 +207,7 @@ export class AddonSet<T = unknown> {
         const host = Object.create(this.host, {
             expose: { value: (api: object): void => void (live && this.apis.set(id, api)) },
             subscribe: { value: (topic: DataTableTopic, fn: () => void) => this.host.subscribe(topic, () => guard(`a '${topic}' listener`, fn)) },
+            setBusy: { value: (label: string | null): void => void (live && (this.busy ? this.busy(id, label) : this.host.setBusy(label))) },
         }) as DataTableAddonHost<T>;
         let teardown: void | (() => void);
         if (!guard('setup', () => (teardown = addon.setup(host, options)))) {
@@ -210,11 +215,13 @@ export class AddonSet<T = unknown> {
             this.apis.delete(id);
         }
         this.active.set(id, {
+            addon,
             options,
             teardown: () => {
                 live = false;
                 this.apis.delete(id);
                 if (teardown) guard('teardown', teardown);
+                this.busy?.(id, null); // a busy label the addon left behind goes with it
             },
         });
     }

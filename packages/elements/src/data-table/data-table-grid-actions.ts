@@ -39,7 +39,7 @@ export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
                 ? nothing
                 : heads.map(
                       (slot) =>
-                          html`<button type="button" data-slot="data-table-icon-button" data-action-id=${slot.id} aria-label=${interpolate(slot.ariaLabel ?? locale.columnMenu, { column: column.header })} aria-haspopup=${slot.haspopup ?? nothing}
+                          html`<button type="button" data-slot="data-table-header-action" data-action-id=${slot.id} aria-label=${interpolate(slot.ariaLabel ?? locale.columnMenu, { column: column.header })} aria-haspopup=${slot.haspopup ?? nothing}
                               aria-expanded=${slot.expanded ? String(slot.expanded(column)) : nothing} @click=${(event: Event) => slot.onClick(event, column)}>${slot.icon ?? chromeIcon('more-vertical', 'xs')}</button>`,
                   ),
     };

@@ -35,7 +35,8 @@ const ADDON_CORE = new Set(['data-table-addon-kit.js', 'data-table-addon-registr
  * core only as types: a value import of a core module would put the table's code (a shared chunk) on the addon's entry.
  */
 function addonImportProblems(name: string, source: string): string[] {
-    const id = name.split('/')[1];
+    // The folder that is the addon's own: `addons/<id>/`, or a top-level addon-like entry such as `range-chart/`.
+    const own = name.startsWith('addons/') ? `addons/${name.split('/')[1]}/` : `${name.split('/')[0]}/`;
     const problems: string[] = [];
     for (const { specifier, typeOnly } of statementsOf(source)) {
         if (!specifier.startsWith('.')) {
@@ -43,7 +44,7 @@ function addonImportProblems(name: string, source: string): string[] {
             continue;
         }
         const target = posix.normalize(posix.join(posix.dirname(name), specifier));
-        if (target.startsWith(`addons/${id}/`)) continue;
+        if (target.startsWith(own)) continue;
         if (target.startsWith('addons/')) problems.push(`${specifier}: another addon`);
         else if (target.startsWith('../shared/')) continue;
         else if (target.startsWith('../')) {
@@ -53,14 +54,18 @@ function addonImportProblems(name: string, source: string): string[] {
     return problems;
 }
 
-/** Every addon source (relative to this folder). */
+/** Every addon source (relative to this folder), and the range chart's: it is an entry of its own that must not pull the core either. */
 const ADDON_SOURCES = (readdirSync(DIRECTORY, { recursive: true }) as string[])
     .map((name) => name.replaceAll('\\', '/'))
-    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && name.startsWith('addons/'));
+    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && (name.startsWith('addons/') || name.startsWith('range-chart/')));
 
 describe('the addons', () => {
     it('finds their sources, the entry stubs of wave 7 included', () => {
-        expect(ADDON_SOURCES).toEqual(expect.arrayContaining(['addons/pivot/pivot-utils.ts', 'addons/context-menu/index.ts', 'addons/export/define.ts', 'addons/pivot/define.ts']));
+        expect(ADDON_SOURCES).toEqual(expect.arrayContaining(['addons/pivot/pivot-utils.ts', 'addons/context-menu/index.ts', 'addons/export/define.ts', 'addons/pivot/define.ts', 'range-chart/index.ts', 'range-chart/define.ts']));
+        // the range chart's own folder is `range-chart/`; a core module is still refused there
+        expect(addonImportProblems('range-chart/range-chart.ts', `import './range-chart-data.js';\nimport '../../dialog/define.js';\nimport { x } from '../data-table.utils.js';`)).toEqual([
+            '../data-table.utils.js: a core module (only the kit and the addon registry, or import type)',
+        ]);
     });
 
     it.each(ADDON_SOURCES)('%s imports the core only through the kit, the addon registry and types, and no other addon', (name) => {

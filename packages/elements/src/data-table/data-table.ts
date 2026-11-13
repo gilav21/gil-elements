@@ -232,11 +232,16 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             requestRender: () => void (this.assembled && this.requestUpdate()), // detached: nothing to draw
             subscribe: (topic, fn) => this.topics.on(topic, fn),
             provider: (key) => this.provider(key),
-            // The controller's own service (it outlives a disconnect, so a teardown can still unregister); the error names the key in a plan without it.
-            addons: () => (this.serviceOf('addons') as AddonsService<T> | undefined) ?? requireProvider(this, 'addons'),
+            addons: () => this.addonsService(),
         }),
         dataTableAddons as ReadonlyMap<string, DataTableAddon<T>>,
+        (owner, label) => this.addonsService().setBusy(label, owner),
     );
+
+    /** The controller's own `addons` service (it outlives a disconnect, so a teardown can still unregister); the error names the key in a plan without it. */
+    private addonsService(): AddonsService<T> {
+        return (this.serviceOf('addons') as AddonsService<T> | undefined) ?? requireProvider(this, 'addons');
+    }
     /** The step 0 clipboard answers, for a call while no `clipboard` service is provided (detached); built once. */
     private neutralClip: ClipboardService<T> | undefined;
     /** A `cellRange` assigned before the first connect, until the range session adopts it (no controller is assembled before the first connect). */
@@ -418,9 +423,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The rows of `data` (in tree mode, of every level) whose id is selected. A selected id with no row any more is kept in `rowSelection` and not counted here. */
     get selectedRows(): T[] {
-        const selection = this.store.get('rowSelection');
-        if (this.config.enableSubRows) return [...requireProvider(this, 'query').treeIndex().nodes].filter(([id]) => selection[id] === true).map(([, node]) => node as T);
-        return this.store.get('data').filter((row) => selection[this.getRowId(row)] === true);
+        return this.provider('selection')?.selectedRows() ?? [];
     }
 
     expandAllGroups(): void {

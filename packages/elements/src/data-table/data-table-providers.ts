@@ -413,9 +413,12 @@ export interface HeaderActionSlot<T = unknown> {
 export interface AddonsService<T> {
     readonly cellActions: SlotRegistry<CellActionSlot<T>>;
     readonly headerActions: SlotRegistry<HeaderActionSlot<T>>;
-    /** The busy-overlay label, or null when idle. */
+    /** The busy-overlay label: the most recent one while any owner is busy, or null when idle. */
     busyLabel(): string | null;
-    setBusy(label: string | null): void;
+    /** Sets or (`null`) clears the label of `owner` (an addon id; default `''`). */
+    setBusy(label: string | null, owner?: string): void;
+    /** Clears every owner's label. */
+    clearBusy(): void;
 }
 
 /** Wave 7 (AI, package D implements; the `ai` controller provides it): the natural-language filter and the AI column fill, reached through the element's methods. */

@@ -12,18 +12,25 @@ export function createDataTableSlots<T>(): DataTableSlots<T> {
     return { cellActions: new SlotRegistry(), headerActions: new SlotRegistry() };
 }
 
-/** The `addons` service: the slot registries plus the busy-overlay label; `onChange` is the element's re-render. */
+/** The `addons` service: the slot registries plus the busy labels by owner (the overlay shows the latest); `onChange` is the element's re-render. */
 export function createAddonsService<T>(onChange: () => void): AddonsService<T> {
     const slots = createDataTableSlots<T>();
-    let busy: string | null = null;
+    const busy = new Map<string, string>(); // insertion order = recency
     slots.cellActions.subscribe(onChange);
     slots.headerActions.subscribe(onChange);
+    const label = (): string | null => [...busy.values()].at(-1) ?? null;
     return {
         ...slots,
-        busyLabel: () => busy,
-        setBusy(label) {
-            if (busy === label) return;
-            busy = label;
+        busyLabel: label,
+        setBusy(next, owner = '') {
+            const before = label();
+            busy.delete(owner);
+            if (next !== null) busy.set(owner, next);
+            if (label() !== before) onChange();
+        },
+        clearBusy() {
+            if (busy.size === 0) return;
+            busy.clear();
             onChange();
         },
     };
@@ -49,6 +56,7 @@ export class AddonHostController<T> {
     }
 
     detach(): void {
+        this.service.clearBusy();
         this.unprovide?.();
         this.unprovide = undefined;
     }

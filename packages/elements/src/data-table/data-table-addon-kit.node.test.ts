@@ -265,6 +265,56 @@ describe('AddonSet: exposed APIs (wave 7)', () => {
     });
 });
 
+describe('AddonSet: which addon object runs (review)', () => {
+    it('restarts an id when use() overrides it with another addon object, with equal options', () => {
+        const { set, log } = (() => {
+            const { host } = fakeHost();
+            return { set: new AddonSet(host, new Map()), log: [] as string[] };
+        })();
+        const make = (name: string): DataTableAddon => ({ id: 'x', setup: () => (log.push(`start ${name}`), () => log.push(`stop ${name}`)) });
+        set.start();
+        set.use(make('a'));
+        set.use(make('b'));
+        expect(log).toEqual(['start a', 'stop a', 'start b']);
+    });
+
+    it('restarts an id whose registry entry was replaced, at the next sync', () => {
+        const { host } = fakeHost();
+        const log: string[] = [];
+        const make = (name: string): DataTableAddon => ({ id: 'x', setup: () => (log.push(`start ${name}`), () => log.push(`stop ${name}`)) });
+        const registry = new Map([['x', make('old')]]);
+        const set = new AddonSet(host, registry);
+        set.start();
+        set.configure('x', {});
+        registry.set('x', make('new'));
+        set.sync();
+        expect(log).toEqual(['start old', 'stop old', 'start new']);
+    });
+
+    it("the remover of an overridden use() leaves the addon that replaced it running", () => {
+        const { host } = fakeHost();
+        const log: string[] = [];
+        const make = (name: string): DataTableAddon => ({ id: 'x', setup: () => (log.push(`start ${name}`), () => log.push(`stop ${name}`)) });
+        const set = new AddonSet(host, new Map());
+        set.start();
+        const offA = set.use(make('a'));
+        set.use(make('b'));
+        log.length = 0;
+        offA();
+        expect(log).toEqual([]);
+    });
+
+    it('clears the busy label of an addon at its teardown, through the busy port', () => {
+        const { host } = fakeHost();
+        const busy: [string, string | null][] = [];
+        const set = new AddonSet(host, new Map(), (owner, label) => busy.push([owner, label]));
+        set.start();
+        const off = set.use({ id: 'export', setup: (h) => h.setBusy('Exporting') });
+        off();
+        expect(busy).toEqual([['export', 'Exporting'], ['export', null]]);
+    });
+});
+
 describe('AddonSet: an addon that throws', () => {
     const boom = (): never => {
         throw new Error('boom');

@@ -68,6 +68,22 @@ describe('QueryService wave 7 additions', () => {
         expect(announced).toEqual(['1 row matches the filters']);
     });
 
+    it('applyFilters writes nothing, resets no page and fires nothing for values equal to the current ones (review)', () => {
+        const { query, model, events } = setup();
+        model.set('globalFilter', 'Al');
+        model.set('columnFilters', { team: ['y'] });
+        const before = model.get('columnFilters');
+        events.length = 0;
+        query.applyFilters({ globalFilter: 'Al', columnFilters: { team: ['y'] } });
+        expect(model.get('columnFilters')).toBe(before);
+        expect(model.get('paginationState').pageIndex).toBe(2);
+        expect(events).toEqual([]);
+        // only the column part changes: no filter-change (the global text is the same)
+        query.applyFilters({ globalFilter: 'Al', columnFilters: { team: ['x'] } });
+        expect(events.map(([name]) => name).filter((name) => name === 'filter-change')).toEqual([]);
+        expect(model.get('paginationState').pageIndex).toBe(0);
+    });
+
     it('applyFilters keeps what the spec leaves out', () => {
         const { query, model } = setup();
         model.set('globalFilter', 'keep');

@@ -4,6 +4,21 @@ import { dataTableAddons, getDataTableAddon, onDataTableAddonRegistered, registe
 
 const host = { subscribe: () => () => undefined } as unknown as DataTableAddonHost;
 
+describe('the addons service: busy labels per addon (review)', () => {
+    it('shows the most recent label while any addon is busy, and clears all at once', async () => {
+        const { createAddonsService } = await import('./data-table-addon-host-controller.js');
+        const service = createAddonsService(() => undefined);
+        service.setBusy('Exporting', 'export');
+        service.setBusy('Pivoting', 'pivot');
+        expect(service.busyLabel()).toBe('Pivoting');
+        service.setBusy(null, 'pivot');
+        expect(service.busyLabel()).toBe('Exporting'); // the other addon is still busy
+        service.setBusy('Pivoting', 'pivot');
+        service.clearBusy();
+        expect(service.busyLabel()).toBeNull();
+    });
+});
+
 describe('the data-table addon registry', () => {
     it('finds a registered addon by id, and a second registration of the id replaces it', () => {
         const first: DataTableAddon = { id: 'registry-test-a', setup: () => undefined };
