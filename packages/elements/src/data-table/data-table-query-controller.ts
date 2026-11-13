@@ -22,8 +22,9 @@ export const FILTER_ANNOUNCE_MS = 500;
 import { buildGroupedDisplayRows, isGroupingActive, partitionIntoGroups, renumberDataRows, type RowGroup } from './data-table-group.js';
 import { buildTreeIndex, filterTree, flattenTree, sortTree } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
-import type { ColumnDef, DataTableDisplayRow, DataTableQuery, FlattenedTreeRow, PaginationState, SortDirection, SortState } from './data-table.types.js';
+import type { ColumnDef, DataTableDisplayRow, DataTableExportOptions, DataTableQuery, FlattenedTreeRow, PaginationState, SortDirection, SortState } from './data-table.types.js';
 import { getCellValue, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
+import { warnOncePer } from './data-table-warn.js';
 
 /** The memo graph filter -> sort -> page, the server-mode `query` event, and the header and pager gestures. */
 export class QueryController<T> {
@@ -290,16 +291,11 @@ export class QueryController<T> {
             return { row, index, selected: Object.hasOwn(selection, id) && selection[id] === true };
         },
         cellValue: (row, key, column) => getCellValue(row, key, column),
+        exportColumns: (options = {}) => this.exportColumns(options),
         exportData: (options = {}, rows) => {
-            // `onlyVisible: false`: every data column as defined, hidden ones included, in definition order (Angular `getExportData`, cmp 4190-4202).
-            // A duplicated key counts once, the first column (as drawn: indexColumns).
-            const all = (): ColumnDef<T>[] => {
-                const seen = new Set<string>();
-                return this.host.config.columns.filter((c) => !isSpecialColumnKey(c.accessorKey) && !seen.has(String(c.accessorKey)) && Boolean(seen.add(String(c.accessorKey))));
-            };
-            const columns = options.onlyVisible === false ? all() : this.visibleDataColumns();
+            const columns = this.exportColumns(options);
             const body = (rows ?? (options.onlyFiltered === false ? this.host.model.get('data') : this.output().sorted)).map((row) =>
-                columns.map((c) => (c.cell ? c.cell(row) : stringifyValue(getCellValue(row, c.accessorKey, c)))),
+                columns.map((c) => (c.cell ? this.exportCell({ ...c, cell: c.cell }, row) : stringifyValue(getCellValue(row, c.accessorKey, c)))),
             );
             return options.includeHeaders === false ? body : [columns.map((c) => c.header), ...body];
         },
@@ -412,6 +408,26 @@ export class QueryController<T> {
         // Server filtering: the held rows are not the matches; the server's `total` (as the consumer gave it).
         filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total),
     };
+
+    /**
+     * The columns `exportData` draws. `onlyVisible: false`: every data column as defined, hidden ones included, in definition order (Angular
+     * `getExportData`, cmp 4190-4202); a duplicated key counts once, the first column (as drawn: indexColumns).
+     */
+    private exportColumns(options: DataTableExportOptions): ColumnDef<T>[] {
+        if (options.onlyVisible !== false) return this.visibleDataColumns();
+        const seen = new Set<string>();
+        return this.host.config.columns.filter((c) => !isSpecialColumnKey(c.accessorKey) && !seen.has(String(c.accessorKey)) && Boolean(seen.add(String(c.accessorKey))));
+    }
+
+    /** A column's `cell()` that throws gives an empty cell (the export carries on), with one warning per table and column. */
+    private exportCell(column: ColumnDef<T> & { cell: (row: T) => string }, row: T): string {
+        try {
+            return column.cell(row);
+        } catch (error) {
+            warnOncePer(this, `export-cell:${String(column.accessorKey)}`, `[ge-data-table] the cell() of column "${String(column.accessorKey)}" threw; exported as an empty cell:`, error);
+            return '';
+        }
+    }
 
     private visibleDataColumns(): ColumnDef<T>[] {
         const columns = requireProvider(this.host, 'columns');

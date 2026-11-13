@@ -1,5 +1,5 @@
 /** Wave 7 step 0: the query service additions addons and the AI read (`rawRows`, `rowId`, `applyFilters`, `exportData` with `onlyVisible: false`). */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DataTableCoreHost } from './data-table-host.js';
 import { DATA_TABLE_LOCALES } from './data-table.locales.js';
 import { ModelStore } from './data-table-model.js';
@@ -139,5 +139,33 @@ describe('QueryService wave 7 additions', () => {
         const { query } = setup();
         expect(query.exportData({}, [DATA[0] as Row])).toEqual([['Id', 'Name'], ['r1', 'Bo']]);
         expect(query.exportData({ onlyVisible: false }, [DATA[0] as Row])).toEqual([['Name', 'Team', 'Id'], ['Bo', 'x', 'r1']]);
+    });
+
+    it('exportColumns is the column list exportData draws, visible and all (wave 7 export)', () => {
+        const { query } = setup({ columns: [...COLUMNS, { accessorKey: 'name', header: 'Name again' }] });
+        for (const options of [{}, { onlyVisible: true }, { onlyVisible: false }]) {
+            expect(query.exportColumns(options).map((c) => c.header)).toEqual(query.exportData(options, [])[0]);
+        }
+        expect(query.exportColumns().map((c) => c.accessorKey)).toEqual(['id', 'name']);
+    });
+
+    it('a cell() that throws exports an empty cell, the export carries on, and warns once per table and column (wave 7 export)', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            const boom = (row: Row): string => {
+                if (row.id !== 'r2') throw new Error('boom');
+                return 'ok';
+            };
+            const columns: ColumnDef<Row>[] = [{ accessorKey: 'name', header: 'Name', cell: boom }, { accessorKey: 'team', header: 'Team' }];
+            const { query } = setup({ columns });
+            const table = query.exportData({ onlyVisible: false }, DATA);
+            expect(table).toEqual([['Name', 'Team'], ['', 'x'], ['ok', 'y'], ['', 'x']]);
+            query.exportData({ onlyVisible: false }, DATA);
+            expect(warn).toHaveBeenCalledTimes(1);
+            setup({ columns }).query.exportData({ onlyVisible: false }, DATA); // another table warns for itself
+            expect(warn).toHaveBeenCalledTimes(2);
+        } finally {
+            warn.mockRestore();
+        }
     });
 });
