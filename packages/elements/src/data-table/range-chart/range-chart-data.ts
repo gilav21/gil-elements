@@ -75,7 +75,10 @@ export function dataTableOf(
     cap = DATA_TABLE_ROW_CAP,
 ): { columns: string[]; rows: { category: string; values: number[] }[]; total: number } {
     if (!payload) return { columns: [], rows: [], total: 0 };
-    const shown = effectiveChartType(payload, type) === 'stacked' ? payload.series : payload.series.slice(seriesIndexOf(payload, index)).slice(0, 1);
-    const rows = payload.categories.slice(0, Math.max(0, cap)).map((category, i) => ({ category, values: shown.map((series) => finite(series.values[i])) }));
-    return { columns: shown.map((series) => series.name), rows, total: payload.categories.length };
+    const drawn = effectiveChartType(payload, type);
+    const shown = drawn === 'stacked' ? payload.series : payload.series.slice(seriesIndexOf(payload, index)).slice(0, 1);
+    let rows = payload.categories.map((category, i) => ({ category, values: shown.map((series) => finite(series.values[i])) }));
+    // the pie leaves out the negative values (see pieData): so does its table
+    if (drawn === 'pie') rows = rows.filter((row) => (row.values[0] ?? 0) >= 0);
+    return { columns: shown.map((series) => series.name), rows: rows.slice(0, Math.max(0, cap)), total: rows.length };
 }

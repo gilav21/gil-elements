@@ -93,10 +93,8 @@ export class GeDataTableRangeChart extends UiElement {
     }
 
     protected override willUpdate(changed: PropertyValues<this>): void {
+        // a new payload keeps the picked series index; `seriesIndexOf` clamps it to the new range when it no longer exists
         if (changed.has('for') && this.isConnected) this.listen();
-        // a new payload starts from its first series (the chart type stays); not the first real one (a series-index set before the
-        // first range is kept), nor when the index is set with it
-        if (changed.has('payload') && changed.get('payload') != null && !changed.has('seriesIndex')) this.seriesIndex = 0;
     }
 
     /** Listens on the root node rather than on the table, so a table mounted, replaced or given its id after this element still works. */
@@ -115,8 +113,10 @@ export class GeDataTableRangeChart extends UiElement {
     }
 
     private readonly onRangeChartOpen = (event: Event): void => {
-        // the path, not the (retargeted) target: a table inside a nested shadow root is found too
-        if (!this.for || !event.composedPath().some((node) => node instanceof Element && node.id === this.for)) return;
+        // the original target (first in the composed path), not the retargeted one: a table inside a nested shadow root is found
+        // too, while an ancestor that happens to carry the id is not
+        const origin = event.composedPath()[0];
+        if (!this.for || !(origin instanceof Element) || origin.id !== this.for) return;
         const detail = (event as CustomEvent<RangeChartData | null>).detail;
         if (!detail) return;
         this.payload = detail;
@@ -157,7 +157,7 @@ export class GeDataTableRangeChart extends UiElement {
 
     protected override render(): TemplateResult {
         const t = this.text;
-        return html`<ge-dialog .open=${this.open} @open-change=${this.onDialogOpenChange}>
+        return html`<ge-dialog .open=${live(this.open)} @open-change=${this.onDialogOpenChange}>
             <ge-dialog-content heading=${this.heading || t.title} close-label=${t.close}>
                 ${this.open ? this.body(t) : nothing}
             </ge-dialog-content>

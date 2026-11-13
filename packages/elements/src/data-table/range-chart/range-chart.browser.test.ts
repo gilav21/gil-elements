@@ -250,17 +250,6 @@ describe('review fixes', () => {
         expect(figure(el).getAttribute('aria-label')).toBe('Chart, Bar chart: Q1');
     });
 
-    it('goes back to the first series for a new payload and keeps the chart type', async () => {
-        const el = await chart(MULTI, 'open chart-type="pie"');
-        el.seriesIndex = 1;
-        await settle(el);
-        el.payload = { categories: ['x', 'y'], series: [{ name: 'A', values: [1, 2] }, { name: 'B', values: [3, 4] }] };
-        await settle(el);
-        expect(el.seriesIndex).toBe(0);
-        expect(el.chartType).toBe('pie');
-        expect(shownSeries(el)).toBe('A');
-    });
-
     it('shows the series a series-change handler puts back', async () => {
         const el = await chart(MULTI);
         el.addEventListener('series-change', () => (el.seriesIndex = 0));
@@ -332,6 +321,51 @@ describe('final review fixes', () => {
         await settle(el);
         expect(el.open).toBe(true);
         expect(el.payload).toEqual(payload);
+    });
+});
+
+describe('last review fixes', () => {
+    const payload: RangeChartPayload = { categories: ['a'], series: [{ name: 'S', values: [1] }] };
+    const rows = (el: GeDataTableRangeChart) =>
+        [...root(el).querySelector<HTMLTableElement>('[data-slot="range-chart-data"]')!.tBodies[0]!.rows].map((r) => [...r.cells].map((c) => c.textContent));
+
+    it('carries the picked series over to a new range, clamped to it', async () => {
+        const el = await chart(MULTI);
+        el.seriesIndex = 1;
+        await settle(el);
+        el.payload = { categories: ['x', 'y'], series: [{ name: 'A', values: [1, 2] }, { name: 'B', values: [3, 4] }] };
+        await settle(el);
+        expect(el.seriesIndex).toBe(1);
+        expect(rows(el)).toEqual([['x', '3'], ['y', '4']]);
+        el.payload = { categories: ['x'], series: [{ name: 'A', values: [7] }] };
+        await settle(el);
+        expect(rows(el)).toEqual([['x', '7']]);
+    });
+
+    it('stays open when an open-change handler sets open back', async () => {
+        const el = await chart(MULTI);
+        el.addEventListener('open-change', () => (el.open = true));
+        await userEvent.keyboard('{Escape}');
+        await settle(el);
+        expect(el.open).toBe(true);
+        expect(panel(el)).not.toBeNull();
+    });
+
+    it('opens only for the event\'s own target, not an ancestor carrying the id', async () => {
+        const wrapper = await mount('<div id="anc"><span></span></div><ge-data-table-range-chart for="anc"></ge-data-table-range-chart>');
+        const el = wrapper.querySelector<GeDataTableRangeChart>('ge-data-table-range-chart')!;
+        await settle(el);
+        wrapper.querySelector('#anc span')!.dispatchEvent(new CustomEvent('range-chart-open', { detail: payload, bubbles: true, composed: true }));
+        await settle(el);
+        expect(el.open).toBe(false);
+    });
+
+    it('lists only what the pie draws in the data table', async () => {
+        const el = await chart({ categories: ['a', 'b', 'c'], series: [{ name: 'Delta', values: [5, -3, 2] }] }, 'open chart-type="pie"');
+        expect(rows(el)).toEqual([['a', '5'], ['c', '2']]);
+        el.chartType = 'bar';
+        await settle(el);
+        expect(rows(el)).toEqual([['a', '5'], ['b', '-3'], ['c', '2']]);
     });
 });
 
