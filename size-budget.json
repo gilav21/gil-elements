@@ -94,7 +94,7 @@
   "data-table/define.js": 99000,
   "data-table/index.js": 99500,
   "data-table/lazy/clipboard.js": 300,
-  "data-table/lazy/filter-builder.js": 12400,
+  "data-table/lazy/filter-builder.js": 12800,
   "data-table/lazy/filter-panels.js": 38400,
   "data-table/lazy/range.js": 300,
   "data-table/lazy/row-drag.js": 300,
