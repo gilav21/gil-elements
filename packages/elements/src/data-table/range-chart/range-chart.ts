@@ -141,8 +141,8 @@ export class GeDataTableRangeChart extends UiElement {
     };
 
     private pickType(type: RangeChartType): void {
-        // the drawn type, not the property: `stacked` with one series (or a typo) draws bar, whose switch then changes nothing
-        if (effectiveChartType(this.payload, this.chartType) === type) return;
+        // the user's pick wins: a click on Bar while a one-series `stacked` (or a typo) draws bar makes it `bar`; the event only for a new value
+        if (this.chartType === type) return;
         this.chartType = type;
         this.dispatchEvent(new CustomEvent<RangeChartType>('chart-type-change', { detail: type, bubbles: true, composed: true }));
     }
@@ -186,10 +186,12 @@ export class GeDataTableRangeChart extends UiElement {
                 </div>
                 ${multiple && type !== 'stacked' ? this.seriesPicker(t, index) : nothing}
             </div>
-            <div class="canvas" role="figure" aria-label=${this.chartLabel(t, type, index)} data-slot="range-chart-canvas">
-                ${this.chart(type, index, pie)} ${this.dataTable(t, type, index)}
+            <div class="scroll" data-slot="range-chart-scroll">
+                <div class="canvas" role="figure" aria-label=${this.chartLabel(t, type, index)} data-slot="range-chart-canvas">
+                    ${this.chart(type, index, pie)} ${this.dataTable(t, type, index)}
+                </div>
+                ${pie?.droppedNegatives ? html`<p class="note" data-slot="range-chart-note">${t.negativeNote}</p>` : nothing}
             </div>
-            ${pie?.droppedNegatives ? html`<p class="note" data-slot="range-chart-note">${t.negativeNote}</p>` : nothing}
         </div>`;
     }
 

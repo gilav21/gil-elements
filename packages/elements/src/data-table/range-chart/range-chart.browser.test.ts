@@ -279,14 +279,62 @@ describe('final review fixes', () => {
         expect(bar.data.map((d) => d.value)).toEqual([30, 40]);
     });
 
-    it('changes nothing when the switch of the drawn type is clicked', async () => {
+    it('a click on the drawn type\'s switch makes the pick explicit: stacked with one series becomes bar, once, and stays bar for the next range', async () => {
         const el = await chart(SINGLE, 'open chart-type="stacked"');
         const types: string[] = [];
         el.addEventListener('chart-type-change', (event) => types.push((event as CustomEvent<string>).detail));
         await userEvent.click(switchFor(el, 'bar'));
         await settle(el);
-        expect(types).toEqual([]);
-        expect(el.chartType).toBe('stacked');
+        expect(el.chartType).toBe('bar');
+        expect(types).toEqual(['bar']);
+        // the value did not change: no second event
+        await userEvent.click(switchFor(el, 'bar'));
+        await settle(el);
+        expect(types).toEqual(['bar']);
+        el.payload = MULTI;
+        await settle(el);
+        expect(drawn(el)).toEqual(['ge-bar-chart']);
+    });
+
+    it('shows the series picker\'s last option, unclipped, on a short viewport with many series', async () => {
+        await page.viewport(1280, 420);
+        try {
+            const many: RangeChartData = { categories: ['a', 'b'], series: Array.from({ length: 12 }, (_, i) => ({ name: `S${i + 1}`, values: [i, i + 1] })) };
+            const el = await chart(many);
+            const select = root(el).querySelector<HTMLElement>('ge-select')!;
+            await userEvent.click(select.shadowRoot!.querySelector('ge-select-trigger')!.shadowRoot!.querySelector('button')!);
+            await settle(el);
+            const items = [...select.shadowRoot!.querySelectorAll<HTMLElement>('ge-select-item')];
+            const last = items.at(-1)!;
+            // scroll the listbox itself (its own scroller inside the select), never the dialog box: a clipped popup must show as clipped
+            const listbox = select.shadowRoot!.querySelector<HTMLElement>('ge-select-content')!;
+            const scrollers = [listbox, ...listbox.shadowRoot!.querySelectorAll<HTMLElement>('*')].filter((n) => n.scrollHeight > n.clientHeight + 1);
+            for (const scroller of scrollers) scroller.scrollTop = scroller.scrollHeight;
+            await frames(2);
+            const box = last.getBoundingClientRect();
+            expect(box.height).toBeGreaterThan(0);
+            expect(box.bottom).toBeLessThanOrEqual(420);
+            // what the pointer meets at both ends of the option is the option itself: nothing clips or covers it
+            const hitAt = (x: number, y: number): Element | null => {
+                let hit: Element | null = document.elementFromPoint(x, y);
+                while (hit?.shadowRoot) {
+                    const inner = hit.shadowRoot.elementFromPoint(x, y);
+                    if (!inner || inner === hit) break;
+                    hit = inner;
+                }
+                return hit;
+            };
+            for (const x of [box.left + 2, box.right - 2]) {
+                const hit = hitAt(x, box.top + box.height / 2);
+                expect(last === hit || last.contains(hit) || last.shadowRoot!.contains(hit)).toBe(true);
+            }
+            expect(panel(el)!.scrollLeft).toBe(0);
+            await userEvent.click(last);
+            await settle(el);
+            expect(el.seriesIndex).toBe(11);
+        } finally {
+            await page.viewport(1280, 800);
+        }
     });
 
     it('names the figure without a dangling colon when the series has no name', async () => {
@@ -294,14 +342,15 @@ describe('final review fixes', () => {
         expect(figure(el).getAttribute('aria-label')).toBe('Chart, Bar chart');
     });
 
-    it('scrolls the panel on a short viewport, with the heading reachable', async () => {
+    it('keeps the panel within a short viewport and scrolls the chart area, with the heading and the switches in view', async () => {
         await page.viewport(1280, 300);
         try {
             const el = await chart(MULTI);
             const box = panel(el)!;
-            expect(box.getBoundingClientRect().height).toBeLessThanOrEqual(300);
-            expect(box.scrollHeight).toBeGreaterThan(box.clientHeight);
-            box.scrollTop = 0;
+            expect(box.getBoundingClientRect().bottom).toBeLessThanOrEqual(300);
+            const scroller = root(el).querySelector<HTMLElement>('[data-slot="range-chart-scroll"]')!;
+            expect(scroller.scrollHeight).toBeGreaterThan(scroller.clientHeight);
+            expect(switchFor(el, 'bar').getBoundingClientRect().bottom).toBeLessThanOrEqual(300);
             const title = root(el).querySelector('ge-dialog-content')!.shadowRoot!.querySelector('ge-dialog-title')!;
             expect(title.getBoundingClientRect().top).toBeGreaterThanOrEqual(0);
         } finally {
