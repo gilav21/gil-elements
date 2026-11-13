@@ -192,6 +192,10 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 - `aiTimeout` config input (spec D.3): the per-request timeout is fixed at 60 s (`AI_TIMEOUT_MS` in `data-table-ai.ts`).
 - The `ai` shell keeps its own copy of `lazyPart`'s failure latch (`failed`): expose `failed()` on `lazyPart` and read it instead.
 - The built-in filter panel tags are spelled twice (`BUILT_IN_FILTER_PANELS` in `data-table-filters.ts` and `fitsFilter` in `data-table-ai.ts`, which must not import the filter module): one shared constant in a module both can import without splitting a chunk.
+- Documented (PR #80): the AI fill's `cell-edit` / `edit-error` `rowIndex` is the row's drawn index at run start (-1 off the page); a write that re-sorts the page mid-run can make a later row's index stale.
+- A cancelled or replaced NL request says nothing, so "Filtering…" can stay the last announcement: announce the cancel (or clear the live region).
+- The AI fill's cell reader looks the column up per row and key (`config.columns.find` in `read()`): resolve the input columns once per run.
+- Server-mode NL filter result: `applyFilters` with only column changes announces nothing for server filtering (the count is unknown), and the core locale has no count-free "filters applied" message. Add one (e.g. `filtersAppliedAnnouncement`) and announce it when the NL filter changed something in server mode.
 - Coalesce the AI fill's writes on large fills (one `writeCells` per batch today: with `concurrency: 1` that is one `data` write, and one pipeline run, per row).
 
 ## H. Work packages (strict file ownership after step 0)

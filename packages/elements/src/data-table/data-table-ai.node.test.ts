@@ -139,6 +139,7 @@ describe('nlColumns, fitsFilter, hardenSpec, projectRow', () => {
         const range = { ...text, filterComponent: 'ge-data-table-date-range-filter' };
         const custom = { ...text, filterFn: () => true };
         expect([fitsFilter(text, 'x'), fitsFilter(text, 5), fitsFilter(text, Number.NaN), fitsFilter(text, ['x']), fitsFilter(text, { a: 1 })]).toEqual([true, true, false, false, false]);
+        expect([fitsFilter(text, true), fitsFilter(text, false)]).toEqual([true, true]); // the text match reads booleans too (final review)
         expect([fitsFilter(multi, ['a', 2, null]), fitsFilter(multi, 'a'), fitsFilter(multi, [{}])]).toEqual([true, false, false]);
         // Date panels: a Date or an ISO date(-time) string only, never a bare number (final review)
         expect([fitsFilter(date, '2024-03-01'), fitsFilter(date, '2024-03-01T10:00:00Z'), fitsFilter(date, new Date(0)), fitsFilter(date, 5), fitsFilter(date, '5'), fitsFilter(date, 'soon'), fitsFilter(date, {})]).toEqual([
@@ -205,6 +206,37 @@ describe('askAi', () => {
         abort.abort(new Error('stop'));
         await expect(pending).rejects.toThrow('stop');
         await expect(askAi(never, { task: 'nl-filter', input: 'q' }, new AbortController().signal, 5)).rejects.toMatchObject({ name: 'TimeoutError' });
+    });
+
+    it('an iterator whose return() is synchronous (no promise) is stopped without an error (final review)', async () => {
+        let returned = false;
+        const stream: AiProvider = () => ({
+            [Symbol.asyncIterator]: () => ({
+                next: () => new Promise<IteratorResult<string>>(() => undefined),
+                return: () => {
+                    returned = true;
+                    return { done: true, value: undefined } as unknown as Promise<IteratorResult<string>>;
+                },
+            }),
+        });
+        const abort = new AbortController();
+        const pending = askAi(stream, { task: 'nl-filter', input: 'q' }, abort.signal);
+        await new Promise((r) => setTimeout(r, 0));
+        expect(() => abort.abort(new Error('stop'))).not.toThrow();
+        await expect(pending).rejects.toThrow('stop');
+        expect(returned).toBe(true);
+    });
+
+    it("leaves no listener on the caller's signal after a request (final review)", async () => {
+        const abort = new AbortController();
+        const { signal } = abort;
+        let active = 0;
+        const add = signal.addEventListener.bind(signal);
+        const remove = signal.removeEventListener.bind(signal);
+        signal.addEventListener = ((type: string, listener: EventListener, options?: AddEventListenerOptions) => (active++, add(type, listener, options))) as typeof signal.addEventListener;
+        signal.removeEventListener = ((type: string, listener: EventListener) => (active--, remove(type, listener))) as typeof signal.removeEventListener;
+        expect(await askAi(() => 'a', { task: 'nl-filter', input: 'q' }, signal)).toBe('a');
+        expect(active).toBe(0);
     });
 
     it('stops a streaming provider on abort: its iterator is returned, it is not read to the end (PR #80 review)', async () => {
@@ -337,6 +369,14 @@ describe('the AI part: NL filter', () => {
         expect(announced).toEqual([t.nlFilterRunning, t.nlFilterNoChange]);
     });
 
+    it('column filters the provider sent but hardening dropped ALL of are treated as omitted: the current column filters stay (final review)', async () => {
+        const { ai, model } = setup({ provider: makeAiProvider('{"globalFilter":"Bo","columnFilters":{"status":{"bad":1}}}').provider });
+        model.set('columnFilters', { status: 'active' });
+        await ai.applyNaturalLanguageFilter('bo');
+        expect(model.get('globalFilter')).toBe('Bo');
+        expect(model.get('columnFilters')).toEqual({ status: 'active' });
+    });
+
     it('a failure is announced, never thrown, and the running state is reset (Angular B8)', async () => {
         const { ai, announced, controller } = setup({ provider: () => Promise.reject(new Error('boom')) });
         await expect(ai.applyNaturalLanguageFilter('show anything')).resolves.toBeUndefined();
@@ -444,6 +484,19 @@ describe('the AI part: AI fill', () => {
         const { ai } = setup({ provider: scripted.provider, columns, data: [{ id: '1', name: 'Ann', status: 's', note: '', meta: { city: 'Rome' } } as Row] });
         await ai.aiFillColumn('note', 'p', { inputColumns: ['shout', 'meta.city'] });
         expect(JSON.parse(scripted.requests[0]?.input ?? '')).toEqual({ shout: 'ANN', 'meta.city': 'Rome' });
+    });
+
+    it("a fill leaves no listener on the caller's signal (final review)", async () => {
+        const caller = new AbortController();
+        const { signal } = caller;
+        let active = 0;
+        const add = signal.addEventListener.bind(signal);
+        const remove = signal.removeEventListener.bind(signal);
+        signal.addEventListener = ((type: string, listener: EventListener, options?: AddEventListenerOptions) => (active++, add(type, listener, options))) as typeof signal.addEventListener;
+        signal.removeEventListener = ((type: string, listener: EventListener) => (active--, remove(type, listener))) as typeof signal.removeEventListener;
+        const { ai } = setup({ provider: () => 'v' });
+        await ai.aiFillColumn('note', 'p', { signal });
+        expect(active).toBe(0);
     });
 
     it('works without AbortSignal.any (older engines), with a caller signal too (final review)', async () => {

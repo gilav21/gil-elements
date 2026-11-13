@@ -61,6 +61,35 @@ describe('the NL filter box', () => {
         expect(hidden.querySelector(NL)).toBeNull();
     });
 
+    it('a table inside an outer <form>: submitting the NL box (Enter, button) reaches no outer listener and never submits the outer form (final review)', async () => {
+        // Chromium does not deliver a nested form's submit to the outer FORM element itself, so the page-side listener sits on a wrapper inside it (where
+        // a consumer's delegated submit handler would see the box's submit without the fix).
+        const outer = document.createElement('form');
+        const wrapper = document.createElement('div');
+        const submitted = vi.fn((event: Event) => event.preventDefault());
+        outer.addEventListener('submit', submitted);
+        wrapper.addEventListener('submit', submitted);
+        outer.append(wrapper);
+        document.body.append(outer);
+        try {
+            const table = document.createElement('ge-data-table') as GeDataTable<SampleRow>;
+            Object.assign(table, { columns: SAMPLE_COLUMNS, data: [], aiProvider: () => '{"globalFilter":"x"}' });
+            wrapper.append(table);
+            await vi.waitFor(() => expect(table.querySelector(NL)).not.toBeNull());
+            await settle(table);
+            const own = vi.fn();
+            q(table, NL).addEventListener('submit', own);
+            await typeText(input(table), 'q');
+            await press('{Enter}');
+            q(table, APPLY).click();
+            await frames(2);
+            expect(own).toHaveBeenCalledTimes(1); // the button submitted the box's own form (Enter is handled without a submit)
+            expect(submitted).not.toHaveBeenCalled();
+        } finally {
+            outer.remove();
+        }
+    });
+
     it('sits after the global filter and before the advanced-filter trigger (Angular order)', async () => {
         const table = await mountAi(() => '{}', { enableAdvancedFilter: true });
         const start = [...q(table, '[data-slot="data-table-toolbar-start"]').children].map((el) => el.getAttribute('data-slot') ?? el.tagName.toLowerCase());

@@ -78,13 +78,18 @@ export class AiPart<T> {
             const answer = await askAi(provider, { task: 'nl-filter', input: query, context: { columns } }, run.abort.signal);
             run.abort.signal.throwIfAborted(); // replaced, cancelled or detached while the answer came in
             const keys = columns.map((c) => c.key);
-            const spec = hardenSpec(parseNlFilterSpec(answer, keys), config.columns);
+            const parsed = parseNlFilterSpec(answer, keys);
+            const spec = hardenSpec(parsed, config.columns);
             this.host.emit('nl-filter', { query, spec });
             const { model } = this.host;
             const global = model.get('globalFilter');
             const filters = model.get('columnFilters');
             if (spec.globalFilter !== undefined || spec.columnFilters) {
-                this.host.provider('query')?.applyFilters({ globalFilter: spec.globalFilter ?? '', columnFilters: spec.columnFilters ?? {} });
+                const globalFilter = spec.globalFilter ?? '';
+                // Column filters the provider sent but hardening dropped ALL of count as omitted: the user's column filters stay. Otherwise both
+                // records are replaced (no columnFilters at all, or an explicit `{}`, clears them).
+                const droppedAll = parsed.columnFilters !== undefined && !spec.columnFilters;
+                this.host.provider('query')?.applyFilters(droppedAll ? { globalFilter } : { globalFilter, columnFilters: spec.columnFilters ?? {} });
             }
             // An empty spec, or one equal to the current filters (applyFilters wrote nothing and announces nothing): "Filtering…" is not the last word.
             if (model.get('globalFilter') === global && model.get('columnFilters') === filters) this.host.announce(t.nlFilterNoChange);
@@ -109,11 +114,14 @@ export class AiPart<T> {
         // writeCells finds a row by id among the rows of `data` (top level): a row it cannot find (a tree child) is left out before any request.
         const inData = new Set(query.rawRows().map((row) => query.rowId(row)));
         const rows = picked.filter((row) => inData.has(query.rowId(row)));
-        // The drawn index of each row on the page, read ONCE per run (what cell-edit / edit-error report; -1 off the page). Writes are by id.
+        // The drawn index of each row on the page AT RUN START (what cell-edit / edit-error report; -1 off the page). Writes are by id; a write that
+        // re-sorts the page mid-run can make a later row's reported index stale.
         const drawn = new Map(query.renderedRows().map((row, i) => [query.rowId(row), i]));
         const read = (row: unknown, key: string): unknown => query.cellValue(row as T, key, config.columns.find((c) => String(c.accessorKey) === key));
         const abort = new AbortController();
-        const signal = options.signal ? anySignal(abort.signal, options.signal) : abort.signal; // built before this run is published
+        // Built before this run is published; its listeners on the caller's signal are removed when the run ends.
+        const combined = options.signal ? anySignal(abort.signal, options.signal) : { signal: abort.signal, dispose: () => undefined };
+        const { signal } = combined;
         this.fillRun?.abort();
         this.fillRun = abort;
         let result: FillResult;
@@ -153,6 +161,7 @@ export class AiPart<T> {
         } finally {
             cancelled = signal.aborted; // cancelAi, the caller's signal, or a newer fill (read before the abort below)
             abort.abort(); // a failed batch's other requests stop
+            combined.dispose();
             if (this.fillRun === abort) {
                 this.fillRun = undefined; // also after a throw: the table never stays busy
                 this.host.requestRender();

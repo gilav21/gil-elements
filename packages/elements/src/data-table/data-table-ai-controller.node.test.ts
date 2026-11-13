@@ -60,6 +60,16 @@ describe('the ai shell', () => {
         expect(load.count).toBe(0);
     });
 
+    it('aiProvider = null is off too: no load, no box, the methods answer at once (final review)', async () => {
+        const { controller, ai } = setup(null);
+        controller.hostUpdate();
+        await ai.applyNaturalLanguageFilter('q');
+        await ai.aiFillColumn('note', 'p');
+        await new Promise((r) => setTimeout(r, 10));
+        expect(controller.renderToolbar()).toBeNull();
+        expect(load.count).toBe(0);
+    });
+
     it('loads the part at the first update with a provider and asks for a render (the box)', async () => {
         const { controller, renders } = setup(() => '{}');
         controller.hostUpdate();

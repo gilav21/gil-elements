@@ -59,7 +59,7 @@ const isRangeEnd = (v: unknown): boolean => v == null || isDateish(v);
 
 /**
  * The value fits the column's filter: the built-in multiselect panel takes an array of primitives, the date panel a date (a `Date` or an ISO string),
- * the date-range panel `{ start, end }` (dates or open ends, nothing else); a column filtered by the default text match takes a string or a finite
+ * the date-range panel `{ start, end }` (dates or open ends, nothing else); a column filtered by the default text match takes a string, a boolean or a finite
  * number. A consumer's own `filterFn` or panel decides its own shapes: its value passes as given.
  */
 export function fitsFilter<T>(column: ColumnDef<T>, value: unknown): boolean {
@@ -70,7 +70,7 @@ export function fitsFilter<T>(column: ColumnDef<T>, value: unknown): boolean {
         return isPlainObject(value) && Object.keys(value).every((k) => k === 'start' || k === 'end') && isRangeEnd(value['start']) && isRangeEnd(value['end']);
     }
     if (column.filterFn || column.filterComponent) return true;
-    return typeof value === 'string' || Number.isFinite(value);
+    return typeof value === 'string' || typeof value === 'boolean' || Number.isFinite(value);
 }
 
 /**
@@ -87,17 +87,30 @@ export function hardenSpec<T>(spec: NlFilterSpec, columns: readonly ColumnDef<T>
     return kept.length > 0 ? { ...rest, columnFilters: Object.fromEntries(kept) } : rest;
 }
 
-/** A signal that aborts, with that reason, as soon as one of `signals` does (`AbortSignal.any` without needing it: older engines lack it). */
-export function anySignal(...signals: AbortSignal[]): AbortSignal {
+/**
+ * A signal that aborts, with that reason, as soon as one of `signals` does (`AbortSignal.any` without needing it: older engines lack it), and
+ * `dispose`, which removes its listeners from `signals` (call it once the work is done; it also runs when the combined signal aborts).
+ */
+export function anySignal(...signals: AbortSignal[]): { signal: AbortSignal; dispose: () => void } {
     const any = new AbortController();
+    const listeners: [AbortSignal, () => void][] = [];
+    const dispose = (): void => {
+        for (const [signal, listener] of listeners.splice(0)) signal.removeEventListener('abort', listener);
+    };
     for (const signal of signals) {
         if (signal.aborted) {
             any.abort(signal.reason);
             break;
         }
-        signal.addEventListener('abort', () => any.abort(signal.reason), { once: true });
+        const listener = (): void => {
+            dispose();
+            any.abort(signal.reason);
+        };
+        listeners.push([signal, listener]);
+        signal.addEventListener('abort', listener);
     }
-    return any.signal;
+    if (any.signal.aborted) dispose();
+    return { signal: any.signal, dispose };
 }
 
 /**
@@ -106,14 +119,18 @@ export function anySignal(...signals: AbortSignal[]): AbortSignal {
  * iterator's `return()`), not read to its end.
  */
 export async function askAi(provider: AiProvider, request: Omit<AiRequest, 'signal'>, signal: AbortSignal, ms = AI_TIMEOUT_MS): Promise<string> {
-    const combined = anySignal(signal, AbortSignal.timeout(ms));
-    combined.throwIfAborted();
+    const { signal: combined, dispose } = anySignal(signal, AbortSignal.timeout(ms));
+    if (combined.aborted) {
+        dispose();
+        throw combined.reason;
+    }
     let iterator: AsyncIterator<string> | undefined;
     let onAbort: () => void = () => undefined;
     const aborted = new Promise<never>((_, reject) => {
         onAbort = () => {
             reject(combined.reason);
-            iterator?.return?.().catch(() => undefined);
+            // `return()` may answer synchronously (a hand-written iterator): wrap it so neither form throws here.
+            Promise.resolve(iterator?.return?.()).catch(() => undefined);
         };
         combined.addEventListener('abort', onAbort, { once: true });
     });
@@ -130,6 +147,7 @@ export async function askAi(provider: AiProvider, request: Omit<AiRequest, 'sign
         return await Promise.race([answer, aborted]);
     } finally {
         combined.removeEventListener('abort', onAbort);
+        dispose();
         answer.catch(() => undefined); // a provider rejecting after the abort is not an unhandled rejection
     }
 }

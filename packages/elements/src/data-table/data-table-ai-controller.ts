@@ -50,7 +50,7 @@ export class AiController<T> {
     }
 
     hostUpdate(): void {
-        const on = this.host.config.aiProvider !== undefined;
+        const on = this.host.config.aiProvider != null; // null is off too
         this.lazy.sync(on);
         if (!on) this.stop(); // after the sync: a part that throws while leaving does not latch
     }
@@ -78,7 +78,7 @@ export class AiController<T> {
     }
 
     private async call(run: (part: AiPart<T>) => Promise<void>): Promise<void> {
-        if (!this.unprovide || this.host.config.aiProvider === undefined) return;
+        if (!this.unprovide || this.host.config.aiProvider == null) return;
         const generation = this.generation;
         if (!this.lazy.part && !this.failed) {
             await new Promise<void>((resolve) => {

@@ -19,6 +19,7 @@ export function renderNlFilter(view: NlFilterView): TemplateResult {
     const { locale } = view;
     const submit = (event: Event): void => {
         event.preventDefault();
+        event.stopPropagation(); // the box's own submit: a page form (or its delegated handler) around the table never sees it
         view.submit();
     };
     return html`<form data-slot="table-nl-filter" role="search" aria-label=${locale.nlFilterLabel} aria-busy=${view.busy ? 'true' : 'false'} @submit=${submit}>

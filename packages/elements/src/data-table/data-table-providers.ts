@@ -435,6 +435,10 @@ export interface AiService {
     /** Runs the NL filter box's text (Enter in the box). */
     runAiFilter(): Promise<void>;
     applyNaturalLanguageFilter(query: string): Promise<void>;
+    /**
+     * Writes by row id. The `rowIndex` its `cell-edit` / `edit-error` carry is the row's drawn index AT RUN START (-1 for a row not on the page):
+     * a write that re-sorts the page mid-run can make a later row's reported index stale.
+     */
     aiFillColumn(columnKey: string, prompt: string, options?: DataTableAiFillOptions): Promise<void>;
     /** Aborts the running AI request, if any. */
     cancelAi(): void;
