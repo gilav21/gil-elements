@@ -113,14 +113,12 @@ describe('FilterUiController', () => {
         expect(debounced.query.changeColumnFilter).toHaveBeenCalledWith('name', 'al');
     });
 
-    it('writes a pending floating value at detach, once, while the query service exists (round 19: flushed, not dropped)', () => {
+    it('drops a pending floating write at detach: a removed table writes no filter (round 21)', () => {
         const { controller, service, query } = fakeHost({ filterDebounce: 200 });
         service.floatingInput('name')({ currentTarget: { value: 'a' } } as unknown as Event);
         controller.detach();
-        expect(query.changeColumnFilter).toHaveBeenCalledTimes(1);
-        expect(query.changeColumnFilter).toHaveBeenCalledWith('name', 'a');
         vi.advanceTimersByTime(500);
-        expect(query.changeColumnFilter).toHaveBeenCalledTimes(1);
+        expect(query.changeColumnFilter).not.toHaveBeenCalled();
     });
 
     // Round 20: the announcement itself (the 500 ms settle, the count, "all filters cleared", the server wait) is the query service's ONE

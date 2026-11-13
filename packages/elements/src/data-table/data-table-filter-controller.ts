@@ -105,8 +105,9 @@ export class FilterUiController<T> {
         // builder disconnects, so the builder's own flush would come too late).
         this.builder?.flush?.();
         this.builder = undefined;
-        // So are the floating inputs' typed values: written now, not dropped (the typed filter is kept, as the builder's is).
-        this.flushPending();
+        // The floating inputs' typed values still waiting on their debounce are DROPPED: a table leaving the document sends no filter event. (On a
+        // DOM move the text typed but not yet applied is lost: accepted.)
+        this.dropPending();
         // The open filter popovers close: a later attach draws them closed, never as an open popover with no panel content (the open state is reset below).
         const popovers = this.host.root.querySelectorAll<HTMLElement & { open: boolean }>('ge-popover:has(> [data-slot="data-table-filter-panel"], > [data-slot="advanced-filter-panel"])');
         for (const popover of ownElements(this.host.root, popovers)) popover.open = false;
@@ -116,14 +117,6 @@ export class FilterUiController<T> {
         this.stopScrollWatch();
         this.openColumn = null;
         this.builderOpen = false;
-    }
-
-    /** Writes every floating value still waiting on its debounce, now (the detach: the query service still exists). */
-    private flushPending(): void {
-        const waiting = [...this.pending];
-        this.dropPending();
-        const query = this.host.provider('query');
-        for (const [key, { text }] of waiting) query?.changeColumnFilter(key, text);
     }
 
     /** The toolbar slot after the global filter input: the advanced-filter trigger and its builder popover (html 380-413). */

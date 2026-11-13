@@ -352,24 +352,6 @@ describe('round 8', () => {
         expect(announcer(table)).toBe('1 row matches the filters');
     });
 
-    it('with the consumer driving loading, a data push during the request does not end the wait; loading false does', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
-        table.addEventListener('query', () => {
-            table.loading = true;
-            setTimeout(() => Object.assign(table, { data: [...table.data], total: 999 }), 300); // an unrelated live push
-            setTimeout(() => Object.assign(table, { data: [...table.data], total: 3, loading: false }), 1100); // the answer
-        });
-        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'q');
-        await new Promise((resolve) => setTimeout(resolve, 800));
-        await settle(table);
-        expect(announcer(table)).toBe('');
-        expect(table.provider('query')?.filteredCount()).toBeUndefined();
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        await settle(table);
-        expect(announcer(table)).toBe('3 rows match the filters');
-    });
-
     it('a column filter change within 500 ms of global typing drops the global announcement: only the column count is spoken (round 10)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn] });
         const spoken: string[] = [];
@@ -463,48 +445,28 @@ describe('round 8', () => {
         expect(spoken.filter((s) => s !== '')).toEqual(['1 result found for "Bob"']);
     });
 
-    it('a cache answering in the same task (loading true, data, loading false) ends the wait at once (round 9)', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
-        table.addEventListener('query', () => {
-            table.loading = true;
-            table.data = [...table.data]; // the same total: only the loading cycle says this is the answer
-            table.loading = false;
-        });
-        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'q');
-        await new Promise((resolve) => setTimeout(resolve, 800)); // well before the 2 s fallback
-        await settle(table);
-        expect(announcer(table)).toBe('500 rows match the filters');
-    });
-
-    it('a filter change right after the answer drops the announcement it had already scheduled (round 9)', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
-        let answered = false;
-        table.addEventListener('query', () => {
-            if (answered) return;
-            answered = true;
-            setTimeout(() => {
-                Object.assign(table, { data: [...table.data], total: 3 }); // the answer: the announcement is scheduled a tick later
-                table.provider('query')?.changeColumnFilter('name', 'zz'); // same task: a newer filter
-            }, 700);
-        });
-        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'q');
-        await new Promise((resolve) => setTimeout(resolve, 850));
-        await settle(table);
-        expect(announcer(table)).toBe('');
-    });
-
     it('an unchanged advanced filter keeps a waiting announcement (no-op before the drop)', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, enableAdvancedFilter: true, localFiltering: false, total: 500 });
-        table.addEventListener('query', () => setTimeout(() => Object.assign(table, { data: [...table.data], total: 2 }), 800));
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, enableAdvancedFilter: true });
         const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'q');
-        await new Promise((resolve) => setTimeout(resolve, 600)); // the announcement waits for the answer
+        await typeText(input, 'Al');
+        await new Promise((resolve) => setTimeout(resolve, 300));
         table.provider('query')?.changeAdvancedFilter(null); // already null: no change
         await new Promise((resolve) => setTimeout(resolve, 400));
         await settle(table);
-        expect(announcer(table)).toBe('2 rows match the filters');
+        expect(announcer(table)).toBe('1 row matches the filters');
+    });
+
+    it('server filtering announces no filter result: the rows held are not the matches (round 21)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, enableAdvancedFilter: true, localFiltering: false, total: 500 });
+        const spoken: string[] = [];
+        new MutationObserver(() => spoken.push(announcer(table))).observe(q(table, '[data-slot="data-table-announcer"]'), { childList: true, characterData: true, subtree: true });
+        table.addEventListener('query', () => setTimeout(() => Object.assign(table, { data: [...table.data], total: 3 }), 100));
+        await typeText(shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input'), 'q');
+        table.provider('query')?.changeGlobalFilter('b');
+        table.provider('query')?.changeAdvancedFilter({ type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'a' }] });
+        await new Promise((resolve) => setTimeout(resolve, 900));
+        await settle(table);
+        expect(spoken.filter((s) => s !== '')).toEqual([]);
     });
 });
 
@@ -699,21 +661,25 @@ describe('date panels given a filter restored from JSON (ISO strings)', () => {
 describe('F4 the multiselect panel', () => {
     const optionRow = (panel: Element, label: string): HTMLElement => panel.shadowRoot!.querySelector<HTMLElement>(`ge-command-item[value="${label}"]`)!;
 
-    it('a remove and re-add of the table writes the waiting floating text and draws the open popovers closed (round 19)', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn], enableFloatingFilters: true, filterDebounce: 1000, enableAdvancedFilter: true });
+    it('a removed table sends no filter event for the floating text still waiting; re-added, its popovers are drawn closed (rounds 19, 21)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn], enableFloatingFilters: true, filterDebounce: 300, enableAdvancedFilter: true });
+        const changes = record(table, 'column-filters-change');
+        const queries = record(table, 'query');
         const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
         await typeText(input, 'Al');
         await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
         const parent = table.parentElement!;
         table.remove();
-        expect(table.columnFilters).toEqual({ name: 'Al' }); // flushed at the detach, not dropped
+        await new Promise((resolve) => setTimeout(resolve, 400)); // past the debounce, out of the document
+        expect(changes).toHaveLength(0);
+        expect(queries).toHaveLength(0);
+        expect(table.columnFilters).toEqual({}); // dropped (on a move, the typed-but-unapplied text is lost: accepted)
         parent.append(table);
         await settle(table);
         await frames(2);
         const panel = trigger(table, 'role').closest('ge-popover') as HTMLElement & { open: boolean };
         expect(panel.open).toBe(false);
         expect(q(table, '[data-slot="data-table-filter-panel"]').querySelector('ge-data-table-multiselect-filter')).toBeNull();
-        expect(names(table)).toEqual(['Alice']);
     });
 
     it('an open panel whose column is hidden is closed with its scroll watch; showing the column again draws it closed (round 17)', async () => {
@@ -1569,109 +1535,6 @@ describe('F9 result announcements (D7)', () => {
         expect(announcer(table)).toBe('');
     });
 
-    it('server filtering: an equal echo of the filters waits for no answer (round 16)', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], localFiltering: false, total: 500, columnFilters: { name: 'a' } });
-        table.columnFilters = { name: 'a' }; // a new, equal object
-        await settle(table);
-        expect(table.provider('query')?.filteredCount()).toBe(500); // no answer awaited: the total in hand still counts
-        table.columnFilters = { name: 'b' };
-        await settle(table);
-        expect(table.provider('query')?.filteredCount()).toBeUndefined(); // a real change waits
-    });
-
-    it('server filtering announces the ANSWER total once its rows arrive, never the total from before the request', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
-        table.addEventListener('query', () => setTimeout(() => Object.assign(table, { data: [...table.data], total: 3 }), 900));
-        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'x');
-        await new Promise((resolve) => setTimeout(resolve, 650));
-        await settle(table);
-        expect(announcer(table)).toBe(''); // the 500 in hand is the previous answer's
-        expect(table.provider('query')?.filteredCount()).toBeUndefined();
-        await new Promise((resolve) => setTimeout(resolve, 450));
-        await settle(table);
-        expect(announcer(table)).toBe('3 rows match the filters');
-        expect(table.provider('query')?.filteredCount()).toBe(3);
-    });
-
-    it('server filtering: an answer that mutates the rows in place and changes only the total is an answer too (round 3)', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
-        table.addEventListener('query', () =>
-            setTimeout(() => {
-                table.data.splice(1); // the same array, rows dropped in place
-                table.total = 1;
-            }, 800),
-        );
-        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'q');
-        await new Promise((resolve) => setTimeout(resolve, 650));
-        await settle(table);
-        expect(announcer(table)).toBe('');
-        await new Promise((resolve) => setTimeout(resolve, 350));
-        await settle(table);
-        expect(announcer(table)).toBe('1 row matches the filters');
-    });
-
-    it('a newer filter change drops an announcement still waiting for the previous answer (round 5)', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 500 });
-        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'q');
-        await new Promise((resolve) => setTimeout(resolve, 650)); // waiting for the answer to "q"
-        await userEvent.clear(input);
-        await new Promise((resolve) => setTimeout(resolve, 650));
-        await settle(table);
-        expect(announcer(table)).toBe('All filters cleared, showing all rows');
-        Object.assign(table, { data: [...table.data], total: 3 }); // the answer to "q" arrives late
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        await settle(table);
-        expect(announcer(table)).toBe('All filters cleared, showing all rows');
-    });
-
-    it('a server sort arms no answer wait: no render 2 s after it, and the count is the total in hand (round 11)', async () => {
-        const table = await mount({ localFiltering: false, localSorting: false, total: 40 });
-        table.sortState = { column: 'name', direction: 'asc' };
-        await settle(table);
-        expect(table.provider('query')?.filteredCount()).toBe(40);
-        const renders = vi.spyOn(table, 'requestUpdate');
-        await new Promise((resolve) => setTimeout(resolve, 2200));
-        expect(renders).not.toHaveBeenCalled();
-    });
-
-    it('a local table arms no answer wait: no render 2 s after a sort (round 5)', async () => {
-        const table = await mount();
-        table.sortState = { column: 'name', direction: 'asc' };
-        await settle(table);
-        const renders = vi.spyOn(table, 'requestUpdate');
-        await new Promise((resolve) => setTimeout(resolve, 2200));
-        expect(renders).not.toHaveBeenCalled();
-        expect(table.provider('query')?.filteredCount()).toBe(table.provider('query')?.sortedData().length);
-    });
-
-    it('server filtering with no total says nothing, and stops waiting: a total set much later is not announced (round 4)', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false });
-        table.addEventListener('query', () => setTimeout(() => (table.data = [...table.data]), 100));
-        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'q');
-        await new Promise((resolve) => setTimeout(resolve, 2800));
-        await settle(table);
-        expect(announcer(table)).toBe('');
-        table.total = 9;
-        await settle(table);
-        await frames(2);
-        expect(announcer(table)).toBe('');
-    });
-
-    it('server filtering: an answer the table cannot see is trusted after the wait, with the total in hand', async () => {
-        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, localFiltering: false, total: 4 });
-        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
-        await typeText(input, 'q');
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        await settle(table);
-        expect(announcer(table)).toBe('');
-        await new Promise((resolve) => setTimeout(resolve, 1300));
-        await settle(table);
-        expect(announcer(table)).toBe('4 rows match the filters');
-    });
 });
 
 describe('the lazy panels and the leak rules', () => {
