@@ -13,11 +13,18 @@ import type { DataTableDateRange, FilterCondition, FilterGroup, FilterOperator, 
 /** What the panel reports for a selection: `null` for an empty one (no filter), else a copy. */
 export const selectionValue = (selected: readonly unknown[]): unknown[] | null => (selected.length === 0 ? null : [...selected]);
 
-/** The selection as given, duplicates dropped, values without an option kept (Angular's `selected` effect). */
-export const normalizeSelection = (selected: unknown): unknown[] => (Array.isArray(selected) ? [...new Set(selected)] : []);
+/**
+ * The selection as given, duplicates dropped, values without an option kept (Angular's `selected` effect). An array, or a `Set` read as its values
+ * (the rule `multiselectFilterFn` reads a filter value by); anything else is no selection.
+ */
+export const normalizeSelection = (selected: unknown): unknown[] => (Array.isArray(selected) || selected instanceof Set ? [...new Set(selected)] : []);
 
-/** Adds the value at the end (selection order is click order) or removes it. */
-export const toggleSelection = (selected: readonly unknown[], value: unknown): unknown[] => (selected.includes(value) ? selected.filter((v) => v !== value) : [...selected, value]);
+/** SameValueZero, the equality of `includes` and `Set`: `Object.is`, except that +0 and -0 are one value (and NaN is NaN). */
+const sameValueZero = (a: unknown, b: unknown): boolean => a === b || (Number.isNaN(a) && Number.isNaN(b));
+
+/** Adds the value at the end (selection order is click order) or removes it: found and removed by ONE equality (SameValueZero, as `includes`). */
+export const toggleSelection = (selected: readonly unknown[], value: unknown): unknown[] =>
+    selected.includes(value) ? selected.filter((v) => !sameValueZero(v, value)) : [...selected, value];
 
 /** Every option's value added (the search text does not narrow it), already-selected values without an option kept. */
 export const selectAllValues = <O>(selected: readonly unknown[], options: readonly O[], valueWith: (option: O) => unknown): unknown[] => [...new Set([...selected, ...options.map(valueWith)])];

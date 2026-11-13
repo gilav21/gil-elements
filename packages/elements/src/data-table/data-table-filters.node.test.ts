@@ -193,6 +193,11 @@ describe('multiselect selection rules', () => {
         expect(normalizeSelection(['a', 'a', 'zz'])).toEqual(['a', 'zz']);
         expect(normalizeSelection(null)).toEqual([]);
         expect(normalizeSelection('a')).toEqual([]);
+        // Round 17: a Set is read as its values (multiselectFilterFn's rule); NaN toggles off like any value.
+        expect(normalizeSelection(new Set(['b', 'a']))).toEqual(['b', 'a']);
+        expect(toggleSelection([Number.NaN, 'a'], Number.NaN)).toEqual(['a']);
+        expect(toggleSelection(['a'], Number.NaN)).toEqual(['a', Number.NaN]);
+        expect(toggleSelection([0], -0)).toEqual([]);
     });
     it('reports a copy, not the panel state', () => {
         const selected = ['a'];
