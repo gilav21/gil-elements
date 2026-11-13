@@ -7,6 +7,12 @@ export function isSecondaryTouch(event: PointerEvent): boolean {
     return event.pointerType === 'touch' && !event.isPrimary;
 }
 
+/**
+ * What a long press inside a data table never starts a cell range on (Angular's mousedown list, plus the explicit opt-out). Shared by the
+ * table's range part and the context-menu addon, which must predict which holds the range takes.
+ */
+export const TOUCH_CONTROLS = 'input, textarea, select, button, a, [data-table-keeps-focus], ge-checkbox, ge-input, ge-button';
+
 /** How far (px) a finger may drift from where it went down and still count as holding still (a long press, a tap); further away it is a drag. */
 export const TOUCH_SLOP_PX = 10;
 
