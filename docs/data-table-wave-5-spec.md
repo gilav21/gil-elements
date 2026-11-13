@@ -543,6 +543,14 @@ Wave 6 is developed in parallel, so step 0 is written together with wave 6's (se
      - Parse a date filter value once per filter run, not per row.
      - Cache the `editRenderer` context's callbacks per open editor.
      - Where `FILTER_ANNOUNCE_MS` is exported (it now lives in the query controller).
+  8. **Round 24 review, deferred:**
+     - A synchronous echo written from a `column-filters-change` handler (a framework's binding in the same task) clears the waiting announcement, so it is lost.
+     - A whitespace-only global filter: `anyFilterOn` treats it as off, while the pipeline's global match may still run on it.
+     - `writeBackDate` on a date-time string the engine cannot parse (Safari's space form outside the ISO shape) writes back the date only and drops the time.
+     - `close()` reads `cellAt` after `follow()`: a programmatic commit in the same task as a row move can look at the old index.
+     - `columnDrawn` shared with `data-table-grid-window.ts`.
+     - The origin check before `sameStructure` in the query controller's filter watch.
+     - Where `FILTER_ANNOUNCE_MS` is exported.
 
 ## 4. Size
 Static cost in `data-table/define.js` (gzip): package A about 2.3 KB (trigger + floating row 1.2, controller + toolbar button 0.8, glue 0.3); package B about 4.5 KB (pure edit 1.3, session 2.2, editor view 1.0). Pure filter fns and builder operations sit in the index only (about 0.8 KB there, not in define). Provisional budget: `data-table/define.js` 77 020 -> 84 000, `data-table/index.js` 77 470 -> 85 000 (both final after the integration measurement, rounded up, and justified in the PR as "wave 5: filter trigger, floating row, edit session; the builder, panels, calendar, command and date picker are lazy").
