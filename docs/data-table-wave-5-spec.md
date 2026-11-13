@@ -551,6 +551,13 @@ Wave 6 is developed in parallel, so step 0 is written together with wave 6's (se
      - `columnDrawn` shared with `data-table-grid-window.ts`.
      - The origin check before `sameStructure` in the query controller's filter watch.
      - Where `FILTER_ANNOUNCE_MS` is exported.
+  9. **Round 25 review, deferred:**
+     - A scroll container inside a shadow root (not the table's own) does not close the header filter panel.
+     - The announcement triggers unified in one origin-aware subscription.
+     - `columnDrawn` shared with `data-table-grid-window.ts`.
+     - One subscriber for the structural echo checks (the query and filter controllers each keep their own).
+     - `dropPendingGlobal` also in `detach` and at the start of `changeGlobalFilter`.
+     - Exports that are private in practice, and where `FILTER_ANNOUNCE_MS` lives.
 
 ## 4. Size
 Static cost in `data-table/define.js` (gzip): package A about 2.3 KB (trigger + floating row 1.2, controller + toolbar button 0.8, glue 0.3); package B about 4.5 KB (pure edit 1.3, session 2.2, editor view 1.0). Pure filter fns and builder operations sit in the index only (about 0.8 KB there, not in define). Provisional budget: `data-table/define.js` 77 020 -> 84 000, `data-table/index.js` 77 470 -> 85 000 (both final after the integration measurement, rounded up, and justified in the PR as "wave 5: filter trigger, floating row, edit session; the builder, panels, calendar, command and date picker are lazy").
