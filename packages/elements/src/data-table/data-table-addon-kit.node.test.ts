@@ -319,13 +319,14 @@ describe('createAddonHost', () => {
         const root = {} as HTMLElement;
         const emit = vi.fn();
         const announce = vi.fn();
-        const host = createAddonHost<unknown>({ root, resolvedLocale: () => locale, emit, announce, subscribe: () => () => {}, provider: () => undefined, addons: () => service });
-        return { host, service, locale, root, emit, announce };
+        const requestRender = vi.fn();
+        const host = createAddonHost<unknown>({ root, resolvedLocale: () => locale, emit, announce, requestRender, subscribe: () => () => {}, provider: () => undefined, addons: () => service });
+        return { host, service, locale, root, emit, announce, requestRender };
     }
 
     it('exposes only root, registration, busy, events, announcements, locale, subscribe and provider, wired to the addons service', () => {
         const { host, service, locale, root } = build();
-        expect(Object.keys(host).sort()).toEqual(['announce', 'emit', 'expose', 'provider', 'registerCellAction', 'registerHeaderAction', 'resolvedLocale', 'root', 'setBusy', 'subscribe']);
+        expect(Object.keys(host).sort()).toEqual(['announce', 'emit', 'expose', 'provider', 'registerCellAction', 'registerHeaderAction', 'requestRender', 'resolvedLocale', 'root', 'setBusy', 'subscribe']);
 
         host.registerCellAction({ id: 'c', onClick: vi.fn() });
         host.registerHeaderAction({ id: 'h', onClick: vi.fn() });
@@ -337,8 +338,10 @@ describe('createAddonHost', () => {
         expect(host.root).toBe(root);
     });
 
-    it('passes emit and announce through to the table', () => {
-        const { host, emit, announce } = build();
+    it('passes emit, announce and requestRender through to the table', () => {
+        const { host, emit, announce, requestRender } = build();
+        host.requestRender();
+        expect(requestRender).toHaveBeenCalledTimes(1);
         host.emit('row-menu-open', { row: 1 });
         host.emit('export-complete');
         host.announce('Done');

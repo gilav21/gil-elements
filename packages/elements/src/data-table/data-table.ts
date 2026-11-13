@@ -229,6 +229,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             resolvedLocale: () => this.resolvedLocale,
             emit: (name, detail) => this.dispatch(name, detail),
             announce: (message) => this.announce(message),
+            requestRender: () => void (this.assembled && this.requestUpdate()), // detached: nothing to draw
             subscribe: (topic, fn) => this.topics.on(topic, fn),
             provider: (key) => this.provider(key),
             // The controller's own service (it outlives a disconnect, so a teardown can still unregister); the error names the key in a plan without it.

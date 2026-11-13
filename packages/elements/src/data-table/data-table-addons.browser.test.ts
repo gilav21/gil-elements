@@ -214,6 +214,27 @@ describe('the action buttons addons register', () => {
         expect(headCell(table, 'name').querySelector('[data-action-id="col"]')?.getAttribute('aria-expanded')).toBe('false');
     });
 
+    it('redraws aria-expanded when the addon asks for a render (nothing else renders), and requestRender is a no-op while detached', async () => {
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable();
+        table.use(addon);
+        const { host } = runs[0]!;
+        let open = false;
+        host.registerCellAction({ id: 'menu', expanded: (context) => open && context.index === 0, onClick: () => undefined });
+        await settle(table);
+        const first = (): string | null => q(table, 'button[data-action-id="menu"]').getAttribute('aria-expanded');
+        expect(first()).toBe('false');
+        open = true;
+        await settle(table);
+        expect(first()).toBe('false'); // no render was asked for
+        host.requestRender();
+        await settle(table);
+        expect(first()).toBe('true');
+        table.remove();
+        expect(() => host.requestRender()).not.toThrow();
+        expect(table.isUpdatePending).toBe(false);
+    });
+
     it("leaves a consumer's own actions column as it was while no addon registers a row action", async () => {
         const columns = [...(await mountTable()).columns, { accessorKey: '_actions', header: '', cellRenderer: () => 'mine' }];
         const table = await mountTable({ columns });

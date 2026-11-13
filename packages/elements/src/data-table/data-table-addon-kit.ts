@@ -32,6 +32,8 @@ export interface DataTableAddonHost<T = unknown> {
     emit<K extends string>(name: K, detail?: K extends keyof DataTableAddonEvents ? DataTableAddonEvents[K] : unknown): void;
     /** Writes to the table's polite live region. */
     announce(message: string): void;
+    /** Asks the table to draw again (e.g. a slot's `expanded` changed); a no-op while it is detached. */
+    requestRender(): void;
     /** Publishes this addon's imperative API: `table.addon<A>(id)` returns it until the addon is torn down. */
     expose<A extends object>(api: A): void;
     /** `'locale'` re-runs `defineAddon`'s `create`; the other topics are for addons that follow rows or the cell. */
@@ -259,6 +261,7 @@ export function createAddonHost<T>(parts: {
     readonly resolvedLocale: () => DataTableLocale;
     readonly emit: (name: string, detail: unknown) => void;
     readonly announce: (message: string) => void;
+    readonly requestRender: () => void;
     readonly subscribe: DataTableAddonHost<T>['subscribe'];
     readonly provider: DataTableAddonHost<T>['provider'];
     readonly addons: () => Pick<AddonsService<T>, 'cellActions' | 'headerActions' | 'setBusy'>;
@@ -270,6 +273,7 @@ export function createAddonHost<T>(parts: {
         },
         emit: (name, detail) => parts.emit(name, detail),
         announce: parts.announce,
+        requestRender: parts.requestRender,
         // `AddonSet` hands each addon a host of its own whose `expose` files the API under the addon's id; this one has no id to file under.
         expose: () => undefined,
         subscribe: parts.subscribe,
