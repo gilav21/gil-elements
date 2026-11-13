@@ -128,12 +128,8 @@ describe('parseNlFilterSpec', () => {
 });
 
 describe('nlColumns, fitsFilter, hardenSpec, projectRow', () => {
-    it('describes every data column as { key, header }, never a table-owned one', () => {
-        expect(nlColumns([...COLUMNS, { accessorKey: '_actions', header: '' }])).toEqual([
-            { key: 'name', header: 'Name' },
-            { key: 'status', header: 'Status' },
-            { key: 'note', header: 'Note' },
-        ]);
+    it('describes the filterable data columns as { key, header }, never a table-owned one (the pipeline filters only those, PR #80 review)', () => {
+        expect(nlColumns([...COLUMNS, { accessorKey: '_actions', header: '', enableFiltering: true }])).toEqual([{ key: 'status', header: 'Status' }]);
     });
 
     it('checks a value against the column filter kind (D5)', () => {
@@ -159,6 +155,7 @@ describe('nlColumns, fitsFilter, hardenSpec, projectRow', () => {
         expect(hardenSpec({ globalFilter: 'a', columnFilters: { status: 'active', name: { bad: 1 } } }, COLUMNS)).toEqual({ globalFilter: 'a', columnFilters: { status: 'active' } });
         expect(hardenSpec({ columnFilters: { name: ['x'] } }, COLUMNS)).toEqual({});
         expect(hardenSpec({ globalFilter: 'x' }, COLUMNS)).toEqual({ globalFilter: 'x' });
+        expect(hardenSpec({ columnFilters: { name: 'Alice', status: 'active' } }, COLUMNS)).toEqual({ columnFilters: { status: 'active' } }); // `name` is not filterable
     });
 
     it('projects a row to the given own keys only', () => {
@@ -189,6 +186,30 @@ describe('askAi', () => {
         abort.abort(new Error('stop'));
         await expect(pending).rejects.toThrow('stop');
         await expect(askAi(never, { task: 'nl-filter', input: 'q' }, new AbortController().signal, 5)).rejects.toMatchObject({ name: 'TimeoutError' });
+    });
+
+    it('stops a streaming provider on abort: its iterator is returned, it is not read to the end (PR #80 review)', async () => {
+        const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+        let stopped = false;
+        const stream: AiProvider = () =>
+            (async function* () {
+                try {
+                    yield 'a';
+                    await sleep(20);
+                    yield 'b';
+                    await sleep(1000);
+                    yield 'c';
+                } finally {
+                    stopped = true;
+                }
+            })();
+        const abort = new AbortController();
+        const pending = askAi(stream, { task: 'nl-filter', input: 'q' }, abort.signal);
+        await sleep(5);
+        abort.abort(new Error('stop'));
+        await expect(pending).rejects.toThrow('stop');
+        await sleep(100);
+        expect(stopped).toBe(true);
     });
 });
 
@@ -245,7 +266,7 @@ describe('the AI part: NL filter', () => {
         expect(model.get('globalFilter')).toBe('ali');
         expect(model.get('columnFilters')).toEqual({ status: 'active' });
         expect(named('nl-filter')).toEqual([{ query: 'show active alice', spec: { globalFilter: 'ali', columnFilters: { status: 'active' } } }]);
-        expect(ai.requests[0]).toMatchObject({ task: 'nl-filter', input: 'show active alice', context: { columns: [{ key: 'name', header: 'Name' }, { key: 'status', header: 'Status' }, { key: 'note', header: 'Note' }] } });
+        expect(ai.requests[0]).toMatchObject({ task: 'nl-filter', input: 'show active alice', context: { columns: [{ key: 'status', header: 'Status' }] } }); // the filterable columns
         expect(ai.requests[0]?.signal).toBeInstanceOf(AbortSignal);
     });
 
@@ -362,14 +383,27 @@ describe('the AI part: AI fill', () => {
         expect(scripted.requests[0]).toMatchObject({ task: 'table-fill', prompt: 'write a note', context: { column: 'Note' } });
     });
 
-    it('fills only the filtered rows, written by id (rows off the page report rowIndex -1)', async () => {
+    it('fills only the filtered rows, written by id (rowIndex -1: no drawn address), without re-reading the drawn rows per batch (PR #80 review)', async () => {
         const scripted = makeAiProvider((req) => `n${(JSON.parse(req.input) as Row).id}`);
-        const { ai, model, named } = setup({ provider: scripted.provider, pageSize: 1 });
+        const { ai, model, named, providers } = setup({ provider: scripted.provider, pageSize: 1 });
         model.set('columnFilters', { status: 'active' });
+        const rendered = vi.spyOn(providers.get('query') as { renderedRows(): unknown }, 'renderedRows');
         await ai.aiFillColumn('note', 'p');
         expect(model.get('data').map((r) => r.note)).toEqual(['n1', '', 'n3']);
-        expect(named('cell-edit').map((e) => (e as { rowIndex: number }).rowIndex)).toEqual([0, -1]);
+        expect(named('cell-edit').map((e) => (e as { rowIndex: number }).rowIndex)).toEqual([-1, -1]);
         expect(named('ai-fill-complete')).toEqual([{ columnKey: 'note', count: 2, rejected: 0, skipped: 0 }]);
+        expect(rendered).not.toHaveBeenCalled();
+    });
+
+    it('leaves out the rows writeCells cannot find by id (tree children) BEFORE asking, and counts them skipped (PR #80 review)', async () => {
+        const scripted = makeAiProvider('v');
+        const { ai, model, named, providers } = setup({ provider: scripted.provider });
+        const child: Row = { id: '1.1', name: 'Kid', status: 'active', note: '' };
+        providers.set('selection', { selectedRows: () => [DATA[0], child] });
+        await ai.aiFillColumn('note', 'p', { rows: 'selected' });
+        expect(scripted.requests.map((r) => (JSON.parse(r.input) as Row).id)).toEqual(['1']);
+        expect(model.get('data').map((r) => r.note)).toEqual(['v', '', '']);
+        expect(named('ai-fill-complete')).toEqual([{ columnKey: 'note', count: 1, rejected: 0, skipped: 1 }]);
     });
 
     it('does nothing for a column without a valueSetter or without a provider (Angular)', async () => {
@@ -417,10 +451,10 @@ describe('the AI part: AI fill', () => {
         expect(announced.at(-1)).toBe(t.aiFillFailed);
     });
 
-    it('cancelAi (and the caller signal) stop it, keeping the cells already written; busy() is true while it runs', async () => {
+    it('cancelAi (and the caller signal) stop it, keeping the cells already written, reported as cancelled with no announcement; busy() is true while it runs (PR #80 review)', async () => {
         const gate = deferred<string>();
         let calls = 0;
-        const { ai, model, named } = setup({ provider: () => (++calls === 2 ? gate.promise : 'v') });
+        const { ai, model, named, announced } = setup({ provider: () => (++calls === 2 ? gate.promise : 'v') });
         const run = ai.aiFillColumn('note', 'p');
         expect(ai.busy()).toBe(true);
         await flush();
@@ -428,12 +462,28 @@ describe('the AI part: AI fill', () => {
         await run;
         expect(ai.busy()).toBe(false);
         expect(model.get('data').map((r) => r.note)).toEqual(['v', '', '']);
-        expect(named('ai-fill-complete')).toMatchObject([{ count: 1, failed: true }]);
+        expect(named('ai-fill-complete')).toEqual([{ columnKey: 'note', count: 1, rejected: 0, skipped: 0, cancelled: true }]);
+        expect(announced).toEqual(['Filling 1 of 3']); // the progress before the cancel; no done / failed announcement
         const caller = new AbortController();
         caller.abort();
         const other = setup({ provider: () => 'v' });
         await other.ai.aiFillColumn('note', 'p', { signal: caller.signal });
         expect(other.model.get('data').map((r) => r.note)).toEqual(['', '', '']);
+        expect(other.named('ai-fill-complete')).toEqual([{ columnKey: 'note', count: 0, rejected: 0, skipped: 0, cancelled: true }]);
+    });
+
+    it('a fill replaced by a new one is reported cancelled, the new one completes (PR #80 review)', async () => {
+        const gate = deferred<string>();
+        let calls = 0;
+        const { ai, named, announced } = setup({ provider: () => (++calls === 1 ? gate.promise : 'v') });
+        const first = ai.aiFillColumn('note', 'p');
+        await ai.aiFillColumn('note', 'p2');
+        await first;
+        expect(named('ai-fill-complete')).toEqual([
+            { columnKey: 'note', count: 0, rejected: 0, skipped: 0, cancelled: true }, // the replaced one stops at once
+            { columnKey: 'note', count: 3, rejected: 0, skipped: 0 },
+        ]);
+        expect(announced.filter((a) => !a.startsWith('Filling'))).toEqual(['3 cells filled']);
     });
 
     it('detach mid-fill writes nothing more and reports nothing', async () => {

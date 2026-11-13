@@ -99,7 +99,10 @@ export class AiPart<T> {
         const column = config.columns.find((c) => String(c.accessorKey) === columnKey);
         const query = this.host.provider('query');
         if (!provider || !column?.valueSetter || !query) return;
-        const rows = options.rows === 'selected' ? (this.host.provider('selection')?.selectedRows() ?? []) : options.rows === 'page' ? query.renderedRows() : query.sortedData();
+        const picked = options.rows === 'selected' ? (this.host.provider('selection')?.selectedRows() ?? []) : options.rows === 'page' ? query.renderedRows() : query.sortedData();
+        // writeCells finds a row by id among the rows of `data` (top level): a row it cannot find (a tree child) is left out before any request.
+        const inData = new Set(query.rawRows().map((row) => query.rowId(row)));
+        const rows = picked.filter((row) => inData.has(query.rowId(row)));
         this.fillRun?.abort();
         const abort = new AbortController();
         this.fillRun = abort;
@@ -112,15 +115,9 @@ export class AiPart<T> {
             signal,
             ask: (row) =>
                 askAi(provider, { task: 'table-fill', input: JSON.stringify(projectRow(row, options.inputColumns)), prompt, context: { column: column.header } }, signal),
-            write: (batch) => {
-                // The drawn index is reported (cell-edit, edit-error) when the row is on the page, else -1; the row itself is found by id.
-                const drawn = new Map(query.renderedRows().map((row, i) => [query.rowId(row), i]));
-                const requests = batch.map(({ row, value }) => {
-                    const rowId = query.rowId(row);
-                    return { target: { rowIndex: drawn.get(rowId) ?? -1, columnKey, rowId }, value };
-                });
-                return this.host.writeCells(requests, { emitEdit: true }).map((r) => r.status);
-            },
+            // By id, so the rows of every page are written; `rowIndex` -1 (no drawn address: a write can re-sort the page, so no index stays true).
+            write: (batch) =>
+                this.host.writeCells(batch.map(({ row, value }) => ({ target: { rowIndex: -1, columnKey, rowId: query.rowId(row) }, value })), { emitEdit: true }).map((r) => r.status),
             progress: (done) => {
                 const now = Date.now();
                 if (done === total || now - lastProgress >= PROGRESS_MS) {
@@ -134,13 +131,17 @@ export class AiPart<T> {
                 }
             },
         });
+        const cancelled = signal.aborted; // cancelAi, the caller's signal, or a newer fill (read before the abort below)
         abort.abort(); // a failed batch's other requests stop
         if (this.fillRun === abort) {
             this.fillRun = undefined;
             this.host.requestRender();
         }
         if (!this.attached) return; // a table that left the document reports nothing
-        this.host.announce(result.failed ? t.aiFillFailed : interpolate(t.aiFillDone, { count: result.count }));
-        this.host.emit('ai-fill-complete', { columnKey, ...result });
+        const { failed, error, ...counts } = result;
+        const detail = { columnKey, ...counts, skipped: counts.skipped + picked.length - rows.length };
+        if (cancelled) return this.host.emit('ai-fill-complete', { ...detail, cancelled: true }); // asked for: nothing to announce
+        this.host.announce(failed ? t.aiFillFailed : interpolate(t.aiFillDone, { count: result.count }));
+        this.host.emit('ai-fill-complete', failed ? { ...detail, failed, error } : detail);
     }
 }

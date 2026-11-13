@@ -44,9 +44,12 @@ export function parseNlFilterSpec(raw: string, validColumnKeys: readonly string[
 /** A provider that never answers is given up after this long (per request). */
 export const AI_TIMEOUT_MS = 60_000;
 
-/** The columns an NL request describes to the provider (`context.columns`), as Angular: every data column, `{ key, header }`. */
+/** A data column with `enableFiltering`: the only ones the filter pipeline reads a column filter for. */
+const filterable = <T>(column: ColumnDef<T>): boolean => !!column.enableFiltering && !isSpecialColumnKey(column.accessorKey);
+
+/** The columns an NL request describes to the provider (`context.columns`), `{ key, header }`: the filterable data columns (Angular sends all). */
 export const nlColumns = <T>(columns: readonly ColumnDef<T>[]): { key: string; header: string }[] =>
-    columns.filter((c) => !isSpecialColumnKey(c.accessorKey)).map((c) => ({ key: String(c.accessorKey), header: c.header }));
+    columns.filter(filterable).map((c) => ({ key: String(c.accessorKey), header: c.header }));
 
 const isDateish = (v: unknown): boolean => (typeof v === 'string' || typeof v === 'number') && asEditableDate(v) !== null;
 const isRangeEnd = (v: unknown): boolean => v == null || isDateish(v);
@@ -67,12 +70,12 @@ export function fitsFilter<T>(column: ColumnDef<T>, value: unknown): boolean {
     return typeof value === 'string' || Number.isFinite(value);
 }
 
-/** `spec` without the column filters whose value does not fit the column's filter (`fitsFilter`); an emptied record is dropped. */
+/** `spec` without the column filters of a column that is not filterable or whose value does not fit its filter (`fitsFilter`); an emptied record is dropped. */
 export function hardenSpec<T>(spec: NlFilterSpec, columns: readonly ColumnDef<T>[]): NlFilterSpec {
     if (!spec.columnFilters) return spec;
     const kept = Object.entries(spec.columnFilters).filter(([key, value]) => {
         const column = columns.find((c) => String(c.accessorKey) === key);
-        return column !== undefined && fitsFilter(column, value);
+        return column !== undefined && filterable(column) && fitsFilter(column, value);
     });
     const { columnFilters: _, ...rest } = spec;
     return kept.length > 0 ? { ...rest, columnFilters: Object.fromEntries(kept) } : rest;
@@ -80,22 +83,28 @@ export function hardenSpec<T>(spec: NlFilterSpec, columns: readonly ColumnDef<T>
 
 /**
  * Runs one request and answers its LAST emission (an async iterable emits the full text so far). Rejects with the signal's reason once `signal`
- * aborts or `ms` pass, even when the provider ignores `request.signal`; the provider gets the combined signal.
+ * aborts or `ms` pass, even when the provider ignores `request.signal`; the provider gets the combined signal, and a stream is stopped (its
+ * iterator's `return()`), not read to its end.
  */
 export async function askAi(provider: AiProvider, request: Omit<AiRequest, 'signal'>, signal: AbortSignal, ms = AI_TIMEOUT_MS): Promise<string> {
     const combined = AbortSignal.any([signal, AbortSignal.timeout(ms)]);
     combined.throwIfAborted();
+    let iterator: AsyncIterator<string> | undefined;
     let onAbort: () => void = () => undefined;
     const aborted = new Promise<never>((_, reject) => {
-        onAbort = () => reject(combined.reason);
+        onAbort = () => {
+            reject(combined.reason);
+            iterator?.return?.().catch(() => undefined);
+        };
         combined.addEventListener('abort', onAbort, { once: true });
     });
     const answer = (async () => {
         // `runAiTask` (shared/ai.ts) inlined: a string or a promise is the answer, an async iterable's last emission is.
         const result = provider({ ...request, signal: combined });
         if (typeof result === 'string' || result instanceof Promise) return result;
+        iterator = result[Symbol.asyncIterator]();
         let last = '';
-        for await (const text of result) last = text;
+        for (let step = await iterator.next(); !step.done && !combined.aborted; step = await iterator.next()) last = step.value;
         return last;
     })();
     try {

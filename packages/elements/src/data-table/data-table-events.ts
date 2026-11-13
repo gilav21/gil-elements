@@ -44,8 +44,8 @@ export interface DataTableInteractionEvents<T> {
     'edit-redo': undefined;
     'column-resize': ColumnResizeEvent;
     'nl-filter': NlFilterEventDetail;
-    /** `count`: cells written. Wave 7 adds the cells the validator `rejected`, the rows `skipped` (gone or not writable), and `failed` / `error` for a run a provider error stopped. */
-    'ai-fill-complete': { columnKey: string; count: number; rejected?: number; skipped?: number; failed?: boolean; error?: unknown };
+    /** `count`: cells written. Wave 7 adds the cells the validator `rejected`, the rows `skipped` (gone or not writable), `failed` / `error` for a run a provider error stopped, and `cancelled` for a run that was cancelled or replaced (nothing announced). */
+    'ai-fill-complete': { columnKey: string; count: number; rejected?: number; skipped?: number; failed?: boolean; error?: unknown; cancelled?: boolean };
     /** Wave 7: an AI fill's progress, at most every 250 ms. */
     'ai-fill-progress': { columnKey: string; done: number; total: number };
 }

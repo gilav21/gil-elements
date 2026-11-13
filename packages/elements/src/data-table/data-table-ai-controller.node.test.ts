@@ -4,7 +4,7 @@ import { AiController } from './data-table-ai-controller.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import type { AiService, DataTableConfig } from './data-table-providers.js';
 
-const load = vi.hoisted(() => ({ count: 0, fail: false, calls: [] as string[] }));
+const load = vi.hoisted(() => ({ count: 0, fail: false, detachThrows: false, calls: [] as string[] }));
 
 // `count`: parts built (one per load); `fail`: the load rejects (the module mock is cached across tests, so the failure is in building the part).
 vi.mock('./lazy/ai.js', () => {
@@ -15,7 +15,10 @@ vi.mock('./lazy/ai.js', () => {
                 if (load.fail) throw new Error('chunk gone');
             }
             attach = () => load.calls.push('attach');
-            detach = () => load.calls.push('detach');
+            detach = () => {
+                load.calls.push('detach');
+                if (load.detachThrows) throw new Error('detach failed');
+            };
             render = () => null;
             runBox = async () => void load.calls.push('runBox');
             filter = async (query: string) => void load.calls.push(`filter ${query}`);
@@ -37,12 +40,12 @@ function setup(aiProvider: unknown) {
     } as unknown as DataTableCoreHost<unknown>;
     const controller = new AiController(host);
     controller.attach();
-    return { controller, ai: providers.get('ai') as Required<AiService>, providers, renders: () => renders };
+    return { controller, ai: providers.get('ai') as Required<AiService>, providers, renders: () => renders, config: host.config as { aiProvider: unknown } };
 }
 
 afterEach(() => {
     vi.restoreAllMocks();
-    Object.assign(load, { count: 0, fail: false, calls: [] });
+    Object.assign(load, { count: 0, fail: false, detachThrows: false, calls: [] });
 });
 
 describe('the ai shell', () => {
@@ -93,5 +96,41 @@ describe('the ai shell', () => {
         controller.detach();
         await expect(pending).resolves.toBeUndefined();
         expect(load.calls.filter((c) => c.startsWith('filter'))).toEqual([]);
+    });
+
+    const settled = (p: Promise<unknown>) => Promise.race([p.then(() => 'resolved'), new Promise((r) => setTimeout(() => r('hung'), 50))]);
+
+    it('a method waiting for the load resolves as a no-op when aiProvider goes away, and never runs on the part (PR #80 review)', async () => {
+        const { controller, ai, config } = setup(() => '{}');
+        const pending = ai.applyNaturalLanguageFilter('q');
+        config.aiProvider = undefined;
+        controller.hostUpdate();
+        expect(await settled(pending)).toBe('resolved');
+        await new Promise((r) => setTimeout(r, 20)); // the load in flight resolves and is dropped
+        expect(load.calls).toEqual([]);
+        // (A reload in the same test is not driven here: a second dynamic import of the mocked module, after one that was dropped, resolves the real
+        // module in vitest. The generation check that keeps a woken method from running on a later part is the one cancelAi uses, tested below.)
+    });
+
+    it('cancelAi while the part loads: the waiting fill does nothing and the provider is never asked (PR #80 review)', async () => {
+        const { ai } = setup(() => '{}');
+        const pending = ai.aiFillColumn('note', 'p');
+        ai.cancelAi();
+        await pending;
+        expect(load.calls).toEqual(['attach']);
+    });
+
+    it('a part that throws while detaching does not latch the shell as failed: the next load serves the methods (PR #80 review)', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const { controller, ai, config } = setup(() => '{}');
+        controller.hostUpdate();
+        await vi.waitFor(() => expect(load.calls).toEqual(['attach']));
+        load.detachThrows = true;
+        config.aiProvider = undefined;
+        controller.hostUpdate(); // the detach throws (reported)
+        load.detachThrows = false;
+        config.aiProvider = () => '{}';
+        await ai.applyNaturalLanguageFilter('again'); // before any update: the call starts the load and waits for it
+        expect(load.calls).toEqual(['attach', 'detach', 'attach', 'filter again']);
     });
 });

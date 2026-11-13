@@ -330,10 +330,10 @@ export class QueryController<T> {
                 if (columnsChanged) model.set('columnFilters', { ...columnFilters });
                 this.resetPage();
             });
-            // A new NON-empty global text speaks as typing it does (its count reflects every filter; server mode uses `total`); anything else (column
-            // filters alone, or an emptied global text, with or without column changes) speaks the overall result, as a restored view does.
+            // A changed global text speaks as typing it does (its count reflects every filter; server mode uses `total`; emptied: "filter cleared"),
+            // unless it was emptied AND the column filters changed too: that, and column filters alone, speak the overall result as a restored view does.
             if (globalChanged) this.host.emit('filter-change', globalFilter);
-            if (globalChanged && globalFilter.trim() !== '') this.announceGlobal(globalFilter);
+            if (globalChanged && (globalFilter.trim() !== '' || !columnsChanged)) this.announceGlobal(globalFilter);
             else this.announceFilters();
         },
         sortDirection: (key) => this.sorts().find((s) => s.column === String(key))?.direction ?? null,
