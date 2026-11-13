@@ -160,6 +160,17 @@ it('warns once per TABLE (set) and id, though two tables share one registry: eac
         expect(log).toHaveLength(1);
     });
 
+    it('does not restart an addon given an equal copy of its options (one structural rule: Dates by time, absent = undefined) (round 20)', () => {
+        const { set, addon, log } = setup();
+        addon('a');
+        set.start();
+        set.configure('a', { a: { since: new Date(5), list: [1, 2] } });
+        set.configure('a', { a: { since: new Date(5), list: [1, 2], extra: undefined } });
+        expect(log).toHaveLength(1);
+        set.configure('a', { a: { since: new Date(6), list: [1, 2] } });
+        expect(log).toHaveLength(3); // stop, start: a real change
+    });
+
     it('use() adds an addon without the attribute, with options, and its teardown removes it', () => {
         const { set, log } = setup();
         set.start();

@@ -4,6 +4,7 @@
  */
 import { resolveAddonLocale } from '../shared/addon-locale.js';
 import { Disposables } from '../shared/registry.js';
+import { sameStructure } from './data-table-filters.js';
 import { warnOncePer } from './data-table-warn.js';
 import type { DataTableLocale } from './data-table.locales.js';
 import type { DataTableTopic } from './data-table-host.js';
@@ -88,16 +89,6 @@ export function parseAddonIds(attribute: string): string[] {
     return [...new Set(attribute.split(/[\s,]+/).filter(Boolean))];
 }
 
-/** Plain data (objects, arrays, primitives) by value; anything else (functions, class instances) by identity. */
-function sameValue(a: unknown, b: unknown): boolean {
-    if (Object.is(a, b)) return true;
-    if (typeof a !== 'object' || typeof b !== 'object' || a === null || b === null) return false;
-    const plain = (v: object): boolean => Array.isArray(v) || Object.getPrototypeOf(v) === Object.prototype;
-    if (!plain(a) || !plain(b) || Array.isArray(a) !== Array.isArray(b)) return false;
-    const ka = Object.keys(a);
-    return ka.length === Object.keys(b).length && ka.every((k) => Object.hasOwn(b, k) && sameValue((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k]));
-}
-
 /**
  * Which addons run and with what, for one table: `use()`d ones, the `addons` attribute resolved through the registry of
  * defined addons, and `addonOptions`. `sync()` is idempotent; it only tears down what is no longer wanted or whose
@@ -171,7 +162,9 @@ export class AddonSet<T = unknown> {
     private merge(): void {
         const used = [...this.used].flatMap(([id, { options }]) => (options === undefined ? [] : [[id, options] as const]));
         const next: Record<string, unknown> = { ...this.optionsMap, ...Object.fromEntries(used) };
-        for (const key of Object.keys(next)) if (sameValue(this.settings[key], next[key])) next[key] = this.settings[key];
+        // Plain data (objects, arrays, primitives, Dates by time) by value; anything else (functions, class instances) by identity: the table's one
+        // structural-equality rule (`sameStructure`).
+        for (const key of Object.keys(next)) if (sameStructure(this.settings[key], next[key])) next[key] = this.settings[key];
         const keys = Object.keys(next);
         const unchanged = keys.length === Object.keys(this.settings).length && keys.every((k) => Object.hasOwn(this.settings, k) && Object.is(this.settings[k], next[k]));
         if (!unchanged) this.settings = next;
