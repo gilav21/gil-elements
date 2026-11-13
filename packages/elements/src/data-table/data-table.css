@@ -609,7 +609,9 @@
         }
     }
     @media (pointer: coarse) {
+        /* `[data-size]` too: as specific as the md / lg sizes above, so the touch size wins over them (pointer-coarse:size-11). */
         ge-data-table [data-slot="data-table-icon-button"],
+        ge-data-table [data-slot="data-table-icon-button"][data-size],
         ge-data-table [data-slot="data-table-header-action"] {
             width: 2.75rem;
             height: 2.75rem;

@@ -179,6 +179,12 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 - The auto `_actions` width is computed in px in JS; it should be CSS (rem and density aware).
 - Every row action button of a slot has the same accessible name; a `{row}`-aware locale key is wave 8.
 - `getDataTableAddon` is unused outside tests.
+- The columns controller's `(pointer: coarse)` media query list has no change listener (a pointer change shows on the next render only).
+- `applyFilters` announces column filters itself while the filter UI also announces model writes it hears (latest wins, but two schedules).
+- `actionsView().head()` looks the consumer column up in `config.columns` per header: O(columns²) per render.
+- `isDisabled(row)` is computed again for the `_actions` cell.
+- `actionsView` computes `consumerColumn` after the early return for no slots (latent: false there).
+- `register-addon.mjs` `option()` accepts a following flag (`--base --component`) as a value.
 - The element reaches the `addons` service through more than one accessor (the addon host part and the busy port); keep one private accessor.
 
 ## H. Work packages (strict file ownership after step 0)

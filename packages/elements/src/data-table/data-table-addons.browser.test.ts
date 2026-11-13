@@ -4,7 +4,7 @@ import type { DataTableAddon, DataTableAddonHost } from './data-table-addon-kit.
 import { registerDataTableAddon } from './data-table-addon-registry.js';
 import type { GeDataTable } from './data-table.js';
 import { bodyRows, headCell, makeRows, mountTable, q, qa, SAMPLE_COLUMNS, SAMPLE_ROWS, settle, stubDownload, trackTable, type DownloadStub, type SampleRow } from './data-table-fixtures.js';
-import { mouseDrag, parkMouse, typeText } from './data-table-input-fixtures.js';
+import { emulateTouch, mouseDrag, parkMouse, typeText } from './data-table-input-fixtures.js';
 import type { RowActionContext } from './data-table.types.js';
 
 /** An addon that hands its host (and options) to the test. */
@@ -412,6 +412,23 @@ describe('the action buttons addons register', () => {
             expect(q(table, '[data-slot="table-cell"][data-column="_actions"]').getBoundingClientRect().width).toBeCloseTo(width, 0);
         } finally {
             media.mockRestore();
+        }
+    });
+
+    it('draws a row action button at 2.75rem under a coarse pointer, over its data-size (final review 7)', async () => {
+        await emulateTouch(true);
+        try {
+            expect(matchMedia('(pointer: coarse)').matches).toBe(true);
+            const { addon, runs } = probe(uniqueId());
+            const table = await mountTable();
+            table.use(addon);
+            runs[0]!.host.registerCellAction({ id: 'one', onClick: () => undefined });
+            await settle(table);
+            const button = q(table, '[data-action-id="one"]');
+            expect(button.dataset['size']).toBe('lg');
+            expect(button.getBoundingClientRect().height).toBeCloseTo(44, 0);
+        } finally {
+            await emulateTouch(false);
         }
     });
 
