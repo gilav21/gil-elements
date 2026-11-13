@@ -663,10 +663,22 @@ export class EditSession<T> implements CellSession {
         event.preventDefault();
         const key = keys[next.col] as string;
         // The target is a RECORD: only when the commit changed the drawn rows (a re-sort, a re-filter) is it looked up again, by id.
-        const moved = query.renderedRows() !== rows && nextRow !== undefined;
-        const row = moved ? this.indexOfRow(String(host.config.getRowId(nextRow)), next.row) : next.row;
-        this.context.setFocus(row, key, true);
-        this.startAt(row, key);
+        const now = query.renderedRows();
+        if (now === rows || nextRow === undefined) {
+            this.context.setFocus(next.row, key, true);
+            this.startAt(next.row, key);
+            return;
+        }
+        const found = indexOfRowId(now, String(host.config.getRowId(nextRow)), (r) => host.config.getRowId(r));
+        if (found === -1) {
+            // The target record is no longer drawn (the commit filtered it out): no editor opens on whatever record the clamped index names now.
+            // The focus stays in the grid, on the nearest cell (or the viewport when no row is left).
+            if (now.length > 0) this.context.setFocus(Math.max(0, Math.min(next.row, now.length - 1)), key, true);
+            else this.host.root.querySelector<HTMLElement>(VIEWPORT)?.focus({ preventScroll: true });
+            return;
+        }
+        this.context.setFocus(found, key, true);
+        this.startAt(found, key);
     }
 
     /**

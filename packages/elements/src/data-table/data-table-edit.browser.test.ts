@@ -96,6 +96,22 @@ describe('E1 opening an editor', () => {
         expect(edits).toHaveLength(0);
     });
 
+    it('Tab after a commit that filters its record out opens no editor on another record (round 19)', async () => {
+        const table = await mount({ columns: editColumns({ name: { enableFiltering: true } }), columnFilters: { name: 'a' } });
+        const before = names(table);
+        const index = before.findIndex((n) => n === 'Carol');
+        expect(index).toBeGreaterThan(-1);
+        await startEditingAt(table, index, 'name');
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.clear(input);
+        await userEvent.type(input, 'Crl'); // no 'a': the commit filters the record out
+        await press('{Tab}');
+        await settle(table);
+        expect(names(table)).not.toContain('Crl');
+        expect(table.editingCell).toBeNull(); // not the age editor of whatever record took the index
+        expect(deepActive()?.closest('ge-data-table')).toBe(table); // the focus stays in the grid
+    });
+
     it('a data push under an untouched editor: Enter writes nothing and the pushed value stays; a typed draft still writes (round 19)', async () => {
         const table = await mount();
         const edits = record(table, 'cell-edit');
