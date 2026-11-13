@@ -340,7 +340,6 @@ export class FilterUiController<T> {
      * (a global one too) makes it an older one, which says nothing.
      */
     private scheduleAnnouncement(): void {
-        const query = this.host.provider('query');
-        query?.announceFilters(query.filterSeq());
+        this.host.provider('query')?.announceFilters();
     }
 }

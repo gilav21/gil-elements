@@ -87,8 +87,6 @@ export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] |
     return filterValue.length === 0 || filterValue.includes(getValue(row));
 }
 
-/** How long a filter result announcement waits for the edits to settle (D7): ONE value for the global filter and the column / advanced filters. */
-export const FILTER_ANNOUNCE_MS = 500;
 
 /**
  * Structural equality of filter state: primitives by `Object.is`, `Date`s by time, arrays item by item, PLAIN objects key by key (an absent key and

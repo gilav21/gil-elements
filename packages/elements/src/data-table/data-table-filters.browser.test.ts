@@ -373,20 +373,20 @@ describe('round 8', () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn] });
         const spoken: string[] = [];
         new MutationObserver(() => spoken.push(announcer(table))).observe(q(table, '[data-slot="data-table-announcer"]'), { childList: true, characterData: true, subtree: true });
-        const seq = table.provider('query')!.filterSeq();
         table.provider('query')?.changeGlobalFilter('o');
         await new Promise((resolve) => setTimeout(resolve, 100));
         const state = table.getViewState()!; // the global text stays 'o' in the restore (round 16: a changed one is announced by the global rule)
         expect(table.applyViewState({ ...state, columnFilters: { name: 'Bob' } })).toBe(true);
-        expect(table.provider('query')!.filterSeq()).toBe(seq + 2); // the global change, then the restore: one number
         await new Promise((resolve) => setTimeout(resolve, 800));
         await settle(table);
         const said = spoken.filter((s) => s !== '');
         expect(said).toEqual(['1 row matches the filters']); // not the global filter's 'for "o"'
-        // A restore that changes no filter numbers nothing.
-        const now = table.provider('query')!.filterSeq();
+        // A restore that changes no filter is no filter change: it announces nothing.
+        spoken.length = 0;
         table.applyViewState({ ...table.getViewState()!, columnFilters: { name: 'Bob' } });
-        expect(table.provider('query')!.filterSeq()).toBe(now);
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        await settle(table);
+        expect(spoken.filter((s) => s !== '')).toEqual([]);
     });
 
     it('a global filter typed, then replaced from outside within the debounce, keeps the outside value (round 18)', async () => {

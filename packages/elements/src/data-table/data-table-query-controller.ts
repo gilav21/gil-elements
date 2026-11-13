@@ -15,7 +15,10 @@ import {
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
-import { anyFilterOn, FILTER_ANNOUNCE_MS, sameFilterValue, sameStructure } from './data-table-filters.js';
+import { anyFilterOn, sameFilterValue, sameStructure } from './data-table-filters.js';
+
+/** How long a filter result announcement waits for the edits to settle (D7): ONE value for every filter announcement (all of them are here). */
+export const FILTER_ANNOUNCE_MS = 500;
 import { buildGroupedDisplayRows, isGroupingActive, partitionIntoGroups, renumberDataRows, type RowGroup } from './data-table-group.js';
 import { buildTreeIndex, filterTree, flattenTree, sortTree } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
@@ -369,9 +372,9 @@ export class QueryController<T> {
         // ONE no-op rule (`changeAdvancedFilterOf`): an unchanged tree is no filter change and a waiting announcement stays; a change is numbered
         // right before its write.
         changeAdvancedFilter: (group) => void changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group, () => this.filterChanged()),
-        whenCounted: (say, seq) => this.whenCounted(say, seq),
-        filterSeq: () => this.seq,
-        announceFilters: (seq) => this.announceFilters(seq),
+        // The latest change's number: the column / advanced write the filter UI hands over was numbered on its way in (changeColumnFilter,
+        // changeAdvancedFilter, a property write, a restore).
+        announceFilters: () => this.announceFilters(this.seq),
         filtersRestored: (globalChanged) => {
             this.dropPendingGlobal(); // the restore wrote the global text: a typed one still waiting would overwrite it
             const seq = this.filterChanged();
@@ -380,7 +383,6 @@ export class QueryController<T> {
             // (an emptied global text too) the overall count, or that every filter is cleared.
             if (globalChanged && global.trim() !== '') this.announceGlobal(global, seq);
             else this.announceFilters(seq);
-            return seq;
         },
         // Server filtering: the held rows are not the matches, so the server's `total`, but only once the ANSWER to the last query arrived (the next
         // `data` from outside): before that, `total` is the previous answer's and `undefined` says "not known yet".

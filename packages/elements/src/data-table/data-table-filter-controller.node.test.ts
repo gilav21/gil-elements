@@ -20,8 +20,6 @@ function fakeHost(config: Partial<Record<string, unknown>> = {}) {
         changeColumnFilter: vi.fn((key: string, value: unknown) => model.set('columnFilters', { ...model.get('columnFilters'), [key]: value })),
         changeAdvancedFilter: vi.fn((group: FilterGroup | null) => model.set('advancedFilter', group)),
         filteredCount: vi.fn(() => 3 as number | undefined),
-        seq: 0,
-        filterSeq: (): number => query.seq,
         announceFilters: vi.fn(),
     };
     const columns: ColumnDef<Row>[] = [{ accessorKey: 'name', header: 'Name', enableFiltering: true }];
@@ -127,14 +125,11 @@ describe('FilterUiController', () => {
 
     // Round 20: the announcement itself (the 500 ms settle, the count, "all filters cleared", the server wait) is the query service's ONE
     // `announceFilters` (browser-tested in F9, its "any filter on" rule node-tested as anyFilterOn); the filter UI hands it every table write.
-    it('hands each table write of the column or advanced filter to the query service announcement, with the change number (D7)', () => {
+    it('hands each table write of the column or advanced filter to the query service announcement (D7)', () => {
         const { service, model, query } = fakeHost();
-        query.seq = 4;
         service.setter('name')('a');
-        expect(query.announceFilters).toHaveBeenLastCalledWith(4);
-        query.seq = 5;
+        expect(query.announceFilters).toHaveBeenCalledTimes(1);
         model.set('advancedFilter', { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'a' }] });
-        expect(query.announceFilters).toHaveBeenLastCalledWith(5);
         expect(query.announceFilters).toHaveBeenCalledTimes(2);
     });
 
