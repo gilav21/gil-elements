@@ -389,6 +389,21 @@ describe('round 8', () => {
         expect(table.provider('query')!.filterSeq()).toBe(now);
     });
 
+    it('a global filter typed, then replaced from outside within the debounce, keeps the outside value (round 18)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn], filterDebounce: 300 });
+        const state = table.getViewState()!;
+        table.provider('query')?.changeGlobalFilter('Al'); // waits on the debounce
+        table.applyViewState({ ...structuredClone(state), globalFilter: 'Bob' });
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await settle(table);
+        expect(table.globalFilter).toBe('Bob');
+        table.provider('query')?.changeGlobalFilter('Ca');
+        table.globalFilter = 'Dave'; // a property write that is not an echo
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await settle(table);
+        expect(table.globalFilter).toBe('Dave');
+    });
+
     it('one restore, one announcement: global and column changed -> the global result; global emptied, column kept -> the count (round 17)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn] });
         const spoken: string[] = [];

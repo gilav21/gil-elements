@@ -237,6 +237,12 @@ export class QueryController<T> {
         }, FILTER_ANNOUNCE_MS);
     }
 
+    /** Drops the global filter write still waiting on `filterDebounce`. */
+    private dropPendingGlobal(): void {
+        this.cancelFilter?.();
+        this.cancelFilter = undefined;
+    }
+
     /** The overall result of the filters for the change numbered `seq` (a restored view state): the matching rows, or that every filter is cleared. */
     private announceFilters(seq: number): void {
         const { config, model, resolvedLocale: locale } = this.host;
@@ -364,6 +370,7 @@ export class QueryController<T> {
         whenCounted: (say, seq) => this.whenCounted(say, seq),
         filterSeq: () => this.seq,
         filtersRestored: (globalChanged) => {
+            this.dropPendingGlobal(); // the restore wrote the global text: a typed one still waiting would overwrite it
             const seq = this.filterChanged();
             const global = this.host.model.get('globalFilter');
             // ONE announcement for the restore: a new global text speaks as the global filter does (its count reflects every filter); otherwise
@@ -436,7 +443,10 @@ export class QueryController<T> {
             return model.subscribe(key, (value: unknown, origin: ModelOrigin) => {
                 const echo = sameStructure(last, value);
                 last = value;
-                if (origin === 'property' && !echo) this.filterChanged();
+                if (origin !== 'property' || echo) return;
+                // The global text replaced from outside: a typed one still waiting on the debounce would overwrite it, so it is dropped.
+                if (key === 'globalFilter') this.dropPendingGlobal();
+                this.filterChanged();
             });
         };
         const filterSubscriptions = [watch('columnFilters'), watch('advancedFilter'), watch('globalFilter')];
