@@ -11,7 +11,8 @@ import {
     stackedSeries,
     type RangeChartData,
 } from './range-chart-data.js';
-import { fill, RANGE_CHART_LOCALES, resolveRangeChartLocale } from './range-chart-locale.js';
+import { pickLocale } from '../../shared/locale-lookup.js';
+import { RANGE_CHART_LOCALES, type RangeChartLocale } from './range-chart-locale.js';
 
 const SINGLE: RangeChartData = { categories: ['Alice', 'Bob'], series: [{ name: 'Sales', values: [10, 30] }] };
 const MULTI: RangeChartData = {
@@ -121,6 +122,8 @@ describe('beyond Angular', () => {
         expect(effectiveChartType(null, 'stacked')).toBe('bar');
         expect(effectiveChartType(MULTI, 'stacked')).toBe('stacked');
         expect(effectiveChartType(SINGLE, 'pie')).toBe('pie');
+        // an unknown type (an attribute typo) is a bar chart
+        for (const unknown of ['line', '', undefined, null]) expect(effectiveChartType(MULTI, unknown as never)).toBe('bar');
     });
 
     it('builds the hidden data table from what is drawn, capped, with the uncapped count', () => {
@@ -142,24 +145,24 @@ describe('the locale', () => {
         expect(RANGE_CHART_LOCALES.en).toMatchObject({ title: 'Chart', bar: 'Bar', pie: 'Pie', stacked: 'Stacked' });
     });
 
-    it('takes an object override over en, a string id or the lang by prefix, and falls back to en', () => {
-        RANGE_CHART_LOCALES['fr'] = { ...RANGE_CHART_LOCALES.en, title: 'Graphique' };
+    it('is resolved like the table\'s: the override, then the page language by prefix, then en; a partial one is filled from en', () => {
+        const pick = (input: string | RangeChartLocale | null | undefined, pageLang: string) => pickLocale(RANGE_CHART_LOCALES, input, pageLang);
+        RANGE_CHART_LOCALES['fr'] = { ...RANGE_CHART_LOCALES.en, code: 'fr', title: 'Graphique' };
         try {
-            expect(resolveRangeChartLocale('', 'fr-CA').title).toBe('Graphique');
-            expect(resolveRangeChartLocale('fr', 'en').title).toBe('Graphique');
-            expect(resolveRangeChartLocale('', 'xx').title).toBe('Chart');
-            expect(resolveRangeChartLocale(undefined, '').title).toBe('Chart');
-            expect(resolveRangeChartLocale('constructor', '').title).toBe('Chart');
-            const partial = resolveRangeChartLocale({ title: 'Diagramm' } as never, 'fr');
+            expect(pick('', 'fr-CA').title).toBe('Graphique');
+            expect(pick('fr', 'en').title).toBe('Graphique');
+            // an override nobody registered falls back to the page language, not straight to en
+            expect(pick('xx', 'fr').title).toBe('Graphique');
+            expect(pick('', 'xx').title).toBe('Chart');
+            expect(pick(undefined, '').title).toBe('Chart');
+            expect(pick('constructor', '').title).toBe('Chart');
+            const partial = pick({ title: 'Diagramm' } as RangeChartLocale, 'fr');
             expect(partial.title).toBe('Diagramm');
             expect(partial.bar).toBe('Bar');
+            // an entry left undefined is English's, never `undefined`
+            expect(pick({ title: undefined } as unknown as RangeChartLocale, 'fr').title).toBe('Chart');
         } finally {
             delete RANGE_CHART_LOCALES['fr'];
         }
-    });
-
-    it('fills placeholders and leaves an unknown one as written', () => {
-        expect(fill('{title}, {type} chart: {series}', { title: 'Chart', type: 'Bar', series: 'Q1' })).toBe('Chart, Bar chart: Q1');
-        expect(fill('{shown} of {total} {x}', { shown: 50, total: 120 })).toBe('50 of 120 {x}');
     });
 });

@@ -1,7 +1,7 @@
-import { lookupLocale } from '../../shared/locale-id.js';
-
 /** The strings of `ge-data-table-range-chart`. Angular prints the raw `bar|pie|stacked` identifiers and an English title; here they are strings. */
 export interface RangeChartLocale {
+    /** The dictionary's language id. */
+    code: string;
     /** Dialog title when `heading` is not set. */
     title: string;
     bar: string;
@@ -24,9 +24,13 @@ export interface RangeChartLocale {
     close: string;
 }
 
-/** Per-language dictionaries; `en` is the fallback. A plain mutable object: a later locale module adds `he` etc. */
+/**
+ * Per-language dictionaries; `en` is the fallback. A plain mutable object: a later locale module adds `he` etc. Resolved like the
+ * table's (`pickLocale`): the `locale` setting, then the page's `lang`, then `en`, which also fills what a dictionary leaves out.
+ */
 export const RANGE_CHART_LOCALES: Record<string, RangeChartLocale | undefined> & { en: RangeChartLocale } = {
     en: {
+        code: 'en',
         title: 'Chart',
         bar: 'Bar',
         pie: 'Pie',
@@ -41,14 +45,3 @@ export const RANGE_CHART_LOCALES: Record<string, RangeChartLocale | undefined> &
         close: 'Close',
     },
 };
-
-/** An object is used as it is; a string picks its entry (`pt-BR`, then `pt`); otherwise `lang` decides; `en` is the fallback. */
-export function resolveRangeChartLocale(override: string | RangeChartLocale | null | undefined, lang: string): RangeChartLocale {
-    if (typeof override === 'object' && override !== null) return { ...RANGE_CHART_LOCALES.en, ...override };
-    const code = override || lang;
-    return (code ? lookupLocale(RANGE_CHART_LOCALES, code) : undefined) ?? RANGE_CHART_LOCALES.en;
-}
-
-/** Fills `{name}` placeholders; an unknown one stays as written. */
-export const fill = (text: string, values: Record<string, string | number>): string =>
-    text.replaceAll(/\{(\w+)\}/g, (match, key: string) => (Object.hasOwn(values, key) ? String(values[key]) : match));

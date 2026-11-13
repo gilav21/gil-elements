@@ -14,7 +14,7 @@ import type { GeDataTable } from '../data-table.js';
 import { axTree, cellAt, mountTable, q, send, settle as settleTable, type SampleRow } from '../data-table-fixtures.js';
 import { frames, mouseDrag, parkMouse } from '../data-table-input-fixtures.js';
 import type { ColumnDef, RangeChartPayload } from '../data-table.types.js';
-import type { GeDataTableRangeChart, RangeChartData } from './index.js';
+import { RANGE_CHART_LOCALES, type GeDataTableRangeChart, type RangeChartData } from './index.js';
 
 const SINGLE: RangeChartData = { categories: ['Alice', 'Bob'], series: [{ name: 'Sales', values: [10, 30] }] };
 const MULTI: RangeChartData = {
@@ -200,6 +200,78 @@ describe('the series picker', () => {
         await settle(el);
         const pie = root(el).querySelector('ge-pie-chart') as HTMLElement & { data: { value: number }[] };
         expect(pie.data.map((d) => d.value)).toEqual([20, 40, 5]);
+    });
+});
+
+describe('review fixes', () => {
+    const picker = (el: GeDataTableRangeChart) => root(el).querySelector<HTMLElement & { value: unknown }>('ge-select')!;
+    const shownSeries = (el: GeDataTableRangeChart) => picker(el).shadowRoot!.querySelector('ge-select-value')!.shadowRoot!.textContent!.trim();
+
+    async function withPageLang(lang: string, run: () => Promise<void>): Promise<void> {
+        const before = document.documentElement.lang;
+        RANGE_CHART_LOCALES['he'] = { ...RANGE_CHART_LOCALES.en, code: 'he', title: 'תרשים', bar: 'עמודות' } as typeof RANGE_CHART_LOCALES.en;
+        document.documentElement.lang = lang;
+        try {
+            await run();
+        } finally {
+            document.documentElement.lang = before;
+            delete RANGE_CHART_LOCALES['he'];
+        }
+    }
+
+    it('takes the page language inside a shadow root, as the table does', async () => {
+        await withPageLang('he', async () => {
+            const page = await mount('<div id="host"></div>');
+            const shadow = page.querySelector('#host')!.attachShadow({ mode: 'open' });
+            shadow.innerHTML = '<ge-data-table-range-chart open></ge-data-table-range-chart>';
+            const el = shadow.querySelector<GeDataTableRangeChart>('ge-data-table-range-chart')!;
+            el.payload = MULTI;
+            await settle(el);
+            expect(panel(el)!.getAttribute('aria-label')).toBe('תרשים');
+            expect(labels(el)[0]).toBe('עמודות');
+        });
+    });
+
+    it('falls back to the page language for an unknown locale id, and to English for an entry left undefined', async () => {
+        await withPageLang('he', async () => {
+            const el = await chart(MULTI, 'open locale="xx"');
+            expect(panel(el)!.getAttribute('aria-label')).toBe('תרשים');
+            el.locale = { title: undefined } as never;
+            await settle(el);
+            expect(panel(el)!.getAttribute('aria-label')).toBe('Chart');
+            expect(labels(el)[0]).toBe('Bar');
+        });
+    });
+
+    it('draws an unknown chart-type as bar, pressed and named so', async () => {
+        const el = await chart(MULTI, 'open chart-type="line"');
+        expect(drawn(el)).toEqual(['ge-bar-chart']);
+        expect(pressed(el)).toEqual(['true', 'false', 'false']);
+        expect(figure(el).getAttribute('aria-label')).toBe('Chart, Bar chart: Q1');
+    });
+
+    it('goes back to the first series for a new payload and keeps the chart type', async () => {
+        const el = await chart(MULTI, 'open chart-type="pie"');
+        el.seriesIndex = 1;
+        await settle(el);
+        el.payload = { categories: ['x', 'y'], series: [{ name: 'A', values: [1, 2] }, { name: 'B', values: [3, 4] }] };
+        await settle(el);
+        expect(el.seriesIndex).toBe(0);
+        expect(el.chartType).toBe('pie');
+        expect(shownSeries(el)).toBe('A');
+    });
+
+    it('shows the series a series-change handler puts back', async () => {
+        const el = await chart(MULTI);
+        el.addEventListener('series-change', () => (el.seriesIndex = 0));
+        const select = picker(el);
+        await userEvent.click(select.shadowRoot!.querySelector('ge-select-trigger')!.shadowRoot!.querySelector('button')!);
+        await settle(el);
+        await userEvent.click(select.shadowRoot!.querySelectorAll<HTMLElement>('ge-select-item')[1]!);
+        await settle(el);
+        expect(el.seriesIndex).toBe(0);
+        expect(select.value).toBe(0);
+        expect(shownSeries(el)).toBe('Q1');
     });
 });
 

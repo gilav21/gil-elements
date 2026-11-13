@@ -32,9 +32,14 @@ export function seriesIndexOf(payload: RangeChartData | null | undefined, index:
     return Number.isInteger(index) && index >= 0 && index < count ? index : 0;
 }
 
-/** The chart type drawn: stacked needs several series, so with one it falls back to bar (whose switch is the one shown pressed). */
-export const effectiveChartType = (payload: RangeChartData | null | undefined, type: RangeChartType): RangeChartType =>
-    type === 'stacked' && !hasMultipleSeries(payload) ? 'bar' : type;
+/**
+ * The chart type drawn: an unknown one (an attribute typo) is bar, and stacked needs several series, so with one it falls back to bar
+ * too (whose switch is the one shown pressed).
+ */
+export function effectiveChartType(payload: RangeChartData | null | undefined, type: RangeChartType): RangeChartType {
+    if (!RANGE_CHART_TYPES.includes(type)) return 'bar';
+    return type === 'stacked' && !hasMultipleSeries(payload) ? 'bar' : type;
+}
 
 /** Bar data: one series (the first by default, as Angular) mapped onto the categories. */
 export function barData(payload: RangeChartData | null | undefined, index = 0): ChartDataPoint[] {

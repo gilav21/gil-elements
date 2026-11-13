@@ -1,4 +1,5 @@
 import { html, nothing, unsafeCSS, type PropertyValues, type TemplateResult } from 'lit';
+import { live } from 'lit/directives/live.js';
 import { UiElement } from '@gilav21/elements-base';
 import type { ChartSeries } from '../../shared/chart/chart.types.js';
 import {
@@ -14,7 +15,9 @@ import {
     type RangeChartData,
     type RangeChartType,
 } from './range-chart-data.js';
-import { fill, resolveRangeChartLocale, type RangeChartLocale } from './range-chart-locale.js';
+import { interpolate } from '../../shared/interpolate.js';
+import { pickLocale } from '../../shared/locale-lookup.js';
+import { RANGE_CHART_LOCALES, type RangeChartLocale } from './range-chart-locale.js';
 import css from './range-chart.css?inline';
 
 /** The chart's height (bar, stacked) and the pie's box, in px: Angular's `280`. */
@@ -40,7 +43,7 @@ const stop = (event: Event): void => event.stopPropagation();
  * @attr {'bar' | 'pie' | 'stacked'} chart-type - The chart drawn. `stacked` with a single series draws a bar chart.
  * @attr {number} series-index - The series the bar and pie chart draw; out of range means the first.
  * @attr {string} for - Id of a `ge-data-table` in the same document or shadow root: its `range-chart-open` sets `payload` and opens the dialog.
- * @attr {string} locale - Locale id (or, as a property, a partial dictionary); defaults to the nearest `lang`, then `en`.
+ * @attr {string} locale - Locale id (or, as a property, a partial dictionary); an unknown id or none means the page's `lang` (`<html lang>`), then `en`, as the table resolves its own.
  * @prop {RangeChartData | null} payload - The categories and series to chart; the table's `RangeChartPayload` fits.
  * @csspart body - The wrapper of the switcher, the chart and the note (Angular's `class` input lands here).
  */
@@ -91,6 +94,8 @@ export class GeDataTableRangeChart extends UiElement {
 
     protected override willUpdate(changed: PropertyValues<this>): void {
         if (changed.has('for') && this.isConnected) this.listen();
+        // a new payload starts from its first series (the chart type stays); not on the first one, nor when the index is set with it
+        if (changed.has('payload') && changed.get('payload') !== undefined && !changed.has('seriesIndex')) this.seriesIndex = 0;
     }
 
     /** Listens on the root node rather than on the table, so a table mounted, replaced or given its id after this element still works. */
@@ -124,10 +129,8 @@ export class GeDataTableRangeChart extends UiElement {
     }
 
     private get text(): RangeChartLocale {
-        const override = this.locale as string | RangeChartLocale;
-        // optional: a server render has no `closest`
-        const lang = this.closest?.('[lang]')?.getAttribute('lang') ?? '';
-        return resolveRangeChartLocale(override, lang);
+        // the page's language, as the table takes it (a shadow root has no `lang` to inherit); a server render has no document
+        return pickLocale(RANGE_CHART_LOCALES, this.locale as string | RangeChartLocale, this.ownerDocument?.documentElement?.lang ?? '');
     }
 
     /** The dialog's own `open-change` becomes this element's; the series picker's (it bubbles through the dialog) is kept inside. */
@@ -197,7 +200,7 @@ export class GeDataTableRangeChart extends UiElement {
                 position="popper"
                 .options=${series.map((_, i) => i)}
                 .displayWith=${(option: unknown) => series[option as number]?.name ?? ''}
-                .value=${index}
+                .value=${live(index)}
                 @value-change=${this.onSeriesChange}
                 @input=${stop}
                 @change=${stop}
@@ -218,13 +221,13 @@ export class GeDataTableRangeChart extends UiElement {
     private chartLabel(t: RangeChartLocale, type: RangeChartType, index: number): string {
         const series = this.payload?.series ?? [];
         const names = type === 'stacked' ? series.map((s) => s.name) : [series[index]?.name ?? ''];
-        return fill(t.chartLabel, { title: this.heading || t.title, type: t[type], series: names.filter(Boolean).join(', ') });
+        return interpolate(t.chartLabel, { title: this.heading || t.title, type: t[type], series: names.filter(Boolean).join(', ') });
     }
 
     private dataTable(t: RangeChartLocale, type: RangeChartType, index: number): TemplateResult | typeof nothing {
         const table = dataTableOf(this.payload, type, index);
         if (table.rows.length === 0) return nothing;
-        const caption = table.rows.length < table.total ? fill(t.dataTableCapped, { shown: table.rows.length, total: table.total }) : t.dataTable;
+        const caption = table.rows.length < table.total ? interpolate(t.dataTableCapped, { shown: table.rows.length, total: table.total }) : t.dataTable;
         // the wrapper is what is clipped: a table box does not shrink below its content
         return html`<div class="sr-only"><table data-slot="range-chart-data">
             <caption>${caption}</caption>
