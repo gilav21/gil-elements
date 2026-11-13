@@ -140,7 +140,7 @@ export interface QueryService<T> {
      * Wave 7 (spec D5; the NL filter and the AI use it). A given `globalFilter` replaces the global text; a given `columnFilters` REPLACES the whole
      * column-filter record (columns it leaves out are cleared); an omitted key leaves that part untouched. A part equal to the current value is not
      * written; what changed is written in ONE model batch with the page reset to 0. `filter-change` fires when the global text changed, and the result
-     * is announced: through the global path when the global text changed, else as a column filter change. A `globalFilter` key drops a typed global
+     * is announced: through the global path when the global text changed to a NON-empty value, else as the overall filter result. A `globalFilter` key drops a typed global
      * text still waiting on the debounce, and a `columnFilters` key every floating column write still waiting, whatever their values.
      */
     applyFilters(spec: { readonly globalFilter?: string; readonly columnFilters?: Readonly<Record<string, unknown>> }): void;
@@ -437,6 +437,8 @@ export interface AiService {
     aiFillColumn(columnKey: string, prompt: string, options?: DataTableAiFillOptions): Promise<void>;
     /** Aborts the running AI request, if any. */
     cancelAi(): void;
+    /** An AI fill is running: the table draws `aria-busy`. */
+    busy?(): boolean;
 }
 
 export interface DataTableProviders<T = unknown> {

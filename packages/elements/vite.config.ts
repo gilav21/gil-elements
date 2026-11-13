@@ -350,6 +350,7 @@ export default defineConfig({
                 'data-table/lazy/row-drag': 'src/data-table/lazy/row-drag.ts',
                 'data-table/lazy/filter-panels': 'src/data-table/lazy/filter-panels.ts',
                 'data-table/lazy/filter-builder': 'src/data-table/lazy/filter-builder.ts',
+                'data-table/lazy/ai': 'src/data-table/lazy/ai.ts',
                 'data-table/range-chart/index': 'src/data-table/range-chart/index.ts',
                 'data-table/range-chart/define': 'src/data-table/range-chart/define.ts',
                 'data-table/addons/pivot/index': 'src/data-table/addons/pivot/index.ts',

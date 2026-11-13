@@ -17,7 +17,7 @@ import type {
     RowReorderEvent,
     SortState,
 } from './data-table.types.js';
-import type { NlFilterSpec } from './data-table.utils.js';
+import type { NlFilterSpec } from './data-table-ai.js';
 
 export interface NlFilterEventDetail {
     query: string;
@@ -44,7 +44,10 @@ export interface DataTableInteractionEvents<T> {
     'edit-redo': undefined;
     'column-resize': ColumnResizeEvent;
     'nl-filter': NlFilterEventDetail;
-    'ai-fill-complete': { columnKey: string; count: number };
+    /** `count`: cells written. Wave 7 adds the cells the validator `rejected`, the rows `skipped` (gone or not writable), and `failed` / `error` for a run a provider error stopped. */
+    'ai-fill-complete': { columnKey: string; count: number; rejected?: number; skipped?: number; failed?: boolean; error?: unknown };
+    /** Wave 7: an AI fill's progress, at most every 250 ms. */
+    'ai-fill-progress': { columnKey: string; done: number; total: number };
 }
 
 /** One per `model()` of the Angular component; the detail is the new value. */

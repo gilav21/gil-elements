@@ -20,9 +20,11 @@
 import type { CellEditErrorEvent, CellEditEvent, ColumnDef } from './data-table.types.js';
 
 export interface CellTarget {
-    /** Index in the rendered rows (`data-row-index`). */
+    /** Index in the rendered rows (`data-row-index`); with `rowId` it is only reported (`-1`: the row is not drawn). */
     readonly rowIndex: number;
     readonly columnKey: string;
+    /** Wave 7 (AI fill, rows of every page): the row is the one of `data` with this id, not the rendered one; a vanished id is skipped. */
+    readonly rowId?: string;
 }
 
 export interface CellWriteOptions {
@@ -129,6 +131,12 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
         return byId;
     }
 
+    function idRow(id: string): T | undefined {
+        const data = ports.getData();
+        const at = idIndex(data).get(id);
+        return at === undefined ? undefined : data[at];
+    }
+
     /** Applies the setters in order to a copy of `data`, publishes it once, and returns the new row per item (null = not written). */
     function commit(items: readonly Pending<T>[]): (T | null)[] {
         const data = ports.getData();
@@ -156,7 +164,7 @@ export function createCellWriter<T>(ports: CellWritePorts<T>): CellWriter<T> {
         // Snapshot first: nothing below may ask for a rendered row again.
         const snapshot = requests.map(({ target, value }) => {
             const column = ports.columnByKey(target.columnKey);
-            const row = ports.rowAt(target.rowIndex);
+            const row = target.rowId === undefined ? ports.rowAt(target.rowIndex) : idRow(target.rowId);
             return { target, value, column, row };
         });
         const results: CellWriteResult<T>[] = snapshot.map(() => ({ status: 'skipped' }));

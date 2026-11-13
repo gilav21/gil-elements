@@ -9,7 +9,6 @@ import {
     isFilterValueEmpty,
     isPlainObject,
     isSpecialColumnKey,
-    parseNlFilterSpec,
     stringifyValue,
     isoDateTime,
     toLocalDateString,
@@ -165,25 +164,6 @@ describe('computeAggregateValue', () => {
     it('formats a Date as its ISO text, not a quoted JSON string', () => {
         expect(stringifyValue(new Date('2026-01-01T00:00:00.000Z'))).toBe('2026-01-01T00:00:00.000Z');
         expect(stringifyValue(new Date('nope'))).toBe('');
-    });
-});
-
-describe('parseNlFilterSpec', () => {
-    const KEYS = ['status', 'name'];
-    it('keeps a string globalFilter and known columnFilters', () => {
-        const raw = JSON.stringify({ globalFilter: 'x', columnFilters: { status: ['failed'], bogus: 1 } });
-        expect(parseNlFilterSpec(raw, KEYS)).toEqual({ globalFilter: 'x', columnFilters: { status: ['failed'] } });
-    });
-    it('returns an empty spec for malformed or non-object input', () => {
-        for (const raw of ['not json', '"a string"', 'null', '[]', '']) expect(parseNlFilterSpec(raw, KEYS)).toEqual({});
-    });
-    it('drops a non-string globalFilter and an all-unknown columnFilters', () => {
-        expect(parseNlFilterSpec('{"globalFilter":3,"columnFilters":{"zzz":1}}', KEYS)).toEqual({});
-    });
-    it('cannot be used to rewrite the prototype', () => {
-        const spec = parseNlFilterSpec('{"columnFilters":{"__proto__":{"polluted":1}}}', ['__proto__']);
-        expect(Object.hasOwn(spec.columnFilters ?? {}, '__proto__')).toBe(true);
-        expect(({} as Record<string, unknown>)['polluted']).toBeUndefined();
     });
 });
 

@@ -852,7 +852,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             ['data-column-borders', this.showColumnBorders],
             // user-select: none on the viewport only while range selection is actually handled (the range service is active), like aria-selected
             ['data-range-selection', rangeSelectionDrawn(this, this.rangeActive)],
-            ['aria-busy', this.skeleton || (this.provider('loading')?.visible() ?? false)],
+            ['aria-busy', this.skeleton || (this.provider('loading')?.visible() ?? false) || this.provider('ai')?.busy?.() === true],
         ];
         for (const [name, on] of flags) {
             if (on) this.setAttribute(name, name === 'aria-busy' ? 'true' : '');

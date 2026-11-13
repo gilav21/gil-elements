@@ -305,3 +305,53 @@ describe('stale history entries', () => {
         expect(writer.redo().stale).toEqual([{ rowId: 'a', columnKey: 'qty', reason: 'row' }]);
     });
 });
+
+describe('writeCells by row id (wave 7, AI fill)', () => {
+    // The rendered list is NOT `data`: the data reversed, only its first row drawn (a page of one).
+    const drawnFirst = (i: number, d: Row[]) => (i === 0 ? [...d].reverse()[0] : undefined);
+
+    it('without rowId resolves the row through rowAt by rendered index, as before (paste, fill and the editor depend on it)', () => {
+        const { writer, data, events } = setup({ rowAt: drawnFirst });
+        const results = writer.writeCells(
+            [
+                { target: { rowIndex: 0, columnKey: 'name' }, value: 'Zed' },
+                { target: { rowIndex: 1, columnKey: 'name' }, value: 'Nobody' },
+            ],
+            { emitEdit: true },
+        );
+        expect(results.map((r) => r.status)).toEqual(['written', 'skipped']);
+        expect(data().map((r) => r.name)).toEqual(['Ann', 'Zed']); // rendered index 0 is Bob
+        expect(events).toEqual([['cell-edit', expect.objectContaining({ rowIndex: 0, oldValue: 'Bob', newValue: 'Zed' })]]);
+    });
+
+    it('with rowId writes the row of `data` with that id, drawn or not, and only reports rowIndex', () => {
+        let rowAtCalls = 0;
+        const { writer, data, events } = setup({ rowAt: (i, d) => (rowAtCalls++, drawnFirst(i, d)) });
+        const results = writer.writeCells(
+            [
+                { target: { rowIndex: -1, columnKey: 'name', rowId: 'a' }, value: 'Off page' },
+                { target: { rowIndex: 0, columnKey: 'qty', rowId: 'b' }, value: 9 },
+            ],
+            { emitEdit: true },
+        );
+        expect(rowAtCalls).toBe(0);
+        expect(results.map((r) => r.status)).toEqual(['written', 'written']);
+        expect(data()).toEqual([
+            { id: 'a', name: 'Off page', qty: 1 },
+            { id: 'b', name: 'Bob', qty: 9 },
+        ]);
+        expect(events.map(([, detail]) => (detail as { rowIndex: number }).rowIndex)).toEqual([-1, 0]);
+    });
+
+    it('with rowId skips a vanished id and reports a rejection with the given rowIndex', () => {
+        const { writer, data, events, drop } = setup({ validator: (v) => (v === 'bad' ? 'No' : true) });
+        drop('b');
+        const results = writer.writeCells([
+            { target: { rowIndex: -1, columnKey: 'name', rowId: 'b' }, value: 'Gone' },
+            { target: { rowIndex: -1, columnKey: 'name', rowId: 'a' }, value: 'bad' },
+        ]);
+        expect(results.map((r) => r.status)).toEqual(['skipped', 'rejected']);
+        expect(data()).toEqual([{ id: 'a', name: 'Ann', qty: 1 }]);
+        expect(events).toEqual([['edit-error', expect.objectContaining({ rowIndex: -1, message: 'No' })]]);
+    });
+});
