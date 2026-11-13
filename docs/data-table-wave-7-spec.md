@@ -190,6 +190,10 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 ### Package A follow-ups (PR #79)
 - `ge-context-menu-item variant="destructive"` fails axe `color-contrast` in dark mode (the menu element or its tokens, not the addon); the addon's axe test uses plain items until it is fixed.
 - After a long press that opened a menu, Chromium's touch emulation (and iOS) sends compatibility mouse events at the lift; their `mousedown` focuses the held cell natively, so focus leaves the menu there. `shared/touch.ts` `swallowReleaseClick` takes only the `click`; it could cancel the compatibility events of a claimed press too (Android sends none).
+- RTL keyboard / ⋮ placement re-places the menu one frame after it opens (it needs the panel width): a one-frame flicker.
+- The row action context with the tree fields is built in two places (the core's `actionsView` and the addon's gesture path); one builder.
+- The addon's `pointOfEvent` repeats `shared/touch.ts` `pointOf`; reuse it.
+- The addon's module-level `warnOnce` should be `warnOncePer` (per table), like the core's warnings.
 
 ## H. Work packages (strict file ownership after step 0)
 

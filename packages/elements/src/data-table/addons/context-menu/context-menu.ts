@@ -19,6 +19,8 @@ import {
     buttonAnchor,
     CELL_SELECTOR,
     cellAddress,
+    COLUMN,
+    ROW_INDEX,
     HEADER_SELECTOR,
     indexOf,
     isMenuKey,
@@ -97,10 +99,14 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
     let openRowId: string | null = null;
     let openColumnKey: string | null = null;
 
-    const menuOf = (kind: 'row' | 'column'): BuiltMenu => {
+    /** The built menu of `kind`; undefined (and a warning) while `ge-context-menu` is not defined: nothing opens then. */
+    const menuOf = (kind: 'row' | 'column'): BuiltMenu | undefined => {
         const existing = built[kind];
         if (existing) return existing;
-        if (!customElements.get(MENU_TAG)) warnOnce(`[ge-data-table] the context-menu addon needs <${MENU_TAG}>: import its define module (or the addon's).`);
+        if (!customElements.get(MENU_TAG)) {
+            warnOnce(`[ge-data-table] the context-menu addon needs <${MENU_TAG}>: import its define module (or the addon's).`);
+            return undefined;
+        }
         const menu = document.createElement(MENU_TAG) as unknown as BuiltMenu;
         menu.dataset['tableMenu'] = kind;
         document.body.append(menu);
@@ -121,11 +127,19 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
         return menu;
     };
 
-    /** Opens `menu` at `anchor`; right-to-left, its right edge goes there, which needs the panel's width (known after a frame). */
+    const boundMenu = (): ContextMenuHost | undefined => {
+        const menu = options.menu;
+        if (!menu) return undefined;
+        const found = typeof menu === 'string' ? (root.getRootNode() as Document | ShadowRoot).querySelector(menu) : menu;
+        return found && typeof (found as Partial<ContextMenuHost>).show === 'function' ? (found as ContextMenuHost) : undefined;
+    };
+
+    /** Opens `menu` at `anchor` and closes the addon's other open menus; right-to-left, its right edge goes there, which needs the panel's width (known after a frame). */
     let frame = 0;
     life.add(() => frame && cancelAnimationFrame(frame));
     const showAt = (menu: ContextMenuHost, anchor: MenuAnchor, data: unknown): void => {
         cancelAnimationFrame(frame);
+        for (const other of [built.row, built.column, boundMenu()]) if (other && other !== menu && other.open) other.close();
         menu.show(anchor.x, anchor.y, data);
         if (!anchor.alignEnd) return;
         frame = requestAnimationFrame(() => {
@@ -139,33 +153,61 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
         inheritThemeTokens(root, menu); // reused across opens: re-applied each time, the theme may have changed
     };
 
-    const openRowMenu = (anchor: MenuAnchor, context: RowActionContext<unknown>): boolean => {
+    /** The built row menu's items for `context`, or undefined when it has none to show (no items, a disabled row, no menu element). */
+    const rowMenuFor = (context: RowActionContext<unknown>): { menu: BuiltMenu; items: ContextMenuItem[] } | undefined => {
+        if (host.provider('selection')?.isDisabled(context.row)) return undefined; // a disabled row has no actions (the core draws it no ⋮ either)
         const items = options.rowActions?.(context) ?? [];
-        if (items.length === 0) return false;
-        const menu = menuOf('row');
+        const menu = items.length > 0 ? menuOf('row') : undefined;
+        return menu ? { menu, items } : undefined;
+    };
+
+    const showRowMenu = ({ menu, items }: { menu: BuiltMenu; items: ContextMenuItem[] }, anchor: MenuAnchor, context: RowActionContext<unknown>): void => {
         prepare(menu);
         menu.items = items;
-        openRowId = host.provider('query')?.rowId(context.row) ?? null;
         showAt(menu, anchor, context);
+        openRowId = host.provider('query')?.rowId(context.row) ?? null;
         host.requestRender();
         host.emit('row-menu-open', context);
-        return true;
     };
 
     const openColumnMenu = (anchor: MenuAnchor, column: ColumnDef<unknown>): void => {
         const query = host.provider('query');
         const columns = host.provider('columns');
-        if (!query || !columns) return;
         const menu = menuOf('column');
+        if (!query || !columns || !menu) return;
         prepare(menu);
         menu.items = buildColumnMenuItems(column, { query, columns }, labels());
-        openColumnKey = String(column.accessorKey);
-        showAt(menu, anchor, { columnKey: openColumnKey, column });
+        const key = String(column.accessorKey);
+        showAt(menu, anchor, { columnKey: key, column });
+        openColumnKey = key;
         host.requestRender();
         host.emit('column-menu-open', column);
     };
 
     // ---- the ⋮ buttons ----------------------------------------------------------------------------------------------------------
+    /**
+     * The ⋮ button of the open menu a press began on. That press's click closes the menu (outside click) before the button hears it, so the
+     * button only learns it was a toggle from here: it then leaves the menu closed.
+     */
+    let toggled: Element | null = null;
+    if (options.rowActions || options.columnMenu) {
+        life.listen<PointerEvent>(
+            root,
+            'pointerdown',
+            (event) => {
+                const button = event.target instanceof Element ? event.target.closest(`button[data-action-id="${SLOT_ID}"]`) : null;
+                toggled = button?.getAttribute('aria-expanded') === 'true' ? button : null;
+            },
+            true,
+        );
+    }
+    const wasOpen = (event: Event): boolean => {
+        const button = buttonOf(event);
+        const hit = button !== null && button === toggled;
+        toggled = null;
+        return hit;
+    };
+
     if (options.rowActions) {
         life.add(
             host.registerCellAction({
@@ -173,7 +215,11 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
                 ariaLabel: options.locale?.rowActions,
                 haspopup: 'menu',
                 expanded: (context) => openRowId !== null && host.provider('query')?.rowId(context.row) === openRowId,
-                onClick: (event, context) => void openRowMenu(buttonAnchor(buttonRect(event), 'row', rtl(), pointOfEvent(event)), context),
+                onClick: (event, context) => {
+                    if (wasOpen(event)) return;
+                    const prepared = rowMenuFor(context);
+                    if (prepared) showRowMenu(prepared, buttonAnchor(buttonOf(event)?.getBoundingClientRect(), 'row', rtl(), pointOfEvent(event)), context);
+                },
             }),
         );
     }
@@ -184,18 +230,14 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
                 ariaLabel: options.locale?.columnMenu,
                 haspopup: 'menu',
                 expanded: (column) => openColumnKey === String(column.accessorKey),
-                onClick: (event, column) => openColumnMenu(buttonAnchor(buttonRect(event), 'column', rtl(), pointOfEvent(event)), column),
+                onClick: (event, column) => {
+                    if (!wasOpen(event)) openColumnMenu(buttonAnchor(buttonOf(event)?.getBoundingClientRect(), 'column', rtl(), pointOfEvent(event)), column);
+                },
             }),
         );
     }
 
     // ---- the gestures -------------------------------------------------------------------------------------------------------------
-    const boundMenu = (): ContextMenuHost | undefined => {
-        const menu = options.menu;
-        if (!menu) return undefined;
-        const found = typeof menu === 'string' ? (root.getRootNode() as Document | ShadowRoot).querySelector(menu) : menu;
-        return found && typeof (found as Partial<ContextMenuHost>).show === 'function' ? (found as ContextMenuHost) : undefined;
-    };
     if (!options.menu && !options.rowActions) return; // neither mode: no gesture is taken
 
     /** Set by the hold's `touchstart` (see `rangeTakesHold`); read when the hold fires. */
@@ -215,11 +257,28 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
     life.listen<KeyboardEvent>(root, 'keydown', (event) => (keyboardAt = isMenuKey(event) ? performance.now() : Number.NEGATIVE_INFINITY), true);
     life.listen(root, 'pointerdown', () => (keyboardAt = Number.NEGATIVE_INFINITY), true);
 
-    /** Where the gesture's menu opens: under the element it is about when the keyboard made it, else at the pointer. */
-    const anchorOf = (gesture: ContextGesture, element: Element): MenuAnchor => {
+    /** The keyboard made the gesture (read once: it spends the keydown mark). */
+    const byKeyboard = (gesture: ContextGesture): boolean => {
         const keyboard = !gesture.viaTouch && (performance.now() - keyboardAt < KEYBOARD_ORIGIN_MS || (gesture.clientX === 0 && gesture.clientY === 0));
         keyboardAt = Number.NEGATIVE_INFINITY;
-        return keyboard ? keyboardAnchor(element.getBoundingClientRect(), rtl()) : { x: gesture.clientX, y: gesture.clientY, alignEnd: false };
+        return keyboard;
+    };
+    /** Where the gesture's menu opens: under the element it is about when the keyboard made it, else at the pointer. */
+    const anchorOf = (gesture: ContextGesture, keyboard: boolean, element: Element): MenuAnchor =>
+        keyboard ? keyboardAnchor(element.getBoundingClientRect(), rtl()) : { x: gesture.clientX, y: gesture.clientY, alignEnd: false };
+
+    /**
+     * Runs `open` once the scroll a focus move may have caused is reported: a context menu closes on scroll, and a cell revealed by the focus
+     * scrolls the grid. Scroll events are dispatched in the next frame's rendering steps, before its animation-frame callbacks.
+     */
+    let pending = 0;
+    life.add(() => pending && cancelAnimationFrame(pending));
+    const afterScroll = (open: () => void): void => {
+        cancelAnimationFrame(pending);
+        pending = requestAnimationFrame(() => {
+            pending = 0;
+            open();
+        });
     };
 
     const onGesture = (gesture: ContextGesture): boolean => {
@@ -242,18 +301,28 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
         const editing = interaction?.editingCell?.();
         // A right click in the open editor is the browser's (copy, paste, spelling).
         if (cell && editing && editing.rowIndex === cell.rowIndex && editing.columnKey === cell.columnKey) return false;
-        const anchor = anchorOf(gesture, cellEl ?? rowEl);
+        const keyboard = byKeyboard(gesture);
         const node = query.renderedTreeRowAt(index);
-        if (!menu) {
-            const base = query.rowContext(row, index);
-            const context = node ? { ...base, depth: node.depth, isLeaf: node.isLeaf, parentRow: node.parentRow, isExpanded: node.isExpanded } : base;
-            if (!openRowMenu(anchor, context)) return false;
-        }
-        // Both modes move the grid focus to the cell (Angular only in custom mode); the table's own columns keep it where it is.
-        if (cell && !TABLE_OWNED_COLUMNS.has(cell.columnKey)) interaction?.focusCell(cell.rowIndex, cell.columnKey);
-        if (!menu) return true;
-        host.emit('row-context-menu', { row, index, event: gesture.source, depth: node?.depth, isLeaf: node?.isLeaf, parentRow: node?.parentRow });
-        showAt(menu, anchor, node ? { ...node, row } : row);
+        const base = query.rowContext(row, index);
+        const context = node ? { ...base, depth: node.depth, isLeaf: node.isLeaf, parentRow: node.parentRow, isExpanded: node.isExpanded } : base;
+        const rowMenu = menu ? undefined : rowMenuFor(context);
+        if (!menu && !rowMenu) return false;
+        const open = (): void => {
+            // The anchor is measured now: the focus move may have scrolled the grid (and redrawn the cell).
+            const redrawn = cell ? root.querySelector(`[${ROW_INDEX}="${cell.rowIndex}"][${COLUMN}="${CSS.escape(cell.columnKey)}"]`) : null;
+            const at = [cellEl, redrawn, rowEl].find((el) => el?.isConnected) ?? rowEl;
+            const anchor = anchorOf(gesture, keyboard, at);
+            if (rowMenu) return showRowMenu(rowMenu, anchor, context);
+            if (!menu) return;
+            host.emit('row-context-menu', { row, index, event: gesture.source, depth: node?.depth, isLeaf: node?.isLeaf, parentRow: node?.parentRow });
+            showAt(menu, anchor, node ? { ...node, row } : row);
+        };
+        // Both modes move the grid focus to the cell (Angular only in custom mode); the table's own columns keep it where it is. The menu opens after
+        // the scroll that focus may cause, which would close it.
+        if (cell && !TABLE_OWNED_COLUMNS.has(cell.columnKey) && interaction) {
+            interaction.focusCell(cell.rowIndex, cell.columnKey);
+            afterScroll(open);
+        } else open();
         return true;
     };
 
@@ -266,18 +335,17 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
         const definition = host.provider('columns')?.enhancedColumns().find((c) => String(c.accessorKey) === id);
         const column = { id, name: definition?.header ?? header.textContent?.trim() ?? '', element: header };
         host.emit('header-context-menu', { column, event: gesture.source });
-        showAt(menu, anchorOf(gesture, header), column);
+        showAt(menu, anchorOf(gesture, byKeyboard(gesture), header), column);
         return true;
     };
 
     life.add(onContextGesture(root, onGesture));
 });
 
-/** The rect of the ⋮ button the click came from. */
-function buttonRect(event: Event): DOMRect | undefined {
+/** The ⋮ button a click came from. */
+function buttonOf(event: Event): Element | null {
     const target = event.currentTarget instanceof Element ? event.currentTarget : event.target;
-    const button = target instanceof Element ? target.closest('button') : null;
-    return button?.getBoundingClientRect();
+    return target instanceof Element ? target.closest('button') : null;
 }
 
 const pointOfEvent = (event: Event): { x: number; y: number } => ({ x: (event as MouseEvent).clientX ?? 0, y: (event as MouseEvent).clientY ?? 0 });

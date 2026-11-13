@@ -68,8 +68,9 @@ describe('buildColumnMenuItems', () => {
         expect(labelsOf(items).slice(3, 5)).toEqual(expected);
     });
 
-    it('reads the definition pin when no runtime pin is set (Angular getColumnPin ?? col.pin)', () => {
-        expect(labelsOf(buildColumnMenuItems({ ...NAME, pin: 'left' }, services().value, LABELS))).toContain('Unpin');
+    it('reads only the resolved pin (pinOf): a column defined pinned that was unpinned offers both pins and no Unpin', () => {
+        expect(labelsOf(buildColumnMenuItems({ ...NAME, pin: 'left' }, services({ pin: undefined }).value, LABELS)).slice(3, 5)).toEqual(['Pin Left', 'Pin Right']);
+        expect(labelsOf(buildColumnMenuItems({ ...NAME, pin: 'left' }, services({ pin: undefined }).value, LABELS))).not.toContain('Unpin');
     });
 
     it('wires the pin items to setPin, Unpin with undefined', () => {
@@ -154,7 +155,7 @@ describe('the slots', () => {
         const headerOnly = fakeHost();
         contextMenuAddon.setup(headerOnly.host, { columnMenu: true });
         expect([headerOnly.cells.size, headerOnly.heads.size]).toEqual([0, 1]);
-        expect(headerOnly.listened).not.toHaveBeenCalled();
+        expect(headerOnly.listened.mock.calls.map((c) => c[0])).toEqual(['pointerdown']); // the ⋮ toggle only, no gesture
     });
 
     it('a bound menu alone takes the gestures but adds no button', () => {
@@ -177,6 +178,31 @@ describe('the slots', () => {
         expect([cells.size, heads.size]).toEqual([0, 1]);
         set.stop();
         expect([cells.size, heads.size]).toEqual([0, 0]);
+    });
+
+    it('without ge-context-menu defined, a ⋮ click warns, opens nothing and marks nothing expanded', () => {
+        const stubs = { Element: class {}, customElements: { get: () => undefined }, getComputedStyle: () => ({ direction: 'ltr' }) };
+        for (const [name, value] of Object.entries(stubs)) vi.stubGlobal(name, value);
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            const { host, cells, heads } = fakeHost();
+            const renders = vi.spyOn(host, 'requestRender');
+            const provided = { query: services().value.query, columns: services().value.columns } as Record<string, unknown>;
+            Object.assign(host, { provider: (key: string) => provided[key] });
+            contextMenuAddon.setup(host, { rowActions: () => [{ label: 'Edit' }], columnMenu: true });
+            const context = { row: { id: 'a' }, index: 0, selected: false };
+            const column = { accessorKey: 'name', header: 'Name' };
+            const click = { currentTarget: null, target: null, clientX: 5, clientY: 6 } as unknown as Event;
+            expect(() => [...cells][0]!.onClick(click, context)).not.toThrow();
+            expect(() => [...heads][0]!.onClick(click, column)).not.toThrow();
+            expect(warn).toHaveBeenCalled();
+            expect(renders).not.toHaveBeenCalled();
+            expect([...cells][0]!.expanded?.(context)).toBe(false);
+            expect([...heads][0]!.expanded?.(column)).toBe(false);
+        } finally {
+            vi.unstubAllGlobals();
+            warn.mockRestore();
+        }
     });
 
     it('draws aria-expanded from its own state: false while no menu is open', () => {

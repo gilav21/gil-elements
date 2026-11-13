@@ -23,7 +23,7 @@ const SEPARATOR: ContextMenuItem = { type: 'separator' };
 /** Sort / pin / visibility items for a column's header menu. */
 export function buildColumnMenuItems<T>(column: ColumnDef<T>, services: ColumnMenuServices<T>, labels: ContextMenuLabels): ContextMenuItem[] {
     const key = String(column.accessorKey);
-    return [...sortItems(key, column, services, labels), ...pinItems(key, column, services, labels), ...visibilityItems(key, column, services, labels)];
+    return [...sortItems(key, column, services, labels), ...pinItems(key, services, labels), ...visibilityItems(key, column, services, labels)];
 }
 
 function sortItems<T>(key: string, column: ColumnDef<T>, { query }: ColumnMenuServices<T>, t: ContextMenuLabels): ContextMenuItem[] {
@@ -37,9 +37,9 @@ function sortItems<T>(key: string, column: ColumnDef<T>, { query }: ColumnMenuSe
     return [...items, SEPARATOR];
 }
 
-function pinItems<T>(key: string, column: ColumnDef<T>, { columns }: ColumnMenuServices<T>, t: ContextMenuLabels): ContextMenuItem[] {
-    // The resolved pin (a runtime pin, else the definition's), as Angular's `getColumnPin(key) ?? col.pin`.
-    const pin = columns.pinOf(key) ?? column.pin;
+function pinItems<T>(key: string, { columns }: ColumnMenuServices<T>, t: ContextMenuLabels): ContextMenuItem[] {
+    // `pinOf` is the resolved pin (a runtime pin or unpin over the definition's): no fallback to `column.pin`, which would undo an Unpin.
+    const pin = columns.pinOf(key);
     const items: ContextMenuItem[] = [];
     if (pin !== 'left') items.push({ label: t.pinLeft, click: () => columns.setPin(key, 'left') });
     if (pin !== 'right') items.push({ label: t.pinRight, click: () => columns.setPin(key, 'right') });

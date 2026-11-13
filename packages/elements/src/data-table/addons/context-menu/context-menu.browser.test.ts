@@ -529,6 +529,91 @@ describe('the column menu', () => {
     });
 });
 
+// ---- review fixes (PR #79) ---------------------------------------------------------------------------------------------------
+
+describe('menu lifecycle', () => {
+    it('a column defined pinned and then unpinned offers Pin Left again, not Unpin', async () => {
+        const table = await mount({ columnMenu: true }, { columns: [{ accessorKey: 'name', header: 'Name', width: '200px', pin: 'left' }, { accessorKey: 'age', header: 'Age' }] });
+        await userEvent.click(headButton(table, 'name'));
+        await frames(2);
+        await userEvent.click(itemsOf(builtMenu('column')!).find((i) => i.textContent?.trim() === 'Unpin')!);
+        await settle(table);
+        expect(headCell(table, 'name').dataset['pinned']).toBeUndefined();
+        await userEvent.click(headButton(table, 'name'));
+        await frames(2);
+        const labels = labelsOf(builtMenu('column')!);
+        expect(labels).toContain('Pin Left');
+        expect(labels).not.toContain('Unpin');
+    });
+
+    it('a right click on a partly clipped row opens a menu that stays open (the focus scroll does not close it)', async () => {
+        const table = await mountTable({ data: Array.from({ length: 40 }, (_, i) => ({ id: `r${i}`, name: `Row ${i}`, age: i })) }, {}, { width: 500, height: 240 });
+        table.use(contextMenuAddon as never, { rowActions: ROW_ITEMS });
+        await settle(table);
+        await scrollGrid(table, { top: 25 }); // half a row: the row at the bottom edge is cut
+        const viewport = q(table, '[data-slot="data-table-viewport"]').getBoundingClientRect();
+        const clipped = [...table.querySelectorAll<HTMLElement>('[data-slot="table-cell"][data-column="name"]')].find((c) => {
+            const r = c.getBoundingClientRect();
+            return r.top < viewport.bottom - 8 && r.bottom > viewport.bottom;
+        });
+        expect(clipped, `a row cut by the bottom edge ${JSON.stringify(viewport)} ${[...table.querySelectorAll<HTMLElement>('[data-slot="table-cell"][data-column="name"]')].map((c) => `${c.getBoundingClientRect().top}-${c.getBoundingClientRect().bottom}`).join(' ')}`).toBeTruthy();
+        const scrolled = new Promise<void>((resolve) => q(table, '[data-slot="data-table-viewport"]').addEventListener('scroll', () => resolve(), { once: true }));
+        await rightClick(clipped!, { dx: 20, dy: 4 });
+        await Promise.race([scrolled, frames(4)]);
+        await frames(3);
+        expect(builtMenu('row')!.open).toBe(true);
+    });
+
+    it('the ⋮ of the open menu closes it and leaves it closed (row and header)', async () => {
+        const table = await mount({ rowActions: ROW_ITEMS, columnMenu: true });
+        await userEvent.click(rowButton(table, 1));
+        await frames(2);
+        expect(builtMenu('row')!.open).toBe(true);
+        await userEvent.click(rowButton(table, 1));
+        await frames(3);
+        expect(builtMenu('row')!.open).toBe(false);
+        await settle(table);
+        expect(rowButton(table, 1).getAttribute('aria-expanded')).toBe('false');
+
+        await userEvent.click(headButton(table, 'age'));
+        await frames(2);
+        expect(builtMenu('column')!.open).toBe(true);
+        await userEvent.click(headButton(table, 'age'));
+        await frames(3);
+        expect(builtMenu('column')!.open).toBe(false);
+        // and the next click opens it again
+        await userEvent.click(headButton(table, 'age'));
+        await frames(2);
+        expect(builtMenu('column')!.open).toBe(true);
+    });
+
+    it('opening a menu closes the addon\'s other open menu', async () => {
+        const table = await mount({ rowActions: ROW_ITEMS, columnMenu: true });
+        // the age column's menu opens at its ⋮ (the right end of the table), clear of the name cells
+        await userEvent.click(headButton(table, 'age'));
+        await frames(2);
+        expect(builtMenu('column')!.open).toBe(true);
+        await rightClick(cellAt(table, 2, 'name')!, { dx: 10, dy: 8 });
+        expect(builtMenu('row')!.open).toBe(true);
+        expect(builtMenu('column')!.open).toBe(false);
+    });
+
+    it('a disabled row has no row menu: no ⋮, and its right click is the browser\'s', async () => {
+        const table = await mount({ rowActions: ROW_ITEMS }, { enableRowSelection: true, disabledRowIds: ['b'] });
+        expect(cellAt(table, 1, '_actions')!.querySelector('button[data-action-id="context-menu"]')).toBeNull();
+        const native = nativeMenus();
+        try {
+            await rightClick(cellAt(table, 1, 'name')!);
+            expect(builtMenu('row')?.open ?? false).toBe(false);
+            expect(native.reached).toHaveLength(1);
+            await rightClick(cellAt(table, 0, 'name')!);
+            expect(builtMenu('row')!.open).toBe(true);
+        } finally {
+            native.stop();
+        }
+    });
+});
+
 // ---- 7. axe ------------------------------------------------------------------------------------------------------------------
 
 describe('axe', () => {
