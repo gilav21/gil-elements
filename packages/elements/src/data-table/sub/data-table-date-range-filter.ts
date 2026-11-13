@@ -3,7 +3,7 @@ import { UiElement } from '@gilav21/elements-base';
 import '../../button/define.js';
 import '../../calendar/define.js';
 import { type CalendarLocale, resolveCalendarLocale } from '../../shared/calendar-locales.js';
-import { type DateRangePreset, defaultDateRangePresets, isCompleteRange } from '../data-table-filters.js';
+import { type DateRangePreset, defaultDateRangePresets, isCompleteRange } from '../data-table-filter-panels.js';
 import type { DataTableDateRange } from '../data-table.types.js';
 import { asEditableDate } from '../data-table.utils.js';
 import css from './data-table-filters-panels.css?inline';

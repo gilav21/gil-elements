@@ -4,7 +4,7 @@ import { UiElement } from '@gilav21/elements-base';
 import '../../button/define.js';
 import '../../checkbox/define.js';
 import '../../command/define.js';
-import { normalizeSelection, selectAllValues, selectionValue, toggleSelection } from '../data-table-filters.js';
+import { normalizeSelection, selectAllValues, selectionValue, toggleSelection } from '../data-table-filter-panels.js';
 import { type DataTableLocale, resolveDataTableLocale } from '../data-table.locales.js';
 import css from './data-table-filters-panels.css?inline';
 
