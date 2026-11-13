@@ -1,0 +1,99 @@
+/*
+ * shadcn-angular data-table-range-chart: the Tailwind classes of its template, written out. The dialog box is reached
+ * through ge-dialog-content's ::part(panel).
+ */
+:host {
+    display: contents;
+}
+/* w-full max-w-[calc(100vw-2rem)] sm:max-w-2xl */
+ge-dialog-content::part(panel) {
+    width: 100%;
+    max-width: calc(100vw - 2rem);
+    /*
+     * A short viewport keeps the box inside it and scrolls the chart area (.scroll), not the box: the title and the switches stay
+     * in view, and the series picker's popup, which sits outside .scroll, is not clipped by a scrolling ancestor.
+     */
+    max-height: calc(100dvh - 2rem);
+    grid-template-rows: auto minmax(0, 1fr);
+}
+@media (min-width: 640px) {
+    ge-dialog-content::part(panel) {
+        max-width: 42rem;
+    }
+}
+/* flex flex-col gap-3 */
+.body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+    min-height: 0;
+}
+.scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+    overflow-y: auto;
+}
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+/* flex flex-wrap items-center gap-2 */
+.switcher {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+.series {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+.series-label {
+    color: var(--muted-foreground);
+}
+/* min-h-[260px] w-full */
+.canvas {
+    position: relative;
+    width: 100%;
+    min-height: 260px;
+}
+.canvas ge-pie-chart {
+    display: block;
+    margin-inline: auto;
+    max-width: 280px;
+}
+.note {
+    margin: 0;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--muted-foreground);
+}
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+/* The pressed switch is the filled one; forced colours flatten both variants to ButtonFace, so mark it with the system highlight. */
+@media (forced-colors: active) {
+    ge-button[aria-pressed='true']::part(base) {
+        forced-color-adjust: none;
+        background-color: Highlight;
+        border-color: Highlight;
+        color: HighlightText;
+    }
+}
