@@ -27,10 +27,11 @@ export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
         cell: (row, rowIndex, disabled) => {
             if (cells.length === 0) return undefined;
             if (disabled) return nothing;
+            const context = () => requireProvider(host, 'query').rowContext(row, rowIndex);
             return cells.map(
                 (slot) =>
-                    html`<button type="button" data-slot="data-table-icon-button" data-size="lg" data-action-id=${slot.id} aria-label=${slot.ariaLabel ?? locale.rowActions} aria-haspopup=${slot.haspopup ?? nothing} tabindex="-1"
-                        @click=${(event: Event) => slot.onClick(event, requireProvider(host, 'query').rowContext(row, rowIndex))}>${slot.icon ?? chromeIcon('more-vertical')}</button>`,
+                    html`<button type="button" data-slot="data-table-icon-button" data-size="lg" data-action-id=${slot.id} aria-label=${slot.ariaLabel ?? locale.rowActions} aria-haspopup=${slot.haspopup ?? nothing}
+                        aria-expanded=${slot.expanded ? String(slot.expanded(context())) : nothing} tabindex="-1" @click=${(event: Event) => slot.onClick(event, context())}>${slot.icon ?? chromeIcon('more-vertical')}</button>`,
             );
         },
         head: (column) =>
@@ -39,7 +40,7 @@ export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
                 : heads.map(
                       (slot) =>
                           html`<button type="button" data-slot="data-table-icon-button" data-action-id=${slot.id} aria-label=${interpolate(slot.ariaLabel ?? locale.columnMenu, { column: column.header })} aria-haspopup=${slot.haspopup ?? nothing}
-                              @click=${(event: Event) => slot.onClick(event, column)}>${slot.icon ?? chromeIcon('more-vertical', 'xs')}</button>`,
+                              aria-expanded=${slot.expanded ? String(slot.expanded(column)) : nothing} @click=${(event: Event) => slot.onClick(event, column)}>${slot.icon ?? chromeIcon('more-vertical', 'xs')}</button>`,
                   ),
     };
 }

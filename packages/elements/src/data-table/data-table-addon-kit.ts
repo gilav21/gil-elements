@@ -4,7 +4,7 @@
  */
 import { resolveAddonLocale } from '../shared/addon-locale.js';
 import { Disposables } from '../shared/registry.js';
-import { warnOncePer } from './data-table-warn.js';
+import { reportOncePer, warnOncePer } from './data-table-warn.js';
 import type { DataTableLocale } from './data-table.locales.js';
 import type { DataTableAddonEvents } from './data-table-events.js';
 import type { DataTableTopic } from './data-table-host.js';
@@ -182,17 +182,37 @@ export class AddonSet<T = unknown> {
         }
     }
 
-    /** Sets an addon up with a host of its own, whose `expose` files the API under its id until its teardown (a late call after it is ignored). */
+    /**
+     * Sets an addon up with a host of its own, whose `expose` files the API under its id until its teardown (a late call after it is ignored).
+     * An addon that throws (in `setup`, in a topic listener such as `defineAddon`'s locale re-run, or in its teardown) is reported once and the
+     * table carries on; one whose `setup` threw counts as running, so it is not retried until its options change or it is removed.
+     */
     private launch(id: string, addon: DataTableAddon<T>, options: unknown): void {
         let live = true;
-        const expose = (api: object): void => void (live && this.apis.set(id, api));
-        const teardown = addon.setup(Object.create(this.host, { expose: { value: expose } }) as DataTableAddonHost<T>, options);
+        const guard = (phase: string, fn: () => void): boolean => {
+            try {
+                fn();
+                return true;
+            } catch (error) {
+                reportOncePer(this, `addon:${id}`, `[ge-data-table] addon "${id}" threw in ${phase}; it is skipped:`, error);
+                return false;
+            }
+        };
+        const host = Object.create(this.host, {
+            expose: { value: (api: object): void => void (live && this.apis.set(id, api)) },
+            subscribe: { value: (topic: DataTableTopic, fn: () => void) => this.host.subscribe(topic, () => guard(`a '${topic}' listener`, fn)) },
+        }) as DataTableAddonHost<T>;
+        let teardown: void | (() => void);
+        if (!guard('setup', () => (teardown = addon.setup(host, options)))) {
+            live = false; // a half set-up addon publishes no API
+            this.apis.delete(id);
+        }
         this.active.set(id, {
             options,
             teardown: () => {
                 live = false;
                 this.apis.delete(id);
-                teardown?.();
+                if (teardown) guard('teardown', teardown);
             },
         });
     }

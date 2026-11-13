@@ -392,6 +392,8 @@ export interface CellActionSlot<T = unknown> {
     readonly ariaLabel?: string;
     /** Drawn as `aria-haspopup`. */
     readonly haspopup?: 'menu';
+    /** Drawn as `aria-expanded` (absent: no attribute); read at each render, for this row. */
+    readonly expanded?: (context: RowActionContext<T>) => boolean;
     readonly onClick: (event: Event, context: RowActionContext<T>) => void;
 }
 
@@ -402,6 +404,8 @@ export interface HeaderActionSlot<T = unknown> {
     /** `{column}` is the column header. Default: the locale's `columnMenu`. */
     readonly ariaLabel?: string;
     readonly haspopup?: 'menu';
+    /** Drawn as `aria-expanded` (absent: no attribute); read at each render, for this column. */
+    readonly expanded?: (column: ColumnDef<T>) => boolean;
     readonly onClick: (event: Event, column: ColumnDef<T>) => void;
 }
 

@@ -265,6 +265,53 @@ describe('AddonSet: exposed APIs (wave 7)', () => {
     });
 });
 
+describe('AddonSet: an addon that throws', () => {
+    const boom = (): never => {
+        throw new Error('boom');
+    };
+
+    it('reports a throwing setup once, starts the other addons, does not retry it on a sync, and publishes no API from it', () => {
+        const { host } = fakeHost();
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const set = new AddonSet(host, new Map());
+        set.start();
+        set.use({ id: 'bad', setup: (h) => (h.expose({}), boom()) });
+        const good = vi.fn();
+        set.use({ id: 'good', setup: good });
+        set.sync();
+        expect(good).toHaveBeenCalledTimes(1);
+        expect(set.api('bad')).toBeUndefined();
+        expect(error).toHaveBeenCalledTimes(1);
+        expect(String(error.mock.calls[0]![0])).toContain('addon "bad" threw in setup');
+        expect(() => set.stop()).not.toThrow();
+    });
+
+    it('reports a throwing teardown and still tears the other addons down', () => {
+        const { host } = fakeHost();
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const set = new AddonSet(host, new Map());
+        const stopped = vi.fn();
+        set.start();
+        set.use({ id: 'bad', setup: () => boom });
+        set.use({ id: 'good', setup: () => stopped });
+        expect(() => set.stop()).not.toThrow();
+        expect(stopped).toHaveBeenCalledTimes(1);
+        expect(String(error.mock.calls[0]![0])).toContain('addon "bad" threw in teardown');
+    });
+
+    it("catches a throwing topic listener (defineAddon's locale re-run), so the table's update goes on", () => {
+        const { host, relocale } = fakeHost();
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const set = new AddonSet(host, new Map());
+        let runs = 0;
+        set.start();
+        set.use(defineAddon('flaky', () => void (++runs > 1 && boom())));
+        expect(() => relocale()).not.toThrow();
+        expect(runs).toBe(2);
+        expect(String(error.mock.calls[0]![0])).toContain("addon \"flaky\" threw in a 'locale' listener");
+    });
+});
+
 describe('createAddonHost', () => {
     function build() {
         const service = createAddonsService<unknown>(() => {});

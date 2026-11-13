@@ -114,6 +114,30 @@ describe('use() and the addon host', () => {
     });
 });
 
+describe('a throwing addon', () => {
+    it('is reported once and skipped: the table connects, renders, runs the other addons, and disconnects', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const { addon, runs } = probe(uniqueId());
+        const table = trackTable(document.createElement('ge-data-table') as GeDataTable<SampleRow>);
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS });
+        table.use({
+            id: uniqueId(),
+            setup: () => {
+                throw new Error('setup failed');
+            },
+        });
+        table.use({ id: uniqueId(), setup: () => () => { throw new Error('teardown failed'); } });
+        table.use(addon);
+        document.body.append(table);
+        await settle(table);
+        expect(bodyRows(table)).toHaveLength(4);
+        expect(runs).toHaveLength(1);
+        expect(() => table.remove()).not.toThrow();
+        expect(error.mock.calls.map((call) => String(call[0]))).toEqual([expect.stringContaining('threw in setup'), expect.stringContaining('threw in teardown')]);
+        error.mockRestore();
+    });
+});
+
 describe('the addons attribute, addonOptions and addon()', () => {
     it('starts a registered addon named in the attribute, with its options, and restarts it when they change', async () => {
         const name = uniqueId();
@@ -169,6 +193,25 @@ describe('the action buttons addons register', () => {
         off();
         await settle(table);
         expect(table.querySelector('[data-column="_actions"]')).toBeNull();
+    });
+
+    it('draws aria-expanded from the slot, per row and per column, and none without `expanded`', async () => {
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable();
+        table.use(addon);
+        let openRow = -1;
+        let openColumn = '';
+        runs[0]!.host.registerCellAction({ id: 'menu', expanded: (context) => context.index === openRow, onClick: () => undefined });
+        runs[0]!.host.registerCellAction({ id: 'plain', onClick: () => undefined });
+        runs[0]!.host.registerHeaderAction({ id: 'col', expanded: (column) => column.accessorKey === openColumn, onClick: () => undefined });
+        openRow = 2;
+        openColumn = 'age';
+        table.requestUpdate();
+        await settle(table);
+        expect(qa(table, 'button[data-action-id="menu"]').map((b) => b.getAttribute('aria-expanded'))).toEqual(['false', 'false', 'true', 'false']);
+        expect(qa(table, 'button[data-action-id="plain"]').every((b) => !b.hasAttribute('aria-expanded'))).toBe(true);
+        expect(headCell(table, 'age').querySelector('[data-action-id="col"]')?.getAttribute('aria-expanded')).toBe('true');
+        expect(headCell(table, 'name').querySelector('[data-action-id="col"]')?.getAttribute('aria-expanded')).toBe('false');
     });
 
     it("leaves a consumer's own actions column as it was while no addon registers a row action", async () => {
