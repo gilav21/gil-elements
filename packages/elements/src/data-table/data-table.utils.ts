@@ -75,14 +75,18 @@ export function isFilterValueEmpty(value: unknown): boolean {
     if (Array.isArray(value)) return value.length === 0;
     if (value instanceof Set) return value.size === 0; // wave5: a Set is a multiselect selection too (multiselectFilterFn reads it)
     if (value instanceof Date) return false;
-    if (typeof value === 'object') {
-        // wave5: a PLAIN object whose only keys are `start` / `end` (any subset, `{}` too) with no end set (null, undefined, '') is a range that filters
-        // nothing. Any other key makes it a real value (`{ start: null, end: null, includeBlanks: true }` is a consumer's filter and reaches filterFn).
-        if (Object.getPrototypeOf(value) !== Object.prototype) return false;
-        const unset = (end: unknown): boolean => end == null || end === '';
-        return Object.entries(value).every(([key, end]) => (key === 'start' || key === 'end') && unset(end));
-    }
-    return false;
+    // wave5: a PLAIN object whose only keys are `start` / `end` (any subset, `{}` too) with no end set (null, undefined, '') is a range that filters
+    // nothing. Any other key makes it a real value (`{ start: null, end: null, includeBlanks: true }` is a consumer's filter and reaches filterFn).
+    if (!isPlainObject(value)) return false;
+    const unset = (end: unknown): boolean => end == null || end === '';
+    return Object.entries(value).every(([key, end]) => (key === 'start' || key === 'end') && unset(end));
+}
+
+/** wave5: a plain object literal: `Object.prototype` or a `null` prototype (`Object.create(null)`), never a class instance, an array or a Date. ONE rule for the filters. */
+export function isPlainObject(value: unknown): value is Record<string, unknown> {
+    if (value === null || typeof value !== 'object') return false;
+    const proto = Object.getPrototypeOf(value);
+    return proto === Object.prototype || proto === null;
 }
 
 const identityIds = new WeakMap<object, string>();
