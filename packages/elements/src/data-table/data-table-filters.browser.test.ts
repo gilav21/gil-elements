@@ -671,6 +671,23 @@ describe('date panels given a filter restored from JSON (ISO strings)', () => {
 describe('F4 the multiselect panel', () => {
     const optionRow = (panel: Element, label: string): HTMLElement => panel.shadowRoot!.querySelector<HTMLElement>(`ge-command-item[value="${label}"]`)!;
 
+    it('a remove and re-add of the table writes the waiting floating text and draws the open popovers closed (round 19)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn], enableFloatingFilters: true, filterDebounce: 1000, enableAdvancedFilter: true });
+        const input = shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input');
+        await typeText(input, 'Al');
+        await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
+        const parent = table.parentElement!;
+        table.remove();
+        expect(table.columnFilters).toEqual({ name: 'Al' }); // flushed at the detach, not dropped
+        parent.append(table);
+        await settle(table);
+        await frames(2);
+        const panel = trigger(table, 'role').closest('ge-popover') as HTMLElement & { open: boolean };
+        expect(panel.open).toBe(false);
+        expect(q(table, '[data-slot="data-table-filter-panel"]').querySelector('ge-data-table-multiselect-filter')).toBeNull();
+        expect(names(table)).toEqual(['Alice']);
+    });
+
     it('an open panel whose column is hidden is closed with its scroll watch; showing the column again draws it closed (round 17)', async () => {
         const table = await mount();
         await openPanel(table, 'role', 'ge-data-table-multiselect-filter');

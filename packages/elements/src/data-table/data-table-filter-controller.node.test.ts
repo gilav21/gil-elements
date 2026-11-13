@@ -41,6 +41,7 @@ function fakeHost(config: Partial<Record<string, unknown>> = {}) {
         announce,
         requestRender,
         disposables,
+        root: { querySelectorAll: () => [] },
         resolvedLocale: DATA_TABLE_LOCALES.en,
     } as unknown as DataTableCoreHost<Row>;
     const controller = new FilterUiController(host);
@@ -118,12 +119,14 @@ describe('FilterUiController', () => {
         expect(debounced.query.changeColumnFilter).toHaveBeenCalledWith('name', 'al');
     });
 
-    it('cancels a pending floating write at detach', () => {
+    it('writes a pending floating value at detach, once, while the query service exists (round 19: flushed, not dropped)', () => {
         const { controller, service, query } = fakeHost({ filterDebounce: 200 });
         service.floatingInput('name')({ currentTarget: { value: 'a' } } as unknown as Event);
         controller.detach();
+        expect(query.changeColumnFilter).toHaveBeenCalledTimes(1);
+        expect(query.changeColumnFilter).toHaveBeenCalledWith('name', 'a');
         vi.advanceTimersByTime(500);
-        expect(query.changeColumnFilter).not.toHaveBeenCalled();
+        expect(query.changeColumnFilter).toHaveBeenCalledTimes(1);
     });
 
     it('announces the settled count once, 500 ms after the last column or advanced edit (D7)', () => {

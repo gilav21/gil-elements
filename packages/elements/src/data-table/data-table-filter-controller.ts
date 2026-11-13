@@ -3,7 +3,7 @@ import { ref } from 'lit/directives/ref.js';
 import { chromeIcon } from './data-table-icons.js';
 import { anyFilterOn, BUILT_IN_FILTER_PANELS, builderColumns, currentFilterValue, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive, sameStructure } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
-import { composedContains, type DataTableCoreHost, requireProvider, VIEWPORT } from './data-table-host.js';
+import { composedContains, type DataTableCoreHost, ownElements, requireProvider, VIEWPORT } from './data-table-host.js';
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
 import { countConditions, memoLast } from './data-table-query.js';
 import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels, interpolate } from './data-table.locales.js';
@@ -106,15 +106,27 @@ export class FilterUiController<T> {
         // builder disconnects, so the builder's own flush would come too late).
         this.builder?.flush?.();
         this.builder = undefined;
+        // So are the floating inputs' typed values: written now, not dropped (the typed filter is kept, as the builder's is).
+        this.flushPending();
+        // The open filter popovers close: a later attach draws them closed, never as an open popover with no panel content (the open state is reset below).
+        const popovers = this.host.root.querySelectorAll<HTMLElement & { open: boolean }>('ge-popover:has(> [data-slot="data-table-filter-panel"], > [data-slot="advanced-filter-panel"])');
+        for (const popover of ownElements(this.host.root, popovers)) popover.open = false;
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
         this.cancelAnnounce?.();
         this.cancelAnnounce = undefined;
-        this.dropPending();
         this.handlers.clear();
         this.stopScrollWatch();
         this.openColumn = null;
         this.builderOpen = false;
+    }
+
+    /** Writes every floating value still waiting on its debounce, now (the detach: the query service still exists). */
+    private flushPending(): void {
+        const waiting = [...this.pending];
+        this.dropPending();
+        const query = this.host.provider('query');
+        for (const [key, { text }] of waiting) query?.changeColumnFilter(key, text);
     }
 
     /** The toolbar slot after the global filter input: the advanced-filter trigger and its builder popover (html 380-413). */
