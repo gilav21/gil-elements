@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_ORDER, type ControllerSpec, KEY_PRIORITY, createAddonsService, createDataTableSlots, validatePlan } from './data-table-registry.js';
+import { createAddonsService, createDataTableSlots } from './data-table-addon-host-controller.js';
+import { DEFAULT_ORDER, type ControllerSpec, KEY_PRIORITY, validatePlan } from './data-table-registry.js';
 import { TopicBus } from '../shared/registry.js';
 import type { DataTableTopic } from './data-table-host.js';
 

@@ -539,10 +539,23 @@
 
     /* Floating filter row: data-table-filters.css (wave 5). */
 
-    /* Header action (kebab) button, hidden until the head is hovered (716). */
+    /* Header action (kebab) button, hidden until the head is hovered (716): an icon button (h-6 w-6) with an opacity reveal. */
     ge-data-table [data-slot="data-table-header-action"] {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        padding: 0;
+        border: 0;
+        border-radius: calc(var(--radius) - 2px);
+        background-color: transparent;
+        color: inherit;
+        font: inherit;
+        cursor: pointer;
         opacity: 0;
-        transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1), color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
     }
     @media (hover: hover) {
         ge-data-table [data-slot="table-head"]:hover [data-slot="data-table-header-action"] {
@@ -550,7 +563,8 @@
         }
     }
     ge-data-table [data-slot="table-head"]:focus-within [data-slot="data-table-header-action"],
-    ge-data-table [data-slot="data-table-header-action"]:focus-visible {
+    ge-data-table [data-slot="data-table-header-action"]:focus-visible,
+    ge-data-table [data-slot="data-table-header-action"][aria-expanded="true"] {
         opacity: 1;
     }
     @media (hover: none) {
@@ -588,18 +602,23 @@
         color: var(--primary);
     }
     @media (hover: hover) {
-        ge-data-table [data-slot="data-table-icon-button"]:hover {
+        ge-data-table [data-slot="data-table-icon-button"]:hover,
+        ge-data-table [data-slot="data-table-header-action"]:hover {
             background-color: var(--accent);
             color: var(--accent-foreground);
         }
     }
     @media (pointer: coarse) {
-        ge-data-table [data-slot="data-table-icon-button"] {
+        /* `[data-size]` too: as specific as the md / lg sizes above, so the touch size wins over them (pointer-coarse:size-11). */
+        ge-data-table [data-slot="data-table-icon-button"],
+        ge-data-table [data-slot="data-table-icon-button"][data-size],
+        ge-data-table [data-slot="data-table-header-action"] {
             width: 2.75rem;
             height: 2.75rem;
         }
     }
-    ge-data-table [data-slot="data-table-icon-button"]:focus-visible {
+    ge-data-table [data-slot="data-table-icon-button"]:focus-visible,
+    ge-data-table [data-slot="data-table-header-action"]:focus-visible {
         outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
     }
     ge-data-table [data-slot="data-table-icon-button"] > [data-slot="dt-icon"] {

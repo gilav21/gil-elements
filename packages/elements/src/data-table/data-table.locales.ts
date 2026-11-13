@@ -150,6 +150,19 @@ export interface DataTableLocale extends LocaleMeta {
     rowMovedAnnouncement: string;
     /** `aria-description` of the grid while row drag is on: the keyboard alternative. */
     rowDragHint: string;
+    /** Wave 7: default `aria-label` of an addon's row action button (the header one is `columnMenu`). */
+    rowActions: string;
+    /** Wave 7 (AI): the natural-language filter box's label, its submit button, and its announcements. */
+    nlFilterLabel: string;
+    nlFilterApply: string;
+    nlFilterRunning: string;
+    nlFilterFailed: string;
+    nlFilterNoChange: string;
+    /** Interpolates `{done}` and `{total}`. */
+    aiFillRunning: string;
+    /** Interpolates `{count}`. */
+    aiFillDone: string;
+    aiFillFailed: string;
     rangeCount?: string;
     rangeSum?: string;
     rangeAvg?: string;
@@ -274,6 +287,15 @@ const en: DataTableLocale = {
     fillAnnouncement: '{count} rows filled',
     rowMovedAnnouncement: 'Row moved to position {position} of {total}',
     rowDragHint: 'Alt+Up or Alt+Down arrow moves the focused row',
+    rowActions: 'Row actions',
+    nlFilterLabel: 'Filter with a question',
+    nlFilterApply: 'Apply',
+    nlFilterRunning: 'Filtering…',
+    nlFilterFailed: 'Could not apply the filter',
+    nlFilterNoChange: 'The question did not change the filters',
+    aiFillRunning: 'Filling {done} of {total}',
+    aiFillDone: '{count} cells filled',
+    aiFillFailed: 'Could not fill the column',
     rangeCount: 'Count',
     rangeSum: 'Sum',
     rangeAvg: 'Avg',

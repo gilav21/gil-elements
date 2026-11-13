@@ -1,4 +1,5 @@
 import { readdirSync, readFileSync } from 'node:fs';
+import { posix } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const DIRECTORY = new URL('.', import.meta.url);
@@ -17,6 +18,87 @@ function importsOf(source: string): string[] {
     const specifiers = [...source.matchAll(/(?:from|import\s*\()\s*['"]([^'"]+)['"]/g)];
     return specifiers.map((m) => m[1] as string);
 }
+
+/** Each import / re-export statement (and dynamic import) with whether it is type-only (`import type`, `export type`). */
+function statementsOf(source: string): { specifier: string; typeOnly: boolean }[] {
+    const statements = [...source.matchAll(/^\s*(?:import|export)\s+(type\s+)?(?:[^;'"]*?\sfrom\s*)?['"]([^'"]+)['"]/gm)].map((m) => ({ specifier: m[2] as string, typeOnly: m[1] !== undefined }));
+    const dynamic = [...source.matchAll(/import\s*\(\s*['"]([^'"]+)['"]/g)].map((m) => ({ specifier: m[1] as string, typeOnly: false }));
+    return [...statements, ...dynamic];
+}
+
+/** The two core modules an addon may import for real; everything else of the core only as `import type`. */
+const ADDON_CORE = new Set(['data-table-addon-kit.js', 'data-table-addon-registry.js']);
+
+/**
+ * What is wrong with the imports of the addon source `name` (a path relative to this folder, `addons/<id>/...`), one message each. An addon imports
+ * its own folder, the kit and the addon registry, `shared/*`, another element's `define` or class file, lit and the base package, and the rest of the
+ * core only as types: a value import of a core module would put the table's code (a shared chunk) on the addon's entry.
+ */
+function addonImportProblems(name: string, source: string): string[] {
+    // The folder that is the addon's own: `addons/<id>/`, or a top-level addon-like entry such as `range-chart/`.
+    const own = name.startsWith('addons/') ? `addons/${name.split('/')[1]}/` : `${name.split('/')[0]}/`;
+    const problems: string[] = [];
+    for (const { specifier, typeOnly } of statementsOf(source)) {
+        if (!specifier.startsWith('.')) {
+            if (!/^(lit|@gilav21\/elements-base)(\/|$)/.test(specifier)) problems.push(`${specifier}: a package`);
+            continue;
+        }
+        const target = posix.normalize(posix.join(posix.dirname(name), specifier));
+        if (target.startsWith(own)) continue;
+        if (target.startsWith('addons/')) problems.push(`${specifier}: another addon`);
+        else if (target.startsWith('../shared/')) continue;
+        else if (target.startsWith('../')) {
+            if (!/^\.\.\/([a-z-]+)\/(define|\1)\.js$/.test(target)) problems.push(`${specifier}: not an element's define or class file`);
+        } else if (!typeOnly && !ADDON_CORE.has(target)) problems.push(`${specifier}: a core module (only the kit and the addon registry, or import type)`);
+    }
+    return problems;
+}
+
+/** Every addon source (relative to this folder), and the range chart's: it is an entry of its own that must not pull the core either. */
+const ADDON_SOURCES = (readdirSync(DIRECTORY, { recursive: true }) as string[])
+    .map((name) => name.replaceAll('\\', '/'))
+    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && (name.startsWith('addons/') || name.startsWith('range-chart/')));
+
+describe('the addons', () => {
+    it('finds their sources, the entry stubs of wave 7 included', () => {
+        expect(ADDON_SOURCES).toEqual(expect.arrayContaining(['addons/pivot/pivot-utils.ts', 'addons/context-menu/index.ts', 'addons/export/define.ts', 'addons/pivot/define.ts', 'range-chart/index.ts', 'range-chart/define.ts']));
+        // the range chart's own folder is `range-chart/`; a core module is still refused there
+        expect(addonImportProblems('range-chart/range-chart.ts', `import './range-chart-data.js';\nimport '../../dialog/define.js';\nimport { x } from '../data-table.utils.js';`)).toEqual([
+            '../data-table.utils.js: a core module (only the kit and the addon registry, or import type)',
+        ]);
+    });
+
+    it.each(ADDON_SOURCES)('%s imports the core only through the kit, the addon registry and types, and no other addon', (name) => {
+        expect(addonImportProblems(name, read(name))).toEqual([]);
+    });
+
+    it('the rule refuses a value import of a core module, another addon and a package, and allows the rest', () => {
+        const source = [
+            `import { defineAddon } from '../../data-table-addon-kit.js';`,
+            `import { registerDataTableAddon } from '../../data-table-addon-registry.js';`,
+            `import type { QueryService } from '../../data-table-providers.js';`,
+            `export type { ColumnDef } from '../../data-table.types.js';`,
+            `import { toCsv } from '../../../shared/csv.js';`,
+            `import '../../../context-menu/define.js';`,
+            `import { html } from 'lit';`,
+            `import { helper } from './helper.js';`,
+            `import { getCellValue } from '../../data-table.utils.js';`,
+            `import {\n    computePivot,\n} from '../pivot/pivot-utils.js';`,
+            `export * from '../../data-table-providers.js';`,
+            `import { x } from 'some-package';`,
+            `const lazy = () => import('../../data-table.js');`,
+            `import { y } from '../../../context-menu/context-menu-content.js';`,
+        ].join('\n');
+        expect(addonImportProblems('addons/export/export.ts', source)).toEqual([
+            '../../data-table.utils.js: a core module (only the kit and the addon registry, or import type)',
+            '../pivot/pivot-utils.js: another addon',
+            '../../data-table-providers.js: a core module (only the kit and the addon registry, or import type)',
+            'some-package: a package',
+            "../../../context-menu/context-menu-content.js: not an element's define or class file",
+            '../../data-table.js: a core module (only the kit and the addon registry, or import type)',
+        ]);
+    });
+});
 
 describe('importsOf', () => {
     it('finds static, side-effect-free type and dynamic imports', () => {

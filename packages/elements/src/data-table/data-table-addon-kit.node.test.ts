@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AddonSet, type DataTableAddon, type DataTableAddonHost, createAddonHost, defineAddon, parseAddonIds, resolveAddonLocale } from './data-table-addon-kit.js';
-import { createAddonsService } from './data-table-registry.js';
+import { createAddonsService } from './data-table-addon-host-controller.js';
 import { resolveAddonLocale as shared } from '../shared/addon-locale.js';
 import type { DataTableLocale } from './data-table.locales.js';
 
@@ -224,17 +224,237 @@ it('warns once per TABLE (set) and id, though two tables share one registry: eac
     });
 });
 
-describe('createAddonHost', () => {
-    it('exposes only registration, busy, locale, subscribe and provider, wired to the addons service', () => {
+describe('AddonSet: exposed APIs (wave 7)', () => {
+    it('files what an addon exposes under its id, replaces it on a re-expose, and drops it at the teardown', () => {
+        const { host } = fakeHost();
+        const set = new AddonSet(host, new Map());
+        set.start();
+        const off = set.use({ id: 'export', setup: (h) => h.expose({ version: 1 }) });
+        expect(set.api<{ version: number }>('export')).toEqual({ version: 1 });
+        expect(set.api('pivot')).toBeUndefined();
+        off();
+        expect(set.api('export')).toBeUndefined();
+    });
+
+    it('keeps one API per addon (each gets a host of its own) and ignores an expose after the teardown', () => {
+        const { host } = fakeHost();
+        const set = new AddonSet(host, new Map());
+        const hosts: DataTableAddonHost[] = [];
+        const addon = (id: string): DataTableAddon => ({ id, setup: (h) => (hosts.push(h), h.expose({ id })) });
+        set.start();
+        set.use(addon('a'));
+        set.use(addon('b'));
+        expect(set.api('a')).toEqual({ id: 'a' });
+        expect(set.api('b')).toEqual({ id: 'b' });
+        expect(Object.getPrototypeOf(hosts[0])).toBe(host); // the shared host's members, with its own `expose`
+        set.stop();
+        hosts[0]!.expose({ late: true });
+        expect(set.api('a')).toBeUndefined();
+        expect(set.api('b')).toBeUndefined();
+    });
+
+    it('drops the API of an addon restarted with new options until it exposes again', () => {
+        const { host } = fakeHost();
+        const registry = new Map<string, DataTableAddon>([['x', { id: 'x', setup: (h, options) => (options as { on?: boolean } | undefined)?.on && h.expose({}) }]]);
+        const set = new AddonSet(host, registry);
+        set.start();
+        set.configure('x', { x: { on: true } });
+        expect(set.api('x')).toBeDefined();
+        set.configure('x', { x: { on: false } });
+        expect(set.api('x')).toBeUndefined();
+    });
+});
+
+describe('AddonSet: which addon object runs (review)', () => {
+    it('restarts an id when use() overrides it with another addon object, with equal options', () => {
+        const { set, log } = (() => {
+            const { host } = fakeHost();
+            return { set: new AddonSet(host, new Map()), log: [] as string[] };
+        })();
+        const make = (name: string): DataTableAddon => ({ id: 'x', setup: () => (log.push(`start ${name}`), () => log.push(`stop ${name}`)) });
+        set.start();
+        set.use(make('a'));
+        set.use(make('b'));
+        expect(log).toEqual(['start a', 'stop a', 'start b']);
+    });
+
+    it('restarts an id whose registry entry was replaced, at the next sync', () => {
+        const { host } = fakeHost();
+        const log: string[] = [];
+        const make = (name: string): DataTableAddon => ({ id: 'x', setup: () => (log.push(`start ${name}`), () => log.push(`stop ${name}`)) });
+        const registry = new Map([['x', make('old')]]);
+        const set = new AddonSet(host, registry);
+        set.start();
+        set.configure('x', {});
+        registry.set('x', make('new'));
+        set.sync();
+        expect(log).toEqual(['start old', 'stop old', 'start new']);
+    });
+
+    it("the remover of an overridden use() leaves the addon that replaced it running", () => {
+        const { host } = fakeHost();
+        const log: string[] = [];
+        const make = (name: string): DataTableAddon => ({ id: 'x', setup: () => (log.push(`start ${name}`), () => log.push(`stop ${name}`)) });
+        const set = new AddonSet(host, new Map());
+        set.start();
+        const offA = set.use(make('a'));
+        set.use(make('b'));
+        log.length = 0;
+        offA();
+        expect(log).toEqual([]);
+    });
+
+    it('clears the busy label of an addon at its teardown, through the busy port', () => {
+        const { host } = fakeHost();
+        const busy: [string, string | null][] = [];
+        const set = new AddonSet(host, new Map(), (owner, label) => busy.push([owner, label]));
+        set.start();
+        const off = set.use({ id: 'export', setup: (h) => h.setBusy('Exporting') });
+        off();
+        expect(busy).toEqual([['export', 'Exporting'], ['export', null]]);
+    });
+});
+
+describe('AddonSet: final review', () => {
+    it('keeps a use()d addon over the registry addon of the same id, also when the registry entry arrives later', () => {
+        const { host } = fakeHost();
+        const log: string[] = [];
+        const make = (name: string): DataTableAddon => ({ id: 'export', setup: () => (log.push(`start ${name}`), () => log.push(`stop ${name}`)) });
+        const registry = new Map<string, DataTableAddon>();
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        const set = new AddonSet(host, registry);
+        set.start();
+        set.use(make('mine'));
+        set.configure('export', {});
+        registry.set('export', make('registry'));
+        set.sync();
+        expect(log).toEqual(['start mine']);
+    });
+
+    it('the remover of a use() replaced by a use() of the same addon object (new options) leaves the new one running (final review 4)', () => {
+        const { host } = fakeHost();
+        const log: string[] = [];
+        const addon: DataTableAddon = { id: 'x', setup: (_h, options) => (log.push(`start ${JSON.stringify(options)}`), () => log.push('stop')) };
+        const set = new AddonSet(host, new Map());
+        set.start();
+        const first = set.use(addon, { v: 1 });
+        set.use(addon, { v: 2 });
+        log.length = 0;
+        first();
+        expect(log).toEqual([]);
+    });
+
+    it('after the teardown, the addon host announces, renders and provides nothing', () => {
+        const announce = vi.fn();
+        const requestRender = vi.fn();
         const service = createAddonsService<unknown>(() => {});
-        const locale = { code: 'en' } as DataTableLocale;
-        const host = createAddonHost<unknown>({
-            resolvedLocale: () => locale,
+        const base = createAddonHost<unknown>({
+            root: {} as HTMLElement,
+            resolvedLocale: () => ({ code: 'en' }) as DataTableLocale,
+            emit: vi.fn(),
+            announce,
+            requestRender,
             subscribe: () => () => {},
-            provider: () => undefined,
+            provider: () => ({}) as never,
             addons: () => service,
         });
-        expect(Object.keys(host).sort()).toEqual(['provider', 'registerCellAction', 'registerHeaderAction', 'resolvedLocale', 'setBusy', 'subscribe']);
+        const set = new AddonSet(base, new Map());
+        let kept: DataTableAddonHost | undefined;
+        set.start();
+        const off = set.use({ id: 'a', setup: (h) => void (kept = h) });
+        expect(kept!.provider('query')).toBeDefined();
+        off();
+        kept!.announce('late');
+        kept!.requestRender();
+        expect(announce).not.toHaveBeenCalled();
+        expect(requestRender).not.toHaveBeenCalled();
+        expect(kept!.provider('query')).toBeUndefined();
+    });
+});
+
+describe('AddonSet: final review 6', () => {
+    it('a disposer that throws is reported, and the other addons are still torn down', () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const host = {
+            subscribe: () => () => {
+                throw new Error('unsubscribe failed');
+            },
+        } as unknown as DataTableAddonHost;
+        const set = new AddonSet(host, new Map());
+        const stopped = vi.fn();
+        set.start();
+        set.use({ id: 'bad', setup: (h) => void h.subscribe('rows', () => undefined) });
+        set.use({ id: 'good', setup: () => stopped });
+        expect(() => set.stop()).not.toThrow();
+        expect(stopped).toHaveBeenCalledTimes(1);
+        expect(error).toHaveBeenCalledTimes(1);
+        set.start(); // `active` was cleared: both start again
+        expect(stopped).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('AddonSet: an addon that throws', () => {
+    const boom = (): never => {
+        throw new Error('boom');
+    };
+
+    it('reports a throwing setup once, starts the other addons, does not retry it on a sync, and publishes no API from it', () => {
+        const { host } = fakeHost();
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const set = new AddonSet(host, new Map());
+        set.start();
+        set.use({ id: 'bad', setup: (h) => (h.expose({}), boom()) });
+        const good = vi.fn();
+        set.use({ id: 'good', setup: good });
+        set.sync();
+        expect(good).toHaveBeenCalledTimes(1);
+        expect(set.api('bad')).toBeUndefined();
+        expect(error).toHaveBeenCalledTimes(1);
+        expect(String(error.mock.calls[0]![0])).toContain('addon "bad" threw in setup');
+        expect(() => set.stop()).not.toThrow();
+    });
+
+    it('reports a throwing teardown and still tears the other addons down', () => {
+        const { host } = fakeHost();
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const set = new AddonSet(host, new Map());
+        const stopped = vi.fn();
+        set.start();
+        set.use({ id: 'bad', setup: () => boom });
+        set.use({ id: 'good', setup: () => stopped });
+        expect(() => set.stop()).not.toThrow();
+        expect(stopped).toHaveBeenCalledTimes(1);
+        expect(String(error.mock.calls[0]![0])).toContain('addon "bad" threw in teardown');
+    });
+
+    it("catches a throwing topic listener (defineAddon's locale re-run), so the table's update goes on", () => {
+        const { host, relocale } = fakeHost();
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const set = new AddonSet(host, new Map());
+        let runs = 0;
+        set.start();
+        set.use(defineAddon('flaky', () => void (++runs > 1 && boom())));
+        expect(() => relocale()).not.toThrow();
+        expect(runs).toBe(2);
+        expect(String(error.mock.calls[0]![0])).toContain("addon \"flaky\" threw in a 'locale' listener");
+    });
+});
+
+describe('createAddonHost', () => {
+    function build() {
+        const service = createAddonsService<unknown>(() => {});
+        const locale = { code: 'en' } as DataTableLocale;
+        const root = {} as HTMLElement;
+        const emit = vi.fn();
+        const announce = vi.fn();
+        const requestRender = vi.fn();
+        const host = createAddonHost<unknown>({ root, resolvedLocale: () => locale, emit, announce, requestRender, subscribe: () => () => {}, provider: () => undefined, addons: () => service });
+        return { host, service, locale, root, emit, announce, requestRender };
+    }
+
+    it('exposes only root, registration, busy, events, announcements, locale, subscribe and provider, wired to the addons service', () => {
+        const { host, service, locale, root } = build();
+        expect(Object.keys(host).sort()).toEqual(['announce', 'emit', 'expose', 'provider', 'registerCellAction', 'registerHeaderAction', 'requestRender', 'resolvedLocale', 'root', 'setBusy', 'subscribe']);
 
         host.registerCellAction({ id: 'c', onClick: vi.fn() });
         host.registerHeaderAction({ id: 'h', onClick: vi.fn() });
@@ -243,5 +463,21 @@ describe('createAddonHost', () => {
         expect(service.headerActions.slots).toHaveLength(1);
         expect(service.busyLabel()).toBe('Working');
         expect(host.resolvedLocale).toBe(locale);
+        expect(host.root).toBe(root);
+    });
+
+    it('passes emit, announce and requestRender through to the table', () => {
+        const { host, emit, announce, requestRender } = build();
+        host.requestRender();
+        expect(requestRender).toHaveBeenCalledTimes(1);
+        host.emit('row-menu-open', { row: 1 });
+        host.emit('export-complete');
+        host.announce('Done');
+        expect(emit.mock.calls).toEqual([['row-menu-open', { row: 1 }], ['export-complete', undefined]]);
+        expect(announce).toHaveBeenCalledWith('Done');
+    });
+
+    it('has an inert expose outside an AddonSet (no addon id to file under)', () => {
+        expect(() => build().host.expose({})).not.toThrow();
     });
 });

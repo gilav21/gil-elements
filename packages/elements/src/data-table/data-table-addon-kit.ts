@@ -4,8 +4,9 @@
  */
 import { resolveAddonLocale } from '../shared/addon-locale.js';
 import { Disposables } from '../shared/registry.js';
-import { warnOncePer } from './data-table-warn.js';
+import { reportOncePer, warnOncePer } from './data-table-warn.js';
 import type { DataTableLocale } from './data-table.locales.js';
+import type { DataTableAddonEvents } from './data-table-events.js';
 import type { DataTableTopic } from './data-table-host.js';
 import type { AddonsService, CellActionSlot, DataTableProviders, HeaderActionSlot } from './data-table-providers.js';
 
@@ -13,7 +14,7 @@ export { resolveAddonLocale };
 export type { AddonLocaleTable } from '../shared/addon-locale.js';
 
 /** Services an addon may reach through `provider()`; the rest of the host is not its business. */
-export type DataTableAddonServiceKey = 'query' | 'columns' | 'interaction';
+export type DataTableAddonServiceKey = 'query' | 'columns' | 'interaction' | 'selection';
 
 /**
  * The stable surface an addon sees. Of the 26 members of Angular's `DataTableAddonHost` only the registration of the two
@@ -21,7 +22,20 @@ export type DataTableAddonServiceKey = 'query' | 'columns' | 'interaction';
  * commands the core already has, so they are reached as services through `provider()` instead of being copied here.
  */
 export interface DataTableAddonHost<T = unknown> {
+    /** The table element (light DOM): where an addon listens for gestures on rows, cells and headers. */
+    readonly root: HTMLElement;
     readonly resolvedLocale: DataTableLocale;
+    /**
+     * Fires a bubbling, composed `CustomEvent` on the table. Names are kebab-case; an addon types its own by augmenting
+     * `DataTableAddonEvents` (`data-table-events.ts`).
+     */
+    emit<K extends string>(name: K, detail?: K extends keyof DataTableAddonEvents ? DataTableAddonEvents[K] : unknown): void;
+    /** Writes to the table's polite live region. */
+    announce(message: string): void;
+    /** Asks the table to draw again (e.g. a slot's `expanded` changed); a no-op while it is detached. */
+    requestRender(): void;
+    /** Publishes this addon's imperative API: `table.addon<A>(id)` returns it until the addon is torn down. */
+    expose<A extends object>(api: A): void;
     /** `'locale'` re-runs `defineAddon`'s `create`; the other topics are for addons that follow rows or the cell. */
     subscribe(topic: DataTableTopic, fn: () => void): () => void;
     registerCellAction(slot: CellActionSlot<T>): () => void;
@@ -105,7 +119,9 @@ function sameValue(a: unknown, b: unknown): boolean {
  */
 export class AddonSet<T = unknown> {
     private readonly used = new Map<string, { addon: DataTableAddon<T>; options: unknown }>();
-    private readonly active = new Map<string, { teardown: void | (() => void); options: unknown }>();
+    private readonly active = new Map<string, { addon: DataTableAddon<T>; teardown: () => void; options: unknown }>();
+    /** What each running addon exposed (`host.expose`), by addon id. */
+    private readonly apis = new Map<string, object>();
     private ids: readonly string[] = [];
     private optionsMap: Readonly<Record<string, unknown>> = {};
     private settings: Readonly<Record<string, unknown>> = {};
@@ -114,22 +130,27 @@ export class AddonSet<T = unknown> {
     constructor(
         private readonly host: DataTableAddonHost<T>,
         private readonly registry: ReadonlyMap<string, DataTableAddon<T>>,
+        /** Where an addon's busy label goes, by addon id (`null` clears it); cleared at the addon's teardown. Without it, `host.setBusy`. */
+        private readonly busy?: (owner: string, label: string | null) => void,
     ) {}
 
-    /** Adds an addon (with options) regardless of the attribute; the returned function removes it. */
+    /** Adds an addon (with options) regardless of the attribute; the returned function removes it (not an addon that replaced it under the same id). */
     use(addon: DataTableAddon<T>, options?: unknown): () => void {
-        this.used.set(addon.id, { addon, options });
+        const entry = { addon, options };
+        this.used.set(addon.id, entry);
         this.merge();
         this.sync();
         return () => {
+            if (this.used.get(addon.id) !== entry) return; // replaced by a later use() (another addon, or the same one with new options)
             this.used.delete(addon.id);
             this.merge();
             this.sync();
         };
     }
 
-    configure(addons: string, addonOptions: Readonly<Record<string, unknown>>): void {
-        this.ids = parseAddonIds(addons);
+    /** `addons` is null or undefined once the attribute is removed (or bound to nothing): no attribute addons then. */
+    configure(addons: string | null | undefined, addonOptions: Readonly<Record<string, unknown>>): void {
+        this.ids = parseAddonIds(addons ?? '');
         this.optionsMap = addonOptions;
         this.merge();
         this.sync();
@@ -142,8 +163,16 @@ export class AddonSet<T = unknown> {
 
     stop(): void {
         this.started = false;
-        for (const { teardown } of this.active.values()) teardown?.();
-        this.active.clear();
+        try {
+            for (const { teardown } of this.active.values()) teardown();
+        } finally {
+            this.active.clear();
+        }
+    }
+
+    /** The API the running addon `id` exposed, or undefined. */
+    api<A extends object>(id: string): A | undefined {
+        return this.apis.get(id) as A | undefined;
     }
 
     /** Called when the registry gained an addon, so an id listed before its module loaded now starts. */
@@ -152,15 +181,73 @@ export class AddonSet<T = unknown> {
         const wanted = this.wanted();
         for (const [id, running] of this.active) {
             const addon = wanted.get(id);
-            if (addon && this.optionsFor(id, addon) === running.options) continue;
-            running.teardown?.();
+            // Kept only while the SAME addon object is wanted with the same options: a use() override or a replaced registry entry restarts it.
+            if (addon === running.addon && this.optionsFor(id, addon) === running.options) continue;
+            running.teardown();
             this.active.delete(id);
         }
         for (const [id, addon] of wanted) {
             const options = this.optionsFor(id, addon);
             if (options === false || this.active.has(id)) continue;
-            this.active.set(id, { teardown: addon.setup(this.host, options), options });
+            this.launch(id, addon, options);
         }
+    }
+
+    /**
+     * Sets an addon up with a host of its own, whose `expose` files the API under its id until its teardown (a late call after it is ignored).
+     * An addon that throws (in `setup`, in a topic listener such as `defineAddon`'s locale re-run, or in its teardown) is reported once and the
+     * table carries on; one whose `setup` threw counts as running, so it is not retried until its options change or it is removed.
+     */
+    private launch(id: string, addon: DataTableAddon<T>, options: unknown): void {
+        let live = true;
+        const guard = (phase: string, fn: () => void): boolean => {
+            try {
+                fn();
+                return true;
+            } catch (error) {
+                reportOncePer(this, `addon:${id}`, `[ge-data-table] addon "${id}" threw in ${phase}; it is skipped:`, error);
+                return false;
+            }
+        };
+        // Everything the addon registers through its host (slots, subscriptions) is recorded, so a teardown, or a setup that threw, releases it all;
+        // once the addon is torn down its host registers, emits, subscribes, announces and renders nothing, and provides no service.
+        const owned = new Set<() => void>();
+        const own = (register: () => () => void): (() => void) => {
+            if (!live) return () => undefined;
+            const dispose = register();
+            owned.add(dispose);
+            return () => {
+                if (owned.delete(dispose)) dispose();
+            };
+        };
+        const release = (): void => {
+            live = false;
+            this.apis.delete(id);
+            for (const dispose of [...owned].reverse()) guard('a release', dispose); // one failing disposer does not stop the others
+            owned.clear();
+            this.busy?.(id, null); // a busy label the addon left behind goes with it
+        };
+        const host = Object.create(this.host, {
+            expose: { value: (api: object): void => void (live && this.apis.set(id, api)) },
+            subscribe: { value: (topic: DataTableTopic, fn: () => void) => own(() => this.host.subscribe(topic, () => guard(`a '${topic}' listener`, fn))) },
+            registerCellAction: { value: (slot: CellActionSlot<T>) => own(() => this.host.registerCellAction(slot)) },
+            registerHeaderAction: { value: (slot: HeaderActionSlot<T>) => own(() => this.host.registerHeaderAction(slot)) },
+            emit: { value: (name: string, detail?: unknown): void => void (live && this.host.emit(name, detail as never)) },
+            announce: { value: (message: string): void => void (live && this.host.announce(message)) },
+            requestRender: { value: (): void => void (live && this.host.requestRender()) },
+            provider: { value: (key: DataTableAddonServiceKey) => (live ? this.host.provider(key) : undefined) },
+            setBusy: { value: (label: string | null): void => void (live && (this.busy ? this.busy(id, label) : this.host.setBusy(label))) },
+        }) as DataTableAddonHost<T>;
+        let teardown: void | (() => void);
+        if (!guard('setup', () => (teardown = addon.setup(host, options)))) release(); // a half set-up addon keeps nothing and publishes no API
+        this.active.set(id, {
+            addon,
+            options,
+            teardown: () => {
+                if (live && teardown) guard('teardown', teardown);
+                release();
+            },
+        });
     }
 
     /**
@@ -181,8 +268,9 @@ export class AddonSet<T = unknown> {
         const wanted = new Map([...this.used].map(([id, { addon }]) => [id, addon]));
         for (const id of this.ids) {
             const addon = this.registry.get(id);
-            if (addon) wanted.set(id, addon);
-            else warnOncePer(this, `unknown-addon:${id}`, `[ge-data-table] unknown addon "${id}": import its define module first.`); // once per set (one table) and id: another table with the same typo warns for itself
+            if (addon) {
+                if (!wanted.has(id)) wanted.set(id, addon); // a use()d addon wins over the registry's (as its options win in merge())
+            } else warnOncePer(this, `unknown-addon:${id}`, `[ge-data-table] unknown addon "${id}": import its define module first.`); // once per set (one table) and id: another table with the same typo warns for itself
         }
         for (const [id, bundle] of [...wanted]) {
             if (bundle.covers && this.optionsFor(id, bundle) !== false) for (const covered of bundle.covers) wanted.delete(covered);
@@ -201,15 +289,25 @@ export class AddonSet<T = unknown> {
  * calls this once; nothing else implements `DataTableAddonHost`.
  */
 export function createAddonHost<T>(parts: {
+    readonly root: HTMLElement;
     readonly resolvedLocale: () => DataTableLocale;
+    readonly emit: (name: string, detail: unknown) => void;
+    readonly announce: (message: string) => void;
+    readonly requestRender: () => void;
     readonly subscribe: DataTableAddonHost<T>['subscribe'];
     readonly provider: DataTableAddonHost<T>['provider'];
     readonly addons: () => Pick<AddonsService<T>, 'cellActions' | 'headerActions' | 'setBusy'>;
 }): DataTableAddonHost<T> {
     return {
+        root: parts.root,
         get resolvedLocale() {
             return parts.resolvedLocale();
         },
+        emit: (name, detail) => parts.emit(name, detail),
+        announce: parts.announce,
+        requestRender: parts.requestRender,
+        // `AddonSet` hands each addon a host of its own whose `expose` files the API under the addon's id; this one has no id to file under.
+        expose: () => undefined,
         subscribe: parts.subscribe,
         provider: parts.provider,
         registerCellAction: (slot) => parts.addons().cellActions.register(slot),

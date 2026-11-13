@@ -1,4 +1,5 @@
-// @ts-nocheck - vendored from shadcn-angular lib/parsers, which is type-checked there without noUncheckedIndexedAccess.
+// The xlsx writer (a STORE-only zip, no dependency), from shadcn-angular lib/parsers/xlsx.ts; typed for noUncheckedIndexedAccess. Used by the
+// data-table export addon and the file-viewer test fixtures.
 const encoder = new TextEncoder();
 
 function makeCrc32Table(): Uint32Array {
@@ -18,7 +19,7 @@ const CRC32_TABLE = makeCrc32Table();
 function crc32(data: Uint8Array): number {
   let crc = 0xffffffff;
   for (const byte of data) {
-    crc = CRC32_TABLE[(crc ^ byte) & 0xff] ^ (crc >>> 8);
+    crc = (CRC32_TABLE[(crc ^ byte) & 0xff] as number) ^ (crc >>> 8);
   }
   return (crc ^ 0xffffffff) >>> 0;
 }
@@ -102,11 +103,11 @@ function sharedStringsXml(strings: string[]): string {
 
 function worksheetXml(data: string[][], stringMap: Map<string, number>, boldFirstRow: boolean): string {
   const rows: string[] = [];
-  for (let r = 0; r < data.length; r++) {
+  for (const [r, row] of data.entries()) {
     const cells: string[] = [];
-    for (let c = 0; c < data[r].length; c++) {
+    for (const [c, value] of row.entries()) {
       const ref = columnLetter(c) + (r + 1);
-      const idx = stringMap.get(data[r][c]);
+      const idx = stringMap.get(value);
       const style = boldFirstRow && r === 0 ? ' s="1"' : '';
       cells.push(`<c r="${ref}" t="s"${style}><v>${idx}</v></c>`);
     }

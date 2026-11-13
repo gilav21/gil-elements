@@ -22,6 +22,8 @@ const GLYPHS = {
     // Wave 5 (filters): the header and toolbar filter triggers, and the builder's remove buttons.
     filter: svg`<path d="M3 5h18l-7 8.5V20l-4-2v-4.5z" />`,
     x: svg`<path d="m6 6 12 12" /><path d="M18 6 6 18" />`,
+    // Wave 7: the default glyph of an addon's row and header action buttons (Angular `more-vertical`).
+    'more-vertical': svg`<path d="M12 5h.01" /><path d="M12 12h.01" /><path d="M12 19h.01" />`,
 } as const;
 
 export type ChromeIconName = keyof typeof GLYPHS;

@@ -29,6 +29,9 @@ export interface ColumnLayoutInput<T> {
     enableRowExpansion: boolean;
     /** A column of row-action buttons (addons contribute them). */
     hasActions: boolean;
+    /** How many buttons each row draws there (default 1), and their size in px (default 32; 44 under a coarse pointer): the auto column fits them. */
+    actionSlots?: number;
+    actionButtonPx?: number;
 }
 
 export interface ColumnLayout<T> {
@@ -46,7 +49,8 @@ function withSpecialColumns<T>(visible: ColumnDef<T>[], i: ColumnLayoutInput<T>)
     const supplied = (key: string): boolean => i.columns.some((c) => c.accessorKey === key); // hidden ones too: hiding it hides the control
     if (i.enableRowSelection && !supplied('_selection')) result.unshift({ accessorKey: '_selection', header: '', pin: 'left', width: '40px', enableSorting: false });
     if (i.enableRowExpansion && !supplied('_expander')) result.unshift({ accessorKey: '_expander', header: '', pin: 'left', width: 'var(--ge-dt-expander-w, 40px)', enableSorting: false });
-    if (i.hasActions && !supplied('_actions')) result.push({ accessorKey: '_actions', header: '', width: '50px', enableSorting: false, enableHiding: false, enableReordering: false });
+    // Width: each button at its drawn size (2rem, 2.75rem under a coarse pointer) plus the cell's padding (2 x 0.5rem), never under Angular's 50px.
+    if (i.hasActions && !supplied('_actions')) result.push({ accessorKey: '_actions', header: '', width: `${Math.max(50, (i.actionSlots ?? 1) * (i.actionButtonPx ?? 32) + 16)}px`, enableSorting: false, enableHiding: false, enableReordering: false });
     return result;
 }
 

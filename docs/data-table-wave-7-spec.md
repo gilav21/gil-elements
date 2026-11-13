@@ -82,6 +82,8 @@ Parity (`parity/cases/data-table-addons.mjs`, its own page per case, static): th
 - **`shared/xlsx.ts` correctness fixes** (kept compatible with the existing round-trip tests): XML 1.0 illegal characters (`U+0000-0008, 000B, 000C, 000E-001F`, lone surrogates, `FFFE/FFFF`) stripped in `escapeXml` (Excel shows a repair prompt otherwise, xlsx.ts:25); `<t xml:space="preserve">` when a string has leading or trailing whitespace or a newline (Excel trims it otherwise, xlsx.ts:96); cells longer than 32 767 characters truncated, grids beyond 1 048 576 rows or 16 384 columns throw a typed `RangeError` (Excel refuses the file); `sst count` = references, `uniqueCount` = unique (Angular writes unique in both, 96); a valid DOS date/time in the zip headers instead of `0` (xlsx.ts:121-168 writes 0, which tools show as 1980-00-00); `sheetName` option and `<cols>` skipped (no width guessing in wave 7). `typedCells` writes `t="n"` for numbers, `t="b"` for booleans, ISO dates as serial numbers with a date style, only for columns without a `cell()` formatter; it needs `query.exportData` to optionally return raw values (`exportRawData`, step 0 candidate; defaults off so this is not in the critical path).
 - **Locale** (`export-locale.ts`, `en` only, rule 6.1): `exporting`, `exportDone`, `exportFailed`. `EXPORT_LOCALES` is a plain mutable object `{ en }` so wave 8's locale modules add `he` etc. with `registerAddonLocale(EXPORT_LOCALES, 'he', {...})` (a 3-line helper added to `shared/addon-locale.ts` in step 0); Angular ships en and he in the addon, the he string moves to the wave 8 module.
 
+- **Follow-up from the step 0 review (PR #76), package B:** the moved `shared/xlsx.ts` still writes `<t>` without `xml:space="preserve"` and does not strip the XML-1.0-illegal control characters; both are B's (see the corrections above), not step 0's.
+
 ### B.3 Edge cases to pin
 Server mode (`local-pagination=false`) without a provider exports only the loaded page (document it; Angular same); empty table (header only; XLSX with one row; no download of a 0-byte file); tree mode (exports `sortedData()` as flat rows like Angular; the order is the flattened tree order, indentation not exported, D10); group mode; column with `cell()` throwing (cell becomes empty, export continues, one `export-error` is not raised, a console warning is); formula-looking cells in CSV vs XLSX; very large export (100k rows x 10 cols: CSV string build stays under ~150 ms; XLSX builds in memory, documented limit; yields to the event loop every 5k rows so the busy overlay paints); concurrent calls (second call while busy returns the same promise); aborted signal clears busy without a download.
 
@@ -157,6 +159,33 @@ One entry pair per addon, no addon imports the core element, core imports no add
 | `range-chart/define.js` | 29-33 KB | dialog 5 330 + button 2 750 + bar 7 550 + pie 6 080 + stacked 7 490 + element | 35 000 |
 
 All values are estimates before any build; the one measured fact is the xlsx source (2.4 KB gzip unminified). The gate adds each line from a measurement plus 5% as everywhere. A bigger risk than any of these: an addon that statically imports a core module that is a large shared chunk (the `data-table.utils.ts` case, step 0.1) silently costs tens of KB on its own entry; the review checklist item is "build, open the entry's static import list in `size.mjs --verbose`, no `chunks/data-table-*`".
+
+### Step 0 follow-ups (triaged out of PR #76)
+- The throwing-addon report (`reportOncePer`) is keyed per addon id, so a later, different failure of the same addon (another phase) is swallowed.
+- The base addon host (`createAddonHost`, outside an `AddonSet`) has a no-op `expose` and sets busy under the owner `''`.
+- A re-entrant `sync()` during an addon's `setup` (it registers another addon, or changes the attribute) can launch a second instance of it.
+- Keyboard path to the row actions of third-party addons (D11 makes row buttons `tabindex=-1`, reachable only through the context-menu addon's key): tabbable kebabs or a navigable `_actions` cell. Needs a decision.
+- `exportData({ onlyVisible: false })` dedupes keys with its own loop; reuse `indexColumns` from the drawn path.
+- `data-table-grid-actions.ts` inlines the roving tab rule; reuse `tabStop` from `data-table-grid-special.ts`.
+- `selectedRows` stays duplicated (element getter and selection service) on purpose: the getter must work detached.
+- A topic listener that throws (e.g. `defineAddon`'s locale re-run after it released its previous run) leaves a half set-up addon counted as running.
+- The `_actions` cell is drawn in two code paths (`specialCell` for the auto column, `cellContent` for a consumer's column).
+- The columns controller looks up the `addons` provider on every `current()` call.
+- The row action context (`rowContext`) is built per slot per row; build it once per row.
+- `scripts/register-addon.mjs` inserts several ids in reverse order (each after the same anchor line).
+- Addons restart when the table moves in the DOM (disconnect, connect), so a stored `table.addon()` API goes dead: document "fetch it again after a move".
+- The "unknown addon" warning fires in the supported register-later flow (attribute set before the addon's module loads).
+- A bundle covering several ids can expose only one API (under its own id).
+- The auto `_actions` width is computed in px in JS; it should be CSS (rem and density aware).
+- Every row action button of a slot has the same accessible name; a `{row}`-aware locale key is wave 8.
+- `getDataTableAddon` is unused outside tests.
+- The columns controller's `(pointer: coarse)` media query list has no change listener (a pointer change shows on the next render only).
+- `applyFilters` announces column filters itself while the filter UI also announces model writes it hears (latest wins, but two schedules).
+- `actionsView().head()` looks the consumer column up in `config.columns` per header: O(columns²) per render.
+- `isDisabled(row)` is computed again for the `_actions` cell.
+- `actionsView` computes `consumerColumn` after the early return for no slots (latent: false there).
+- `register-addon.mjs` `option()` accepts a following flag (`--base --component`) as a value.
+- The element reaches the `addons` service through more than one accessor (the addon host part and the busy port); keep one private accessor.
 
 ## H. Work packages (strict file ownership after step 0)
 

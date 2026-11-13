@@ -239,7 +239,11 @@ export class QueryController<T> {
     private dropPendingGlobal(): void {
         this.cancelFilter?.();
         this.cancelFilter = undefined;
+        this.pendingGlobal = undefined;
     }
+
+    /** The global text typed and still waiting on `filterDebounce` (what the toolbar box shows meanwhile), or undefined. */
+    private pendingGlobal: string | undefined;
 
     /** The overall result of the column and advanced filters (also a restored view state): the matching rows, or that every filter is cleared. */
     private announceFilters(): void {
@@ -287,11 +291,50 @@ export class QueryController<T> {
         },
         cellValue: (row, key, column) => getCellValue(row, key, column),
         exportData: (options = {}, rows) => {
-            const columns = this.visibleDataColumns();
+            // `onlyVisible: false`: every data column as defined, hidden ones included, in definition order (Angular `getExportData`, cmp 4190-4202).
+            // A duplicated key counts once, the first column (as drawn: indexColumns).
+            const all = (): ColumnDef<T>[] => {
+                const seen = new Set<string>();
+                return this.host.config.columns.filter((c) => !isSpecialColumnKey(c.accessorKey) && !seen.has(String(c.accessorKey)) && Boolean(seen.add(String(c.accessorKey))));
+            };
+            const columns = options.onlyVisible === false ? all() : this.visibleDataColumns();
             const body = (rows ?? (options.onlyFiltered === false ? this.host.model.get('data') : this.output().sorted)).map((row) =>
                 columns.map((c) => (c.cell ? c.cell(row) : stringifyValue(getCellValue(row, c.accessorKey, c)))),
             );
             return options.includeHeaders === false ? body : [columns.map((c) => c.header), ...body];
+        },
+        globalText: () => this.pendingGlobal ?? this.host.model.get('globalFilter'),
+        rawRows: () => this.host.model.get('data'),
+        rowId: (row) => this.host.config.getRowId(row),
+        applyFilters: (spec) => {
+            const { globalFilter, columnFilters } = spec;
+            const { model } = this.host;
+            // The caller sets the global filter explicitly: a typed text still waiting on the debounce is dropped, whether or not the value differs.
+            // The same for the column filters: a spec with `columnFilters` drops every floating column write still waiting.
+            const setsGlobal = Object.hasOwn(spec, 'globalFilter');
+            const setsColumns = Object.hasOwn(spec, 'columnFilters');
+            if (setsGlobal) this.dropPendingGlobal();
+            if (setsColumns) this.host.provider('filters')?.dropPending?.();
+            if (setsGlobal || setsColumns) this.host.requestRender(); // the boxes show the model text again (unchanged model: nothing else redraws)
+            // Only the parts given, and only when they differ (per key for the column filters): an equal spec writes nothing, resets no page, fires nothing.
+            const globalChanged = globalFilter !== undefined && globalFilter !== model.get('globalFilter');
+            const current = model.get('columnFilters');
+            const columnsChanged =
+                columnFilters !== undefined &&
+                [...new Set([...Object.keys(current), ...Object.keys(columnFilters)])].some(
+                    (key) => Object.hasOwn(current, key) !== Object.hasOwn(columnFilters, key) || !sameFilterValue(current[key], columnFilters[key]),
+                );
+            if (!globalChanged && !columnsChanged) return;
+            model.batch(() => {
+                if (globalChanged) model.set('globalFilter', globalFilter);
+                if (columnsChanged) model.set('columnFilters', { ...columnFilters });
+                this.resetPage();
+            });
+            // A new global text speaks as typing it does (its count reflects every filter; server mode uses `total`); column filters alone as a column change.
+            if (globalChanged) {
+                this.host.emit('filter-change', globalFilter);
+                this.announceGlobal(globalFilter);
+            } else this.announceFilters();
         },
         sortDirection: (key) => this.sorts().find((s) => s.column === String(key))?.direction ?? null,
         changeSort: (key, direction, multi = false) => {
@@ -326,10 +369,16 @@ export class QueryController<T> {
             this.host.emit('page-change', next);
         },
         changeGlobalFilter: (value) => {
-            this.cancelFilter?.();
+            this.dropPendingGlobal();
             const debounce = this.host.config.filterDebounce;
-            if (debounce > 0) this.cancelFilter = this.host.disposables.timeout(() => this.applyGlobalFilter(value), debounce);
-            else this.applyGlobalFilter(value);
+            if (debounce > 0) {
+                this.pendingGlobal = value;
+                this.cancelFilter = this.host.disposables.timeout(() => {
+                    this.cancelFilter = undefined;
+                    this.pendingGlobal = undefined;
+                    this.applyGlobalFilter(value);
+                }, debounce);
+            } else this.applyGlobalFilter(value);
         },
         // wave 5, package A (filters) added to this file: the column filter write and `filteredCount` below, `announceFilters` / `filtersRestored`
         // and the one announcement slot they share with the global filter (`announce`), and the outside-write watch in `attach` (an outside filter
@@ -368,7 +417,6 @@ export class QueryController<T> {
         const columns = requireProvider(this.host, 'columns');
         return columns.enhancedColumns().filter((c) => !isSpecialColumnKey(c.accessorKey));
     }
-
     private currentQuery(): DataTableQuery {
         const { model } = this.host;
         return currentQuery({
@@ -416,7 +464,7 @@ export class QueryController<T> {
         this.unsubscribeFilters = undefined;
         this.filterChanged(); // the waiting announcement goes with the table
         this.unprovide?.();
-        this.cancelFilter?.();
+        this.dropPendingGlobal();
         this.lastRows = null;
     }
 

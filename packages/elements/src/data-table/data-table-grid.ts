@@ -8,6 +8,7 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { type GridAria } from './data-table-aria.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
+import type { ActionsView } from './data-table-grid-actions.js';
 import type { EditView } from './data-table-grid-edit.js';
 import type { FiltersView } from './data-table-grid-filters.js';
 import { columnParts, columnSpacer } from './data-table-grid-window.js';
@@ -34,6 +35,8 @@ export interface GridView<T> extends ColumnsView<T>, Omit<RowsView<T>, 'source' 
     filters: FiltersView<T>;
     /** Wave 5 (editing, package B): the cell editor. */
     edit: EditView<T>;
+    /** Wave 7: the addons' row and header action buttons. */
+    actions: ActionsView<T>;
     footer: { visible: boolean; values: ReadonlyMap<string, string>; rows: readonly T[] };
 }
 

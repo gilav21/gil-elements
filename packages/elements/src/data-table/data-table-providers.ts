@@ -13,6 +13,7 @@ import type {
     CellFlashDirection,
     CellRange,
     ColumnDef,
+    DataTableAiFillOptions,
     DataTableColumnState,
     DataTableViewState,
     DataTableDisplayRow,
@@ -127,8 +128,22 @@ export interface QueryService<T> {
     renderedTreeRowAt(index: number): FlattenedTreeRow<T> | undefined;
     rowContext(row: T, index: number): RowActionContext<T>;
     cellValue(row: T, key: string | keyof T, column?: ColumnDef<T>): unknown;
-    /** Header row plus cells as strings, the view copy and export share. */
+    /** Header row plus cells as strings, the view copy and export share. `onlyVisible: false` includes the hidden data columns. */
     exportData(options?: DataTableExportOptions, rows?: readonly T[]): string[][];
+    /** Wave 7: the global text the toolbar box shows: the typed text while it waits on `filterDebounce`, else the model value. */
+    globalText(): string;
+    /** Wave 7: `data` as given, unfiltered and unsorted (Angular `getRawRows`). */
+    rawRows(): readonly T[];
+    /** Wave 7: the row's id (`getRowId`). */
+    rowId(row: T): string;
+    /**
+     * Wave 7 (spec D5; the NL filter and the AI use it). A given `globalFilter` replaces the global text; a given `columnFilters` REPLACES the whole
+     * column-filter record (columns it leaves out are cleared); an omitted key leaves that part untouched. A part equal to the current value is not
+     * written; what changed is written in ONE model batch with the page reset to 0. `filter-change` fires when the global text changed, and the result
+     * is announced: through the global path when the global text changed, else as a column filter change. A `globalFilter` key drops a typed global
+     * text still waiting on the debounce, and a `columnFilters` key every floating column write still waiting, whatever their values.
+     */
+    applyFilters(spec: { readonly globalFilter?: string; readonly columnFilters?: Readonly<Record<string, unknown>> }): void;
     sortDirection(columnKey: string | keyof T): SortDirection;
     /** A header activation: updates the sort models and fires `sort-change` / `multi-sort-change`. */
     changeSort(columnKey: string | keyof T, direction: SortDirection, multi?: boolean): void;
@@ -186,6 +201,8 @@ export interface FilterService<T> {
     hasAnyFloating(): boolean;
     /** The number of conditions in the advanced filter (the toolbar badge). */
     advancedCount(): number;
+    /** Wave 7: drops every floating column write still waiting on its debounce (`applyFilters` with `columnFilters`). */
+    dropPending?(): void;
 }
 
 export interface FooterService {
@@ -235,6 +252,8 @@ export interface SelectionService<T> {
     header(): { checked: boolean; indeterminate: boolean; selectableCount: number };
     /** A tree node with some but not all of its descendants selected. */
     isIndeterminate(id: string): boolean;
+    /** Wave 7: the rows of `data` (every level in tree mode) whose id is selected; a selected id with no row is not counted. */
+    selectedRows(): T[];
 }
 
 /** Detail rows, tree expansion and group collapse: the owner of `expandedRows`, `subRowExpandedRows` and `collapsedGroups`. */
@@ -276,6 +295,8 @@ export interface CellInteractionService {
     cellEditError?(): CellEditError | null;
     focusCell(rowIndex: number, columnKey: string): void;
     isCellSelected(rowIndex: number, columnKey: string): boolean;
+    /** Wave 7: range SELECTION is on and its part is active (what draws `aria-selected`); optional like the editing methods. */
+    rangeSelectionEnabled?(): boolean;
     /** Wave 5 (edit session): opens an editor on the cell of a data row; false when none opened (not editable, disabled row, no such row). */
     startEditing?(row: unknown, columnKey: string): boolean;
     /** Wave 5: commits the open editor's draft (validation, write, close); no-op with nothing open. */
@@ -365,19 +386,34 @@ export interface VirtualService {
     measure(): void;
 }
 
+/**
+ * A button the core draws in every enabled data row's `_actions` cell (`[data-action-id]`). Like every in-cell control it is `tabindex="-1"` only
+ * while a roving cell exists (one tab stop per grid: the keyboard path is then the context-menu key); without one it stays in the tab order.
+ * Clicking it calls `onClick` with the row's context.
+ */
 export interface CellActionSlot<T = unknown> {
     /** Stable id (the registering addon's id, e.g. `context-menu`). */
     readonly id: string;
-    /** Inline SVG markup. */
-    readonly icon?: string;
+    /** What the button shows: anything lit renders (an `svg` template, a Node); the default is the kebab glyph. Never parsed as markup. */
+    readonly icon?: unknown;
+    /** Default: the locale's `rowActions`. */
     readonly ariaLabel?: string;
+    /** Drawn as `aria-haspopup`. */
+    readonly haspopup?: 'menu';
+    /** Drawn as `aria-expanded` (absent: no attribute); read at each render, for this row. */
+    readonly expanded?: (context: RowActionContext<T>) => boolean;
     readonly onClick: (event: Event, context: RowActionContext<T>) => void;
 }
 
+/** A button the core draws in every data column's header, after its controls (in the tab order). */
 export interface HeaderActionSlot<T = unknown> {
     readonly id: string;
-    readonly icon?: string;
+    readonly icon?: unknown;
+    /** `{column}` is the column header. Default: the locale's `columnMenu`. */
     readonly ariaLabel?: string;
+    readonly haspopup?: 'menu';
+    /** Drawn as `aria-expanded` (absent: no attribute); read at each render, for this column. */
+    readonly expanded?: (column: ColumnDef<T>) => boolean;
     readonly onClick: (event: Event, column: ColumnDef<T>) => void;
 }
 
@@ -385,12 +421,26 @@ export interface HeaderActionSlot<T = unknown> {
 export interface AddonsService<T> {
     readonly cellActions: SlotRegistry<CellActionSlot<T>>;
     readonly headerActions: SlotRegistry<HeaderActionSlot<T>>;
-    /** The busy-overlay label, or null when idle. */
+    /** The busy-overlay label: the most recent one while any owner is busy, or null when idle. */
     busyLabel(): string | null;
-    setBusy(label: string | null): void;
+    /** Sets or (`null`) clears the label of `owner` (an addon id; default `''`). */
+    setBusy(label: string | null, owner?: string): void;
+    /** Clears every owner's label. */
+    clearBusy(): void;
+}
+
+/** Wave 7 (AI, package D implements; the `ai` controller provides it): the natural-language filter and the AI column fill, reached through the element's methods. */
+export interface AiService {
+    /** Runs the NL filter box's text (Enter in the box). */
+    runAiFilter(): Promise<void>;
+    applyNaturalLanguageFilter(query: string): Promise<void>;
+    aiFillColumn(columnKey: string, prompt: string, options?: DataTableAiFillOptions): Promise<void>;
+    /** Aborts the running AI request, if any. */
+    cancelAi(): void;
 }
 
 export interface DataTableProviders<T = unknown> {
+    ai: AiService;
     query: QueryService<T>;
     columns: ColumnsService<T>;
     interaction: CellInteractionService;

@@ -8,7 +8,7 @@
  */
 import { SlotRegistry, TopicBus, Disposables, HandlerChain } from '../shared/registry.js';
 import type { DataTableTopic } from './data-table-host.js';
-import type { AddonsService, CellActionSlot, DataTableProviders, HeaderActionSlot } from './data-table-providers.js';
+import type { DataTableProviders } from './data-table-providers.js';
 
 export { Disposables, HandlerChain, SlotRegistry, TopicBus };
 
@@ -61,7 +61,8 @@ const spec = (
  * - aria after the services it summarises; addon-host last, nothing in the core waits for it.
  */
 export const DEFAULT_ORDER: readonly ControllerSpec[] = [
-    spec('columns', { provides: ['columns'], reads: ['config', 'locale'], writes: ['columns'] }),
+    // `addons`: the `_actions` column is drawn while a row action is registered.
+    spec('columns', { provides: ['columns'], uses: ['addons'], reads: ['config', 'locale'], writes: ['columns'] }),
     spec('query', { provides: ['query'], needs: ['columns'], reads: ['config', 'columns', 'expansion'], writes: ['rows'] }),
     spec('loading', { provides: ['loading'], reads: ['config', 'rows'], writes: ['loading'] }),
     spec('expansion', { provides: ['expansion'], needs: ['query'], reads: ['rows', 'config'], writes: ['expansion'] }),
@@ -97,10 +98,10 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
     spec('formatting', { provides: ['formatting'], needs: ['query', 'columns'], uses: ['virtual'], reads: ['rows', 'columns'], writes: ['cell'] }),
     spec('footer', { provides: ['footer'], needs: ['query', 'columns'], reads: ['rows', 'columns'] }),
     spec('filter-ui', { provides: ['filters'], needs: ['columns'], uses: ['query'], reads: ['columns', 'locale'] }),
-    spec('ai', { needs: ['query', 'columns'], uses: ['interaction'], reads: ['locale'] }),
+    spec('ai', { provides: ['ai'], needs: ['query', 'columns'], uses: ['interaction'], reads: ['locale'] }),
     spec('diagnostics', { uses: ['virtual', 'query'], reads: ['config', 'rows'] }),
     spec('aria', { needs: ['query', 'columns'], uses: ['interaction', 'virtual'], reads: ['rows', 'columns', 'selection', 'cell', 'viewport', 'locale'] }),
-    spec('addon-host', { provides: ['addons'], uses: ['query', 'columns', 'interaction'], reads: ['locale'] }),
+    spec('addon-host', { provides: ['addons'], uses: ['query', 'columns', 'interaction', 'selection'], reads: ['locale'] }),
 ];
 
 /**
@@ -178,29 +179,5 @@ export function validatePlan(plan: readonly ControllerSpec[], { strict = true } 
     return problems;
 }
 
-/** What the table's addons contribute: a ⋮ button in every data row's action cell and in every column header. */
-export interface DataTableSlots<T> {
-    readonly cellActions: SlotRegistry<CellActionSlot<T>>;
-    readonly headerActions: SlotRegistry<HeaderActionSlot<T>>;
-}
-
-export function createDataTableSlots<T>(): DataTableSlots<T> {
-    return { cellActions: new SlotRegistry(), headerActions: new SlotRegistry() };
-}
-
-/** The `addons` service: the slot registries plus the busy-overlay label; `onChange` is the element's re-render. */
-export function createAddonsService<T>(onChange: () => void): AddonsService<T> {
-    const slots = createDataTableSlots<T>();
-    let busy: string | null = null;
-    slots.cellActions.subscribe(onChange);
-    slots.headerActions.subscribe(onChange);
-    return {
-        ...slots,
-        busyLabel: () => busy,
-        setBusy(label) {
-            if (busy === label) return;
-            busy = label;
-            onChange();
-        },
-    };
-}
+// The slot registries and the `addons` service (`createDataTableSlots`, `createAddonsService`) live in data-table-addon-host-controller.ts:
+// here they would make this module (which the lazy parts import for KEY_PRIORITY) import shared/registry.js.

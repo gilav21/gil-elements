@@ -1,10 +1,13 @@
 import { html, isServer, LitElement, nothing, type PropertyDeclaration, type PropertyValues, type TemplateResult } from 'lit';
+import { live } from 'lit/directives/live.js';
 import '../checkbox/define.js';
 import '../input/define.js';
 import '../popover/define.js';
 import '../skeleton/define.js';
 import { adoptSheet } from '../shared/adopt-sheet.js';
 import { THEME_ATTRIBUTE, type ThemeName } from '../shared/theme-presets.js';
+import { AddonSet, createAddonHost, type DataTableAddon } from './data-table-addon-kit.js';
+import { dataTableAddons, onDataTableAddonRegistered } from './data-table-addon-registry.js';
 import { createCellWriter, type HistoryResult } from './data-table-cell-write.js';
 import { type AssembledControllers, assembleControllers } from './data-table-controllers.js';
 import type { DataTableEventMap } from './data-table-events.js';
@@ -16,7 +19,7 @@ import { neutralRowDrag } from './data-table-row-drag-controller.js';
 import { neutralClipboard } from './data-table-clipboard-controller.js';
 import { type CellAddress, type DataTableCoreHost, type DataTableTopic, ownElements, ownsTarget, requireProvider } from './data-table-host.js';
 import { MODEL_KEYS, ModelStore, type ModelValues } from './data-table-model.js';
-import type { ClipboardResult, ClipboardService, DataTableConfig, DataTableProviders, RowDragService } from './data-table-providers.js';
+import type { AddonsService, ClipboardResult, ClipboardService, DataTableConfig, DataTableProviders, RowDragService } from './data-table-providers.js';
 import { changeAdvancedFilterOf, memoLast } from './data-table-query.js';
 import { Disposables, HandlerChain, TopicBus } from './data-table-registry.js';
 import { buildView, type DataTableViewHost } from './data-table-view.js';
@@ -25,6 +28,7 @@ import type {
     CellEditError,
     CellRange,
     ColumnDef,
+    DataTableAiFillOptions,
     DataTableColumnState,
     DataTableLoadingTrigger,
     DataTableQuery,
@@ -65,6 +69,10 @@ interface DataTableExtraInputs<T> {
     renderDetail: ((row: T) => unknown) | undefined;
     /** Draws a row that spans every column in place of its cells. */
     renderFullWidth: ((row: T) => unknown) | undefined;
+    /** Ids of registered addons to run (`addons="context-menu export"`; spaces or commas). */
+    addons: string;
+    /** Options per addon id; `false` switches one off, `true` or `{}` runs it with defaults. */
+    addonOptions: Readonly<Record<string, unknown>>;
 }
 
 type Kind = 'prop' | 'flag' | 'on' | 'number' | 'text' | 'tri' | 'list';
@@ -86,6 +94,7 @@ const INPUTS: Readonly<Record<string, readonly [Kind, unknown]>> = {
     renderDetail: ['prop', undefined],
     renderFullWidth: ['prop', undefined],
     virtualAutoThreshold: ['prop', { rows: 500, columns: 20 }],
+    addonOptions: ['prop', {}],
     showToolbar: ['on', true],
     showColumnVisibilityToggle: ['on', true],
     showPagination: ['on', true],
@@ -137,6 +146,7 @@ const INPUTS: Readonly<Record<string, readonly [Kind, unknown]>> = {
     subRowSelectionMode: ['text', 'self'],
     subRowFilterMode: ['text', 'includeParentOnChildMatch'],
     rowDragMode: ['text', 'flat'],
+    addons: ['text', ''],
     showFooter: ['tri', 'auto'],
     enableVirtualScroll: ['tri', false],
     pageSizeOptions: ['list', [10, 20, 30, 40, 50]],
@@ -213,6 +223,27 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         rejectionMessage: () => this.resolvedLocale.invalidValue,
         emit: (...event) => this.emit(event[0], event[1] as never),
     });
+    /** The addons that run on this table (`use()`, the `addons` attribute, `addonOptions`): started at connect, stopped at disconnect. */
+    private readonly addonSet = new AddonSet<T>(
+        createAddonHost<T>({
+            root: this,
+            resolvedLocale: () => this.resolvedLocale,
+            emit: (name, detail) => this.dispatch(name, detail),
+            announce: (message) => this.announce(message),
+            requestRender: () => void (this.assembled && this.requestUpdate()), // detached: nothing to draw
+            subscribe: (topic, fn) => this.topics.on(topic, fn),
+            provider: (key) => this.provider(key),
+            addons: () => this.addonsService(),
+        }),
+        dataTableAddons as ReadonlyMap<string, DataTableAddon<T>>,
+        // Optional: a plan without addon-host has no busy overlay, and an addon's busy label (or its clearing at teardown) is a no-op there.
+        (owner, label) => ((this.serviceOf('addons') ?? this.provider('addons')) as AddonsService<T> | undefined)?.setBusy(label, owner),
+    );
+
+    /** The controller's own `addons` service (it outlives a disconnect, so a teardown can still unregister); the error names the key in a plan without it. */
+    private addonsService(): AddonsService<T> {
+        return (this.serviceOf('addons') as AddonsService<T> | undefined) ?? requireProvider(this, 'addons');
+    }
     /** The step 0 clipboard answers, for a call while no `clipboard` service is provided (detached); built once. */
     private neutralClip: ClipboardService<T> | undefined;
     /** A `cellRange` assigned before the first connect, until the range session adopts it (no controller is assembled before the first connect). */
@@ -637,6 +668,38 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return this.provider('rowDrag')?.moveRow(row, direction) ?? false; // needs the live grid (drawn rows, emits row-reorder): inert while detached
     }
 
+    // ---- addons and AI (wave 7) -------------------------------------------------------------------------------
+
+    /** Runs `addon` on this table (with `options`) whatever the `addons` attribute says; the returned function removes it. */
+    use(addon: DataTableAddon<T>, options?: unknown): () => void {
+        return this.addonSet.use(addon, options);
+    }
+
+    /** The API a running addon exposed, e.g. `table.addon<ExportApi>('export')?.exportToCsv()`; undefined while it does not run. */
+    addon<A extends object>(id: string): A | undefined {
+        return this.addonSet.api<A>(id);
+    }
+
+    /** Runs the natural-language filter box's text through `aiProvider`; does nothing without a provider. */
+    runAiFilter(): Promise<void> {
+        return this.provider('ai')?.runAiFilter() ?? Promise.resolve();
+    }
+
+    /** Asks `aiProvider` to turn `query` into filters and applies them; does nothing without a provider or for a blank query. */
+    applyNaturalLanguageFilter(query: string): Promise<void> {
+        return this.provider('ai')?.applyNaturalLanguageFilter(query) ?? Promise.resolve();
+    }
+
+    /** Fills column `columnKey` (it needs a `valueSetter`) row by row with `aiProvider`'s answers to `prompt`. Not undoable. */
+    aiFillColumn(columnKey: string, prompt: string, options?: DataTableAiFillOptions): Promise<void> {
+        return this.provider('ai')?.aiFillColumn(columnKey, prompt, options) ?? Promise.resolve();
+    }
+
+    /** Aborts the running AI request, if any. */
+    cancelAi(): void {
+        this.provider('ai')?.cancelAi();
+    }
+
     // ---- lifecycle --------------------------------------------------------------------------------------------
 
     protected override createRenderRoot(): HTMLElement {
@@ -672,6 +735,10 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         langObserver.observe(this.ownerDocument.documentElement, { attributes: true, attributeFilter: ['lang'] });
         this.disposables.add(onDataTableLocaleChange(redrawIfChanged));
         this.disposables.add(() => langObserver.disconnect());
+        // The addons start once every service is provided; an id listed before its module registered starts when it registers.
+        this.addonSet.configure(this.addons, this.addonOptions);
+        this.addonSet.start();
+        this.disposables.add(onDataTableAddonRegistered(() => this.addonSet.sync()));
         this.requestUpdate();
     }
 
@@ -680,15 +747,19 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         this.observer?.disconnect();
         this.observer = null;
         try {
-            this.assembled?.detachAll();
+            this.addonSet.stop(); // first, while the services the addons read are still provided
         } finally {
-            this.assembled = null;
-            this.providers.clear();
-            cancelAnimationFrame(this.frame);
-            this.frame = 0;
-            this.disposables.dispose();
-            this.releaseStyles?.();
-            this.releaseStyles = null;
+            try {
+                this.assembled?.detachAll();
+            } finally {
+                this.assembled = null;
+                this.providers.clear();
+                cancelAnimationFrame(this.frame);
+                this.frame = 0;
+                this.disposables.dispose();
+                this.releaseStyles?.();
+                this.releaseStyles = null;
+            }
         }
     }
 
@@ -811,6 +882,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         if ((this.hasUpdated && changed.has('locale')) || resolved !== this.lastLocale) this.topics.emit('locale');
         this.lastLocale = resolved;
         if ([...changed.keys()].some((key) => Object.hasOwn(INPUTS, key as string))) this.topics.emit('config');
+        if (changed.has('addons') || changed.has('addonOptions')) this.addonSet.configure(this.addons, this.addonOptions);
         for (const controller of this.assembled?.controllers ?? []) controller.hostUpdate?.();
         this.syncHost();
     }
@@ -851,7 +923,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         const visibility = this.store.get('columnVisibility');
         return html`<div data-slot="data-table-toolbar">
             <div data-slot="data-table-toolbar-start">
-                <div data-slot="data-table-filter"><ge-input placeholder=${locale.filterPlaceholder} aria-label=${locale.filterPlaceholder} .value=${this.store.get('globalFilter')}
+                <div data-slot="data-table-filter"><ge-input placeholder=${locale.filterPlaceholder} aria-label=${locale.filterPlaceholder} .value=${live(query.globalText())}
                     @input=${(event: Event) => query.changeGlobalFilter((event.currentTarget as HTMLInputElement).value)}></ge-input></div>
                 ${this.renderParts('renderToolbar')}
                 ${this.nodes('toolbar-start')}

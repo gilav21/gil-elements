@@ -120,8 +120,9 @@ export class RangeSession<T> implements CellSession {
      * With the flags off no range is reported, so the focused cell is what is reported. The range branch needs the range service ACTIVE (part
      * loaded): while it loads, or after a latched load failure, `isInRange` has no answer, so the focused cell is reported instead.
      */
-    readonly service: Pick<CellInteractionService, 'cellRange' | 'isCellSelected'> = {
+    readonly service: Pick<CellInteractionService, 'cellRange' | 'isCellSelected' | 'rangeSelectionEnabled'> = {
         cellRange: () => this.rangeService.range(),
+        rangeSelectionEnabled: () => rangeSelectionDrawn(this.context.host.config, this.rangeService.active()),
         isCellSelected: (rowIndex, columnKey) => {
             if (isSpecialColumnKey(columnKey)) return false; // the selection, expander and action columns are no cells of the range (like their missing aria-selected)
             // The same gate as the cell's aria-selected (`stateView`): the range counts only with range SELECTION on and the part active; a fill-handle-only grid has no range-based selection.

@@ -2,15 +2,10 @@
  * Small pure kernels shared by the data-table modules: value access, row identity, aggregates, the AI filter parser
  * and the date helpers. Nothing here touches the DOM.
  */
+import { toAggregatableNumber } from '../shared/aggregate-number.js';
 import type { AggregateFn, ColumnDef } from './data-table.types.js';
 
-/** The value as a number, or `null` when it holds none. `Number()` alone turns `null`, `''`, whitespace and `false` into 0. */
-export function toAggregatableNumber(value: unknown): number | null {
-    if (typeof value === 'number') return Number.isFinite(value) ? value : null;
-    if (typeof value !== 'string' || value.trim() === '') return null;
-    const n = Number(value);
-    return Number.isFinite(n) ? n : null;
-}
+export { toAggregatableNumber };
 
 /** Text for a cell value. Total: a cyclic object or a BigInt inside one reads as its `String()` instead of throwing; a Date reads as its ISO text. */
 export function stringifyValue(value: unknown): string {
