@@ -96,6 +96,24 @@ describe('E1 opening an editor', () => {
         expect(edits).toHaveLength(0);
     });
 
+    it('an editor closed from outside (column no longer editable, row gone) gives the focus back to the grid (round 23)', async () => {
+        const table = await mount();
+        await startEditingAt(table, 1, 'name');
+        expect(deepActive()).toBe(openEditor(table));
+        table.columns = editColumns({ name: { editable: false } });
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        expect(deepActive()?.closest('ge-data-table')).toBe(table); // not the page body
+        table.columns = editColumns();
+        await settle(table);
+        await startEditingAt(table, 1, 'name');
+        const id = table.provider('query')!.renderedRowAt(1)!.id;
+        table.data = table.data.filter((r) => r.id !== id); // the edited row leaves
+        await settle(table);
+        expect(table.editingCell).toBeNull();
+        expect(deepActive()?.closest('ge-data-table')).toBe(table);
+    });
+
     it('Tab after a commit that filters its record out opens no editor on another record (round 19)', async () => {
         const table = await mount({ columns: editColumns({ name: { enableFiltering: true } }), columnFilters: { name: 'a' } });
         const before = names(table);
