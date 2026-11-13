@@ -228,9 +228,11 @@ export function asEditableDate(value: unknown): Date | null {
 
 /**
  * wave5: `YYYY-MM-DD HH:mm[:ss...]` (a space before the time) as `YYYY-MM-DDTHH:mm...`, the form every engine parses (Safari reads the space
- * form as Invalid Date). Any other string is returned as it is. ONE rule for the date editor's display and its write-back.
+ * form as Invalid Date). Only when ALL the rest is an ISO time (`HH:mm`, optional `:ss` and fraction, optional `Z` or `±hh:mm` right after it);
+ * any other string (`... UTC`, `... +02:00` with a space, `GMT+0200`) is returned as it is, for the engine to parse as before. ONE rule for the
+ * date editor's display and its write-back.
  */
-export const isoDateTime = (value: string): string => value.replace(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/, '$1T$2');
+export const isoDateTime = (value: string): string => value.replace(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)$/, '$1T$2');
 
 /** A date as `YYYY-MM-DD` in the LOCAL calendar (`toISOString` converts to UTC and is a day off east of Greenwich). */
 export function toLocalDateString(date: Date): string {

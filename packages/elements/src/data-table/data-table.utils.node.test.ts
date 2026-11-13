@@ -203,6 +203,13 @@ describe('date helpers', () => {
         expect(isoDateTime('2024-01-03T10:20')).toBe('2024-01-03T10:20');
         expect(isoDateTime('soon')).toBe('soon');
         expect(asEditableDate('2024-01-03 10:20')?.getTime()).toBe(new Date('2024-01-03T10:20').getTime());
+        // Round 20: only an ISO time (fraction, Z or ±hh:mm right after it) is rewritten; anything else is left for the engine, parsed as before.
+        expect(isoDateTime('2024-01-03 10:20:30.250Z')).toBe('2024-01-03T10:20:30.250Z');
+        expect(isoDateTime('2024-01-03 10:20+02:00')).toBe('2024-01-03T10:20+02:00');
+        for (const text of ['2024-01-03 10:20 UTC', '2024-01-03 10:20 +02:00', '2024-01-03 10:20 GMT+0200']) {
+            expect(isoDateTime(text)).toBe(text);
+            expect(asEditableDate(text)?.getTime() ?? null).toBe(Number.isNaN(new Date(text).getTime()) ? null : new Date(text).getTime());
+        }
     });
 
     it('parses only strictly date-only strings', () => {
