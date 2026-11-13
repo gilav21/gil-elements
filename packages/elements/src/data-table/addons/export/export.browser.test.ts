@@ -1,6 +1,6 @@
 /** The export addon on a real `ge-data-table` (spec B.4): what it exports of a filtered, sorted, paged table, the XLSX an XML parser reads, busy and announcements. */
 import axe from 'axe-core';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { readZip } from '../../../file-viewer/parsers/zip-reader.js';
 import { bodyRows, makeRows, mountTable, q, settle, stubDownload, type DownloadStub, type SampleRow } from '../../data-table-fixtures.js';
@@ -64,6 +64,34 @@ describe('export addon on a real table', () => {
         await settle(table);
         expect(await count('all')).toBe(12);
         expect(await count('filtered')).toBeLessThan(12);
+    });
+
+    it('hands a server-side provider the advanced filter in its query (final review)', async () => {
+        const advancedFilter = { type: 'group' as const, combinator: 'and' as const, rules: [{ type: 'condition' as const, column: 'name', operator: 'contains' as const, value: 'a' }] };
+        const seen: unknown[] = [];
+        const table = await mountTable({ advancedFilter });
+        table.use(exportAddon, { provider: (query: { advancedFilter?: unknown }) => (seen.push(query.advancedFilter), []) });
+        await settle(table);
+        await table.addon<ExportApi>('export')!.toCsv();
+        expect(seen).toEqual([advancedFilter]);
+    });
+
+    it('in server mode without a provider exports the loaded rows and warns once per table (final review)', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            const server = (await mountWithExport({ localFiltering: false, localPagination: false, total: 100 })).api;
+            expect(await server.toCsv()).toBe('Name,Age\r\nCarol,41\r\nAlice,30\r\nBob,25\r\nDave,30');
+            await server.toCsv({ scope: 'all' });
+            const serverMode = (call: unknown[]): boolean => String(call[0]).includes('server-mode export without a provider');
+            expect(warn.mock.calls.filter(serverMode)).toHaveLength(1);
+            await server.toCsv({ provider: () => [] }); // with a provider: nothing more said
+            await (await mountWithExport()).api.toCsv(); // a client table: nothing
+            expect(warn.mock.calls.filter(serverMode)).toHaveLength(1);
+            await (await mountWithExport({ localPagination: false })).api.toCsv(); // another server table speaks for itself
+            expect(warn.mock.calls.filter(serverMode)).toHaveLength(2);
+        } finally {
+            warn.mockRestore();
+        }
     });
 
     it("leaves hidden columns out, and columns: 'all' puts them back", async () => {

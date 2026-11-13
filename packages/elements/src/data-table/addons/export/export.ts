@@ -59,7 +59,11 @@ export interface ExportOptions<T = unknown> {
     locale?: string | ExportLocale;
 }
 
-/** What `table.addon<ExportApi>('export')` returns. Concurrent calls run independently; the busy overlay stays while any runs. */
+/**
+ * What `table.addon<ExportApi>('export')` returns. Concurrent calls run independently; the busy overlay stays while any runs. In server mode
+ * (`local-filtering` or `local-pagination` off) without a `provider` (option or per call) or `rows`, an export holds only the rows loaded in
+ * the table, as in Angular; the table warns once. Give a provider to fetch every matching row (it receives `exportQuery()`).
+ */
 export interface ExportApi<T = unknown> {
     /** Downloads `<filename>.csv` (UTF-8 with BOM, CRLF, formula-guarded cells). The second argument may be the rows, as in Angular. */
     exportToCsv(filename?: string, request?: ExportRequest<T> | readonly T[]): Promise<void>;
@@ -120,7 +124,10 @@ export function downloadBlob(blob: Blob, filename: string): void {
     }, REVOKE_DELAY_MS);
 }
 
-const yieldTask = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+/** Tables already told that a server-mode export without a provider holds only the loaded rows. */
+const serverModeWarned = new WeakSet<object>();
+
+const yieldTask =(): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
 /** A date-only ISO string as a local date; a full ISO date-time through `Date`. Anything else is not a date. */
 function isoDate(value: string): Date | null {
@@ -246,6 +253,7 @@ class TableExporter<T> {
         const provider = request.provider ?? this.options.provider;
         const { signal } = request;
         if (provider) return untilAborted(signal ? provider(query.exportQuery(), signal) : provider(query.exportQuery()), signal);
+        this.warnServerMode();
         switch (request.scope) {
             case 'all': {
                 const tree = query.flatTree({ unfiltered: true }); // a tree table: every node of `data`, depth-first in data order
@@ -260,6 +268,14 @@ class TableExporter<T> {
             default:
                 return this.filtered(query);
         }
+    }
+
+    /** Server filtering or paging and no provider: the export holds only the loaded rows (Angular too); said once per table. */
+    private warnServerMode(): void {
+        const table = this.host.root as Partial<Record<'localFiltering' | 'localPagination', unknown>>;
+        if ((table.localFiltering !== false && table.localPagination !== false) || serverModeWarned.has(this.host.root)) return;
+        serverModeWarned.add(this.host.root);
+        console.warn('[ge-data-table] export: server-mode export without a provider exports only the loaded rows; give the export addon a `provider`.');
     }
 
     /** The filtered, sorted rows of every page; in a tree table every node of the filtered tree, depth-first in drawn order, whatever is collapsed. */
