@@ -326,6 +326,12 @@ async function renderJob(browser, theme, group, side) {
                 // `data-props` is a JSON object assigned to the element's properties, for the ones an attribute cannot carry.
                 // A ge-data-table with `data-edit` got its props in the data-edit block above (its columns carry the validator that block added): not again here.
                 for (const target of document.querySelectorAll('[data-props]:not(ge-data-table[data-edit])')) Object.assign(target, JSON.parse(target.dataset.props));
+                // wave7 A: `data-row-actions` is a JSON list of labels: the context-menu addon's `rowActions` (a function `data-props` cannot carry), merged into `addonOptions`.
+                for (const target of document.querySelectorAll('ge-data-table[data-row-actions]')) {
+                    const labels = JSON.parse(target.dataset.rowActions);
+                    target.addonOptions = { ...target.addonOptions, 'context-menu': { ...target.addonOptions?.['context-menu'], rowActions: () => labels.map((label) => ({ label })) } };
+                    await target.updateComplete;
+                }
                 // `data-file` is JSON `{name, base64}`: a file-viewer is given that file and the run waits for it to load or fail.
                 for (const target of document.querySelectorAll('ge-file-viewer[data-file]')) {
                     const { name, base64 } = JSON.parse(target.dataset.file);
