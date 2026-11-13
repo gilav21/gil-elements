@@ -1,0 +1,159 @@
+/* shadcn-angular data-table-filter-builder (sub/data-table-filter-builder.component.ts template), class by class. */
+:host {
+    display: block;
+}
+button,
+select,
+input {
+    margin: 0;
+    font: inherit;
+    color: inherit;
+    letter-spacing: inherit;
+}
+button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+/* space-y-2 rounded-md border bg-background p-2 */
+.group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--background);
+    color: var(--foreground);
+}
+.header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+/* inline-flex shrink-0 overflow-hidden rounded-md border text-xs */
+.combinator {
+    display: inline-flex;
+    flex-shrink: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+.combinator > button {
+    padding: 0.25rem 0.5rem;
+}
+.combinator > button + button {
+    border-inline-start: 1px solid var(--border);
+}
+.combinator > button[data-active] {
+    background-color: var(--accent);
+}
+.hint {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--muted-foreground);
+}
+.condition {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+/* h-8 w-24 / w-28 shrink-0 rounded-md border bg-background px-1 text-sm */
+select,
+.value {
+    box-sizing: border-box;
+    height: 2rem;
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) - 2px);
+    background-color: var(--background);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+}
+select {
+    flex-shrink: 0;
+    padding-inline: 0.25rem;
+}
+.column {
+    width: 6rem;
+}
+.operator {
+    width: 7rem;
+}
+/* h-8 min-w-0 flex-1 px-2 */
+.value {
+    flex: 1 1 0%;
+    min-width: 0;
+    padding-inline: 0.5rem;
+}
+.value::placeholder {
+    color: var(--muted-foreground);
+}
+/* ms-auto inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-destructive */
+.remove {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    margin-inline-start: auto;
+    border-radius: calc(var(--radius) - 2px);
+    color: var(--muted-foreground);
+}
+/* The table's shared glyph (`chromeIcon`): its span centres the svg like ge-icon does. */
+.remove > [data-slot="dt-icon"] {
+    display: inline-flex;
+}
+/* border-s-2 ps-2 */
+.subgroup {
+    padding-inline-start: 0.5rem;
+    border-inline-start: 2px solid var(--border);
+}
+/* mt-1 text-xs text-muted-foreground hover:text-destructive */
+.remove-group {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--muted-foreground);
+}
+@media (hover: hover) {
+    .remove:hover {
+        background-color: var(--accent);
+        color: var(--destructive);
+    }
+    .remove-group:hover {
+        color: var(--destructive);
+    }
+}
+.footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+button:focus-visible,
+select:focus-visible,
+.value:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 1px;
+}
+@media (pointer: coarse) {
+    .combinator > button,
+    .remove-group {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+    .remove {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+    select,
+    .value {
+        height: 2.75rem;
+    }
+    .footer ge-button::part(base) {
+        height: 2.75rem;
+    }
+}

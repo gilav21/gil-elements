@@ -3,10 +3,83 @@
  * they are appended inside the closing brace of the `ge-data-table` layer of data-table.css (see data-table-styles.ts),
  * so do not wrap them in `@layer` and keep the comment style below.
  */
+    /* An editable cell answers a double tap at once: no double-tap zoom to wait for (D23). */
+    ge-data-table [data-slot="table-cell"][data-editable] {
+        touch-action: manipulation;
+    }
+    /*
+     * The editor lays its control out as the cell would (a centred flex row: Angular draws it straight in the cell) and WRAPS its error
+     * message onto a line of its own, UNDER the input, so the row grows with it (D19).
+     */
+    ge-data-table [data-slot="data-table-cell-editor"] {
+        position: relative;
+        display: flex;
+        flex: 1 1 auto;
+        flex-wrap: wrap;
+        align-items: center;
+        min-width: 0;
+        white-space: normal;
+    }
+    /* With no message the control sits straight in the cell, as Angular draws it (the wrapper has no box). */
+    ge-data-table [data-slot="data-table-cell-editor"]:not([data-invalid]) {
+        display: contents;
+    }
+    /* html 251-275: `w-full h-full bg-background border-0 outline-none text-sm px-1`, the text input also `select-text`. */
+    ge-data-table [data-slot="data-table-cell-editor"] > input[data-edit-input],
+    ge-data-table [data-slot="data-table-cell-editor"] > select[data-edit-input] {
+        box-sizing: border-box;
+        width: 100%;
+        min-width: 0;
+        height: 100%;
+        margin: 0;
+        padding-block: 0;
+        padding-inline: 0.25rem;
+        border: 0;
+        border-radius: 0;
+        outline: none;
+        background-color: var(--background);
+        color: inherit;
+        font: inherit;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+        user-select: text;
+    }
+    /* A rejected value: `ring-1 ring-inset ring-destructive` on the input. */
+    ge-data-table [data-slot="data-table-cell-editor"][data-invalid] > [data-edit-input] {
+        box-shadow: inset 0 0 0 1px var(--destructive);
+    }
+    ge-data-table [data-slot="data-table-cell-editor"] > ge-date-picker {
+        width: 100%;
+    }
+    /* html 278-285: `mt-0.5 px-1 text-xs text-destructive`. */
     ge-data-table [data-slot="cell-edit-error"] {
+        flex-basis: 100%;
         margin-top: 0.125rem;
+        margin-bottom: 0;
         padding-inline: 0.25rem;
         color: var(--destructive);
         font-size: 0.75rem;
         line-height: calc(1 / 0.75);
+        white-space: normal;
+    }
+    /* Fixed-height virtual rows: the message is overlaid under the cell, so no row changes its height (D19). */
+    ge-data-table [data-slot="cell-edit-error"][data-overlay] {
+        position: absolute;
+        top: 100%;
+        inset-inline-start: 0;
+        z-index: 1;
+        width: max-content;
+        max-width: 20rem;
+        margin-top: 0.25rem;
+        padding-block: 0.125rem;
+        border: 1px solid var(--destructive);
+        border-radius: calc(var(--radius) - 4px);
+        background-color: var(--popover);
+        box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    }
+    ge-data-table [data-slot="table-cell"][data-editing]:has([data-overlay]) {
+        overflow: visible;
+    }
+    ge-data-table [data-slot="table-row"]:has(> [data-editing] [data-overlay]) {
+        z-index: 2;
     }

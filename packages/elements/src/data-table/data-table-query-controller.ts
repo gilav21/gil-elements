@@ -1,9 +1,11 @@
 import { type DataTableCoreHost, requireProvider } from './data-table-host.js';
 import { interpolate } from './data-table.locales.js';
+import type { ModelOrigin } from './data-table-model.js';
 import type { QueryService } from './data-table-providers.js';
 import {
     activeSorts,
     changeAdvancedFilterOf,
+    countConditions,
     createQueryPipeline,
     localSortApplies,
     memoLast,
@@ -13,13 +15,15 @@ import {
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
+import { anyFilterOn, sameFilterValue, sameStructure } from './data-table-filters.js';
+
+/** How long a filter result announcement waits for the edits to settle (D7): ONE value for every filter announcement (all of them are here). */
+export const FILTER_ANNOUNCE_MS = 500;
 import { buildGroupedDisplayRows, isGroupingActive, partitionIntoGroups, renumberDataRows, type RowGroup } from './data-table-group.js';
 import { buildTreeIndex, filterTree, flattenTree, sortTree } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
 import type { ColumnDef, DataTableDisplayRow, DataTableQuery, FlattenedTreeRow, PaginationState, SortDirection, SortState } from './data-table.types.js';
 import { getCellValue, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
-
-const FILTER_ANNOUNCE_MS = 500;
 
 /** The memo graph filter -> sort -> page, the server-mode `query` event, and the header and pager gestures. */
 export class QueryController<T> {
@@ -29,7 +33,9 @@ export class QueryController<T> {
     private lastQuery: DataTableQuery | null = null;
     private lastRows: readonly DataTableDisplayRow<T>[] | null = null;
     private cancelFilter: (() => void) | undefined;
+    /** The ONE waiting filter announcement (global, column, advanced, a restore): a newer filter change or announcement replaces it. */
     private cancelAnnounce: (() => void) | undefined;
+    private unsubscribeFilters: (() => void) | undefined;
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
 
@@ -197,20 +203,63 @@ export class QueryController<T> {
     }
 
     private applyGlobalFilter(value: string): void {
-        const { model, resolvedLocale: locale } = this.host;
+        const { model } = this.host;
         model.batch(() => {
             model.set('globalFilter', value);
             this.resetPage();
         });
         this.host.emit('filter-change', value);
-        this.cancelAnnounce?.();
+        this.announceGlobal(value);
+    }
+
+    /**
+     * Schedules THE filter announcement, replacing a waiting one (the latest filter change speaks, once, after the edits settled).
+     */
+    private announce(say: () => void): void {
+        this.filterChanged();
         this.cancelAnnounce = this.host.disposables.timeout(() => {
+            this.cancelAnnounce = undefined;
+            say();
+        }, FILTER_ANNOUNCE_MS);
+    }
+
+    /** The global filter's result announcement (the typed filter, or a restored view state's global text): main's rule, server filtering too. */
+    private announceGlobal(value: string): void {
+        const { resolvedLocale: locale } = this.host;
+        this.announce(() => {
             if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
             // Server filtering: the held rows are not the matches, so use the server's total or say nothing.
             const count = this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total;
             if (count === undefined) return;
             this.host.announce(interpolate(count === 1 ? locale.filterResultAnnouncement : locale.filterResultsAnnouncement, { count, value }));
-        }, FILTER_ANNOUNCE_MS);
+        });
+    }
+
+    /** Drops the global filter write still waiting on `filterDebounce`. */
+    private dropPendingGlobal(): void {
+        this.cancelFilter?.();
+        this.cancelFilter = undefined;
+    }
+
+    /** The overall result of the column and advanced filters (also a restored view state): the matching rows, or that every filter is cleared. */
+    private announceFilters(): void {
+        const { config, model, resolvedLocale: locale } = this.host;
+        // Server filtering: the rows held are not the matches and the answer's count is not known here, so a column / advanced filter change
+        // announces nothing (it still replaces a waiting announcement).
+        if (!config.localFiltering) return this.filterChanged();
+        this.announce(() => {
+            if (!anyFilterOn(config.columns, model.get('columnFilters'), countConditions(model.get('advancedFilter')), model.get('globalFilter'))) {
+                return this.host.announce(locale.filtersClearedAnnouncement);
+            }
+            const count = this.output().filtered.length;
+            this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
+        });
+    }
+
+    /** A filter change (global, column, advanced, an outside write): the announcement still waiting is for an older change and says nothing. */
+    private filterChanged(): void {
+        this.cancelAnnounce?.();
+        this.cancelAnnounce = undefined;
     }
 
     private readonly service: QueryService<T> = {
@@ -281,11 +330,37 @@ export class QueryController<T> {
             if (debounce > 0) this.cancelFilter = this.host.disposables.timeout(() => this.applyGlobalFilter(value), debounce);
             else this.applyGlobalFilter(value);
         },
-        // wave 5, package A (filters) implements the column filter and the count; joint step 0 leaves them inert. They are the only part of this file wave 5
-        // edits. The ADVANCED filter is real already (the `advancedFilter` model key filters the rows): wave 5 A builds on it (announcement, builder UI).
-        changeColumnFilter: () => undefined,
+        // wave 5, package A (filters) added to this file: the column filter write and `filteredCount` below, `announceFilters` / `filtersRestored`
+        // and the one announcement slot they share with the global filter (`announce`), and the outside-write watch in `attach` (an outside filter
+        // write clears a waiting announcement; an outside global text drops a typed one still waiting).
+        // The value is stored as given (`null` stays a key, Angular cmp 3629), with the page reset in ONE batch; the loading controller marks the
+        // `filtering` trigger from the `columnFilters` key. The model fires `column-filters-change`; no other event.
+        changeColumnFilter: (key, value) => {
+            const { model } = this.host;
+            const filters = model.get('columnFilters');
+            const name = String(key);
+            // An equal value (a Clear of an empty panel, the same day again, the same text after a debounce, a fresh copy of the same range) changes
+            // nothing: no new object, no page reset, no event, and a waiting announcement stays.
+            if (sameFilterValue(Object.hasOwn(filters, name) ? filters[name] : undefined, value)) return;
+            model.batch(() => {
+                model.set('columnFilters', { ...filters, [name]: value });
+                this.resetPage();
+            });
+        },
+        // ONE no-op rule (`changeAdvancedFilterOf`): an unchanged tree is no filter change (the filter UI announces nothing for it).
         changeAdvancedFilter: (group) => changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group),
-        filteredCount: () => undefined,
+        // The filter UI hands over each column / advanced write it hears: the latest one speaks.
+        announceFilters: () => this.announceFilters(),
+        filtersRestored: (globalChanged) => {
+            if (globalChanged) this.dropPendingGlobal(); // the restore replaced the global text: a typed one still waiting would overwrite it
+            const global = this.host.model.get('globalFilter');
+            // ONE announcement for the restore (it replaces the filter UI's for the batch's own write): a new global text speaks as the global
+            // filter does (its count reflects every filter); otherwise (an emptied global text too) the overall count, or that every filter is cleared.
+            if (globalChanged && global.trim() !== '') this.announceGlobal(global);
+            else this.announceFilters();
+        },
+        // Server filtering: the held rows are not the matches; the server's `total` (as the consumer gave it).
+        filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total),
     };
 
     private visibleDataColumns(): ColumnDef<T>[] {
@@ -315,13 +390,32 @@ export class QueryController<T> {
             this.lastQuery = next;
             this.host.emit('query', next);
         });
+        // wave5: a consumer's own write of a filter (the property) is a filter change too: the announcement still waiting (for an older change)
+        // says nothing, and it announces nothing itself. An ECHO (a new object structurally equal to the value held, a framework's two-way binding
+        // writing back what the table emitted) is no change at all.
+        const { model } = this.host;
+        const watch = (key: 'columnFilters' | 'advancedFilter' | 'globalFilter'): (() => void) => {
+            let last: unknown = model.get(key);
+            return model.subscribe(key, (value: unknown, origin: ModelOrigin) => {
+                const echo = sameStructure(last, value);
+                last = value;
+                if (origin !== 'property' || echo) return;
+                // The global text replaced from outside: a typed one still waiting on the debounce would overwrite it, so it is dropped.
+                if (key === 'globalFilter') this.dropPendingGlobal();
+                this.filterChanged();
+            });
+        };
+        const filterSubscriptions = [watch('columnFilters'), watch('advancedFilter'), watch('globalFilter')];
+        this.unsubscribeFilters = () => filterSubscriptions.forEach((undo) => undo());
     }
 
     detach(): void {
         this.unsubscribe?.();
+        this.unsubscribeFilters?.();
+        this.unsubscribeFilters = undefined;
+        this.filterChanged(); // the waiting announcement goes with the table
         this.unprovide?.();
         this.cancelFilter?.();
-        this.cancelAnnounce?.();
         this.lastRows = null;
     }
 

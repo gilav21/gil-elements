@@ -143,6 +143,19 @@ export interface QueryService<T> {
     changeAdvancedFilter(group: FilterGroup | null): void;
     /** Wave 5: the number of rows the filters let through, read when an announcement fires; undefined for server filtering without `total`. */
     filteredCount(): number | undefined;
+    /**
+     * wave5: a restored view state changed the filters (written outside the query service's own change paths). Call it ONCE, right AFTER the write:
+     * the restore is the latest filter change, so every older announcement says nothing (the filter UI's for the restore's own write too), and it is
+     * announced ONCE: as a global filter when `globalChanged` and the new global text is not empty, else the overall count (or that every filter
+     * is cleared).
+     */
+    filtersRestored(globalChanged: boolean): void;
+    /**
+     * wave5: the column / advanced filter result announcement. Local filtering: 500 ms after the call, the number of matching rows, or that every
+     * filter is cleared; a newer call or filter change replaces a waiting one (one timer slot, the latest change speaks). Server filtering: nothing
+     * (the rows held are not the matches). No numbering and no waiting for a server answer.
+     */
+    announceFilters(): void;
 }
 
 /** Which user action the busy overlay stands for; `loadingVisibility` can silence it per trigger. */

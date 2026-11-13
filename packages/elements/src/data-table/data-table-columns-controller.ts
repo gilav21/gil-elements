@@ -1,5 +1,6 @@
 import { type ColumnLayout, computeColumnLayout, duplicateColumnKeys, isSpecialColumn, pinGroupOf } from './data-table-columns.js';
 import { baseColumnOrder, moveToIndex } from './data-table-column-order.js';
+import { sameStructure } from './data-table-filters.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import type { ColumnsService } from './data-table-providers.js';
 import { memoLast } from './data-table-query.js';
@@ -114,6 +115,10 @@ export class ColumnsController<T> {
             const next = applyViewState(this.viewModel(), state);
             if (next === null) return false;
             const { model } = this.host;
+            // wave5: a restore that changes a filter is ONE filter change with ONE announcement: the query service numbers and announces it right
+            // AFTER the batch (the filter UI's announcement of the batch's own write is then an older one and says nothing).
+            const globalChange = model.get('globalFilter') !== next.globalFilter;
+            const filtersChange = globalChange || !sameStructure(model.get('columnFilters'), next.columnFilters) || !sameStructure(model.get('advancedFilter') ?? null, next.advancedFilter ?? null);
             // One batch; `paginationState` flushes last, and these writes bypass the filter handlers whose page reset would clobber it.
             model.batch(() => {
                 this.writeOverrides(next.layout);
@@ -124,6 +129,7 @@ export class ColumnsController<T> {
                 model.set('globalFilter', next.globalFilter);
                 model.set('paginationState', next.pagination);
             });
+            if (filtersChange) this.host.provider('query')?.filtersRestored(globalChange);
             return true;
         },
         move: (key, targetIndex) => {

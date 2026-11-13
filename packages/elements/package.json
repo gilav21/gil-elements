@@ -8,6 +8,7 @@
     "**/define.js",
     "**/define.ts",
     "**/data-table/lazy/*.js",
+    "**/data-table/lazy/*.ts",
     "**/rich-text-editor/locales/*"
   ],
   "files": [

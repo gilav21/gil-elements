@@ -5,6 +5,7 @@
 import { isGroupingActive } from './data-table-group.js';
 import type { ColumnDef } from './data-table.types.js';
 import { defaultGetRowId, findDuplicateRowIds } from './data-table.utils.js';
+import { builtInPanelOf } from './data-table-filters.js';
 
 export interface ConfigCheckInput<T> {
     columns: readonly ColumnDef<T>[];
@@ -25,6 +26,8 @@ export interface ConfigCheckInput<T> {
     groupBy?: string | null;
     enableCellFlash?: boolean;
     enableFloatingFilters?: boolean;
+    /** wave5: the table matches column filters itself (unset counts as on, the default): only then does a panel need its `filterFn`. */
+    localFiltering?: boolean;
     enableRowSelection?: boolean;
     enableRowDrag?: boolean;
     /** Undo/redo of edits; they find a row again by its id. */
@@ -96,6 +99,41 @@ export function validateConfig<T>(c: ConfigCheckInput<T>): string[] {
     );
 
     // ---- wave 5 (filters and editing): package A and B add their `warn(...)` calls here, each in its own marked block -------------------
+    // wave5: package B (editing) begin
+    const selectWithoutOptions = c.columns.filter((col) => col.editable && col.editType === 'select' && !col.editComponent && !col.editRenderer && !col.editOptions?.length);
+    warn(
+        selectWithoutOptions.length > 0,
+        `Columns [${keys(selectWithoutOptions)}] have editType 'select' but no editOptions. The editor falls back to a text input; give the options to pick from.`,
+    );
+    // wave5: package B (editing) end
+    // wave5: package A (filters). Reads only `columns` (already in the snapshot).
+    const panelWithoutFlag = c.columns.filter((col) => col.filterComponent && !col.enableFiltering);
+    warn(
+        panelWithoutFlag.length > 0,
+        `Columns [${keys(panelWithoutFlag)}] have a filterComponent but no enableFiltering. The header shows no filter trigger and the column filter is not applied; set enableFiltering.`,
+    );
+    // Angular draws a floating component or renderer without `enableFiltering` (cmp 2547) but never applies its value (cmp 1284): kept for parity, warned.
+    // Only with the floating row on: without it no floating control is drawn at all.
+    const floatingWithoutFlag = !c.enableFloatingFilters ? [] : c.columns.filter((col) => (col.floatingFilterComponent || col.floatingFilterRenderer) && col.floatingFilter !== false && !col.enableFiltering);
+    warn(
+        floatingWithoutFlag.length > 0,
+        `Columns [${keys(floatingWithoutFlag)}] have a floating filter component or renderer but no enableFiltering. The control is drawn but its value filters nothing; set enableFiltering.`,
+    );
+    // A bare `floatingFilter: true` (no enableFiltering, no component or renderer) draws nothing in the floating row: no row is drawn for it (Angular draws
+    // an empty one, cmp 2523).
+    const bareFloating = !c.enableFloatingFilters ? [] : c.columns.filter((col) => col.floatingFilter === true && !col.enableFiltering && !col.floatingFilterComponent && !col.floatingFilterRenderer);
+    warn(
+        bareFloating.length > 0,
+        `Columns [${keys(bareFloating)}] have floatingFilter: true but no enableFiltering, floatingFilterComponent or floatingFilterRenderer. Nothing is drawn in the floating filter row for them; set enableFiltering.`,
+    );
+    // Only the three built-in panels report values that are not text; a consumer's own panel may well report text the default match handles.
+    // Server filtering never matches rows here, so a missing filterFn changes nothing then.
+    const panelWithoutFn = c.localFiltering === false ? [] : c.columns.filter((col) => col.enableFiltering && builtInPanelOf(col.filterComponent) !== undefined && !col.filterFn);
+    warn(
+        panelWithoutFn.length > 0,
+        `Columns [${keys(panelWithoutFn)}] have a built-in filter panel but no filterFn. A panel value that is not text (a date, a list) is matched as text and filters every row out; pair the panel with its filter function (dateFilterFn, dateRangeFilterFn, multiselectFilterFn).`,
+    );
+    // wave5: end of package A.
     // ---- wave 6 (spreadsheet and drag): packages A, B and C add theirs here, each in its own marked block -----------------------------
     // The flash + default getRowId warning is above; the row-drag-with-sort warning is `ROW_DRAG_SORT_WARNING`, checked per render by
     // `DiagnosticsController.hostUpdate` (a sort click must not re-run these checks).

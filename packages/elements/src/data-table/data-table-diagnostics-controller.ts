@@ -1,9 +1,7 @@
 import { type ConfigCheckInput, ROW_DRAG_SORT_WARNING, scansRowIds, validateConfig } from './data-table-config-check.js';
-import type { DataTableCoreHost } from './data-table-host.js';
+import { type DataTableCoreHost, VIEWPORT } from './data-table-host.js';
 import { sortReordersRows } from './data-table-query.js';
 import { findDuplicateRowIds } from './data-table.utils.js';
-
-const VIEWPORT = '[data-slot="data-table-viewport"]';
 
 /** The settings the checks read, compared by value so an unrelated render re-runs nothing (the duplicate-id scan is O(rows)). Every key is always set. */
 function sameSnapshot<S extends object>(a: S | null, b: S): boolean {
@@ -51,6 +49,7 @@ export class DiagnosticsController<T> {
             groupBy: config.groupBy,
             enableCellFlash: config.enableCellFlash,
             enableFloatingFilters: config.enableFloatingFilters,
+            localFiltering: config.localFiltering, // wave5: the built-in panel / filterFn check reads it
             enableRowSelection: config.enableRowSelection,
             enableRowDrag: config.enableRowDrag,
             enableEditHistory: config.enableEditHistory,

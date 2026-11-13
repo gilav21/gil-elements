@@ -7,10 +7,11 @@ import {
     findDuplicateRowIds,
     getCellValue,
     isFilterValueEmpty,
+    isPlainObject,
     isSpecialColumnKey,
     parseNlFilterSpec,
     stringifyValue,
-    toEditedDateValue,
+    isoDateTime,
     toLocalDateString,
 } from './data-table.utils.js';
 
@@ -49,10 +50,30 @@ describe('getCellValue', () => {
 });
 
 describe('isFilterValueEmpty', () => {
-    it.each([[undefined], [null], [''], [[]], [{ start: null, end: null }]])('%j is empty', (v) => {
+    // Wave 5 review round 9: a range with no end set is empty however its keys are spelled ({ start: null }, undefined ends, `{}`); Angular
+    // asks for both keys (cmp 3981), so `{ start: null }` there filters every row out.
+    it.each([[undefined], [null], [''], [[]], [{ start: null, end: null }], [{ start: null }], [{ end: undefined }], [{ start: undefined, end: undefined }], [{ start: '', end: '' }], [{ start: '', end: null }], [{ end: '' }], [new Set()], [Object.assign(Object.create(null), { start: null })]])('%j is empty', (v) => {
         expect(isFilterValueEmpty(v)).toBe(true);
     });
-    it.each([['a'], [0], [false], [['a']], [{ start: new Date(), end: null }], [{}]])('%j is not empty', (v) => {
+    it("a class instance with start and end both null is empty, as on main (round 24: main's rule for non-plain objects)", () => {
+        class Range {
+            start: Date | null = null;
+            end: Date | null = null;
+        }
+        expect(isFilterValueEmpty(new Range())).toBe(true);
+        const set = new Range();
+        set.start = new Date(1);
+        expect(isFilterValueEmpty(set)).toBe(false);
+    });
+    it('isPlainObject: object literals and null-prototype objects only (round 18)', () => {
+        expect(isPlainObject({})).toBe(true);
+        expect(isPlainObject(Object.create(null))).toBe(true);
+        expect(isPlainObject([])).toBe(false);
+        expect(isPlainObject(new Date())).toBe(false);
+        expect(isPlainObject(new (class {})())).toBe(false);
+        expect(isPlainObject(null)).toBe(false);
+    });
+    it.each([['a'], [0], [false], [['a']], [{ start: new Date(), end: null }], [{ end: new Date() }], [new Date()], [{ other: 1 }], [{ start: '2024-01-01', end: '' }], [{ start: null, end: null, includeBlanks: true }], [{ start: null, mode: 'x' }], [new Set(['a'])], [{}], [Object.create(null)]])('%j is not empty', (v) => {
         expect(isFilterValueEmpty(v)).toBe(false);
     });
 });
@@ -184,12 +205,21 @@ describe('date helpers', () => {
         expect(toLocalDateString(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
     });
 
-    it('writes back in the shape found', () => {
-        const d = new Date(2026, 2, 4);
-        expect(toEditedDateValue(d, '2026-01-01')).toBe('2026-03-04');
-        expect(toEditedDateValue(d, new Date())).toBe(d);
-        expect(toEditedDateValue(d, undefined)).toBe(d);
-        expect(toEditedDateValue(null, 'x')).toBeNull();
+    // (The write-back in the cell's own shape is writeBackDate in data-table-edit.ts, node-tested there; toEditedDateValue was removed in wave 5.)
+
+    it('reads a space-separated date-time like its T form (Safari reads the space form as Invalid Date)', () => {
+        expect(isoDateTime('2024-01-03 10:20')).toBe('2024-01-03T10:20');
+        expect(isoDateTime('2024-01-03 10:20:30')).toBe('2024-01-03T10:20:30');
+        expect(isoDateTime('2024-01-03T10:20')).toBe('2024-01-03T10:20');
+        expect(isoDateTime('soon')).toBe('soon');
+        expect(asEditableDate('2024-01-03 10:20')?.getTime()).toBe(new Date('2024-01-03T10:20').getTime());
+        // Round 20: only an ISO time (fraction, Z or ±hh:mm right after it) is rewritten; anything else is left for the engine, parsed as before.
+        expect(isoDateTime('2024-01-03 10:20:30.250Z')).toBe('2024-01-03T10:20:30.250Z');
+        expect(isoDateTime('2024-01-03 10:20+02:00')).toBe('2024-01-03T10:20+02:00');
+        for (const text of ['2024-01-03 10:20 UTC', '2024-01-03 10:20 +02:00', '2024-01-03 10:20 GMT+0200']) {
+            expect(isoDateTime(text)).toBe(text);
+            expect(asEditableDate(text)?.getTime() ?? null).toBe(Number.isNaN(new Date(text).getTime()) ? null : new Date(text).getTime());
+        }
     });
 
     it('parses only strictly date-only strings', () => {

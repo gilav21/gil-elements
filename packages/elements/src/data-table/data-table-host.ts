@@ -21,6 +21,7 @@
  * | disposables                     | all (listeners, timers, observers)                                          |
  * | requestRender, afterRender      | all that draw; Virtual and Resize measure after a paint                     |
  */
+import { CONTROLS_SELECTOR, INTERACTIVE_TAGS, NATIVE_CONTROLS, ROLES_SELECTOR } from '../shared/interactive-tags.js';
 import type { Disposables, TopicBus } from '../shared/registry.js';
 import type { DataTableLocale } from './data-table.locales.js';
 import type { DataTableEventMap } from './data-table-events.js';
@@ -67,6 +68,59 @@ export const ownClosest = <E extends Element = Element>(root: Element, target: u
     const match = (target as Element | null)?.closest?.<E>(selector) ?? null;
     return match && ownsTarget(root, match) ? match : null;
 };
+
+/** The scroll container of the grid (header, body and footer): the element the grid's key chain listens on. */
+export const VIEWPORT = '[data-slot="data-table-viewport"]';
+
+/** A field whose keys are its own (typing, its undo, Enter in it): the grid's key handlers never act on an event from one. */
+export const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
+
+/**
+ * What the browser (or a library control) focuses itself: the native controls, `summary`, a link with `href`, any `[tabindex]`, an editable region and
+ * the library's interactive tags (a closed root's host stands for its inside). ONE rule for the grid's tap focus and an editor's first control.
+ */
+export const FOCUSABLE = `button, input, select, textarea, summary, a[href], [tabindex], [contenteditable]:not([contenteditable="false"]), ${INTERACTIVE_TAGS.join(', ')}`;
+
+/**
+ * The key belongs to a text field (typing, its undo, Enter or Alt+Shift+Arrow in it), so no grid key handler acts on it: the deepest node of the
+ * event's path is one (a field inside a component's shadow root too), or the event's target or that node sits in one of this table's. With
+ * `keepsFocus`, also anything inside a `[data-table-keeps-focus]` region of this table (a widget that owns its keys, the header filter panel).
+ * ONE rule for the edit session, the column drag and the cell keyboard navigation.
+ */
+export function isTextFieldKey(root: Element, event: Event, { keepsFocus = false }: { keepsFocus?: boolean } = {}): boolean {
+    const origin = event.composedPath()[0] as Element | undefined;
+    if (origin?.matches?.(TEXT_FIELD)) return true;
+    for (const from of [event.target, origin]) {
+        if (ownClosest(root, from, TEXT_FIELD) || (keepsFocus && ownClosest(root, from, '[data-table-keeps-focus]'))) return true;
+    }
+    return false;
+}
+
+/** Inside a cell, also any anchor and the ARIA widget roles (the library's own controls are in `CONTROLS_SELECTOR`, from `INTERACTIVE_TAGS`). NOT `[tabindex]`: a component cell sets tabindex for keyboard reasons and stays a cell press (wave 6 range drags start on it); a widget that manages its own focus says so with `data-table-keeps-focus` (the cell itself is never matched: the walk stops at it). */
+export const CELL_CONTROLS = `${CONTROLS_SELECTOR}, a, ${ROLES_SELECTOR}`;
+/** Inside a shadow root of a consumer component (not this table's own tree): only the real form controls count; its roles, bare anchors (SVG included) and tags are its own business. */
+export const SHADOW_CONTROLS = `${NATIVE_CONTROLS.join(', ')}, [contenteditable]:not([contenteditable="false"]), [data-table-keeps-focus]`;
+const XHTML = 'http://www.w3.org/1999/xhtml';
+
+/**
+ * The control a press inside `cell` landed on: the first element of its composed path below the cell that is one. ONE rule for the pointer press and the
+ * double click: `selector` in the table's own tree (`tree`), the real HTML form controls only inside a consumer component's shadow root.
+ */
+export function controlInPath(path: readonly EventTarget[], stop: Element, tree: Node, selector: string = CELL_CONTROLS): Element | null {
+    for (const node of path) {
+        if (node === stop) break;
+        if (!(node instanceof Element)) continue;
+        if (node.getRootNode() === tree ? node.matches(selector) : node.namespaceURI === XHTML && node.matches(SHADOW_CONTROLS)) return node;
+    }
+    return null;
+}
+
+/** `node` is `ancestor` or inside it, across shadow roots (a component's input in its own root, a focused element in a cell widget). */
+export function composedContains(ancestor: Node | null | undefined, node: Node | null): boolean {
+    if (!ancestor) return false;
+    for (let at = node; at; at = at.parentNode ?? (at as ShadowRoot).host ?? null) if (at === ancestor) return true;
+    return false;
+}
 
 /** The elements of `list` that belong to this table, not to a table nested in one of its rows. */
 export const ownElements = <E extends Element>(root: Element, list: Iterable<E>): E[] => [...list].filter((el) => ownsTarget(root, el));

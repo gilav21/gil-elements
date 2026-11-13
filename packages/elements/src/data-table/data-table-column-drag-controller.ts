@@ -3,7 +3,7 @@ import { VALUE_CONTROLS_SELECTOR } from '../shared/interactive-tags.js';
 import { onLongPress, onPointerDrag } from '../shared/touch.js';
 import { baseColumnOrder, dropSide, moveByOffset, moveColumnKey, type DropSide } from './data-table-column-order.js';
 import { columnCells, HEAD_SELECTOR as HEAD, pinGroupOf } from './data-table-columns.js';
-import { type DataTableCoreHost, ownClosest, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
+import { type DataTableCoreHost, isTextFieldKey, ownClosest, ownEvents, ownsTarget, requireProvider } from './data-table-host.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
 
@@ -215,6 +215,9 @@ export class ColumnDragController<T> {
     private handleKey(event: KeyboardEvent): boolean {
         if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return false;
         const target = event.target as Element;
+        // wave5: a key typed in a text field (Alt+Shift+Arrow selects text by word) or inside a widget that owns its keys (the header filter panel,
+        // `data-table-keeps-focus`) is that field's own, never a column move.
+        if (isTextFieldKey(this.host.root, event, { keepsFocus: true })) return false;
         const head = ownClosest<HTMLElement>(this.host.root, target, DRAGGABLE_HEAD);
         const key = head?.dataset['columnId'];
         const group = key === undefined ? null : this.groupOf(key);

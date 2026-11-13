@@ -237,6 +237,24 @@ describe('createQueryPipeline', () => {
         expect(b.sorted).toBe(a.sorted);
     });
 
+    it('a range-like value with a key of its own is a real filter: it reaches filterFn (round 14)', () => {
+        const run = createQueryPipeline<Row>();
+        const value = { start: null, end: null, includeBlanks: true };
+        const filterFn = vi.fn(() => true);
+        const columns = COLUMNS.map((c) => (c.accessorKey === 'age' ? { ...c, enableFiltering: true, filterFn } : c));
+        run(input({ columns, columnFilters: { age: value } }));
+        expect(filterFn).toHaveBeenCalled();
+        expect(filterFn.mock.calls[0]![1]).toBe(value);
+        // Round 23: a key-less object is a value as on main (it reaches filterFn).
+        filterFn.mockClear();
+        run(input({ columns, columnFilters: { age: {} } }));
+        expect(filterFn).toHaveBeenCalled();
+        // A bare empty range is still no filter.
+        filterFn.mockClear();
+        run(input({ columns, columnFilters: { age: { start: null, end: '' } } }));
+        expect(filterFn).not.toHaveBeenCalled();
+    });
+
     it('changing the sort does not re-run the filters', () => {
         const run = createQueryPipeline<Row>();
         const filterFn = vi.fn((r: Row) => r.age > 0);

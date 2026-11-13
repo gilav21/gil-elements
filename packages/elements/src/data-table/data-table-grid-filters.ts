@@ -1,24 +1,137 @@
 /**
  * The header's filter trigger and the floating filter row (wave 5, package A owns this file). `GridView.filters` is called from
- * `headContent` (after the sort control) and from `renderGrid` (the second row of the header rowgroup). Joint step 0: both draw
- * nothing and the row count is zero, so the grid is unchanged.
+ * `headContent` (after the sort control) and from `renderGrid` (the second row of the header rowgroup). The state behind them (which
+ * panel is open, the debounced floating input, the lazy panels) is the `filter-ui` controller's: it provides the `filters` service
+ * with the extra members of `FilterUiService`, which this view asks for. A `filters` provider of the plain `FilterService` shape
+ * (a stub) draws no trigger and no row.
  */
-import { nothing } from 'lit';
+import { html, nothing, type TemplateResult } from 'lit';
+import { live } from 'lit/directives/live.js';
+import { repeat } from 'lit/directives/repeat.js';
+import type { GridAria } from './data-table-aria.js';
+import { componentCell } from './data-table-component-cell.js';
+import { cellVarsStyle } from './data-table-columns.js';
+import { currentFilterValue } from './data-table-filters.js';
+import { chromeIcon } from './data-table-icons.js';
+import { columnParts, columnSpacer } from './data-table-grid-window.js';
+import { requireProvider } from './data-table-host.js';
+import type { FilterService } from './data-table-providers.js';
 import type { DataTableViewHost } from './data-table-view.js';
-import type { EnhancedColumnDef } from './data-table.types.js';
+import { interpolate } from './data-table.locales.js';
+import type { BodyWindow, ColumnDef, ComponentOutputs, EnhancedColumnDef } from './data-table.types.js';
+import { isSpecialColumnKey, specialSlotOf, stringifyValue } from './data-table.utils.js';
 
 export interface FiltersView<T> {
     /** The filter trigger of a data column's header, drawn after its sort control; `nothing` for none. */
     trigger(column: EnhancedColumnDef<T>): unknown;
-    /** The floating filter row (`div[table-row][data-kind=filter][role=row]`), the second row of the header rowgroup; `nothing` for none. */
-    row(): unknown;
+    /**
+     * The floating filter row (`div[table-row][data-kind=filter][role=row]`), the second row of the header rowgroup; `nothing` for none. Its row and column
+     * indexes come from the grid's own aria rule (`aria`, the view's: it counts this row, so it is built after this view and passed in).
+     */
+    row(aria: GridAria): unknown;
     /** Header rows drawn above the data: 0 or 1 here, so `headerRows` is `1 + rows` and the first data row is `aria-rowindex` `2 + rows`. */
     rows: number;
 }
 
-/** The step 0 view: no trigger, no floating row. A constant (wave 5 A replaces the function, not this), so a render allocates no view. */
+/** What the `filter-ui` controller adds to `FilterService` for this view: its state and its stable handlers. */
+export interface FilterUiService<T> extends FilterService<T> {
+    /** The header trigger draws for this column (`enableFiltering` and a panel). */
+    hasTrigger(column: ColumnDef<T>): boolean;
+    /** The column's panel popover is open (its content is drawn only then). */
+    panelOpen(columnKey: string): boolean;
+    /** The popover's `open-change` of a column trigger. */
+    onPanelToggle(columnKey: string): (event: CustomEvent<boolean>) => void;
+    /** The column's stable handler that starts loading the lazy panel it uses (hover and focus of its trigger): not re-bound on every render. */
+    prefetch(columnKey: string): () => void;
+    /** The properties of the column's filter component: `filterComponentInputs`, then `column` and `value` (the current filter, D2). */
+    panelInputs(column: ColumnDef<T>): Record<string, unknown>;
+    /** `filterComponentOutputs`, its own `filter-change` composed with the table's (consumer first); stable per column, so listeners are not re-added. */
+    panelOutputs(column: ColumnDef<T>): ComponentOutputs;
+    /** The floating component's listeners: only the table's `filter-change` (the header panel's outputs are not its own). */
+    floatingOutputs(column: ColumnDef<T>): ComponentOutputs;
+    /** A stable setter of the column's filter (the floating renderer's `setValue`). */
+    setter(columnKey: string): (value: unknown) => void;
+    /** The floating text input's `input` handler (debounced by `filterDebounce`, D6). */
+    floatingInput(columnKey: string): (event: Event) => void;
+    /** The text a floating input holds while its write waits on the debounce (undefined when none waits). */
+    floatingText(columnKey: string): string | undefined;
+}
+
+/** The step 0 view: no trigger, no floating row. A constant, so a render with nothing to filter allocates no view. */
 const NO_FILTERS: FiltersView<unknown> = Object.freeze({ trigger: () => nothing, row: () => nothing, rows: 0 });
 
-export function filtersView<T>(_host: DataTableViewHost<T>): FiltersView<T> {
-    return NO_FILTERS as FiltersView<T>;
+const isUiService = <T>(service: FilterService<T> | undefined): service is FilterUiService<T> => typeof (service as Partial<FilterUiService<T>> | undefined)?.panelOpen === 'function';
+
+/** Whether any column draws a header trigger, and whether any asks for the floating row: per (columns array, service), so a render recomputes nothing. */
+const flagsByColumns = new WeakMap<object, { service: object; anyTrigger: boolean; anyFloating: boolean }>();
+
+function columnFlags<T>(columns: readonly EnhancedColumnDef<T>[], service: FilterUiService<T>): { anyTrigger: boolean; anyFloating: boolean } {
+    const cached = flagsByColumns.get(columns);
+    if (cached?.service === service) return cached;
+    const flags = { service, anyTrigger: columns.some((c) => service.hasTrigger(c)), anyFloating: service.hasAnyFloating() };
+    flagsByColumns.set(columns, flags);
+    return flags;
+}
+
+export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
+    const service = host.provider('filters');
+    if (!isUiService(service)) return NO_FILTERS as FiltersView<T>;
+    const { config, resolvedLocale: locale } = host;
+    // The columns as drawn (enhanced): what the header actually shows a trigger on. Both "any" questions are answered once per columns array.
+    const { anyTrigger, anyFloating } = columnFlags(requireProvider(host, 'columns').enhancedColumns(), service);
+    const floating = config.enableFloatingFilters && anyFloating;
+    if (!floating && !anyTrigger) return NO_FILTERS as FiltersView<T>;
+    const filters = host.model.get('columnFilters');
+    // `null` for no filter, as the header panel gets it (the floating component and renderer see the same value for "none").
+    const valueOf = (key: string): unknown => currentFilterValue(filters, key);
+
+    const trigger = (c: EnhancedColumnDef<T>): unknown => {
+        if (!service.hasTrigger(c)) return nothing;
+        const key = String(c.accessorKey);
+        const active = service.isActive(key);
+        const open = service.panelOpen(key);
+        const prefetch = service.prefetch(key);
+        // The panel sits inside the head cell (DOM-wise): `data-table-keeps-focus` makes every press in it the panel's own, so the column drag
+        // (its OWN_PRESS already matches the attribute) never starts from a panel, whatever controls a consumer's panel holds.
+        // No `close-on-scroll`: it would close on the table's own scrolls too (a filter that shrinks the rows clamps the viewport's scroll). The filter-ui
+        // controller closes it on a scroll outside the table, or once the trigger scrolls out of the viewport.
+        return html`<ge-popover @open-change=${service.onPanelToggle(key)}>
+            <ge-popover-trigger><button type="button" data-slot="data-table-filter-trigger" ?data-active=${active} aria-label=${interpolate(active ? locale.filterColumnActive : locale.filterColumn, { column: c.header })}
+                @pointerenter=${prefetch} @focus=${prefetch}>${chromeIcon('filter', 'sm', undefined, active)}</button></ge-popover-trigger>
+            <ge-popover-content data-slot="data-table-filter-panel" data-table-keeps-focus strategy="fixed" align="end">${open && c.filterComponent ? componentCell(c.filterComponent, service.panelInputs(c), service.panelOutputs(c)) : nothing}</ge-popover-content>
+        </ge-popover>`;
+    };
+
+    if (!floating) return { trigger, row: () => nothing, rows: 0 };
+
+    const control = (c: EnhancedColumnDef<T>): unknown => {
+        const key = String(c.accessorKey);
+        // Its own contract only (`column`, `value`, `filter-change`): the header panel's `filterComponentInputs` / `Outputs` are that panel's, not its.
+        if (c.floatingFilterComponent) return componentCell(c.floatingFilterComponent, { column: c, value: valueOf(key) }, service.floatingOutputs(c));
+        if (c.floatingFilterRenderer) return c.floatingFilterRenderer({ column: c, value: valueOf(key), setValue: service.setter(key) });
+        // `.value` with `live`: the text still waiting on the debounce (what the input holds), else the stored filter. So typing is never reset by a
+        // render, and a waiting write dropped by an outside reset clears the shown text.
+        return html`<ge-input placeholder=${c.header} aria-label=${interpolate(locale.filterColumn, { column: c.header })} .value=${live(service.floatingText(key) ?? stringifyValue(valueOf(key)))} @input=${service.floatingInput(key)}></ge-input>`;
+    };
+
+    const cell = (c: EnhancedColumnDef<T>, n: number, aria: GridAria): TemplateResult => {
+        const has = service.hasFloating(c);
+        return html`<div data-slot="table-head" role=${has ? 'columnheader' : 'presentation'} aria-colindex=${has ? aria.colIndex(n) : nothing} data-width=${c._width === 'auto' ? 'auto' : 'fixed'}
+            data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(c.accessorKey) ? specialSlotOf(c) : nothing} style=${cellVarsStyle(c, n)}>${has ? control(c) : nothing}</div>`;
+    };
+
+    const row = (aria: GridAria): TemplateResult => {
+        const columns = requireProvider(host, 'columns').enhancedColumns();
+        const window: BodyWindow = host.provider('virtual')?.window() ?? { start: 0, end: 0, padStart: 0, padEnd: 0, colPadStart: 0, colPadEnd: 0, colStart: 0, colEnd: columns.length, retained: [] };
+        const flexible = columns.some((c) => c._width === 'auto');
+        // Keyed by column like the header row: a window shift moves a cell (its input and what is typed in it) with its column, never reuses it for another.
+        // The SECOND header row: `headerRowIndex(1)` of the grid's aria rule.
+        return html`<div data-slot="table-row" role="row" data-kind="filter" aria-rowindex=${aria.headerRowIndex(1)}>${repeat(
+            columnParts(columns, window),
+            (p) => ('spacer' in p ? `s:${p.spacer}` : String(p.column.accessorKey)),
+            (p) => ('spacer' in p ? columnSpacer(p.spacer) : cell(p.column, p.n, aria)),
+        )}${flexible ? nothing : html`<div data-slot="table-head" role="presentation"></div>`}</div>`; // no column borders: Angular's floating cells have none (html 763)
+    };
+
+    return { trigger, row, rows: 1 };
 }

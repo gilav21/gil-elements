@@ -1,0 +1,76 @@
+/* shadcn-angular data-table filter panels (sub/data-table-date-filter, -date-range-filter, -multiselect-filter): a flex column with a
+   row of small buttons over a borderless calendar or a command list. Shared by the three lazy panels. */
+:host {
+    display: block;
+}
+[data-slot='date-filter'],
+[data-slot='date-range-filter'],
+[data-slot='multiselect-filter'] {
+    display: flex;
+    flex-direction: column;
+}
+.title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0.75rem 0.5rem;
+    font-size: 0.875rem;
+    line-height: calc(1.25 / 0.875);
+    font-weight: 500;
+}
+[data-slot='multiselect-filter'] .title {
+    padding-inline: 0.5rem;
+}
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 600;
+}
+.actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0 0.75rem 0.5rem;
+}
+[data-slot='date-range-filter'] .actions {
+    flex-wrap: wrap;
+}
+[data-slot='multiselect-filter'] .actions {
+    padding: 0.375rem 0.5rem;
+}
+.actions ge-button::part(base) {
+    height: 1.75rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+@media (pointer: coarse) {
+    .actions ge-button::part(base) {
+        height: 2.75rem;
+        min-width: 2.75rem;
+    }
+}
+ge-calendar::part(calendar) {
+    border: 0;
+    border-radius: 0;
+}
+ge-command-list {
+    max-height: 16rem;
+}
+ge-command-item {
+    gap: 0.5rem;
+}
+.option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+/* The checkbox shows the state; the row (role=option, aria-selected) is what is focused and announced. */
+.option ge-checkbox {
+    pointer-events: none;
+}

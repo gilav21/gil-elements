@@ -263,7 +263,26 @@ async function renderJob(browser, theme, group, side) {
                 // `data-edit` is `rowIndex,columnKey` of a ge-data-table: that cell's editor is opened, as a double click would. The hook THROWS (with the case id) when the editor does not open: at joint step 0 `startEditing` is inert and always answers false, so NO parity case may use `data-edit` before wave 5 B makes editing real.
                 // `data-edit-error` is a message: the column then refuses every value with it and the edited draft is committed, so the editor shows its error state.
                 // It runs BEFORE the animation wait below, so a transition the open editor starts is awaited too; the table gets its `data-props` first, there, and the generic `data-props` loop skips it.
-                for (const target of document.querySelectorAll('ge-data-table[data-edit]')) {
+                // An open editor takes DOM focus after its render, and an editor that loses it to the NEXT case's editor commits and closes: while the
+                // editors open, `focus()` does nothing, so every editor of the page stays open and none is focused (as Angular's static render shows them).
+                const editing = document.querySelectorAll('ge-data-table[data-edit]');
+                const realFocus = HTMLElement.prototype.focus;
+                // The tables whose editor has made its own focus attempt (the stub records it, from inside a shadow root too), so the real `focus()`
+                // is put back only once every editor has tried: no late focus can land after it and commit an editor.
+                const tried = new Set();
+                const tableOf = (node) => {
+                    for (let at = node; at; at = at.parentNode ?? at.host ?? null) if (at.matches?.('ge-data-table[data-edit]')) return at;
+                    return null;
+                };
+                if (editing.length > 0)
+                    HTMLElement.prototype.focus = function (...args) {
+                        const table = tableOf(this);
+                        // Only an element of a data-edit table is held; anything else on the page focuses as usual.
+                        if (table) tried.add(table);
+                        else realFocus.apply(this, args);
+                    };
+                try {
+                for (const target of editing) {
                     if (target.dataset.props) Object.assign(target, JSON.parse(target.dataset.props));
                     await target.updateComplete;
                     const comma = target.dataset.edit.indexOf(','); // the row index has no comma, a column key may
@@ -285,6 +304,12 @@ async function renderJob(browser, theme, group, side) {
                         target.commitEdit();
                         await target.updateComplete;
                     }
+                }
+                // The editors focus after their render (a date editor once its lazy picker is defined): wait until each has tried, capped at 120 frames
+                // (deterministic: the cap is only reached when an editor never focuses, and the frames are counted, not timed).
+                for (let frame = 0; editing.length > 0 && tried.size < editing.length && frame < 120; frame++) await new Promise((resolve) => requestAnimationFrame(resolve));
+                } finally {
+                    HTMLElement.prototype.focus = realFocus;
                 }
                 // An infinite animation (a spinner, a marquee) never finishes, so waiting on it would hang the run.
                 await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished));

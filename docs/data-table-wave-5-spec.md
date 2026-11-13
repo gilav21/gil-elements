@@ -517,8 +517,50 @@ Wave 6 is developed in parallel, so step 0 is written together with wave 6's (se
 - **Escape with a date picker**: Escape closes the picker panel first (the popover stops there with `defaultPrevented`); the edit handler cancels only when the event is not `defaultPrevented`. Real-keyboard test (E5).
 - **Window blur**: a text editor does not commit when the WINDOW loses focus (`relatedTarget === null && !document.hasFocus()`); Angular commits (html 276).
 - **Blur with a rejected value** keeps the editor open with its error (Angular parity, D15); the user's text is not thrown away.
-- **Editing under sort**: a commit into the sort column moves the row; the editor is already closed, focus stays on the cell index (wave 4 rule: ring stays at the screen position).
+- **Editing under sort**: a commit into the sort column moves the row; the editor closes and the focus follows the edited RECORD to where it is drawn after the re-sort (found by row id), not the index it had (as built; the earlier "stays on the cell index" plan was replaced in review).
 - **Group, tree, virtual**: addresses are drawn indexes (`renderedRowAt`); a collapsing group drops the editor like a page change; a virtual editor row is retained out of the window; scrolling does not close the editor.
+- **Filter result announcements (as built, review round 21, simplified)**: LOCAL filtering only: one polite message 500 ms after the last filter change (global, column, advanced, a restored view state), with the count of the rows that match (or that every filter is cleared). ONE timer slot: every filter change clears it, every announcement replaces it, so the latest change speaks once. SERVER filtering (`localFiltering = false`): the GLOBAL filter announces as on main (the server's `total` for the typed text, nothing without a total); column and advanced filters announce NO result, since the rows the table holds are not the matches and it cannot know the count of the server's answer (the earlier answer-wait machinery, rounds 2-20, is removed; round 22 restored main's global rule).
+- **A table removed from the document** drops the floating filter writes still waiting on `filterDebounce` (no filter event from a removed table). On a DOM move, text typed but not yet applied is lost (accepted, round 21).
+- **Follow-ups deferred in review rounds 14, 20 and 21 (not in this PR)**:
+  1. **Edit session wiring through the interaction service.** The edit session is reached today through the cell interaction controller's own wiring (its key handlers, the double click, the touch double tap and the `editSessionOf(host)` lookup). It should be wired through the `interaction` service, as the other cell sessions are, so that the edit session has one entry point.
+  2. **Server-filtering announcements.** An explicit answer API (a consumer call that names the `query` event it answers, for example `table.answerQuery(query, { total })`) would let the table announce the answer's count; until then server filtering announces no filter result.
+  3. **One source for "a filter changed" (round 20).** The query controller's model watch could notice every structural filter change, internal writes too, and replace `filtersRestored` and the explicit change calls.
+  4. **Round 21 items not done here:** the editor's error overlay decided by the virtual controller's own mode (not a re-derived rule); one `followRowById` helper shared by `reconcileEditor` / `indexOfRowId` and the cell interaction controller's `followRow`; one `ignoreRenderBlur(open)` helper for the edit session's render-blur guard; the date filters parsing the filter value once per filter run (in `buildFilterMatchers`) instead of per row.
+  5. **The builder's typed value at detach** is still written (flushed) while the table detaches (round 13); the floating inputs' are dropped (round 21). One rule for both is a follow-up.
+  6. **Round 22 review, deferred:**
+     - A filter array mutated in place and re-emitted (the same reference) re-filters but is not announced.
+     - The builder's flush after `enable-advanced-filter` is turned off runs in a microtask after the render; a review of that path is pending.
+     - The header panel's outside-scroll watch listens on `globalThis`, not the table's own window (a table in an iframe).
+     - `sameStructure` belongs in `data-table.utils.ts`.
+     - One `ignoreRenderBlur` helper for the edit session's render-blur guard.
+     - Parse a date filter value once per filter run, not per row.
+     - One `followRowById` helper, sub-rows included.
+  7. **Round 23 review, deferred:**
+     - The date picker's lazy loader: `resetIfFailed` in the edit session's attach (a latched load failure is retried).
+     - `columnDrawn` shared with `data-table-grid-window.ts` (the edit session repeats the grid's rule).
+     - `sameStructure` moves to `data-table.utils.ts`.
+     - The query controller's filter watch checks the write's origin before the structural comparison.
+     - Parse a date filter value once per filter run, not per row.
+     - Cache the `editRenderer` context's callbacks per open editor.
+     - Where `FILTER_ANNOUNCE_MS` is exported (it now lives in the query controller).
+  8. **Round 24 review, deferred:**
+     - A synchronous echo written from a `column-filters-change` handler (a framework's binding in the same task) clears the waiting announcement, so it is lost.
+     - A whitespace-only global filter: `anyFilterOn` treats it as off, while the pipeline's global match may still run on it.
+     - `writeBackDate` on a date-time string the engine cannot parse (Safari's space form outside the ISO shape) writes back the date only and drops the time.
+     - `close()` reads `cellAt` after `follow()`: a programmatic commit in the same task as a row move can look at the old index.
+     - `columnDrawn` shared with `data-table-grid-window.ts`.
+     - The origin check before `sameStructure` in the query controller's filter watch.
+     - Where `FILTER_ANNOUNCE_MS` is exported.
+  9. **Round 25 review, deferred:**
+     - A scroll container inside a shadow root (not the table's own) does not close the header filter panel.
+     - The announcement triggers unified in one origin-aware subscription.
+     - `columnDrawn` shared with `data-table-grid-window.ts`.
+     - One subscriber for the structural echo checks (the query and filter controllers each keep their own).
+     - `dropPendingGlobal` also in `detach` and at the start of `changeGlobalFilter`.
+     - Exports that are private in practice, and where `FILTER_ANNOUNCE_MS` lives.
+  10. **Round 26 review, deferred:**
+     - A Date filter value mutated in place and re-emitted (the same reference) is not a change: `sameFilterValue`'s Date branch compares the times before the same-reference rule.
+     - V8's lenient `new Date(string)` lets non-date text match the date filters; accept only ISO / date-shaped strings.
 
 ## 4. Size
 Static cost in `data-table/define.js` (gzip): package A about 2.3 KB (trigger + floating row 1.2, controller + toolbar button 0.8, glue 0.3); package B about 4.5 KB (pure edit 1.3, session 2.2, editor view 1.0). Pure filter fns and builder operations sit in the index only (about 0.8 KB there, not in define). Provisional budget: `data-table/define.js` 77 020 -> 84 000, `data-table/index.js` 77 470 -> 85 000 (both final after the integration measurement, rounded up, and justified in the PR as "wave 5: filter trigger, floating row, edit session; the builder, panels, calendar, command and date picker are lazy").

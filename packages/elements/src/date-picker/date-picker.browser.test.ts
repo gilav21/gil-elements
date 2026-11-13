@@ -23,6 +23,21 @@ const day = (p: Picker, n: number) =>
 const ymd = (d: Date | null) => (d ? `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}` : null);
 
 describe('ge-date-picker', () => {
+    it('ties invalid and error-message to its trigger, the focusable part (a host attribute cannot reach into the shadow root)', async () => {
+        const page = await mount(`<ge-date-picker date="2026-05-14" invalid error-message="Pick a weekday"></ge-date-picker><ge-date-picker></ge-date-picker>`);
+        await settle(page);
+        const [bad, fine] = [...page.querySelectorAll<GeDatePicker>('ge-date-picker')];
+        expect(trigger(bad!).getAttribute('aria-invalid')).toBe('true');
+        expect(trigger(bad!).getAttribute('aria-description')).toBe('Pick a weekday');
+        expect(trigger(fine!).hasAttribute('aria-invalid')).toBe(false);
+        expect(trigger(fine!).hasAttribute('aria-description')).toBe(false);
+        bad!.invalid = false;
+        bad!.errorMessage = '';
+        await settle(page);
+        expect(trigger(bad!).hasAttribute('aria-invalid')).toBe(false);
+        expect(trigger(bad!).hasAttribute('aria-description')).toBe(false);
+    });
+
     it('shows the placeholder, then the date in the locale, and opens a calendar on that date', async () => {
         const page = await mount(`<ge-date-picker date="2026-05-14" locale="de"></ge-date-picker><ge-date-picker placeholder="Birth date"></ge-date-picker>`);
         await settle(page);

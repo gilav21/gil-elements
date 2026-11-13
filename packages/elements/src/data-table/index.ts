@@ -18,3 +18,5 @@ export {
     type FilterBuilderLabels,
 } from './data-table.locales.js';
 export { defaultGetRowId } from './data-table.utils.js';
+export { dateFilterFn, dateRangeFilterFn, multiselectFilterFn, type FilterBuilderColumn } from './data-table-filters.js';
+export type { DateRangePreset } from './data-table-filter-panels.js';
