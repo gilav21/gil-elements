@@ -213,24 +213,24 @@ export class QueryController<T> {
     }
 
     /**
-     * Schedules THE filter announcement, replacing a waiting one (the latest filter change speaks, once, after the edits settled). Server filtering
-     * announces nothing: the rows held are not the matches, and the count of the answer is not known here.
+     * Schedules THE filter announcement, replacing a waiting one (the latest filter change speaks, once, after the edits settled).
      */
     private announce(say: () => void): void {
         this.filterChanged();
-        if (!this.host.config.localFiltering) return;
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             this.cancelAnnounce = undefined;
             say();
         }, FILTER_ANNOUNCE_MS);
     }
 
-    /** The global filter's result announcement (the typed filter, or a restored view state's global text). */
+    /** The global filter's result announcement (the typed filter, or a restored view state's global text): main's rule, server filtering too. */
     private announceGlobal(value: string): void {
         const { resolvedLocale: locale } = this.host;
         this.announce(() => {
             if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
-            const count = this.output().filtered.length;
+            // Server filtering: the held rows are not the matches, so use the server's total or say nothing.
+            const count = this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total;
+            if (count === undefined) return;
             this.host.announce(interpolate(count === 1 ? locale.filterResultAnnouncement : locale.filterResultsAnnouncement, { count, value }));
         });
     }
@@ -244,6 +244,9 @@ export class QueryController<T> {
     /** The overall result of the column and advanced filters (also a restored view state): the matching rows, or that every filter is cleared. */
     private announceFilters(): void {
         const { config, model, resolvedLocale: locale } = this.host;
+        // Server filtering: the rows held are not the matches and the answer's count is not known here, so a column / advanced filter change
+        // announces nothing (it still replaces a waiting announcement).
+        if (!config.localFiltering) return this.filterChanged();
         this.announce(() => {
             if (!anyFilterOn(config.columns, model.get('columnFilters'), countConditions(model.get('advancedFilter')), model.get('globalFilter'))) {
                 return this.host.announce(locale.filtersClearedAnnouncement);

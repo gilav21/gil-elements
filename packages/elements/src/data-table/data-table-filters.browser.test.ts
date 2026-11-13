@@ -466,13 +466,12 @@ describe('round 8', () => {
         expect(announcer(table)).toBe('1 row matches the filters');
     });
 
-    it('server filtering announces no filter result: the rows held are not the matches (round 21)', async () => {
+    it('server filtering announces no COLUMN or ADVANCED filter result: the rows held are not the matches (rounds 21, 22)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }], enableFloatingFilters: true, enableAdvancedFilter: true, localFiltering: false, total: 500 });
         const spoken: string[] = [];
         new MutationObserver(() => spoken.push(announcer(table))).observe(q(table, '[data-slot="data-table-announcer"]'), { childList: true, characterData: true, subtree: true });
         table.addEventListener('query', () => setTimeout(() => Object.assign(table, { data: [...table.data], total: 3 }), 100));
         await typeText(shadow(table.querySelector('[data-kind="filter"] ge-input'), 'input'), 'q');
-        table.provider('query')?.changeGlobalFilter('b');
         table.provider('query')?.changeAdvancedFilter({ type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'a' }] });
         await new Promise((resolve) => setTimeout(resolve, 900));
         await settle(table);

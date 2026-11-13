@@ -907,7 +907,7 @@ describe('ge-data-table review fixes', () => {
         }
     });
 
-    it('announces no server-side filter result, with or without a total (wave 5 round 21: the rows held are not the matches)', async () => {
+    it('announces a server-side filter with the server total, and stays silent without one', async () => {
         const announcement = (table: Element) => q(table, '[data-slot="data-table-announcer"]').textContent!.replaceAll('​', '').trim();
         const type = async (table: GeDataTable<Row>, text: string) => {
             const inner = q(table, '[data-slot="data-table-filter"] ge-input').shadowRoot!.querySelector('input')!;
@@ -916,15 +916,11 @@ describe('ge-data-table review fixes', () => {
             await new Promise((resolve) => setTimeout(resolve, 650));
             await settle(table);
         };
-        const withTotal = await mountTable({ data: many(10), localFiltering: false, localPagination: false, total: 500 });
-        withTotal.addEventListener('query', () => setTimeout(() => Object.assign(withTotal, { data: many(10), total: 77 }), 100));
+        const withTotal = await mountTable({ data: many(10), localFiltering: false, localPagination: false, total: 77 });
         await type(withTotal, 'x');
-        await new Promise((resolve) => setTimeout(resolve, 400));
-        await settle(withTotal);
-        expect(announcement(withTotal)).toBe('');
+        expect(announcement(withTotal)).toBe('77 results found for "x"');
 
         const without = await mountTable({ data: many(10), localFiltering: false, localPagination: false });
-        without.addEventListener('query', () => setTimeout(() => (without.data = many(10)), 0));
         await type(without, 'x');
         expect(announcement(without)).toBe('');
     });
