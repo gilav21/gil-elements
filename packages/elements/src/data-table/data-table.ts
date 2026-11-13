@@ -235,7 +235,8 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
             addons: () => this.addonsService(),
         }),
         dataTableAddons as ReadonlyMap<string, DataTableAddon<T>>,
-        (owner, label) => this.addonsService().setBusy(label, owner),
+        // Optional: a plan without addon-host has no busy overlay, and an addon's busy label (or its clearing at teardown) is a no-op there.
+        (owner, label) => ((this.serviceOf('addons') ?? this.provider('addons')) as AddonsService<T> | undefined)?.setBusy(label, owner),
     );
 
     /** The controller's own `addons` service (it outlives a disconnect, so a teardown can still unregister); the error names the key in a plan without it. */
@@ -423,7 +424,9 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
 
     /** The rows of `data` (in tree mode, of every level) whose id is selected. A selected id with no row any more is kept in `rowSelection` and not counted here. */
     get selectedRows(): T[] {
-        return this.provider('selection')?.selectedRows() ?? [];
+        const selection = this.store.get('rowSelection');
+        if (this.config.enableSubRows) return [...requireProvider(this, 'query').treeIndex().nodes].filter(([id]) => selection[id] === true).map(([, node]) => node as T);
+        return this.store.get('data').filter((row) => selection[this.getRowId(row)] === true);
     }
 
     expandAllGroups(): void {

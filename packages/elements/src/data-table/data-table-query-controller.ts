@@ -288,7 +288,12 @@ export class QueryController<T> {
         cellValue: (row, key, column) => getCellValue(row, key, column),
         exportData: (options = {}, rows) => {
             // `onlyVisible: false`: every data column as defined, hidden ones included, in definition order (Angular `getExportData`, cmp 4190-4202).
-            const columns = options.onlyVisible === false ? this.host.config.columns.filter((c) => !isSpecialColumnKey(c.accessorKey)) : this.visibleDataColumns();
+            // A duplicated key counts once, the first column (as drawn: indexColumns).
+            const all = (): ColumnDef<T>[] => {
+                const seen = new Set<string>();
+                return this.host.config.columns.filter((c) => !isSpecialColumnKey(c.accessorKey) && !seen.has(String(c.accessorKey)) && Boolean(seen.add(String(c.accessorKey))));
+            };
+            const columns = options.onlyVisible === false ? all() : this.visibleDataColumns();
             const body = (rows ?? (options.onlyFiltered === false ? this.host.model.get('data') : this.output().sorted)).map((row) =>
                 columns.map((c) => (c.cell ? c.cell(row) : stringifyValue(getCellValue(row, c.accessorKey, c)))),
             );
@@ -298,7 +303,6 @@ export class QueryController<T> {
         rowId: (row) => this.host.config.getRowId(row),
         applyFilters: ({ globalFilter, columnFilters }) => {
             const { model } = this.host;
-            if (globalFilter !== undefined) this.dropPendingGlobal(); // a typed text still waiting on the debounce would overwrite this one
             // Only the parts given, and only when they differ (per key for the column filters): an equal spec writes nothing, resets no page, fires nothing.
             const globalChanged = globalFilter !== undefined && globalFilter !== model.get('globalFilter');
             const current = model.get('columnFilters');
@@ -308,6 +312,7 @@ export class QueryController<T> {
                     (key) => Object.hasOwn(current, key) !== Object.hasOwn(columnFilters, key) || !sameFilterValue(current[key], columnFilters[key]),
                 );
             if (!globalChanged && !columnsChanged) return;
+            if (globalChanged) this.dropPendingGlobal(); // a typed text still waiting on the debounce would overwrite the one written now
             model.batch(() => {
                 if (globalChanged) model.set('globalFilter', globalFilter);
                 if (columnsChanged) model.set('columnFilters', { ...columnFilters });

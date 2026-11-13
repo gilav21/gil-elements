@@ -204,24 +204,40 @@ export class AddonSet<T = unknown> {
                 return false;
             }
         };
+        // Everything the addon registers through its host (slots, subscriptions) is recorded, so a teardown, or a setup that threw, releases it all;
+        // once the addon is torn down its host registers, emits and subscribes nothing.
+        const owned = new Set<() => void>();
+        const own = (register: () => () => void): (() => void) => {
+            if (!live) return () => undefined;
+            const dispose = register();
+            owned.add(dispose);
+            return () => {
+                if (owned.delete(dispose)) dispose();
+            };
+        };
+        const release = (): void => {
+            live = false;
+            this.apis.delete(id);
+            for (const dispose of [...owned].reverse()) dispose();
+            owned.clear();
+            this.busy?.(id, null); // a busy label the addon left behind goes with it
+        };
         const host = Object.create(this.host, {
             expose: { value: (api: object): void => void (live && this.apis.set(id, api)) },
-            subscribe: { value: (topic: DataTableTopic, fn: () => void) => this.host.subscribe(topic, () => guard(`a '${topic}' listener`, fn)) },
+            subscribe: { value: (topic: DataTableTopic, fn: () => void) => own(() => this.host.subscribe(topic, () => guard(`a '${topic}' listener`, fn))) },
+            registerCellAction: { value: (slot: CellActionSlot<T>) => own(() => this.host.registerCellAction(slot)) },
+            registerHeaderAction: { value: (slot: HeaderActionSlot<T>) => own(() => this.host.registerHeaderAction(slot)) },
+            emit: { value: (name: string, detail?: unknown): void => void (live && this.host.emit(name, detail as never)) },
             setBusy: { value: (label: string | null): void => void (live && (this.busy ? this.busy(id, label) : this.host.setBusy(label))) },
         }) as DataTableAddonHost<T>;
         let teardown: void | (() => void);
-        if (!guard('setup', () => (teardown = addon.setup(host, options)))) {
-            live = false; // a half set-up addon publishes no API
-            this.apis.delete(id);
-        }
+        if (!guard('setup', () => (teardown = addon.setup(host, options)))) release(); // a half set-up addon keeps nothing and publishes no API
         this.active.set(id, {
             addon,
             options,
             teardown: () => {
-                live = false;
-                this.apis.delete(id);
-                if (teardown) guard('teardown', teardown);
-                this.busy?.(id, null); // a busy label the addon left behind goes with it
+                if (live && teardown) guard('teardown', teardown);
+                release();
             },
         });
     }

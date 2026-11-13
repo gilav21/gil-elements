@@ -175,7 +175,11 @@ function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInde
     // The open editor (wave 5) takes the place of the plain content; the tree-host wrapper stays around it.
     // `undefined` is "not drawn by the editor view"; a `null` (an editRenderer that draws nothing) is the editor's answer and stays.
     const editor = editing ? v.edit.cell(c, row, rowIndex) : undefined;
-    const content = editor !== undefined ? editor : plainContent(v, c, row, rowIndex);
+    let content = editor !== undefined ? editor : plainContent(v, c, row, rowIndex);
+    if (String(c.accessorKey) === '_actions' && v.actions.consumerColumn) {
+        const buttons = v.actions.cell(row, rowIndex, v.isDisabled(row), v.roving); // wave 7: a consumer's actions column, then the addons' buttons
+        if (buttons !== undefined) content = html`${content}${buttons}`;
+    }
     return node && String(c.accessorKey) === v.treeHost ? treeHostCell(v, node, content) : content;
 }
 

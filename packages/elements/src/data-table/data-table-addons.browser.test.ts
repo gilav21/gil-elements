@@ -155,6 +155,55 @@ describe('a throwing addon', () => {
     });
 });
 
+describe('what an addon registered goes with it (final review)', () => {
+    it('a setup that registers a row action and then throws leaves no button', async () => {
+        const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const table = await mountTable();
+        table.use({
+            id: uniqueId(),
+            setup: (host) => {
+                host.registerCellAction({ id: 'half', onClick: () => undefined });
+                throw new Error('after registering');
+            },
+        });
+        await settle(table);
+        expect(table.querySelector('[data-action-id="half"]')).toBeNull();
+        expect(table.querySelector('[data-column="_actions"]')).toBeNull();
+        error.mockRestore();
+    });
+
+    it('a host kept after the teardown registers, emits and subscribes nothing', async () => {
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable();
+        table.use(addon);
+        const stale = runs[0]!.host;
+        table.remove();
+        stale.registerCellAction({ id: 'late', onClick: () => undefined });
+        stale.registerHeaderAction({ id: 'late-head', onClick: () => undefined });
+        const heard = vi.fn();
+        table.addEventListener('late-event', heard);
+        stale.emit('late-event');
+        const listener = vi.fn();
+        stale.subscribe('locale', listener);
+        document.body.append(table);
+        await settle(table);
+        table.locale = 'en-GB';
+        await settle(table);
+        expect(table.querySelector('[data-action-id="late"], [data-action-id="late-head"]')).toBeNull();
+        expect(heard).not.toHaveBeenCalled();
+        expect(listener).not.toHaveBeenCalled();
+        table.remove();
+    });
+});
+
+describe('the selectedRows getter (final review)', () => {
+    it('answers on a table that was never connected, from data and rowSelection', () => {
+        const table = document.createElement('ge-data-table') as GeDataTable<SampleRow>;
+        Object.assign(table, { columns: SAMPLE_COLUMNS, data: SAMPLE_ROWS, rowSelection: { b: true, c: true } });
+        expect(table.selectedRows.map((r) => r.id)).toEqual(['b', 'c']);
+    });
+});
+
 describe('the addons attribute, addonOptions and addon()', () => {
     it('starts a registered addon named in the attribute, with its options, and restarts it when they change', async () => {
         const name = uniqueId();
@@ -264,8 +313,23 @@ describe('the action buttons addons register', () => {
         await settle(table);
         expect(first()).toBe('true');
         table.remove();
+        const update = vi.spyOn(table, 'requestUpdate');
         expect(() => host.requestRender()).not.toThrow();
-        expect(table.isUpdatePending).toBe(false);
+        expect(update).not.toHaveBeenCalled();
+    });
+
+    it("draws a consumer's own actions column content followed by the addon buttons, and only the content on a disabled row (final review)", async () => {
+        const { addon, runs } = probe(uniqueId());
+        const columns = [...SAMPLE_COLUMNS, { accessorKey: '_actions', header: '', cellRenderer: () => 'mine' }];
+        const table = await mountTable({ columns, isRowDisabled: (row: SampleRow) => row.id === 'c' });
+        table.use(addon);
+        runs[0]!.host.registerCellAction({ id: 'menu', onClick: () => undefined });
+        await settle(table);
+        const cells = qa(table, '[data-slot="table-cell"][data-column="_actions"]');
+        expect(cells.map((c) => c.textContent?.trim())).toEqual(['mine', 'mine', 'mine', 'mine']);
+        expect(cells.map((c) => c.querySelectorAll('[data-action-id="menu"]').length)).toEqual([1, 1, 0, 1]);
+        const buttonAfterContent = cells[0]!.lastElementChild;
+        expect(buttonAfterContent?.getAttribute('data-action-id')).toBe('menu');
     });
 
     it("leaves a consumer's own actions column as it was while no addon registers a row action", async () => {

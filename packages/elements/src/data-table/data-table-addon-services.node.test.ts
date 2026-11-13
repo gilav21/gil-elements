@@ -24,12 +24,12 @@ const DATA: Row[] = [
     { id: 'r3', name: 'Cy', team: 'x' },
 ];
 
-function setup() {
+function setup({ columns = COLUMNS, filterDebounce = 0, timeout = (fn: () => void) => (fn(), () => undefined) }: { columns?: ColumnDef<Row>[]; filterDebounce?: number; timeout?: (fn: () => void) => () => void } = {}) {
     const events: [string, unknown][] = [];
     const announced: string[] = [];
     const model = new ModelStore<Row>((name, detail) => events.push([name, detail]), { data: DATA, paginationState: { pageIndex: 2, pageSize: 1 } });
     const providers = new Map<string, unknown>();
-    const config = { columns: COLUMNS, getRowId: (r: Row) => r.id, localSorting: true, localPagination: true, localFiltering: true, showPagination: true } as unknown as DataTableConfig<Row>;
+    const config = { columns, filterDebounce, getRowId: (r: Row) => r.id, localSorting: true, localPagination: true, localFiltering: true, showPagination: true } as unknown as DataTableConfig<Row>;
     // The drawn columns: `team` is hidden and `id` is drawn first (a reorder), so definition order and drawn order differ.
     providers.set('columns', { enhancedColumns: () => [COLUMNS[2], COLUMNS[0]] });
     const host = {
@@ -40,7 +40,7 @@ function setup() {
         topics: { emit: () => undefined },
         emit: (name: string, detail: unknown) => events.push([name, detail]),
         announce: (message: string) => announced.push(message),
-        disposables: { timeout: (fn: () => void) => (fn(), () => undefined) }, // announcements speak at once
+        disposables: { timeout }, // by default announcements (and debounced writes) run at once
         resolvedLocale: DATA_TABLE_LOCALES.en,
     } as unknown as DataTableCoreHost<Row>;
     new QueryController(host).attach();
@@ -82,6 +82,22 @@ describe('QueryService wave 7 additions', () => {
         query.applyFilters({ globalFilter: 'Al', columnFilters: { team: ['x'] } });
         expect(events.map(([name]) => name).filter((name) => name === 'filter-change')).toEqual([]);
         expect(model.get('paginationState').pageIndex).toBe(0);
+    });
+
+    it('applyFilters keeps a typed global text still waiting on the debounce when its global text is not written (final review)', () => {
+        const queue = new Set<() => void>();
+        const timeout = (fn: () => void) => (queue.add(fn), () => void queue.delete(fn));
+        const { query, model } = setup({ filterDebounce: 100, timeout });
+        query.changeGlobalFilter('Bo'); // waits on the debounce
+        query.applyFilters({ globalFilter: '', columnFilters: { team: 'x' } }); // '' is the current text: not written
+        for (const fn of [...queue]) fn();
+        expect(model.get('globalFilter')).toBe('Bo');
+        expect(model.get('columnFilters')).toEqual({ team: 'x' });
+    });
+
+    it('exportData with onlyVisible: false draws a duplicated key once, the first column (final review)', () => {
+        const { query } = setup({ columns: [...COLUMNS, { accessorKey: 'name', header: 'Name again' }] });
+        expect(query.exportData({ onlyVisible: false }, [DATA[0] as Row])[0]).toEqual(['Name', 'Team', 'Id']);
     });
 
     it('applyFilters keeps what the spec leaves out', () => {

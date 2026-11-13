@@ -160,6 +160,10 @@ One entry pair per addon, no addon imports the core element, core imports no add
 
 All values are estimates before any build; the one measured fact is the xlsx source (2.4 KB gzip unminified). The gate adds each line from a measurement plus 5% as everywhere. A bigger risk than any of these: an addon that statically imports a core module that is a large shared chunk (the `data-table.utils.ts` case, step 0.1) silently costs tens of KB on its own entry; the review checklist item is "build, open the entry's static import list in `size.mjs --verbose`, no `chunks/data-table-*`".
 
+### Step 0 follow-ups (triaged out of PR #76)
+- The throwing-addon report (`reportOncePer`) is keyed per addon id, so a later, different failure of the same addon (another phase) is swallowed.
+- The base addon host (`createAddonHost`, outside an `AddonSet`) has a no-op `expose` and sets busy under the owner `''`.
+
 ## H. Work packages (strict file ownership after step 0)
 
 Merge order: Step 0 -> A, B, C, D in parallel (disjoint files) -> integration PR (cross-addon browser tests, `full`-style smoke with all addons on one table, axe, size budget lines, parity cases finalised).
