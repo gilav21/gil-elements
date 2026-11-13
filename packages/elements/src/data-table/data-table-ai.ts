@@ -1,3 +1,14 @@
+/**
+ * The pure half of the AI features (wave 7, package D; Angular cmp 1146-1170, 5058-5100): the request columns, the value-shape hardening of a
+ * compiled filter spec (spec D5, Angular B9), one provider call with cancel and timeout, the row projection and the AI fill loop. No DOM, no
+ * lit: node-tested. The lazy AI part (`lazy/ai.ts`) wires them to the table. Also the NL spec parser (`parseNlFilterSpec`, Angular utils 16-50).
+ */
+// Only `import type` from shared/ai and no import of the filter module: a lazy entry that imports a module the core shares with other entries
+// splits rollup's shared chunks, and every entry pays for the extra chunk boundaries (measured: about +800 B on define.js).
+import type { AiProvider, AiRequest } from '../shared/ai.js';
+import type { ColumnDef } from './data-table.types.js';
+import { asEditableDate, isPlainObject, isSpecialColumnKey } from './data-table.utils.js';
+
 /** A filter spec compiled from a natural-language query by an AI provider. */
 export interface NlFilterSpec {
     globalFilter?: string;
@@ -28,4 +39,119 @@ export function parseNlFilterSpec(raw: string, validColumnKeys: readonly string[
         if (kept.length > 0) spec.columnFilters = Object.fromEntries(kept);
     }
     return spec;
+}
+
+/** A provider that never answers is given up after this long (per request). */
+export const AI_TIMEOUT_MS = 60_000;
+
+/** The columns an NL request describes to the provider (`context.columns`), as Angular: every data column, `{ key, header }`. */
+export const nlColumns = <T>(columns: readonly ColumnDef<T>[]): { key: string; header: string }[] =>
+    columns.filter((c) => !isSpecialColumnKey(c.accessorKey)).map((c) => ({ key: String(c.accessorKey), header: c.header }));
+
+const isDateish = (v: unknown): boolean => (typeof v === 'string' || typeof v === 'number') && asEditableDate(v) !== null;
+const isRangeEnd = (v: unknown): boolean => v == null || isDateish(v);
+
+/**
+ * The value fits the column's filter: the built-in multiselect panel takes an array of primitives, the date panel a date (ISO string or timestamp),
+ * the date-range panel `{ start, end }` (dates or open ends, nothing else); a column filtered by the default text match takes a string or a finite
+ * number. A consumer's own `filterFn` or panel decides its own shapes: its value passes as given.
+ */
+export function fitsFilter<T>(column: ColumnDef<T>, value: unknown): boolean {
+    const panel = column.filterComponent?.toLowerCase(); // the built-in panels (BUILT_IN_FILTER_PANELS), whatever the tag's case
+    if (panel === 'ge-data-table-multiselect-filter') return Array.isArray(value) && value.every((v) => v === null || typeof v !== 'object');
+    if (panel === 'ge-data-table-date-filter') return isDateish(value);
+    if (panel === 'ge-data-table-date-range-filter') {
+        return isPlainObject(value) && Object.keys(value).every((k) => k === 'start' || k === 'end') && isRangeEnd(value['start']) && isRangeEnd(value['end']);
+    }
+    if (column.filterFn || column.filterComponent) return true;
+    return typeof value === 'string' || Number.isFinite(value);
+}
+
+/** `spec` without the column filters whose value does not fit the column's filter (`fitsFilter`); an emptied record is dropped. */
+export function hardenSpec<T>(spec: NlFilterSpec, columns: readonly ColumnDef<T>[]): NlFilterSpec {
+    if (!spec.columnFilters) return spec;
+    const kept = Object.entries(spec.columnFilters).filter(([key, value]) => {
+        const column = columns.find((c) => String(c.accessorKey) === key);
+        return column !== undefined && fitsFilter(column, value);
+    });
+    const { columnFilters: _, ...rest } = spec;
+    return kept.length > 0 ? { ...rest, columnFilters: Object.fromEntries(kept) } : rest;
+}
+
+/**
+ * Runs one request and answers its LAST emission (an async iterable emits the full text so far). Rejects with the signal's reason once `signal`
+ * aborts or `ms` pass, even when the provider ignores `request.signal`; the provider gets the combined signal.
+ */
+export async function askAi(provider: AiProvider, request: Omit<AiRequest, 'signal'>, signal: AbortSignal, ms = AI_TIMEOUT_MS): Promise<string> {
+    const combined = AbortSignal.any([signal, AbortSignal.timeout(ms)]);
+    combined.throwIfAborted();
+    let onAbort: () => void = () => undefined;
+    const aborted = new Promise<never>((_, reject) => {
+        onAbort = () => reject(combined.reason);
+        combined.addEventListener('abort', onAbort, { once: true });
+    });
+    const answer = (async () => {
+        // `runAiTask` (shared/ai.ts) inlined: a string or a promise is the answer, an async iterable's last emission is.
+        const result = provider({ ...request, signal: combined });
+        if (typeof result === 'string' || result instanceof Promise) return result;
+        let last = '';
+        for await (const text of result) last = text;
+        return last;
+    })();
+    try {
+        return await Promise.race([answer, aborted]);
+    } finally {
+        combined.removeEventListener('abort', onAbort);
+        answer.catch(() => undefined); // a provider rejecting after the abort is not an unhandled rejection
+    }
+}
+
+/** What the provider sees of a row: only `columns` when given (own keys only; a class instance too), else the whole row. */
+export const projectRow = (row: unknown, columns?: readonly string[]): unknown =>
+    columns && typeof row === 'object' && row !== null
+        ? Object.fromEntries(columns.filter((k) => Object.hasOwn(row, k)).map((k) => [k, (row as Record<string, unknown>)[k]]))
+        : row;
+
+export interface FillPorts<T> {
+    /** The provider's answer for `row`. */
+    ask(row: T): Promise<string>;
+    /** Writes one batch (in row order) and answers each cell's status. */
+    write(batch: readonly { row: T; value: string }[]): readonly ('written' | 'rejected' | 'skipped')[];
+    /** After each batch: `done` rows of `total` asked. */
+    progress(done: number, total: number): void;
+    /** Checked after each answer: an aborted run writes nothing more. */
+    readonly signal: AbortSignal;
+}
+
+export interface FillResult {
+    count: number;
+    rejected: number;
+    skipped: number;
+    failed?: boolean;
+    error?: unknown;
+}
+
+/**
+ * The AI fill loop: `concurrency` requests at a time, each batch written once all its answers are in (row order kept). A rejected request or an
+ * abort stops the run; what was written stays. Never rejects: the failure is in the result.
+ */
+export async function runFill<T>(rows: readonly T[], concurrency: number, ports: FillPorts<T>): Promise<FillResult> {
+    const result: FillResult = { count: 0, rejected: 0, skipped: 0 };
+    const size = Math.max(1, Math.floor(concurrency) || 1);
+    try {
+        for (let at = 0; at < rows.length; at += size) {
+            const batch = rows.slice(at, at + size);
+            const values = await Promise.all(batch.map((row) => ports.ask(row)));
+            ports.signal.throwIfAborted();
+            for (const status of ports.write(batch.map((row, i) => ({ row, value: values[i] as string })))) {
+                if (status === 'written') result.count++;
+                else result[status]++;
+            }
+            ports.progress(at + batch.length, rows.length);
+        }
+    } catch (error) {
+        result.failed = true;
+        result.error = error;
+    }
+    return result;
 }

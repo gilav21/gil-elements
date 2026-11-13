@@ -1,4 +1,5 @@
 import { AddonHostController } from './data-table-addon-host-controller.js';
+import { AiController } from './data-table-ai-controller.js';
 import { AriaController } from './data-table-aria-controller.js';
 import { CellInteractionController } from './data-table-cell-interaction-controller.js';
 import { ClipboardController } from './data-table-clipboard-controller.js';
@@ -52,7 +53,8 @@ export function createFactories<T>(): DataTableControllerFactories<T> {
         // wave 6, package C (drag and flash): row-drag
         'row-drag': (host) => new RowDragController(host),
 
-        // wave 7, package D (AI): ai (its line goes here)
+        // wave 7, package D (AI): ai
+        ai: (host) => new AiController(host),
 
         // wave 7, step 0: addon-host
         'addon-host': (host) => new AddonHostController(host),
