@@ -12,8 +12,8 @@
 import { type AutoScrollController, startAutoScroll } from '../../shared/auto-scroll.js';
 import { CONTROLS_SELECTOR } from '../../shared/interactive-tags.js';
 import { interpolate } from '../../shared/interpolate.js';
-import { editorOpen, inTextField, onGrid } from '../data-table-clipboard-grid.js';
-import { type DataTableCoreHost, ownClosest, ownElements, ownEvents } from '../data-table-host.js';
+import { editorOpen, onGrid } from '../data-table-clipboard-grid.js';
+import { type DataTableCoreHost, isTextFieldKey, ownClosest, ownElements, ownEvents, VIEWPORT } from '../data-table-host.js';
 import type { RowDragState } from '../data-table-providers.js';
 import { KEY_PRIORITY } from '../data-table-registry.js';
 import { buildRowReorderEvent, dropEdge, dropPosition, siblingMove } from '../data-table-row-reorder.js';
@@ -21,7 +21,6 @@ import type { RowDragPosition, RowReorderEvent } from '../data-table.types.js';
 import { reportOncePer } from '../data-table-warn.js';
 
 const ROW = '[data-slot="table-row"][data-kind="data"]';
-const VIEWPORT = '[data-slot="data-table-viewport"]';
 /** The private payload type: a drop from another table or another page carries none of this table's state and is ignored anyway. */
 const MIME = 'application/x-ge-data-table-row';
 /** Distance from the viewport edge (px) where a drag auto-scrolls (Angular's 40 px edge zone). */
@@ -128,7 +127,7 @@ export class RowDragPart<T> {
             config.loading ||
             row === undefined ||
             (this.host.provider('selection')?.isDisabled(row) ?? false) ||
-            inTextField(root, event) || // a text selection's own drag
+            isTextFieldKey(root, event) || // a text selection's own drag
             origin.closest?.(CONTROLS_SELECTOR) != null || // a control's own drag
             this.host.provider('interaction')?.editingCell?.()?.rowIndex === index; // an editor is open in the row
         if (refused) {

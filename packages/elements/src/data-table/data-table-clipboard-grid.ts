@@ -6,7 +6,7 @@
  * Angular: `copyCellToClipboard`, `copyRowToClipboard`, `copySelectedToClipboard`, `copyCellRangeToClipboard`, `copyAllToClipboard`, `handleCopyKeydown`.
  */
 import { cellText } from './data-table-cells.js';
-import { type CellAddress, type DataTableCoreHost, ownClosest, ownsTarget } from './data-table-host.js';
+import { type CellAddress, type DataTableCoreHost, isTextFieldKey, ownClosest, ownsTarget, VIEWPORT } from './data-table-host.js';
 import type { NormalizedRange } from './data-table-range.js';
 import type { ColumnDef } from './data-table.types.js';
 
@@ -95,15 +95,6 @@ export const gridCells = (grid: readonly (readonly string[])[]): number => grid.
 
 /** A body cell of the table. */
 export const CELL_SELECTOR = '[data-slot="table-cell"]';
-const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
-
-/**
- * The event comes from a text field (an editor, a filter box, a detail-row input, one inside a consumer component's open shadow root): its copy and paste
- * are the browser's, never the grid's. The same test as the navigation keys: a field of this table (`ownClosest`), or the deepest node of the path.
- */
-export function inTextField(root: Element, event: Event): boolean {
-    return ownClosest(root, event.target, TEXT_FIELD) !== null || ((event.composedPath()[0] as Element | undefined)?.matches?.(TEXT_FIELD) ?? false);
-}
 
 /**
  * The user selected TEXT over what the grid would copy (a non-collapsed selection that intersects one of `cells`: the focused cell, the cells in the
@@ -120,15 +111,14 @@ export function selectsGridText(root: Element, cells: readonly Element[]): boole
     return false;
 }
 
-const VIEWPORT = '[data-slot="data-table-viewport"]';
-
 /**
  * A grid key (the clipboard's Ctrl/Cmd+C / V, the range keys, the row move): typed on a body cell of THIS table or on its viewport or root (the roving
- * focus, a grid with nothing focused), never in a text field. A header control, the readout's button, a toolbar or pager control keep their keys.
+ * focus, a grid with nothing focused), never in a text field (`isTextFieldKey`, the host's one rule). A header control, the readout's button, a toolbar or
+ * pager control keep their keys.
  */
 export function onGrid(root: Element, event: Event): boolean {
     const target = event.target as Element | null;
-    if (!target || !ownsTarget(root, target) || inTextField(root, event)) return false;
+    if (!target || !ownsTarget(root, target) || isTextFieldKey(root, event)) return false;
     return target === root || target.matches?.(VIEWPORT) === true || ownClosest(root, target, CELL_SELECTOR) !== null;
 }
 

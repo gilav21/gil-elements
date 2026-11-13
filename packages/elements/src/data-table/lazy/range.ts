@@ -25,7 +25,7 @@ import type { InteractionContext, PointerPress } from '../data-table-cell-sessio
 import { CELL_SELECTOR, onGrid } from '../data-table-clipboard-grid.js';
 import { buildFillValues } from '../data-table-fill.js';
 import { fillOutcome, type FillInput, planFill, repeatFirst } from '../data-table-fill-apply.js';
-import { type CellAddress, cellAddressOf, ownClosest, ownElements, ownsTarget } from '../data-table-host.js';
+import { type CellAddress, cellAddressOf, ownClosest, ownElements, ownsTarget, VIEWPORT } from '../data-table-host.js';
 import { ensureIconElement } from '../data-table-icons.js';
 import { NAVIGATION_KEYS } from '../data-table-keys.js';
 import { interpolate } from '../data-table.locales.js';
@@ -46,7 +46,6 @@ import { KEY_PRIORITY } from '../data-table-registry.js';
 import type { CellRange, ColumnDef, RangeAggregateStats, RangeChartPayload } from '../data-table.types.js';
 import { isSpecialColumnKey } from '../data-table.utils.js';
 
-const VIEWPORT = '[data-slot="data-table-viewport"]';
 const OVERLAY = '[data-pointer-transparent]';
 const HANDLE = '[data-slot="fill-handle"]';
 const ROW = '[data-row-index]';

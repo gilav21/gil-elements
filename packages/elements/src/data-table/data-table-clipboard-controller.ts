@@ -1,5 +1,5 @@
-import { clipboardEventForGrid, type CopyScope, type CopySource, copyGrid, editorOpen, gridCells, inTextField, keyboardCopyGrid, onGrid, pasteStart, selectsGridText } from './data-table-clipboard-grid.js';
-import { type DataTableCoreHost, ownElements, requireProvider } from './data-table-host.js';
+import { clipboardEventForGrid, type CopyScope, type CopySource, copyGrid, editorOpen, gridCells, keyboardCopyGrid, onGrid, pasteStart, selectsGridText } from './data-table-clipboard-grid.js';
+import { type DataTableCoreHost, isTextFieldKey, ownElements, requireProvider } from './data-table-host.js';
 import { lazyPart } from './data-table-lazy.js';
 import { interpolate } from './data-table.locales.js';
 import type { ClipboardResult, ClipboardService } from './data-table-providers.js';
@@ -190,7 +190,7 @@ export class ClipboardController<T> {
      */
     private onNativeCopy(event: ClipboardEvent): void {
         const { host } = this;
-        if (event.defaultPrevented || !host.config.enableCopy || !event.clipboardData || inTextField(host.root, event)) return;
+        if (event.defaultPrevented || !host.config.enableCopy || !event.clipboardData || isTextFieldKey(host.root, event)) return;
         if (!clipboardEventForGrid(host.root, event) || this.copiesSelectedText()) return;
         const grid = keyboardCopyGrid(this.source());
         if (!grid) return;
@@ -249,7 +249,7 @@ export class ClipboardController<T> {
      */
     private onNativePaste(event: ClipboardEvent): void {
         const { host } = this;
-        if (event.defaultPrevented || !host.config.enableClipboardPaste || editorOpen(host) || inTextField(host.root, event)) return;
+        if (event.defaultPrevented || !host.config.enableClipboardPaste || editorOpen(host) || isTextFieldKey(host.root, event)) return;
         if (!clipboardEventForGrid(host.root, event)) return;
         const target = this.target();
         if (!target) return;
