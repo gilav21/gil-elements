@@ -2,11 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 import type { InteractionContext } from './data-table-cell-session.js';
 import { RangeSession } from './data-table-range-session.js';
 import { RangePart } from './lazy/range.js';
+import { Disposables, TopicBus } from '../shared/registry.js';
 
 function session(columns: { accessorKey: string }[], rows = 10) {
     const requestRender = vi.fn();
     const config = { columns, enableCellRangeSelection: true, enableFillHandle: false };
-    const context = { host: { config, requestRender }, rowCount: () => rows } as unknown as InteractionContext<unknown>;
+    // What the real range part needs when it attaches (wave 6 A: its key handler, its listeners on the root, the providers and topics it reads).
+    const host = { config, requestRender, addKeyHandler: () => () => undefined, disposables: new Disposables(), root: new EventTarget(), topics: new TopicBus(), provider: () => undefined };
+    const context = { host, rowCount: () => rows, afterRender: () => undefined } as unknown as InteractionContext<unknown>;
     return { range: new RangeSession(context), requestRender, config };
 }
 

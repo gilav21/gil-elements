@@ -174,7 +174,7 @@ it('a range part whose attach() reads the range service sees the HELD range, not
 
     it('lets the copy methods resolve to the ClipboardResult, so a caller can tell what happened', async () => {
         const table = await mountTable();
-        expect(await table.copyCellToClipboard()).toEqual({ status: 'unavailable' }); // the step 0 service
+        expect(await table.copyCellToClipboard()).toEqual({ status: 'empty' }); // the real service: no focused cell, nothing to copy
         const service = table.provider('clipboard') as { copy(scope: string): Promise<unknown> };
         service.copy = (scope) => Promise.resolve({ status: scope === 'all' ? 'denied' : 'done', cells: 1 });
         expect(await table.copyAllToClipboard()).toEqual({ status: 'denied', cells: 1 });
@@ -213,6 +213,7 @@ it('a range part whose attach() reads the range service sees the HELD range, not
     });
 
     it('draws nothing of range mode with the range flag on and the (empty) step 0 part loaded, and isCellSelected reports the focused cell', async () => {
+        vi.spyOn(RangePart.prototype, 'active').mockReturnValue(false); // a loaded part that does not handle ranges (the step 0 part; wave 6's answers true)
         const table = await mountTable({ enableCellRangeSelection: true });
         table.focusCell(1, 'name');
         await settle(table);
@@ -226,6 +227,7 @@ it('a range part whose attach() reads the range service sees the HELD range, not
     });
 
     it('blocks text selection on the viewport only while range selection is active: the flag alone with the inert part leaves it selectable', async () => {
+        vi.spyOn(RangePart.prototype, 'active').mockReturnValue(false); // an inert loaded part (the step 0 part; wave 6's answers true)
         const table = await mountTable({ enableCellRangeSelection: true });
         await settle(table);
         await frames(3);

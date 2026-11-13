@@ -610,6 +610,10 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         return this.copyToClipboard('selected');
     }
 
+    /**
+     * Copies the selected cell range as TSV (no header, drawn column order). Like Angular's (cmp 4514) it ignores `enable-copy`: it is the one copy
+     * method a consumer calls on purpose for a range, so it answers `ignored` never, `empty` without a range.
+     */
     copyCellRangeToClipboard(): Promise<ClipboardResult> {
         return this.copyToClipboard('range');
     }

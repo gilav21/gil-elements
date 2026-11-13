@@ -4,6 +4,7 @@ import type { InteractionContext } from './data-table-cell-session.js';
 import { EditSession, NEUTRAL_EDIT } from './data-table-edit-session.js';
 import { NEUTRAL_RANGE, RangeSession } from './data-table-range-session.js';
 import { RangePart } from './lazy/range.js';
+import { Disposables, TopicBus } from '../shared/registry.js';
 
 const DIRECTORY = new URL('.', import.meta.url);
 const SOURCES = readdirSync(DIRECTORY).filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'));
@@ -20,7 +21,9 @@ function rangeContext(flags: Flags, { focused = null, rowCount = 10, keys = ['a'
     const requestRender = vi.fn();
     // `config.columns` is every column of the table (what a range may name); `focusableKeys` only the visible ones (what is drawn)
     const config = Object.assign(flags, { columns: keys.map((accessorKey) => ({ accessorKey })) });
-    const context = { host: { config, requestRender }, focused: () => focused, rowCount: () => rowCount, focusableKeys: () => visible } as unknown as InteractionContext<unknown>;
+    // What the real range part needs when it attaches (wave 6 A: its key handler, its listeners on the root, the providers and topics it reads).
+    const host = { config, requestRender, addKeyHandler: () => () => undefined, disposables: new Disposables(), root: new EventTarget(), topics: new TopicBus(), provider: () => undefined };
+    const context = { host, focused: () => focused, rowCount: () => rowCount, focusableKeys: () => visible, afterRender: () => undefined } as unknown as InteractionContext<unknown>;
     return { context, requestRender, flags };
 }
 const on: Flags = { enableCellRangeSelection: true, enableFillHandle: false };
@@ -161,8 +164,9 @@ describe('the range held by the shell', () => {
         expect(session.rangeService.range()).toEqual(range);
         const loaded = (): unknown => (session as unknown as { lazy: { part: unknown } }).lazy.part;
         await vi.waitFor(() => expect(loaded()).not.toBeNull());
-        // the empty step 0 part is loaded and attached but handles no range: not active, so range mode is not drawn
-        expect(session.rangeService.active()).toBe(false);
+        // the part (wave 6: it handles ranges, so it is active) holds the range the shell handed it
+        expect(session.rangeService.active()).toBe(true);
+        expect((loaded() as RangePart<unknown>).getRange()).toEqual(range);
     });
 
     it('applies a range set between attach and load to the part that is built', async () => {
@@ -283,6 +287,7 @@ describe('the range held by the shell', () => {
     });
 
     it('reports the focused cell with the empty step 0 part LOADED too: it is not active, so isCellSelected has no range to answer from', async () => {
+        vi.spyOn(RangePart.prototype, 'active').mockReturnValue(false); // a loaded part that does not handle ranges (the step 0 part; wave 6's answers true)
         const { session } = make({ ...on }, { focused: { rowIndex: 4, columnKey: 'a' } });
         session.rangeService.setRange(range);
         session.hostUpdate();

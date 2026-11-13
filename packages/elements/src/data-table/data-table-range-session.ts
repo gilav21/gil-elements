@@ -9,7 +9,9 @@
  * or kept across a detach and attach (a DOM move disposes the part), is handed to the next part when it is built, and read back from the
  * part before it is disposed. The part keeps the live range while it is attached.
  */
-import type { CellSession, InteractionContext } from './data-table-cell-session.js';
+import type { TemplateResult } from 'lit';
+import type { CellSession, InteractionContext, PointerPress } from './data-table-cell-session.js';
+import type { CellAddress } from './data-table-host.js';
 import { callPart, lazyPart } from './data-table-lazy.js';
 import type { CellInteractionService, RangeService } from './data-table-providers.js';
 import { cellSelectedBy, clampToRows, rangeColumnKeys, rangeModeOn, rangeSelectionDrawn, sameRange, sanitizeCellRange, warnBadRange } from './data-table-range.js';
@@ -60,9 +62,30 @@ export class RangeSession<T> implements CellSession {
 
     constructor(protected readonly context: InteractionContext<T>) {}
 
-    // wave 6: the methods below that answer "nothing" delegate to `this.lazy.part` once the part implements them.
+    /** A call into the part from a path that must not break (a render, a key, a gesture): a part that throws is reported once per key and answers `fallback`. */
+    private ask<R>(key: string, call: (part: RangePart<T>) => R, fallback: R): R {
+        return callPart(this.lazy.part, this.context.host, `range-part-${key}`, call, fallback);
+    }
+
+    /** Range mode is on and the part is loaded: the part answers; otherwise the neutral answer (nothing in range, nothing to fill, no gesture). */
+    private askOn<R>(key: string, call: (part: RangePart<T>) => R, fallback: R): R {
+        return this.rangeOn() ? this.ask(key, call, fallback) : fallback;
+    }
+
+    // Every method of the service is declared here up front (the merged services keep no snapshot); those that need the part delegate to it.
     readonly rangeService: RangeService = {
         ...NEUTRAL_RANGE,
+        normalized: () => this.askOn('normalized', (part) => part.normalized(), null),
+        isInRange: (rowIndex, columnKey) => this.askOn('isInRange', (part) => part.isInRange(rowIndex, columnKey), false),
+        isFillPreview: (rowIndex, columnKey) => this.askOn('isFillPreview', (part) => part.isFillPreview(rowIndex, columnKey), false),
+        edgeOf: (rowIndex, columnKey) => this.askOn('edgeOf', (part) => part.edgeOf(rowIndex, columnKey), ''),
+        extendTo: (rowIndex, columnKey) => this.askOn('extendTo', (part) => part.extendTo(rowIndex, columnKey), undefined),
+        stats: () => this.askOn('stats', (part) => part.stats(), null),
+        chartPayload: () => this.askOn('chartPayload', (part) => part.chartPayload(), null),
+        openChart: () => this.askOn('openChart', (part) => part.openChart(), undefined),
+        fillDownTo: (targetEndRow) => this.askOn('fillDownTo', (part) => part.fillDownTo(targetEndRow), false),
+        fillHandleCell: () => this.askOn('fillHandleCell', (part) => part.fillHandleCell(), null),
+        gestureActive: () => this.ask('gestureActive', (part) => part.gestureActive(), false),
         range: () => this.current(),
         // What the PART says (like `rowDrag.active()`): a loaded part that does not handle ranges yet is not active, so nothing of range mode is drawn.
         active: () => callPart(this.lazy.part, this.context.host, 'range-part-active', (part) => part.active(), false),
@@ -165,10 +188,30 @@ export class RangeSession<T> implements CellSession {
 
     attach(): void {}
 
-    /** The lifecycle: the value maintenance, then the lazy part follows the mode. A FAILED session no longer gets this (it only runs `keepValue`). */
+    /** The lifecycle: the value maintenance, then the lazy part follows the mode and updates itself. A FAILED session no longer gets this (it only runs `keepValue`). */
     hostUpdate(): void {
         this.keepValue();
         this.lazy.sync(this.rangeOn());
+        this.ask('hostUpdate', (part) => part.hostUpdate(), undefined);
+    }
+
+    // The gestures are the part's: a claimed press ends at `onPointerUp` (released on the table) or `onPointerCancel` (cancelled, or released outside);
+    // an unclaimed touch tap is offered at `onPointerUp` too (it ends the range).
+    onPointerDown(event: PointerEvent, at: CellAddress | null, press: PointerPress): boolean {
+        return this.ask('onPointerDown', (part) => part.onPointerDown(event, at, press), false);
+    }
+
+    onPointerCancel(event: PointerEvent | null, press: PointerPress): void {
+        this.ask('onPointerCancel', (part) => part.onPointerCancel(event, press), undefined);
+    }
+
+    /** An unclaimed press released on the table: a touch tap ends the range (the part decides; it never claims). */
+    onPointerUp(event: PointerEvent, at: CellAddress | null, press: PointerPress): boolean {
+        return this.ask('onPointerUp', (part) => part.onPointerUp(event, at, press), false);
+    }
+
+    renderOverlay(): TemplateResult | null {
+        return this.ask('renderOverlay', (part) => part.renderOverlay(), null);
     }
 
     /**
@@ -211,11 +254,11 @@ export class RangeSession<T> implements CellSession {
     }
 
     detach(): void {
-        // A detach keeps the range (a DOM move): the next attach's part gets it back.
-        try {
-            this.held = this.live();
-        } finally {
-            this.lazy.dispose(); // always: a part left attached would be reused by the next attach
-        }
+        // A detach keeps the range (a DOM move): the next attach's part gets it back. The part is disposed FIRST (always: a part left attached would be
+        // reused by the next attach; `lazyPart` guards its detach, so this never throws) and read back after, so a gesture its detach gave back (a range
+        // drag restores the range from before its press) is what is kept.
+        const part = this.lazy.part;
+        this.lazy.dispose();
+        this.held = callPart(part, this.context.host, 'range-part-getRange', (p) => p.getRange(), this.held);
     }
 }

@@ -87,12 +87,14 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
     spec('row-drag', {
         provides: ['rowDrag'],
         needs: ['query', 'columns'],
-        uses: ['virtual', 'selection', 'expansion'],
+        // `interaction`: the focused row of a key move and the open editor; `range`: a reorder clears it.
+        uses: ['virtual', 'selection', 'expansion', 'interaction', 'range'],
         reads: ['rows'],
         writes: ['rows'],
     }),
     // `cell` is written by the flash (wave 6): a flashing cell is a cell state change.
-    spec('formatting', { provides: ['formatting'], needs: ['query', 'columns'], reads: ['rows', 'columns'], writes: ['cell'] }),
+    // `virtual`: the flash snapshot covers the drawn window only.
+    spec('formatting', { provides: ['formatting'], needs: ['query', 'columns'], uses: ['virtual'], reads: ['rows', 'columns'], writes: ['cell'] }),
     spec('footer', { provides: ['footer'], needs: ['query', 'columns'], reads: ['rows', 'columns'] }),
     spec('filter-ui', { provides: ['filters'], needs: ['columns'], uses: ['query'], reads: ['columns', 'locale'] }),
     spec('ai', { needs: ['query', 'columns'], uses: ['interaction'], reads: ['locale'] }),

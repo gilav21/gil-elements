@@ -6,6 +6,7 @@
 import type { CellEditError, ColumnDef, EditingCell } from './data-table.types.js';
 import { asEditableDate, dateOnlyParts, stringifyValue, toLocalDateString, type Ymd } from './data-table.utils.js';
 import { toDateOnlyTimestamp } from './data-table-filters.js';
+import { shortcutLetter } from './data-table-host.js';
 
 /** The editor a column opens, in Angular's precedence (html 207-290): a component, a renderer, then `editType`, else a text input. */
 export type EditKind = 'component' | 'renderer' | 'checkbox' | 'date' | 'select' | 'number' | 'text';
@@ -222,10 +223,7 @@ export function createDoubleTap(delay = 300, slop = 10): DoubleTap {
  */
 export function historyKey(event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'altKey'> & { code?: string }): 'undo' | 'redo' | null {
     if (!(event.ctrlKey || event.metaKey) || event.altKey) return null;
-    // The physical key only for a single NON-ASCII character (a non-Latin layout): ASCII punctuation (`;` where Dvorak has KeyZ) is its own key.
-    const nonLatin = event.key.length === 1 && event.key.charCodeAt(0) > 0x7f;
-    const physical = event.code === 'KeyZ' ? 'z' : event.code === 'KeyY' ? 'y' : '';
-    const key = nonLatin ? physical : event.key.toLowerCase();
+    const key = shortcutLetter(event); // the physical key only for a single non-ASCII character (a non-Latin layout)
     if (key === 'z') return event.shiftKey ? 'redo' : 'undo';
     if (key === 'y' && !event.shiftKey) return 'redo';
     return null;

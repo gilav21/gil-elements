@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mountTable, settle } from './data-table-fixtures.js';
+import { fakeClipboard } from './data-table-input-fixtures.js';
 import { KEY_PRIORITY, type CellAddress, type ClipboardResult, type GeDataTable, type HistoryResult, type StaleChange } from './index.js';
 import { KEY_PRIORITY as registry } from './data-table-registry.js';
 
@@ -173,14 +174,26 @@ describe('clearAdvancedFilter with no query provider', () => {
 });
 
 describe('copy with the feature off', () => {
-    it('answers "ignored" while enable-copy is off (attached or detached), and "unavailable" while it is on and there is no real copy yet', async () => {
+    it('answers "ignored" while enable-copy is off (attached or detached), and the real answers while it is on ("unavailable" with no clipboard API, "done" with one)', async () => {
         const off = await mountTable({ enableCopy: false });
         expect(await off.copyAllToClipboard()).toEqual({ status: 'ignored' });
         expect(await off.copyCellToClipboard()).toEqual({ status: 'ignored' });
         off.remove();
         expect(await off.copyAllToClipboard()).toEqual({ status: 'ignored' });
         const on = await mountTable({ enableCopy: true });
-        expect(await on.copyAllToClipboard()).toEqual({ status: 'unavailable' });
+        const missing = fakeClipboard({ missing: true });
+        try {
+            expect(await on.copyAllToClipboard()).toEqual({ status: 'unavailable' });
+        } finally {
+            missing.restore();
+        }
+        const clipboard = fakeClipboard();
+        try {
+            expect((await on.copyAllToClipboard()).status).toBe('done');
+            expect(clipboard.writes).toHaveLength(1);
+        } finally {
+            clipboard.restore();
+        }
     });
 });
 
@@ -199,15 +212,20 @@ describe('a read-only assignment in TWO tables', () => {
 });
 
 describe('paste with the feature off', () => {
-    it('answers "ignored" while enable-clipboard-paste is off, and "unavailable" with the flag on and no real paste yet', async () => {
+    it('answers "ignored" while enable-clipboard-paste is off, and the real answers with the flag on ("unavailable" with no clipboard API, "ignored" with no target cell)', async () => {
         const off = await mountTable({ enableClipboardPaste: false });
         const service = off.provider('clipboard')!;
         expect(await service.paste()).toEqual({ status: 'ignored' });
         expect(service.pasteText('x')).toEqual({ status: 'ignored' });
-        const on = await mountTable({ enableClipboardPaste: true });
-        const live = on.provider('clipboard')!;
-        expect(await live.paste()).toEqual({ status: 'unavailable' });
-        expect(live.pasteText('x')).toEqual({ status: 'unavailable' });
+        const clipboard = fakeClipboard({ missing: true });
+        try {
+            const on = await mountTable({ enableClipboardPaste: true });
+            const live = on.provider('clipboard')!;
+            expect(await live.paste()).toEqual({ status: 'unavailable' });
+            expect(live.pasteText('x')).toEqual({ status: 'ignored' }); // no focused cell to paste at
+        } finally {
+            clipboard.restore();
+        }
     });
 });
 

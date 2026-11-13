@@ -72,6 +72,18 @@ export const ownClosest = <E extends Element = Element>(root: Element, target: u
 /** The scroll container of the grid (header, body and footer): the element the grid's key chain listens on. */
 export const VIEWPORT = '[data-slot="data-table-viewport"]';
 
+/**
+ * The letter a Ctrl/Cmd shortcut names: `key`, case-insensitively (Shift makes it upper case); for a single NON-ASCII character (a non-Latin layout:
+ * `ש`, `я`) the physical key decides (`code` `KeyA` -> `a`), as the platform's own shortcuts do. ASCII punctuation (`;` where Dvorak has KeyZ) is its
+ * own key. ONE rule for the history keys and the grid's Ctrl/Cmd+A, C and D.
+ */
+export function shortcutLetter(event: { readonly key: string; readonly code?: string }): string {
+    const nonLatin = event.key.length === 1 && event.key.charCodeAt(0) > 0x7f;
+    if (!nonLatin) return event.key.toLowerCase();
+    const code = event.code ?? '';
+    return /^Key[A-Z]$/.test(code) ? code.slice(3).toLowerCase() : '';
+}
+
 /** A field whose keys are its own (typing, its undo, Enter in it): the grid's key handlers never act on an event from one. */
 export const TEXT_FIELD = 'input:not([type="checkbox"], [type="radio"], [type="button"]), textarea, select, [contenteditable]:not([contenteditable="false"])';
 
