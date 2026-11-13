@@ -29,9 +29,10 @@ const uniqueId = (): string => `step0-probe-${++id}`;
 const announcer = (table: Element): string => (q(table, '[data-slot="data-table-announcer"]').textContent ?? '').replace('​', '');
 
 let downloads: DownloadStub | undefined;
-afterEach(() => {
+afterEach(async () => {
     downloads?.restore();
     downloads = undefined;
+    await parkMouse(); // the pointer one test leaves over a table must not hover the next one (memory: pointer leaks across tests)
 });
 
 describe('use() and the addon host', () => {
@@ -311,7 +312,11 @@ describe('the action buttons addons register', () => {
         await settle(table);
         const kebab = headCell(table, 'name').querySelector<HTMLElement>('[data-action-id="col"]')!;
         expect(kebab.dataset['slot']).toBe('data-table-header-action');
-        expect(getComputedStyle(kebab).opacity).toBe('0');
+        await parkMouse();
+        // Files that emulate touch share the browser and can leave a touch-only pointer behind (`hover: none`), which shows the button at all
+        // times (the CSS rule for touch); with a hovering pointer parked away it is hidden (as in toast.browser.test.ts).
+        const touchOnly = matchMedia('(hover: none)').matches;
+        await expect.poll(() => getComputedStyle(kebab).opacity).toBe(touchOnly ? '1' : '0');
         await mouseDrag(kebab, headCell(table, 'age'), { holdMs: 100 });
         await settle(table);
         expect(table.columnOrder).toEqual([]);
