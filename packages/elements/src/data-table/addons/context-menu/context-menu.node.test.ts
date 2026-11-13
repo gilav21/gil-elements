@@ -155,7 +155,7 @@ describe('the slots', () => {
         const headerOnly = fakeHost();
         contextMenuAddon.setup(headerOnly.host, { columnMenu: true });
         expect([headerOnly.cells.size, headerOnly.heads.size]).toEqual([0, 1]);
-        expect(headerOnly.listened.mock.calls.map((c) => c[0])).toEqual(['pointerdown']); // the ⋮ toggle only, no gesture
+        expect(headerOnly.listened.mock.calls.map((c) => c[0])).toEqual(['pointerdown', 'pointerup', 'pointercancel', 'keydown']); // the ⋮ toggle only, no gesture
     });
 
     it('a bound menu alone takes the gestures but adds no button', () => {

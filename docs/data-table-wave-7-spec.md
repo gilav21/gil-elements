@@ -194,6 +194,9 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 - The row action context with the tree fields is built in two places (the core's `actionsView` and the addon's gesture path); one builder.
 - The addon's `pointOfEvent` repeats `shared/touch.ts` `pointOf`; reuse it.
 - The addon's module-level `warnOnce` should be `warnOncePer` (per table), like the core's warnings.
+- Core tap focus: `activeAtDown` compares element identity, so a press that begins while a menu already holds focus and ends with focus on that same element still counts as a tap (focus did not "move").
+- The kebab slot's `expanded` builds a full `RowActionContext` per row at every render only to compare ids; pass or compare the row id alone.
+- The DOM protocol helpers (`ownClosest`, cell / row address) are duplicated from `data-table-host.ts`; move the pure ones to a shared module both import.
 
 ## H. Work packages (strict file ownership after step 0)
 

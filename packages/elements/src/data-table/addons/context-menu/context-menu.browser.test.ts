@@ -9,7 +9,7 @@ import { userEvent } from 'vitest/browser';
 import type { ContextMenuHost } from '../../../context-menu/context-menu.js';
 import type { GeDataTable } from '../../data-table.js';
 import { axProps, axTree, cellAt, headCell, mountTable, q, qa, SAMPLE_ROWS, send, settle, type SampleRow } from '../../data-table-fixtures.js';
-import { emulateTouch, frames, parkMouse, press, scrollGrid, touchDrag, touchLongPress, withRtl, withTheme } from '../../data-table-input-fixtures.js';
+import { emulateTouch, frames, mouseDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPress, withRtl, withTheme } from '../../data-table-input-fixtures.js';
 import type { RowActionContext } from '../../data-table.types.js';
 import { contextMenuAddon, type ContextMenuItem, type ContextMenuOptions } from './define.js';
 
@@ -376,6 +376,19 @@ describe('touch', () => {
         }
     });
 
+    it('simple mode with range selection on: a hold on an unselected cell is the range\'s (no menu), a hold on the selected cell opens the built menu', async () => {
+        const table = await mount({ rowActions: ROW_ITEMS }, { enableCellRangeSelection: true });
+        const opened = events(table, 'row-menu-open');
+        await touchLongPress(cellAt(table, 1, 'name')!, 700);
+        await frames(2);
+        expect(builtMenu('row')?.open ?? false).toBe(false);
+        expect(opened).toHaveLength(0);
+        await touchLongPress(cellAt(table, 1, 'name')!, 700);
+        await frames(2);
+        expect(builtMenu('row')!.open).toBe(true);
+        expect(opened).toHaveLength(1);
+    });
+
     it('custom mode with range selection on: a hold on an unselected cell is the range\'s, a hold on the selected cell opens the menu', async () => {
         const menu = ownMenu();
         leftovers.push(menu);
@@ -611,6 +624,57 @@ describe('menu lifecycle', () => {
         } finally {
             native.stop();
         }
+    });
+});
+
+describe('final review fixes (PR #79)', () => {
+    it('an invalid menu selector is no bound menu: warned once, and the built menu still answers the gestures', async () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            const table = await mount({ menu: '##not a selector', rowActions: ROW_ITEMS });
+            await rightClick(cellAt(table, 0, 'name')!);
+            expect(builtMenu('row')!.open).toBe(true);
+            await press('{Escape}');
+            await rightClick(cellAt(table, 1, 'name')!);
+            expect(builtMenu('row')!.open).toBe(true);
+            expect(warn.mock.calls.filter((c) => String(c[0]).includes('selector'))).toHaveLength(1);
+        } finally {
+            warn.mockRestore();
+        }
+    });
+
+    it('a press dragged off the open ⋮ leaves no toggle mark: a later keyboard activation of that ⋮ opens the menu', async () => {
+        const table = await mount({ rowActions: ROW_ITEMS });
+        await userEvent.click(rowButton(table, 1));
+        await frames(2);
+        expect(builtMenu('row')!.open).toBe(true);
+        await mouseDrag(rowButton(table, 1), cellAt(table, 3, 'name')!, { steps: 4 });
+        await frames(2);
+        expect(builtMenu('row')!.open).toBe(false);
+        rowButton(table, 1).focus();
+        await press('{Enter}');
+        await frames(2);
+        expect(builtMenu('row')!.open).toBe(true);
+    });
+
+    it.each([
+        ['simple', 'row-menu-open', {}],
+        ['custom', 'row-context-menu', { menu: 'own' }],
+    ] as const)('%s mode emits %s at the gesture, synchronously, once per gesture', async (_, name, extra) => {
+        const options: ContextMenuOptions<SampleRow> = { rowActions: ROW_ITEMS };
+        if (extra.menu) {
+            const menu = ownMenu();
+            leftovers.push(menu);
+            options.menu = menu;
+        }
+        const table = await mount(options);
+        const heard = events(table, name);
+        const gesture = (cell: Element): boolean => cell.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, cancelable: true, clientX: 30, clientY: 30 }));
+        expect(gesture(cellAt(table, 0, 'name')!)).toBe(false); // taken: the browser's menu is prevented
+        expect(gesture(cellAt(table, 2, 'name')!)).toBe(false);
+        expect(heard).toHaveLength(2); // both, before any frame
+        await frames(2);
+        expect(heard).toHaveLength(2);
     });
 });
 

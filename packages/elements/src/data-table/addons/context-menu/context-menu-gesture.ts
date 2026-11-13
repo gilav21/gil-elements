@@ -43,7 +43,7 @@ export function cellAddress(cell: Element | null): CellAddress | null {
 }
 
 /**
- * Whether the table's range selection will take the touch hold that begins on `cell` (custom mode only): with range selection on and no
+ * Whether the table's range selection will take the touch hold that begins on `cell` (both modes): with range selection on and no
  * editor open, a hold on a data cell that is not selected starts a range; every other hold (a header, a table-owned column, a selected
  * cell, a row's padding) is free to open the menu. Decided at `touchstart`: by the time the hold fires the range may already sit on the cell.
  */

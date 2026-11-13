@@ -130,7 +130,16 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
     const boundMenu = (): ContextMenuHost | undefined => {
         const menu = options.menu;
         if (!menu) return undefined;
-        const found = typeof menu === 'string' ? (root.getRootNode() as Document | ShadowRoot).querySelector(menu) : menu;
+        let found: Element | ContextMenuHost | null = null;
+        try {
+            found = typeof menu === 'string' ? (root.getRootNode() as Document | ShadowRoot).querySelector(menu) : menu;
+        } catch (error) {
+            // An invalid selector is no bound menu (the built menus keep working); said once per table.
+            if (!badSelectorWarned.has(root)) {
+                badSelectorWarned.add(root);
+                console.warn(`[ge-data-table] the context-menu addon's menu selector "${String(menu)}" is invalid; no bound menu is used:`, error);
+            }
+        }
         return found && typeof (found as Partial<ContextMenuHost>).show === 'function' ? (found as ContextMenuHost) : undefined;
     };
 
@@ -167,7 +176,6 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
         showAt(menu, anchor, context);
         openRowId = host.provider('query')?.rowId(context.row) ?? null;
         host.requestRender();
-        host.emit('row-menu-open', context);
     };
 
     const openColumnMenu = (anchor: MenuAnchor, column: ColumnDef<unknown>): void => {
@@ -200,6 +208,13 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
             },
             true,
         );
+        // A press released off its ⋮ (or cancelled) clicks no ⋮, and a key makes no press: neither may leave the mark for a later click (a keyboard activation).
+        const release = (event: Event): void => {
+            if (!(toggled && event.target instanceof Node && toggled.contains(event.target))) toggled = null;
+        };
+        life.listen(root, 'pointerup', release, true);
+        life.listen(root, 'pointercancel', () => (toggled = null), true);
+        life.listen(root, 'keydown', () => (toggled = null), true);
     }
     const wasOpen = (event: Event): boolean => {
         const button = buttonOf(event);
@@ -218,7 +233,9 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
                 onClick: (event, context) => {
                     if (wasOpen(event)) return;
                     const prepared = rowMenuFor(context);
-                    if (prepared) showRowMenu(prepared, buttonAnchor(buttonOf(event)?.getBoundingClientRect(), 'row', rtl(), pointOfEvent(event)), context);
+                    if (!prepared) return;
+                    showRowMenu(prepared, buttonAnchor(buttonOf(event)?.getBoundingClientRect(), 'row', rtl(), pointOfEvent(event)), context);
+                    host.emit('row-menu-open', context);
                 },
             }),
         );
@@ -250,7 +267,7 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
         'touchstart',
         (event) => {
             const target = event.target instanceof Element ? event.target : null;
-            rangeHold = !!boundMenu() && !!target && rangeTakesHold(host.provider('interaction'), cellAddress(ownClosest(root, target, CELL_SELECTOR)));
+            rangeHold = !!target && rangeTakesHold(host.provider('interaction'), cellAddress(ownClosest(root, target, CELL_SELECTOR)));
         },
         { passive: true },
     );
@@ -284,7 +301,8 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
     const onGesture = (gesture: ContextGesture): boolean => {
         if (options.disabled) return false;
         const menu = boundMenu();
-        if (menu && gesture.viaTouch && rangeHold) return false;
+        // Both modes: a touch hold the range selection takes (an unselected data cell while range selection is on) opens no menu.
+        if (gesture.viaTouch && rangeHold) return false;
         const rowEl = ownClosest(root, gesture.target, ROW_SELECTOR);
         if (rowEl) return openForRow(gesture, rowEl, menu);
         return menu ? openForHeader(gesture, menu) : false;
@@ -307,15 +325,16 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
         const context = node ? { ...base, depth: node.depth, isLeaf: node.isLeaf, parentRow: node.parentRow, isExpanded: node.isExpanded } : base;
         const rowMenu = menu ? undefined : rowMenuFor(context);
         if (!menu && !rowMenu) return false;
+        // The event fires at the gesture (as Angular's, while its source event is still being dispatched); only the menu's show waits below.
+        if (rowMenu) host.emit('row-menu-open', context);
+        else host.emit('row-context-menu', { row, index, event: gesture.source, depth: node?.depth, isLeaf: node?.isLeaf, parentRow: node?.parentRow });
         const open = (): void => {
             // The anchor is measured now: the focus move may have scrolled the grid (and redrawn the cell).
             const redrawn = cell ? root.querySelector(`[${ROW_INDEX}="${cell.rowIndex}"][${COLUMN}="${CSS.escape(cell.columnKey)}"]`) : null;
             const at = [cellEl, redrawn, rowEl].find((el) => el?.isConnected) ?? rowEl;
             const anchor = anchorOf(gesture, keyboard, at);
-            if (rowMenu) return showRowMenu(rowMenu, anchor, context);
-            if (!menu) return;
-            host.emit('row-context-menu', { row, index, event: gesture.source, depth: node?.depth, isLeaf: node?.isLeaf, parentRow: node?.parentRow });
-            showAt(menu, anchor, node ? { ...node, row } : row);
+            if (rowMenu) showRowMenu(rowMenu, anchor, context);
+            else if (menu) showAt(menu, anchor, node ? { ...node, row } : row);
         };
         // Both modes move the grid focus to the cell (Angular only in custom mode); the table's own columns keep it where it is. The menu opens after
         // the scroll that focus may cause, which would close it.
@@ -349,6 +368,9 @@ function buttonOf(event: Event): Element | null {
 }
 
 const pointOfEvent = (event: Event): { x: number; y: number } => ({ x: (event as MouseEvent).clientX ?? 0, y: (event as MouseEvent).clientY ?? 0 });
+
+/** Tables whose invalid `menu` selector was already reported. */
+const badSelectorWarned = new WeakSet<Element>();
 
 let warned = false;
 function warnOnce(message: string): void {
