@@ -52,9 +52,10 @@ export class PastePart<T> {
         const { rect } = plan;
         // The write re-sorted or re-filtered the pasted rows (the column pasted into is the sort or filter key): the rectangle would now cover other
         // rows, so no range is left at all.
+        // Otherwise the range becomes the pasted rectangle (D3b), and a single pasted cell is plain focus: no range (a range the paste started from goes).
         const moved = span !== null && rowIdsAt(host, span[0], span[1]).some((id, i) => id !== before[i]);
-        if (moved && rangeModeOn(host.config)) host.provider('range')?.setRange(null);
-        else if (rect && rangeModeOn(host.config) && (rect.endRow > rect.startRow || rect.endCol !== rect.startCol)) host.provider('range')?.setRange(rect);
+        const multi = rect !== null && (rect.endRow > rect.startRow || rect.endCol !== rect.startCol);
+        if (rangeModeOn(host.config)) host.provider('range')?.setRange(!moved && multi ? rect : null);
         host.announce(pasteAnnouncement(host.resolvedLocale, detail.cellsApplied, detail.cellsRejected));
         return { status: 'done', cells: detail.cellsApplied, rejected: detail.cellsRejected };
     }

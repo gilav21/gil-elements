@@ -32,10 +32,11 @@
             outline-offset: -2px;
         }
     }
-    /* Below the pinned cells (10) and the sticky header and footer (20): a handle whose cell scrolls under them never paints over them. */
+    /* Above the focused and pinned cells (10), so they never cover it; below the sticky header and footer (20), so a handle whose cell scrolls under
+       them never paints over them. */
     ge-data-table [data-slot="fill-handle"] {
         position: absolute;
-        z-index: 5;
+        z-index: 15;
         width: 0.625rem;
         height: 0.625rem;
         translate: -50% -50%;

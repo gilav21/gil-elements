@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import type { GeDataTable } from './data-table.js';
 import { axProps, axTree, bodyRows, cellAt, makeColumns, makeRows, mountTable, q, qa, type SampleRow, settle } from './data-table-fixtures.js';
-import { emulateTouch, fakeClipboard, frames, mouseDrag, nativeDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPressDrag, withRtl, withTheme } from './data-table-input-fixtures.js';
+import { dispatchPaste, emulateTouch, fakeClipboard, frames, mouseDrag, nativeDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPressDrag, touchTap, withRtl, withTheme } from './data-table-input-fixtures.js';
 import type { ColumnDef, FillSeriesEvent, RangeChartPayload } from './data-table.types.js';
 import { RangePart } from './lazy/range.js';
 
@@ -421,6 +421,17 @@ describe('the fill handle', () => {
         expect(top?.closest('[data-slot="table-header"]')).not.toBeNull();
     });
 
+    it('is not covered by the focused cell it sits on (fill handle only)', async () => {
+        const table = await mountRange({ enableCellRangeSelection: false, enableFillHandle: true });
+        await focusAt(table, 2, 'score');
+        await vi.waitFor(() => expect(handle(table)).not.toBeNull());
+        await settle(table);
+        const h = handle(table)!.getBoundingClientRect();
+        // a point of the handle that is inside the focused cell (just above-left of the corner)
+        const top = document.elementFromPoint(h.left + h.width / 2 - 2, h.top + h.height / 2 - 2);
+        expect(top?.closest('[data-slot="fill-handle"]')).not.toBeNull();
+    });
+
     it('is hidden with no focus and no range, with the flag off, and follows the focused cell', async () => {
         const table = await mountRange({ enableFillHandle: true });
         expect(handle(table)).toBeNull();
@@ -571,6 +582,38 @@ describe('touch', () => {
         expect(table.provider('range')?.gestureActive()).toBe(false);
     });
 
+    it('a tap on another cell ends a long-press range, and a paste then goes to the tapped cell', async () => {
+        await emulateTouch(true);
+        const table = await mountRange({ enableClipboardPaste: true });
+        await touchLongPressDrag(cell(table, 1, 'name'), cell(table, 2, 'score'), { holdBeforeMs: 650, steps: 4 });
+        await settle(table);
+        expect(table.cellRange).toEqual({ startRow: 1, startCol: 'name', endRow: 2, endCol: 'score' });
+        await touchTap(cell(table, 5, 'label'));
+        await settle(table);
+        expect(table.cellRange).toBeNull();
+        dispatchPaste(cell(table, 5, 'label'), 'Z');
+        await settle(table);
+        expect((table.data as Row[])[5]?.label).toBe('Z');
+        expect((table.data as Row[])[1]?.name).toBe('n1');
+    });
+
+    it('fill handle only: a swipe that scrolls keeps the range a fill left; a tap ends it', async () => {
+        await emulateTouch(true);
+        const table = await mountRange({ enableCellRangeSelection: false, enableFillHandle: true, data: makeRows(60).map((r, i) => ({ ...ROWS[i % 8], ...r })) }, { width: 500, height: 300 });
+        await focusAt(table, 0, 'score');
+        expect(table.fillDownTo(2)).toBe(true);
+        await settle(table);
+        expect(table.provider('range')?.normalized()).not.toBeNull();
+        await touchDrag(cell(table, 1, 'name'), { dx: 0, dy: -80 }, { steps: 6 });
+        await settle(table);
+        expect(table.provider('range')?.normalized()).not.toBeNull();
+        await new Promise((resolve) => setTimeout(resolve, 600)); // let the swipe's fling settle
+        await settle(table);
+        await touchTap(cell(table, 4, 'name'));
+        await settle(table);
+        expect(table.provider('range')?.normalized()).toBeNull();
+    });
+
     it('a long press on a cell that is already selected does not restart the range', async () => {
         await emulateTouch(true);
         const table = await mountRange();
@@ -621,6 +664,21 @@ describe('virtual grid', () => {
         expect(range.startRow).toBe(start);
         expect(range.endRow).toBeLessThan(start - 5); // it followed the rows that scrolled in under the header
         expect(range.endCol).toBe('score');
+    });
+
+    it('keeps growing a fill while the pointer holds over the sticky footer and the grid scrolls under it', async () => {
+        const columns = COLUMNS.map((c) => (c.accessorKey === 'name' ? { ...c, footer: 'Total' } : c));
+        const table = await mountRange({ data: big(), columns, enableVirtualScroll: true, enableCellRangeSelection: false, enableFillHandle: true }, { width: 600, height: 320 });
+        const firstWindow = bodyRows(table).length;
+        await focusAt(table, 0, 'score');
+        await vi.waitFor(() => expect(handle(table)).not.toBeNull());
+        const fills: FillSeriesEvent[] = [];
+        table.addEventListener('fill-series', (event) => fills.push((event as CustomEvent<FillSeriesEvent>).detail));
+        const footer = q(table, '[data-slot="table-footer"]').getBoundingClientRect();
+        await mouseDrag(handle(table)!, { x: footer.left + 150, y: footer.top + footer.height / 2 }, { steps: 4, holdMs: 1200 });
+        await settle(table);
+        expect(fills).toHaveLength(1);
+        expect(fills[0]!.filled.endRow).toBeGreaterThan(firstWindow);
     });
 
     it('is trimmed when the data shrinks and dropped when its column is hidden', async () => {

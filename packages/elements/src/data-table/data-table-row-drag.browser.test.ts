@@ -164,6 +164,17 @@ describe('row drag: flat drop', () => {
 });
 
 describe('row drag: indicators and cleanup', () => {
+    it('clears the indicator when the drag moves off the rows (over the header): no stale line', async () => {
+        const table = await mountDrag();
+        await dragOver(table, 0, 2, 0.75);
+        expect(edge(table)?.dataset['edge']).toBe('bottom');
+        syntheticDrag(q(table, '[data-slot="table-head"]'), 'dragover');
+        await settle(table);
+        expect(edge(table)).toBeNull();
+        syntheticDrag(q(table, VIEWPORT), 'dragend');
+        await settle(table);
+    });
+
     it('flat halves draw a 2px line on the top or bottom edge; the dragged row is ghosted', async () => {
         const table = await mountDrag();
         await dragOver(table, 0, 2, 0.25);

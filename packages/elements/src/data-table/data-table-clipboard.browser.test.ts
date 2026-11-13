@@ -510,6 +510,23 @@ describe('paste', () => {
         void fake;
     });
 
+    it('a single-cell paste from a selected range leaves no range (plain focus), so Ctrl+C then copies the focused cell', async () => {
+        const fake = install();
+        const table = await grid({ enableClipboardPaste: true, enableCellRangeSelection: true });
+        await pasteReady(table);
+        await rangeReady(table);
+        const cell = await focusCell(table, 0, 'name');
+        table.cellRange = { startRow: 0, startCol: 'name', endRow: 3, endCol: 'ok' };
+        await settle(table);
+        dispatchPaste(cell, 'x');
+        await settle(table);
+        expect((table.data as Row[])[0]?.name).toBe('x');
+        expect(table.cellRange).toBeNull();
+        await press('{Control>}c{/Control}');
+        await until(() => fake.writes.length > 0);
+        expect(fake.writes).toEqual(['x']);
+    });
+
     it('a paste that writes no cell (every value refused, or only columns without a setter) emits no cells-paste and keeps the range', async () => {
         const table = await grid({ enableClipboardPaste: true, enableCellRangeSelection: true });
         await pasteReady(table);

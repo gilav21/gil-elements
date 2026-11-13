@@ -317,12 +317,30 @@ export class RangePart<T> {
 
     onPointerDown(event: PointerEvent, at: CellAddress | null, press: PointerPress): boolean {
         if (press.pressed?.matches(HANDLE)) return this.startFill(event, press);
-        // Fill handle only (no range selection): a press on a body cell moves the focus there, so the range a fill or a paste left goes (the handle and a copy follow the new cell).
-        if (!this.context.host.config.enableCellRangeSelection && at && press.startCell) this.setOwn(null);
+        // Fill handle only (no range selection): a mouse or pen press on a body cell moves the focus there, so the range a fill or a paste left goes (the
+        // handle and a copy follow the new cell). A touch is judged at its release (`onPointerUp`): a swipe that scrolls is no tap.
+        if (!this.context.host.config.enableCellRangeSelection && event.pointerType !== 'touch' && at && press.startCell) this.setOwn(null);
         if (event.pointerType === 'touch' || !at || !press.startCell || !this.canSelect() || isSpecialColumnKey(at.columnKey)) return false;
         const extend = event.shiftKey && press.anchor !== null && !isSpecialColumnKey(press.anchor.columnKey);
         this.startRange(extend && press.anchor ? press.anchor : at, at, press, event.clientX, event.clientY);
         return true;
+    }
+
+    /**
+     * An UNCLAIMED press released on the table (the controller offers it at its pointerup): a touch TAP on a body cell (released on the cell it began
+     * on, with no range gesture running) ends the range, like a mouse press does at its pointerdown. A swipe that scrolls ends in a pointercancel, and a
+     * long-press range is still running at the pointerup: neither is a tap. Never claims.
+     */
+    onPointerUp(event: PointerEvent, at: CellAddress | null, press: PointerPress): boolean {
+        // The release of a press THIS part claimed (a range or fill drag) on the table: it commits, as its release outside does (`onPointerCancel`).
+        if (this.drag?.press === press) {
+            this.endDrag(true);
+            return true;
+        }
+        const start = press.startCell;
+        const tap = event.pointerType === 'touch' && !this.drag && at !== null && start !== null && at.rowIndex === start.rowIndex && at.columnKey === start.columnKey;
+        if (tap) this.setOwn(null);
+        return false;
     }
 
     /** The claimed press ended: a pointerup (on the table or outside it) commits, anything else gives the gesture back. */
@@ -418,8 +436,10 @@ export class RangePart<T> {
         if (this.drag !== drag) return;
         const hit = this.hit(drag.x, drag.y);
         if (drag.kind === 'fill') {
-            if (this.fill && hit.row !== null && hit.row !== this.fill.end) {
-                this.fill.end = hit.row;
+            // Over the sticky header or footer (auto-scroll) no row is hit: the row at the body's edge in that direction, as for a range drag.
+            const row = hit.row ?? this.edgeCell(drag.x, drag.y)?.rowIndex ?? null;
+            if (this.fill && row !== null && row !== this.fill.end) {
+                this.fill.end = row;
                 this.changed();
             }
         } else if (drag.anchor) {

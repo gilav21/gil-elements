@@ -730,7 +730,6 @@ Recommendation (D2): **lazy, flag-gated `import()` for range + fill, paste and r
 - **D18. Parallel work with wave 5:** one joint step-0 PR first, frozen shared files, session split, `KEY_PRIORITY` table, merge order 5 then 6 (F.3). Default: yes.
 
 ### Follow-ups (triaged out of PR #74 under the review rules: not user-facing bugs, or narrow edge cases)
-- Paste: the kept `early` native paste is not cleared when `enable-clipboard-paste` turns off, and after a latched part-load failure a native paste is still taken (prevented) though nothing pastes.
 - Clipboard: the native `copy` / `paste` fallback (insecure contexts, no Async Clipboard) ignores an event whose target is this table's viewport or root rather than a cell.
 - Flash: two different strings that read as the same number (`'007'` -> `'7'`) count as unchanged and do not flash.
 - Fill handle: drawn by measuring the cell after layout; drawing it in CSS (a pseudo-element of the corner cell) would need no measuring at all.
@@ -758,6 +757,8 @@ Recommendation (D2): **lazy, flag-gated `import()` for range + fill, paste and r
 - Tree "copy all" copies the root rows only (Angular's `exportData` does the same): check.
 - `--ge-dt-flash-ms` is lost when the host's `style` attribute is replaced by the consumer.
 - Flash: the diff and the new snapshot read every cell twice; one pass could do both.
+- Flash: `restart()` queries each restarted cell (one `querySelector` per cell with a `cssString` selector, as the edit session does, would be cheaper than mapping every row).
+- Range: a per-render snapshot of the range flags instead of three service calls per cell (`isInRange`, `edgeOf`, `isFillPreview`).
 
 ### Candidate Angular bugs (verified only by reading; nothing filed; verify against a running Angular build before filing)
 - **AB1** cmp 4494, 4502 (-> 4256), 4482 (-> 4532) and 4439 (-> 2747): the copy and paste promises are neither awaited nor caught; with permission denied (or `readText` unsupported) the handler has already called `preventDefault`, nothing is copied or pasted, the user gets no feedback and an unhandled rejection is raised.

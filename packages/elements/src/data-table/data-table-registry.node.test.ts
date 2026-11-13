@@ -55,7 +55,7 @@ describe('the plan after the joint step 0 of waves 5 and 6', () => {
     it('stays valid as a whole, and flags a lazy use of a service nobody provides', () => {
         expect(validatePlan(DEFAULT_ORDER)).toEqual([]);
         const withoutRange = DEFAULT_ORDER.map((s) => (s.id === 'cell-interaction' ? { ...s, provides: ['interaction' as const] } : s));
-        expect(validatePlan(withoutRange)).toEqual(["'clipboard' uses 'range', but no controller provides it"]);
+        expect(validatePlan(withoutRange)).toEqual(["'clipboard' uses 'range', but no controller provides it", "'row-drag' uses 'range', but no controller provides it"]);
         const withoutFilters = DEFAULT_ORDER.map((s) => (s.id === 'filter-ui' ? { ...s, provides: [] } : s));
         expect(validatePlan(withoutFilters)).toEqual([]);
     });

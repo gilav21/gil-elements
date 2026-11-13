@@ -181,7 +181,11 @@ export class RowDragPart<T> {
         if (!this.dragged) return; // not this table's drag: not accepted, so no drop happens here
         this.scroller?.update(event.clientX, event.clientY);
         const target = this.targetOf(event);
-        if (!target) return; // over the header, the toolbar: the last target stays
+        if (!target) {
+            // Over the header, the toolbar, a detail row: no drop target here, so no indicator either (none is left on the last row).
+            this.setOver(null);
+            return;
+        }
         const position = this.judge(target.index, target.position);
         if (position === null) {
             if (event.dataTransfer) event.dataTransfer.dropEffect = 'none';

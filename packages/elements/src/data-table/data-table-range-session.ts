@@ -195,14 +195,19 @@ export class RangeSession<T> implements CellSession {
         this.ask('hostUpdate', (part) => part.hostUpdate(), undefined);
     }
 
-    // The gestures are the part's. No `onPointerUp` on purpose: every press this session claims is told its end through `onPointerCancel` (the controller
-    // calls it with the pointerup when the claimant has no `onPointerUp`), so an unclaimed mouse release needs no hit test for this session.
+    // The gestures are the part's: a claimed press ends at `onPointerUp` (released on the table) or `onPointerCancel` (cancelled, or released outside);
+    // an unclaimed touch tap is offered at `onPointerUp` too (it ends the range).
     onPointerDown(event: PointerEvent, at: CellAddress | null, press: PointerPress): boolean {
         return this.ask('onPointerDown', (part) => part.onPointerDown(event, at, press), false);
     }
 
     onPointerCancel(event: PointerEvent | null, press: PointerPress): void {
         this.ask('onPointerCancel', (part) => part.onPointerCancel(event, press), undefined);
+    }
+
+    /** An unclaimed press released on the table: a touch tap ends the range (the part decides; it never claims). */
+    onPointerUp(event: PointerEvent, at: CellAddress | null, press: PointerPress): boolean {
+        return this.ask('onPointerUp', (part) => part.onPointerUp(event, at, press), false);
     }
 
     renderOverlay(): TemplateResult | null {
