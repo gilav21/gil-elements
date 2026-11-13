@@ -24,7 +24,8 @@ export interface ExportRequest<T = unknown> {
      * Which rows, when neither `rows` nor a provider gives them: `'filtered'` (default, Angular) the filtered and sorted rows of every page;
      * `'all'` the unfiltered `data`; `'selected'` the filtered and sorted rows that are selected (a selected row a filter hides is not exported);
      * `'page'` the data rows of the page as drawn. Tree and grouped tables export flat rows (no indentation, no group rows); in a tree table
-     * `'filtered'` and `'selected'` walk the whole filtered tree, children included, whatever is collapsed or paged.
+     * `'filtered'` and `'selected'` walk the whole filtered tree, children included, whatever is collapsed or paged, and `'all'` the whole
+     * unfiltered tree in data order.
      */
     scope?: 'filtered' | 'all' | 'selected' | 'page';
     /** `'visible'` (default) the drawn data columns in drawn order; `'all'` every data column as defined, hidden ones included. */
@@ -246,8 +247,10 @@ class TableExporter<T> {
         const { signal } = request;
         if (provider) return untilAborted(signal ? provider(query.exportQuery(), signal) : provider(query.exportQuery()), signal);
         switch (request.scope) {
-            case 'all':
-                return query.rawRows();
+            case 'all': {
+                const tree = query.flatTree({ unfiltered: true }); // a tree table: every node of `data`, depth-first in data order
+                return tree.length > 0 ? tree : query.rawRows();
+            }
             case 'page':
                 return query.renderedRows();
             case 'selected': {
@@ -272,15 +275,15 @@ class TableExporter<T> {
         this.check(request.signal);
         const query = this.query();
         const options = { onlyVisible: request.columns !== 'all' };
-        const grid: XlsxCell[][] = request.includeHeaders === false ? [] : query.exportData({ ...options, includeHeaders: true }, []);
-        const columns = typed ? query.exportColumns(options) : [];
+        const columns = query.exportColumns(options); // one snapshot: a column hidden or moved during a yield does not change the file
+        const grid: XlsxCell[][] = request.includeHeaders === false ? [] : query.exportData({ ...options, includeHeaders: true }, [], columns);
         for (let start = 0; start < rows.length; start += EXPORT_CHUNK_ROWS) {
             if (start > 0) {
                 await yieldTask();
                 this.check(request.signal);
             }
             const chunk = rows.slice(start, start + EXPORT_CHUNK_ROWS);
-            const cells = query.exportData({ ...options, includeHeaders: false }, chunk);
+            const cells = query.exportData({ ...options, includeHeaders: false }, chunk, columns);
             for (const [i, line] of cells.entries()) grid.push(typed ? this.typedLine(query, columns, chunk[i] as T, line) : line);
         }
         return grid;

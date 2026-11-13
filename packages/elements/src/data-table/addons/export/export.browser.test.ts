@@ -54,6 +54,18 @@ describe('export addon on a real table', () => {
         expect(await api.toCsv({ scope: 'selected' })).toBe('Name,Age\r\nc1,1\r\nc8,8');
     });
 
+    it("exports the whole unfiltered tree with scope 'all', filter or not; 'filtered' fewer (final review)", async () => {
+        const kids = (from: number): SampleRow[] => Array.from({ length: 3 }, (_, i) => ({ id: `c${from + i}`, name: `c${from + i}`, age: from + i }));
+        const data = [1, 2, 3].map((p) => ({ id: `p${p}`, name: `p${p}`, age: p, children: kids(p * 10) }));
+        const { table, api } = await mountWithExport({ data, enableSubRows: true });
+        const count = async (scope: 'all' | 'filtered'): Promise<number> => (await api.toCsv({ scope })).split('\r\n').length - 1;
+        expect(await count('all')).toBe(12);
+        table.globalFilter = 'c2';
+        await settle(table);
+        expect(await count('all')).toBe(12);
+        expect(await count('filtered')).toBeLessThan(12);
+    });
+
     it("leaves hidden columns out, and columns: 'all' puts them back", async () => {
         const { api } = await mountWithExport({ columnVisibility: { age: false } });
         expect((await api.toCsv()).split('\r\n')[0]).toBe('Name');

@@ -30,6 +30,8 @@ interface State {
     page: Row[];
     columns: ColumnDef<Row>[];
     tree: Row[];
+    /** `flatTree({ unfiltered: true })`. */
+    rawTree: Row[];
 }
 
 /** A query service that draws `COLUMNS` (plus the hidden column with `onlyVisible: false`) the way the core does: `cell()` or the stringified value. */
@@ -39,15 +41,15 @@ function fakeQuery(state: State) {
     const value = (row: Row, key: string | keyof Row): unknown => (row as unknown as Record<string, unknown>)[String(key)];
     const query = {
         sortedData: () => state.sorted,
-        flatTree: () => state.tree,
+        flatTree: (options?: { unfiltered?: boolean }) => (options?.unfiltered ? state.rawTree : state.tree),
         rawRows: () => state.raw,
         renderedRows: () => state.page,
         rowId: (row: Row) => row.id,
         exportQuery: () => QUERY,
         cellValue: value,
         exportColumns,
-        exportData: (options: DataTableExportOptions = {}, rows?: readonly Row[]) => {
-            const columns = exportColumns(options);
+        exportData: (options: DataTableExportOptions = {}, rows?: readonly Row[], given?: readonly ColumnDef<Row>[]) => {
+            const columns = given ?? exportColumns(options);
             calls.push({ options, rows: rows?.length ?? -1 });
             const body = (rows ?? state.sorted).map((row) => columns.map((c) => (c.cell ? c.cell(row) : String(value(row, c.accessorKey) ?? ''))));
             return options.includeHeaders === false ? body : [columns.map((c) => c.header), ...body];
@@ -69,7 +71,7 @@ interface Setup {
 
 function setup(options?: ExportOptions<Row> | false, localeCode = 'en'): Setup {
     const rows: Row[] = [{ id: '1', name: 'Alice', score: 30 }];
-    const state: State = { sorted: rows, raw: rows, page: rows, columns: COLUMNS, tree: [] };
+    const state: State = { sorted: rows, raw: rows, page: rows, columns: COLUMNS, tree: [], rawTree: [] };
     const { query, calls } = fakeQuery(state);
     const selected = new Set<string>();
     const selection = { isSelected: (id: string) => selected.has(id) } as unknown as SelectionService<Row>;
@@ -249,6 +251,27 @@ describe('export addon: rows, columns and data', () => {
         expect(t.calls.map((c) => c.rows)).toEqual([0, EXPORT_CHUNK_ROWS, EXPORT_CHUNK_ROWS, 1]);
     });
 
+    it('keeps the columns of the start for the whole export when a column is hidden during a chunked export (review)', async () => {
+        const t = setup();
+        t.state.sorted = Array.from({ length: EXPORT_CHUNK_ROWS * 2 }, (_, i) => ({ id: `r${i}`, name: 'n', score: i }));
+        // 'score' is hidden while the export runs: after the first chunk (microtasks), before the second (the export's yield is a later timer)
+        const hideDuring = async <R>(run: () => Promise<R>): Promise<R> => {
+            t.state.columns = COLUMNS;
+            const pending = run();
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(t.calls.at(-1)?.rows).toBe(EXPORT_CHUNK_ROWS); // the first chunk is built
+            t.state.columns = COLUMNS.slice(0, 2);
+            return pending;
+        };
+        const sheet = new TextDecoder().decode(readZip(await hideDuring(() => t.api.toXlsx({ typedCells: true }))).get('xl/worksheets/sheet1.xml'));
+        const rows = sheet.split('<row ').slice(1);
+        expect(rows).toHaveLength(EXPORT_CHUNK_ROWS * 2 + 1);
+        for (const row of rows) expect(row.match(/<c r="[A-Z]+/g)).toEqual(['<c r="A', '<c r="B', '<c r="C']);
+        const csv = await hideDuring(() => t.api.toCsv());
+        expect(new Set(csv.split('\r\n').map((line) => line.split(',').length))).toEqual(new Set([3]));
+        expect(csv.split('\r\n').at(-1)).toBe(`r${EXPORT_CHUNK_ROWS * 2 - 1},n,${EXPORT_CHUNK_ROWS * 2 - 1}`);
+    });
+
     it('toCsv returns the text without the BOM, toXlsx the workbook bytes, neither downloads', async () => {
         const t = setup();
         expect(await t.api.toCsv()).toBe('ID,Name,Score\r\n1,Alice,30');
@@ -410,6 +433,17 @@ describe('export addon: download, signals and lifecycle', () => {
         expect((await t.api.toCsv()).split('\r\n').slice(1).map((line) => line.split(',')[0])).toEqual(t.state.tree.map((r) => r.id));
         t.selected.add('c1').add('c8');
         expect(await t.api.toCsv({ scope: 'selected' })).toBe('ID,Name,Score\r\nc1,c1,1\r\nc8,c8,8');
+    });
+
+    it("exports the whole unfiltered tree with 'all' in a tree table (final review)", async () => {
+        const t = setup();
+        const node = (id: string): Row => ({ id, name: id, score: 0 });
+        t.state.raw = [node('p1'), node('p2'), node('p3')]; // the top-level rows only, as `data` is
+        t.state.rawTree = ['p1', 'a', 'b', 'c', 'p2', 'd', 'e', 'f', 'p3', 'g', 'h', 'i'].map(node);
+        t.state.tree = [node('p1'), node('a')]; // a filter keeps fewer
+        const ids = async (scope: 'all' | 'filtered'): Promise<string[]> => (await t.api.toCsv({ scope })).split('\r\n').slice(1).map((line) => line.split(',')[0] as string);
+        expect(await ids('all')).toEqual(t.state.rawTree.map((r) => r.id));
+        expect(await ids('filtered')).toEqual(['p1', 'a']);
     });
 
     it('an export running at teardown downloads nothing and rejects', async () => {
