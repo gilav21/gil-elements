@@ -37,6 +37,8 @@ import { lazyElement } from './data-table-lazy.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
+// cssString: a quoted attribute-selector value that needs no `CSS` global.
+import { cssString } from './data-table.spreadsheet.js';
 import type { CellEditError, ComponentOutputs, EditingCell, EnhancedColumnDef } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 
@@ -65,13 +67,15 @@ const FOCUS_ATTEMPTS = 4;
 
 /**
  * Focuses `target`; a library control whose host takes no focus itself (`ge-select`: its trigger, in its shadow root, does) is focused at the first
- * element of its open shadow root that takes it. A focus call on what cannot take focus is a no-op, so the candidates are simply tried in order.
- * True when the focus is inside `target`. `deepActive`: the grid's own reading of the focused element (the interaction context's).
+ * candidate of its open shadow root that takes it: what the grid's FOCUSABLE rule matches, and a host that delegates its focus (`ge-select-trigger`,
+ * whose own button is one shadow root further), in document order. True when the focus is inside `target`. `deepActive`: the grid's own reading
+ * of the focused element (the interaction context's).
  */
 function focusInto(target: HTMLElement, deepActive: () => Element | null): boolean {
     target.focus({ preventScroll: true });
     if (composedContains(target, deepActive())) return true;
     for (const el of target.shadowRoot?.querySelectorAll<HTMLElement>('*') ?? []) {
+        if (!el.matches(FOCUSABLE) && !el.shadowRoot?.delegatesFocus) continue;
         el.focus({ preventScroll: true });
         if (composedContains(target, deepActive())) return true;
     }
@@ -237,7 +241,7 @@ export class EditSession<T> implements CellSession {
     /** The drawn cell of the record with this id in this column (this table's own, not a nested one's), or null when it is not drawn. */
     private cellOfRecord(rowId: string, columnKey: string): HTMLElement | null {
         const { root } = this.host;
-        const selector = `[data-slot="table-row"][data-row-id="${CSS.escape(rowId)}"] > [data-slot="table-cell"][data-column="${CSS.escape(columnKey)}"]`;
+        const selector = `[data-slot="table-row"][data-row-id=${cssString(rowId)}] > [data-slot="table-cell"][data-column=${cssString(columnKey)}]`;
         return ownElements(root, root.querySelectorAll<HTMLElement>(selector))[0] ?? null;
     }
 
@@ -517,7 +521,7 @@ export class EditSession<T> implements CellSession {
             const target = this.editorTarget(cell, open.kind);
             const active = this.context.deepActive();
             if (!target || composedContains(target, active)) continue;
-            if (active && active !== document.body && active !== cell) return;
+            if (active && active !== this.host.root.ownerDocument.body && active !== cell) return; // the table's own document (an iframe's too)
             focusInto(target, this.deepActive);
         }
     }
