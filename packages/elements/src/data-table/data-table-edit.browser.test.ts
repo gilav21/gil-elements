@@ -6,9 +6,9 @@
 import axe from 'axe-core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
-import { axTree, cellAt, makeRows, mountTable, q, type SampleRow, settle } from './data-table-fixtures.js';
+import { axTree, cellAt, makeColumns, makeRows, mountTable, q, type SampleRow, settle } from './data-table-fixtures.js';
 import { announced, editColumns, editError, editorIn, names, openEditor, pointerPick, record, startEditingAt } from './data-table-edit-fixtures.js';
-import { emulateTouch, frames, mouseDblClick, parkMouse, press, touchDoubleTap, touchTap, whenDefined, withTheme } from './data-table-input-fixtures.js';
+import { emulateTouch, frames, mouseDblClick, parkMouse, press, scrollGrid, touchDoubleTap, touchTap, whenDefined, withTheme } from './data-table-input-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 import type { CellEditErrorEvent, CellEditEvent, ColumnDef, EditContext } from './data-table.types.js';
 
@@ -825,6 +825,43 @@ describe('E5 editor kinds', () => {
         seen.at(-1)!.commit();
         await settle(table);
         expect(table.data[2]!.name).toBe('Bobby');
+    });
+});
+
+describe('round 20: the edited column scrolls out of the drawn columns', () => {
+    const wide = (validator?: (value: unknown) => true | string): Promise<Table> => {
+        const columns = makeColumns(30).map((c) =>
+            c.accessorKey === 'c2' ? { ...c, editable: true, valueSetter: (row: SampleRow, value: unknown) => ({ ...row, c2: value }), ...(validator ? { editValidator: validator } : {}) } : c,
+        );
+        return mountTable<SampleRow>(
+            { columns, data: makeRows(20, { columns: 30 }), enableVirtualScroll: true, virtualRowHeight: 36, showPagination: false, showToolbar: false },
+            {},
+            { width: 600, height: 400 },
+        ) as Promise<Table>;
+    };
+
+    it('a valid draft is committed (left like a blur)', async () => {
+        const table = await wide();
+        await startEditingAt(table, 0, 'c2');
+        await userEvent.type(openEditor(table) as HTMLInputElement, 'x');
+        await scrollGrid(table, { left: 150 * 20 });
+        await settle(table);
+        await frames(2);
+        expect(table.editingCell).toBeNull();
+        expect((table.data[0] as Record<string, unknown>)['c2']).toBe('0.2x');
+    });
+
+    it('a rejected draft keeps the editor open and scrolls its column back into view', async () => {
+        const table = await wide((v) => !String(v).endsWith('x') || 'No x');
+        await startEditingAt(table, 0, 'c2');
+        await userEvent.type(openEditor(table) as HTMLInputElement, 'x');
+        await scrollGrid(table, { left: 150 * 20 });
+        await settle(table);
+        await frames(4);
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'c2' });
+        expect(cellAt(table, 0, 'c2')).not.toBeNull(); // drawn again
+        expect(editError(table)?.textContent).toContain('No x');
     });
 });
 

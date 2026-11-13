@@ -39,7 +39,7 @@ import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
 // cssString: a quoted attribute-selector value that needs no `CSS` global.
 import { cssString } from './data-table.spreadsheet.js';
-import type { CellEditError, ComponentOutputs, EditingCell, EnhancedColumnDef } from './data-table.types.js';
+import type { BodyWindow, CellEditError, ComponentOutputs, EditingCell, EnhancedColumnDef } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 
 type EditService = Pick<CellInteractionService, 'editingCell' | 'cellEditError' | 'startEditing' | 'commitEdit' | 'cancelEdit' | 'isEditing' | 'editValue' | 'setEditValue'>;
@@ -233,7 +233,37 @@ export class EditSession<T> implements CellSession {
         const windowKey = win ? `${win.start}:${win.end}:${win.colStart}:${win.colEnd}` : '';
         const canMove = kindChanged || this.reconciledWith !== rowsBefore || windowKey !== this.lastWindow;
         this.lastWindow = windowKey;
+        // Column virtualization: the edited column left the drawn columns (the window keeps rows, not columns), so the editor is not drawn.
+        if (win && !this.columnDrawn(open.at.columnKey, win)) {
+            // The blur the editor's removal may cause belongs to this render (ignored, as in `keepFocus`); it is left AFTER the render instead.
+            this.moving = open;
+            queueMicrotask(() => {
+                if (this.moving === open) this.moving = null;
+            });
+            this.context.afterRender(() => this.leaveHidden(open));
+            return;
+        }
         if (focusedIn && canMove) this.keepFocus(open);
+    }
+
+    /** The column is drawn in this window: a pinned one always, a scrolling one inside `colStart..colEnd` (the grid's own rule). */
+    private columnDrawn(columnKey: string, win: BodyWindow): boolean {
+        const columns = requireProvider(this.host, 'columns').enhancedColumns();
+        const n = columns.findIndex((c) => String(c.accessorKey) === columnKey);
+        const column = columns[n];
+        return !column || column._pin !== undefined || (n >= win.colStart && n < win.colEnd);
+    }
+
+    /**
+     * The edited column scrolled out of the drawn columns: the editor is left as if the focus left it (a text, number or select editor and a custom
+     * one commit, a checkbox or date one cancels). A commit the validator rejects keeps the editor open, and its column is scrolled back into view
+     * (`reveal`), so the message and the draft are seen.
+     */
+    private leaveHidden(open: OpenEditor<T>): void {
+        if (this.open !== open) return;
+        const win = this.host.provider('virtual')?.window();
+        if (!win || this.columnDrawn(open.at.columnKey, win)) return; // scrolled back meanwhile
+        if (!this.leaveForAnother(open)) this.host.provider('virtual')?.reveal(open.at.rowIndex, open.at.columnKey);
     }
 
     /** The virtual window the last update saw (rows and columns drawn): a shift can move the editor's row in the DOM. */
