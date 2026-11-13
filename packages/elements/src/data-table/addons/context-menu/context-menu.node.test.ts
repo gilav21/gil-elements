@@ -5,10 +5,11 @@ import { AddonSet, type DataTableAddonHost } from '../../data-table-addon-kit.js
 import { DOM_PROTOCOL } from '../../data-table-host.js';
 import { DATA_TABLE_LOCALES } from '../../data-table.locales.js';
 import type { CellActionSlot, HeaderActionSlot } from '../../data-table-providers.js';
-import type { ColumnDef, SortDirection } from '../../data-table.types.js';
+import type { CellRange, ColumnDef, SortDirection } from '../../data-table.types.js';
 import { contextMenuAddon } from './context-menu.js';
 import { buildColumnMenuItems, type ColumnMenuServices, type ContextMenuLabels } from './context-menu-items.js';
-import { anchorLeft, buttonAnchor, CELL_SELECTOR, COLUMN, isMenuKey, keyboardAnchor, rangeTakesHold, ROW_INDEX, ROW_SELECTOR } from './context-menu-gesture.js';
+import { isCellInRange, normalizeCellRange } from '../../data-table-range.js';
+import { anchorLeft, buttonAnchor, CELL_SELECTOR, COLUMN, inCellRange, isMenuKey, keyboardAnchor, rangeTakesHold, ROW_INDEX, ROW_SELECTOR } from './context-menu-gesture.js';
 
 type Row = { id: string; name: string };
 
@@ -213,38 +214,54 @@ describe('the slots', () => {
     });
 });
 
-describe('rangeTakesHold (custom mode, decided at touchstart)', () => {
-    const interaction = ({ range = true, editing = false, selected = false } = {}) => ({
+describe('rangeTakesHold (both modes, decided at touchstart, as lazy/range.ts onLongPress)', () => {
+    const KEYS = ['name', 'age', 'role'];
+    const RANGE: CellRange = { startRow: 2, startCol: 'age', endRow: 3, endCol: 'role' };
+    const interaction = ({ range = true, editing = false, cellRange = RANGE as CellRange | null } = {}) => ({
         rangeSelectionEnabled: () => range,
         editingCell: () => (editing ? { rowIndex: 9, columnKey: 'x' } : null),
-        isCellSelected: () => selected,
+        cellRange: () => cellRange,
     });
     const cell = { rowIndex: 1, columnKey: 'name' };
 
     it.each([
-        ['range on, unselected data cell', interaction(), cell, true],
-        ['range on, selected data cell', interaction({ selected: true }), cell, false],
-        ['range off', interaction({ range: false }), cell, false],
-        ['an editor is open', interaction({ editing: true }), cell, false],
-        ['a table-owned column (_selection)', interaction(), { rowIndex: 1, columnKey: '_selection' }, false],
-        ['a table-owned column (_actions)', interaction(), { rowIndex: 1, columnKey: '_actions' }, false],
-        ['no cell (a header, a row padding)', interaction(), null, false],
-        ['no interaction service', undefined, cell, false],
-    ] as const)('%s', (_, service, at, expected) => {
-        expect(rangeTakesHold(service, at)).toBe(expected);
+        ['range on, a data cell outside the range', interaction(), cell, false, true],
+        ['range on, no range at all', interaction({ cellRange: null }), cell, false, true],
+        ['range on, a data cell inside the range', interaction(), { rowIndex: 3, columnKey: 'age' }, false, false],
+        ['range on, on a control (a link, a button)', interaction(), cell, true, false],
+        ['range off', interaction({ range: false }), cell, false, false],
+        ['an editor is open', interaction({ editing: true }), cell, false, false],
+        ['a table-owned column (_selection)', interaction(), { rowIndex: 1, columnKey: '_selection' }, false, false],
+        ['a table-owned column (_actions)', interaction(), { rowIndex: 1, columnKey: '_actions' }, false, false],
+        ['no cell (a header, a row padding)', interaction(), null, false, false],
+        ['no interaction service', undefined, cell, false, false],
+    ] as const)('%s', (_, service, at, onControl, expected) => {
+        expect(rangeTakesHold(service, at, KEYS, onControl)).toBe(expected);
     });
 
-    it('a service of the older shape (no rangeSelectionEnabled) never lets the range take the hold (the stub until wave 6)', () => {
-        expect(rangeTakesHold({ isCellSelected: () => false }, cell)).toBe(false);
+    it('a service of the older shape (no rangeSelectionEnabled) never lets the range take the hold', () => {
+        expect(rangeTakesHold({ cellRange: () => null }, cell, KEYS, false)).toBe(false);
     });
 
-    it('the answer is the one of the moment it is asked: a later selection of the cell does not change a decision taken before', () => {
-        let selected = false;
-        const live = { rangeSelectionEnabled: () => true, isCellSelected: () => selected };
-        const atTouchStart = rangeTakesHold(live, cell);
-        selected = true; // the range handler re-anchored onto the pressed cell before the hold fired
+    it('the answer is the one of the moment it is asked: a range later moved onto the cell does not change a decision taken before', () => {
+        let current: CellRange | null = null;
+        const live = { rangeSelectionEnabled: () => true, cellRange: () => current };
+        const atTouchStart = rangeTakesHold(live, cell, KEYS, false);
+        current = { startRow: 1, startCol: 'name', endRow: 1, endCol: 'name' }; // the range handler re-anchored onto the pressed cell
         expect(atTouchStart).toBe(true);
-        expect(rangeTakesHold(live, cell)).toBe(false);
+        expect(rangeTakesHold(live, cell, KEYS, false)).toBe(false);
+    });
+
+    it('inCellRange agrees with the core range maths (normalizeCellRange + isCellInRange) on every cell, for ranges drawn in every direction', () => {
+        const ranges: (CellRange | null)[] = [null, RANGE, { startRow: 3, startCol: 'role', endRow: 2, endCol: 'age' }, { startRow: 0, startCol: 'name', endRow: 0, endCol: 'name' }, { startRow: 1, startCol: 'gone', endRow: 2, endCol: 'age' }];
+        for (const range of ranges) {
+            for (let rowIndex = 0; rowIndex < 5; rowIndex++) {
+                for (const columnKey of [...KEYS, '_selection']) {
+                    const core = isCellInRange(normalizeCellRange(range, KEYS), KEYS, rowIndex, columnKey);
+                    expect(inCellRange(range, KEYS, { rowIndex, columnKey }), `${JSON.stringify(range)} ${rowIndex}/${columnKey}`).toBe(core);
+                }
+            }
+        }
     });
 });
 

@@ -197,6 +197,13 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 - Core tap focus: `activeAtDown` compares element identity, so a press that begins while a menu already holds focus and ends with focus on that same element still counts as a tap (focus did not "move").
 - The kebab slot's `expanded` builds a full `RowActionContext` per row at every render only to compare ids; pass or compare the row id alone.
 - The DOM protocol helpers (`ownClosest`, cell / row address) are duplicated from `data-table-host.ts`; move the pure ones to a shared module both import.
+- Gesture events (`row-menu-open`, `row-context-menu`) fire at the gesture, before a show that a teardown or a newer gesture can still cancel.
+- The kebab toggle mark survives a release outside the table (the root hears no pointerup there); only a key or the next press clears it.
+- `byKeyboard` also treats a `contextmenu` at (0, 0) as key-made, which a real pointer at the viewport corner would hit.
+- `boundMenu()` is resolved twice per gesture (gesture and show); resolve once.
+- The core tap-focus check's `active !== null` is implied by `inMenu(active)` (redundant).
+- Chromium's touch emulation sends a held link (`<a>`) a click with no `touchend` before it, so `swallowReleaseClick` (armed by the release) is not armed and the click closes the menu the hold opened.
+- Fixture `cellAt` (data-table-fixtures.ts) is not scoped to its table: with a nested table it can return the inner table's cell.
 
 ## H. Work packages (strict file ownership after step 0)
 

@@ -9,8 +9,9 @@ import { userEvent } from 'vitest/browser';
 import type { ContextMenuHost } from '../../../context-menu/context-menu.js';
 import type { GeDataTable } from '../../data-table.js';
 import { axProps, axTree, cellAt, headCell, mountTable, q, qa, SAMPLE_ROWS, send, settle, type SampleRow } from '../../data-table-fixtures.js';
-import { emulateTouch, frames, mouseDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPress, withRtl, withTheme } from '../../data-table-input-fixtures.js';
+import { emulateTouch, frames, mouseDrag, parkMouse, press, scrollGrid, touchDrag, touchLongPress, touchTap, withRtl, withTheme } from '../../data-table-input-fixtures.js';
 import type { RowActionContext } from '../../data-table.types.js';
+import { ownCellAt } from './context-menu-gesture.js';
 import { contextMenuAddon, type ContextMenuItem, type ContextMenuOptions } from './define.js';
 
 // ---- input ---------------------------------------------------------------------------------------------------------------------
@@ -376,31 +377,63 @@ describe('touch', () => {
         }
     });
 
-    it('simple mode with range selection on: a hold on an unselected cell is the range\'s (no menu), a hold on the selected cell opens the built menu', async () => {
+    // The range part keeps no 1x1 range (a single-cell hold is plain focus), so "inside the range" needs a range of two cells or more.
+    const RANGE = { startRow: 1, startCol: 'name', endRow: 2, endCol: 'age' };
+
+    it('simple mode with range selection on: a hold inside the range opens the built menu, a hold outside it is the range\'s', async () => {
         const table = await mount({ rowActions: ROW_ITEMS }, { enableCellRangeSelection: true });
+        (table as unknown as { cellRange: unknown }).cellRange = RANGE;
+        await settle(table);
         const opened = events(table, 'row-menu-open');
-        await touchLongPress(cellAt(table, 1, 'name')!, 700);
-        await frames(2);
-        expect(builtMenu('row')?.open ?? false).toBe(false);
-        expect(opened).toHaveLength(0);
-        await touchLongPress(cellAt(table, 1, 'name')!, 700);
+        await touchLongPress(cellAt(table, 2, 'age')!, 700);
         await frames(2);
         expect(builtMenu('row')!.open).toBe(true);
         expect(opened).toHaveLength(1);
+        builtMenu('row')!.close();
+        await settle(table);
+        await touchLongPress(cellAt(table, 3, 'name')!, 700);
+        await frames(2);
+        expect(builtMenu('row')!.open).toBe(false);
+        expect(opened).toHaveLength(1);
     });
 
-    it('custom mode with range selection on: a hold on an unselected cell is the range\'s, a hold on the selected cell opens the menu', async () => {
+    it('range and row selection on: a hold on a selected ROW\'s cell outside the range is the range\'s (no menu)', async () => {
+        const table = await mount({ rowActions: ROW_ITEMS }, { enableRowSelection: true, enableCellRangeSelection: true, rowSelection: { c: true } });
+        const opened = events(table, 'row-menu-open');
+        await touchLongPress(cellAt(table, 2, 'name')!, 700);
+        await frames(2);
+        expect(builtMenu('row')?.open ?? false).toBe(false);
+        expect(opened).toHaveLength(0);
+    });
+
+    it('range selection on: a hold on a link in a cell is not the range\'s, it opens the menu', async () => {
+        const columns = [{ accessorKey: 'name', header: 'Name', width: '200px', cellRenderer: (ctx: { row: SampleRow }) => Object.assign(document.createElement('a'), { textContent: ctx.row.name }) }, { accessorKey: 'age', header: 'Age' }];
+        const table = await mount({ rowActions: ROW_ITEMS }, { enableCellRangeSelection: true, columns });
+        const opened = events(table, 'row-menu-open');
+        await touchLongPress(cellAt(table, 1, 'name')!.querySelector('a')!, 700);
+        await frames(2);
+        // The hold opened the menu and started no range. (Chromium's emulation then sends the held link a click with no touchend before it,
+        // so the release-click guard of shared/touch is not armed and that click closes the menu: a spec follow-up, not this arbitration.)
+        expect(opened).toHaveLength(1);
+        expect((table as unknown as { cellRange: unknown }).cellRange ?? null).toBeNull();
+    });
+
+    it('custom mode with range selection on: a hold inside the range opens the bound menu, a hold outside it is the range\'s', async () => {
         const menu = ownMenu();
         leftovers.push(menu);
         const table = await mount({ menu }, { enableCellRangeSelection: true });
+        (table as unknown as { cellRange: unknown }).cellRange = RANGE;
+        await settle(table);
         const heard = events(table, 'row-context-menu');
         await touchLongPress(cellAt(table, 1, 'name')!, 700);
         await frames(2);
-        expect(menu.open).toBe(false);
-        expect(heard).toHaveLength(0);
-        await touchLongPress(cellAt(table, 1, 'name')!, 700);
-        await frames(2);
         expect(menu.open).toBe(true);
+        expect(heard).toHaveLength(1);
+        menu.close();
+        await settle(table);
+        await touchLongPress(cellAt(table, 3, 'age')!, 700);
+        await frames(2);
+        expect(menu.open).toBe(false);
         expect(heard).toHaveLength(1);
     });
 });
@@ -675,6 +708,70 @@ describe('final review fixes (PR #79)', () => {
         expect(heard).toHaveLength(2); // both, before any frame
         await frames(2);
         expect(heard).toHaveLength(2);
+    });
+});
+
+describe('final review 2 (PR #79)', () => {
+    it('a special column\'s header is no column header for the bound menu: its right click is the browser\'s', async () => {
+        const menu = ownMenu();
+        leftovers.push(menu);
+        const table = await mount({ menu, rowsOnly: false }, { enableRowSelection: true });
+        const heard = events(table, 'header-context-menu');
+        const native = nativeMenus();
+        try {
+            await rightClick(headCell(table, '_selection'), { dx: 4, dy: 4 });
+            expect(menu.open).toBe(false);
+            expect(heard).toHaveLength(0);
+            expect(native.reached).toHaveLength(1);
+            await rightClick(headCell(table, 'name'));
+            expect(heard).toHaveLength(1);
+        } finally {
+            native.stop();
+        }
+    });
+
+    it('the redrawn-cell lookup finds this table\'s cell, not the same address in a table nested in a detail row', async () => {
+        const inner = document.createElement('ge-data-table') as GeDataTable<SampleRow>;
+        Object.assign(inner, { columns: [{ accessorKey: 'name', header: 'Inner' }], data: [{ id: 'x', name: 'X', age: 1 }, { id: 'y', name: 'Y', age: 2 }] });
+        const outer = await mount({ rowActions: ROW_ITEMS }, { enableRowExpansion: true, expandedRows: { a: true }, renderDetail: () => inner });
+        await settle(inner);
+        // the inner table's row 1 comes first in document order, before the outer row 1
+        const outerCell = qa(outer, '[data-row-index="1"][data-column="name"]').find((c) => c.closest('ge-data-table') === outer);
+        expect(outer.querySelector('[data-row-index="1"][data-column="name"]')).toBe(cellAt(inner, 1, 'name')); // an unscoped lookup finds the inner cell
+        expect(outerCell).toBeTruthy();
+        expect(ownCellAt(outer, { rowIndex: 1, columnKey: 'name' })).toBe(outerCell);
+    });
+});
+
+describe('core tap focus (lead-approved)', () => {
+    beforeEach(async () => {
+        await emulateTouch(true);
+    });
+    afterEach(async () => {
+        await emulateTouch(false);
+    });
+
+    it('focus that moved to a non-menu element outside the table during the press does not stop the tap: the tapped cell gets focus', async () => {
+        const table = await mount({ rowActions: ROW_ITEMS });
+        const trigger = document.createElement('button');
+        trigger.textContent = 'trigger';
+        document.body.prepend(trigger);
+        leftovers.push(trigger);
+        // an overlay outside hands focus back to its trigger while the finger is down
+        const handBack = (): void => trigger.focus();
+        const cell = cellAt(table, 2, 'name')!;
+        cell.addEventListener('touchstart', handBack, { passive: true });
+        // no compatibility mouse events (their mousedown would focus the cell natively): the table's tap is what is tested
+        const noCompatMouse = (event: Event): void => event.preventDefault();
+        window.addEventListener('touchend', noCompatMouse, { passive: false });
+        try {
+            await touchTap(cell);
+            await frames(2);
+            expect(deepActive()).toBe(cellAt(table, 2, 'name'));
+        } finally {
+            cell.removeEventListener('touchstart', handBack);
+            window.removeEventListener('touchend', noCompatMouse);
+        }
     });
 });
 

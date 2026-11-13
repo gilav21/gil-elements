@@ -9,7 +9,7 @@
  * back to the browser (the ⋮ buttons are unaffected).
  */
 import type { ContextMenuHost, ContextMenuItem } from '../../../context-menu/context-menu.js';
-import { onContextGesture, type ContextGesture } from '../../../shared/touch.js';
+import { onContextGesture, TOUCH_CONTROLS, type ContextGesture } from '../../../shared/touch.js';
 import { inheritThemeTokens } from '../../../shared/theme-presets.js';
 import { defineAddon } from '../../data-table-addon-kit.js';
 import type { ColumnDef, RowActionContext } from '../../data-table.types.js';
@@ -19,8 +19,7 @@ import {
     buttonAnchor,
     CELL_SELECTOR,
     cellAddress,
-    COLUMN,
-    ROW_INDEX,
+    ownCellAt,
     HEADER_SELECTOR,
     indexOf,
     isMenuKey,
@@ -267,7 +266,11 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
         'touchstart',
         (event) => {
             const target = event.target instanceof Element ? event.target : null;
-            rangeHold = !!target && rangeTakesHold(host.provider('interaction'), cellAddress(ownClosest(root, target, CELL_SELECTOR)));
+            if (!target) return void (rangeHold = false);
+            // The range's own test (`lazy/range.ts` `onLongPress`): a control anywhere on the path inside the table keeps the hold from the range.
+            const onControl = event.composedPath().some((node) => node instanceof Element && node !== root && root.contains(node) && node.matches(TOUCH_CONTROLS));
+            const keys = host.provider('columns')?.navigableKeys() ?? [];
+            rangeHold = rangeTakesHold(host.provider('interaction'), cellAddress(ownClosest(root, target, CELL_SELECTOR)), keys, onControl);
         },
         { passive: true },
     );
@@ -330,7 +333,7 @@ export const contextMenuAddon = defineAddon<ContextMenuOptions, unknown>('contex
         else host.emit('row-context-menu', { row, index, event: gesture.source, depth: node?.depth, isLeaf: node?.isLeaf, parentRow: node?.parentRow });
         const open = (): void => {
             // The anchor is measured now: the focus move may have scrolled the grid (and redrawn the cell).
-            const redrawn = cell ? root.querySelector(`[${ROW_INDEX}="${cell.rowIndex}"][${COLUMN}="${CSS.escape(cell.columnKey)}"]`) : null;
+            const redrawn = cell ? ownCellAt(root, cell) : null;
             const at = [cellEl, redrawn, rowEl].find((el) => el?.isConnected) ?? rowEl;
             const anchor = anchorOf(gesture, keyboard, at);
             if (rowMenu) showRowMenu(rowMenu, anchor, context);
