@@ -40,6 +40,20 @@ describe('export addon on a real table', () => {
         expect(await csvOf(downloads)).toBe('﻿Name,Age\r\nn11,11\r\nn10,10\r\nn1,1');
     });
 
+    it('exports every node of a collapsed, paged tree table, and only the selected children with scope selected (review)', async () => {
+        const kids = (from: number, n: number): SampleRow[] => Array.from({ length: n }, (_, i) => ({ id: `c${from + i}`, name: `c${from + i}`, age: from + i }));
+        const data = [
+            { id: 'p1', name: 'p1', age: 1, children: kids(0, 4) },
+            { id: 'p2', name: 'p2', age: 2, children: kids(4, 3) },
+            { id: 'p3', name: 'p3', age: 3, children: kids(7, 3) },
+        ];
+        const { table, api } = await mountWithExport({ data, enableSubRows: true, enableRowSelection: true, paginationState: { pageIndex: 0, pageSize: 2 }, rowSelection: { c1: true, c8: true } });
+        expect(bodyRows(table)).toHaveLength(2); // collapsed and paged: two parents drawn
+        const names = (await api.toCsv()).split('\r\n').slice(1).map((line) => line.split(',')[0]);
+        expect(names).toEqual(['p1', 'c0', 'c1', 'c2', 'c3', 'p2', 'c4', 'c5', 'c6', 'p3', 'c7', 'c8', 'c9']);
+        expect(await api.toCsv({ scope: 'selected' })).toBe('Name,Age\r\nc1,1\r\nc8,8');
+    });
+
     it("leaves hidden columns out, and columns: 'all' puts them back", async () => {
         const { api } = await mountWithExport({ columnVisibility: { age: false } });
         expect((await api.toCsv()).split('\r\n')[0]).toBe('Name');

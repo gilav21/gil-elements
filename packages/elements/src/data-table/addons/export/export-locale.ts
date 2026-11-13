@@ -6,7 +6,7 @@ export interface ExportLocale {
     exportDone: string;
     /** Announced when an export failed (a provider rejected, the writer threw). */
     exportFailed: string;
-    /** Announced instead of downloading an empty file (no header and no row). */
+    /** Announced instead of downloading a file with no data row. */
     exportEmpty: string;
 }
 

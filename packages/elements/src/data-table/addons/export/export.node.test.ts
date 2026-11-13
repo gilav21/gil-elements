@@ -23,13 +23,23 @@ const COLUMNS: ColumnDef<Row>[] = [
 const HIDDEN: ColumnDef<Row> = { accessorKey: 'when', header: 'When' };
 const QUERY: DataTableExportQuery = { globalFilter: 'Alice', columnFilters: { name: 'Bob' }, sort: { column: 'score', direction: 'desc' }, sortStates: [] };
 
+/** What the fake query serves: `tree` is `flatTree()` (empty outside tree mode). */
+interface State {
+    sorted: Row[];
+    raw: Row[];
+    page: Row[];
+    columns: ColumnDef<Row>[];
+    tree: Row[];
+}
+
 /** A query service that draws `COLUMNS` (plus the hidden column with `onlyVisible: false`) the way the core does: `cell()` or the stringified value. */
-function fakeQuery(state: { sorted: Row[]; raw: Row[]; page: Row[]; columns: ColumnDef<Row>[] }) {
+function fakeQuery(state: State) {
     const calls: { options: DataTableExportOptions; rows: number }[] = [];
     const exportColumns = (options: DataTableExportOptions = {}) => (options.onlyVisible === false ? [...state.columns, HIDDEN] : state.columns);
     const value = (row: Row, key: string | keyof Row): unknown => (row as unknown as Record<string, unknown>)[String(key)];
     const query = {
         sortedData: () => state.sorted,
+        flatTree: () => state.tree,
         rawRows: () => state.raw,
         renderedRows: () => state.page,
         rowId: (row: Row) => row.id,
@@ -52,14 +62,14 @@ interface Setup {
     announced: string[];
     events: [string, unknown][];
     calls: { options: DataTableExportOptions; rows: number }[];
-    state: { sorted: Row[]; raw: Row[]; page: Row[]; columns: ColumnDef<Row>[] };
+    state: State;
     selected: Set<string>;
     teardown: () => void;
 }
 
 function setup(options?: ExportOptions<Row> | false, localeCode = 'en'): Setup {
     const rows: Row[] = [{ id: '1', name: 'Alice', score: 30 }];
-    const state = { sorted: rows, raw: rows, page: rows, columns: COLUMNS };
+    const state: State = { sorted: rows, raw: rows, page: rows, columns: COLUMNS, tree: [] };
     const { query, calls } = fakeQuery(state);
     const selected = new Set<string>();
     const selection = { isSelected: (id: string) => selected.has(id) } as unknown as SelectionService<Row>;
@@ -268,6 +278,8 @@ describe('export addon: rows, columns and data', () => {
         expect(typedCell(false)).toBe(false);
         expect(typedCell(new Date(Number.NaN))).toBeUndefined();
         expect(typedCell('2024-02-30')).toBeUndefined();
+        expect(typedCell('2023-02-30T10:00')).toBeUndefined(); // the same rollover check as a date-only string (review)
+        expect(typedCell('2023-02-28T10:00')).toBeInstanceOf(Date);
         expect((typedCell('2024-02-29') as Date).getDate()).toBe(29);
         expect(typedCell('2024-02-29T10:00:00Z')).toBeInstanceOf(Date);
         expect(typedCell('12')).toBeUndefined();
@@ -325,17 +337,14 @@ describe('export addon: download, signals and lifecycle', () => {
         expect(stub.downloads).toEqual([]);
     });
 
-    it('returns the running promise for a second call of the same method, and downloads once', async () => {
-        let release!: (rows: Row[]) => void;
-        const t = setup({ provider: () => new Promise<Row[]>((resolve) => (release = resolve)) });
-        const first = t.api.exportToCsv();
-        const second = t.api.exportToCsv();
-        expect(second).toBe(first);
-        release([]);
-        await first;
-        expect(stub.downloads).toHaveLength(1);
-        await t.api.exportToCsv('again', { rows: [] }); // a later call runs again
-        expect(stub.downloads).toHaveLength(2);
+    it('runs concurrent calls of the same method independently, each with its own rows and file (review)', async () => {
+        const t = setup();
+        const [a, b] = await Promise.all([t.api.toCsv({ rows: [{ id: 'a', name: 'A', score: 1 }] }), t.api.toCsv({ rows: [{ id: 'b', name: 'B', score: 2 }] })]);
+        expect(a).toBe('ID,Name,Score\r\na,A,1');
+        expect(b).toBe('ID,Name,Score\r\nb,B,2');
+        await Promise.all([t.api.exportToCsv('one'), t.api.exportToCsv('two')]);
+        expect(stub.downloads.map((d) => d.name)).toEqual(['one.csv', 'two.csv']);
+        expect(t.busy.at(-1)).toBeNull();
     });
 
     it('keeps the busy overlay until the last of two concurrent exports ends', async () => {
@@ -361,14 +370,46 @@ describe('export addon: download, signals and lifecycle', () => {
         await expect(t.api.toCsv({ signal: AbortSignal.abort() })).rejects.toMatchObject({ name: 'AbortError' });
     });
 
-    it('downloads nothing for an empty grid (no header, no row) and says so', async () => {
+    it('rejects at once when aborted during a pending provider, clears busy, and hands the provider the signal (review)', async () => {
+        const seen: (AbortSignal | undefined)[] = [];
+        const t = setup({ provider: (_query, signal) => (seen.push(signal), new Promise<Row[]>(() => undefined)) }); // never settles
+        const controller = new AbortController();
+        const pending = t.api.exportToCsv('x', { signal: controller.signal });
+        await Promise.resolve();
+        expect(t.busy).toEqual(['Exporting…']);
+        controller.abort('stop');
+        await expect(pending).rejects.toBe('stop');
+        expect(seen).toEqual([controller.signal]);
+        expect(t.busy).toEqual(['Exporting…', null]);
+        expect(stub.downloads).toEqual([]);
+    });
+
+    it('downloads nothing without a data row and says so, header or not (review)', async () => {
         const t = setup();
         t.state.sorted = [];
         await t.api.exportToCsv('x', { includeHeaders: false });
+        await t.api.exportToExcel('y'); // header only
+        await t.api.exportToCsv('z');
         expect(stub.downloads).toEqual([]);
-        expect(t.announced).toEqual(['Nothing to export']);
-        await t.api.exportToExcel('y'); // header only: a file with one row
-        expect(stub.downloads.map((d) => d.name)).toEqual(['y.xlsx']);
+        expect(t.announced).toEqual(['Nothing to export', 'Nothing to export', 'Nothing to export']);
+        expect(t.events).toEqual([]);
+    });
+
+    it('falls back to the option filename for an empty-string name (review)', async () => {
+        const t = setup({ filename: 'people' });
+        await t.api.exportToCsv('');
+        expect(stub.downloads[0]?.name).toBe('people.csv');
+    });
+
+    it("exports every node of a tree table with 'filtered', and only the selected nodes of it with 'selected' (review)", async () => {
+        const t = setup();
+        const parents = ['p1', 'p2', 'p3'].map((id) => ({ id, name: id, score: 0 }));
+        const children = Array.from({ length: 10 }, (_, i) => ({ id: `c${i}`, name: `c${i}`, score: i }));
+        t.state.sorted = parents; // the top-level rows only, as sortedData() is in tree mode
+        t.state.tree = [parents[0] as Row, ...children.slice(0, 4), parents[1] as Row, ...children.slice(4, 7), parents[2] as Row, ...children.slice(7)];
+        expect((await t.api.toCsv()).split('\r\n').slice(1).map((line) => line.split(',')[0])).toEqual(t.state.tree.map((r) => r.id));
+        t.selected.add('c1').add('c8');
+        expect(await t.api.toCsv({ scope: 'selected' })).toBe('ID,Name,Score\r\nc1,c1,1\r\nc8,c8,8');
     });
 
     it('an export running at teardown downloads nothing and rejects', async () => {

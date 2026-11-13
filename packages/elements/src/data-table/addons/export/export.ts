@@ -10,8 +10,11 @@ import type { QueryService } from '../../data-table-providers.js';
 import type { ColumnDef, DataTableExportQuery } from '../../data-table.types.js';
 import { EXPORT_LOCALES, type ExportLocale } from './export-locale.js';
 
-/** Server-side rows: given the current query (filters and sort, no paging), returns every matching row (Angular `ExportDataProvider`). */
-export type ExportDataProvider<T> = (query: DataTableExportQuery) => Promise<readonly T[]> | readonly T[];
+/**
+ * Server-side rows: given the current query (filters and sort, no paging), returns every matching row (Angular `ExportDataProvider`). `signal` is
+ * the request's, so a fetch can stop with it; an abort rejects the export at once whether or not the provider honours it.
+ */
+export type ExportDataProvider<T> = (query: DataTableExportQuery, signal?: AbortSignal) => Promise<readonly T[]> | readonly T[];
 
 export type ExportFormat = 'csv' | 'xlsx';
 
@@ -20,7 +23,8 @@ export interface ExportRequest<T = unknown> {
     /**
      * Which rows, when neither `rows` nor a provider gives them: `'filtered'` (default, Angular) the filtered and sorted rows of every page;
      * `'all'` the unfiltered `data`; `'selected'` the filtered and sorted rows that are selected (a selected row a filter hides is not exported);
-     * `'page'` the data rows of the page as drawn. Tree and grouped tables export flat rows (no indentation, no group rows).
+     * `'page'` the data rows of the page as drawn. Tree and grouped tables export flat rows (no indentation, no group rows); in a tree table
+     * `'filtered'` and `'selected'` walk the whole filtered tree, children included, whatever is collapsed or paged.
      */
     scope?: 'filtered' | 'all' | 'selected' | 'page';
     /** `'visible'` (default) the drawn data columns in drawn order; `'all'` every data column as defined, hidden ones included. */
@@ -54,7 +58,7 @@ export interface ExportOptions<T = unknown> {
     locale?: string | ExportLocale;
 }
 
-/** What `table.addon<ExportApi>('export')` returns. A second call of the same method while one runs returns the running one's promise. */
+/** What `table.addon<ExportApi>('export')` returns. Concurrent calls run independently; the busy overlay stays while any runs. */
 export interface ExportApi<T = unknown> {
     /** Downloads `<filename>.csv` (UTF-8 with BOM, CRLF, formula-guarded cells). The second argument may be the rows, as in Angular. */
     exportToCsv(filename?: string, request?: ExportRequest<T> | readonly T[]): Promise<void>;
@@ -119,13 +123,12 @@ const yieldTask = (): Promise<void> => new Promise((resolve) => setTimeout(resol
 
 /** A date-only ISO string as a local date; a full ISO date-time through `Date`. Anything else is not a date. */
 function isoDate(value: string): Date | null {
-    const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-    if (day) {
-        const date = new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3]));
-        return date.getMonth() === Number(day[2]) - 1 ? date : null;
-    }
-    if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?$/.test(value)) return null;
-    const date = new Date(value);
+    const parts = /^(\d{4})-(\d{2})-(\d{2})(T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:\d{2})?)?$/.exec(value);
+    if (!parts) return null;
+    const [year, month, day] = [Number(parts[1]), Number(parts[2]) - 1, Number(parts[3])];
+    const calendar = new Date(Date.UTC(year, month, day));
+    if (calendar.getUTCMonth() !== month || calendar.getUTCDate() !== day) return null; // a rolled-over day (2023-02-30), with or without a time
+    const date = parts[4] ? new Date(value) : new Date(year, month, day);
     return Number.isNaN(date.getTime()) ? null : date;
 }
 
@@ -142,9 +145,20 @@ function abortReason(signal: AbortSignal | undefined): unknown {
     return signal?.reason ?? new DOMException('The export was aborted.', 'AbortError');
 }
 
+/** `value`, or a rejection with the abort reason as soon as `signal` aborts (the listener is removed either way). */
+function untilAborted<R>(value: R | Promise<R>, signal: AbortSignal | undefined): Promise<R> {
+    if (!signal) return Promise.resolve(value);
+    if (signal.aborted) return Promise.reject(abortReason(signal));
+    let onAbort = (): void => undefined;
+    const aborted = new Promise<never>((_, reject) => {
+        onAbort = () => reject(abortReason(signal));
+        signal.addEventListener('abort', onAbort, { once: true });
+    });
+    return Promise.race([Promise.resolve(value), aborted]).finally(() => signal.removeEventListener('abort', onAbort));
+}
+
 /** The export flow of one table: rows, grid, file. */
 class TableExporter<T> {
-    private readonly running = new Map<string, Promise<unknown>>();
     private busyCount = 0;
     private disposed = false;
 
@@ -154,10 +168,10 @@ class TableExporter<T> {
     ) {}
 
     readonly api: ExportApi<T> = {
-        exportToCsv: (filename, request) => this.once('exportToCsv', () => this.download('csv', filename, request)),
-        exportToExcel: (filename, request) => this.once('exportToExcel', () => this.download('xlsx', filename, request)),
-        toCsv: (request) => this.once('toCsv', () => this.busy(async () => toCsv((await this.grid(request ?? {}, false)) as string[][]))),
-        toXlsx: (request) => this.once('toXlsx', () => this.busy(async () => this.xlsx(request ?? {}))),
+        exportToCsv: (filename, request) => this.download('csv', filename, request),
+        exportToExcel: (filename, request) => this.download('xlsx', filename, request),
+        toCsv: (request) => this.busy(async () => toCsv((await this.grid(request ?? {}, false)) as string[][])),
+        toXlsx: (request) => this.busy(async () => this.xlsx(request ?? {})),
     };
 
     dispose(): void {
@@ -166,15 +180,6 @@ class TableExporter<T> {
 
     private locale(): ExportLocale {
         return resolveAddonLocale(EXPORT_LOCALES, this.host, this.options.locale);
-    }
-
-    /** A second call of `method` while one runs gets the running one's promise. */
-    private once<R>(method: string, run: () => Promise<R>): Promise<R> {
-        const current = this.running.get(method);
-        if (current) return current as Promise<R>;
-        const promise = run().finally(() => this.running.delete(method));
-        this.running.set(method, promise);
-        return promise;
     }
 
     /** The busy overlay for as long as any export of this table runs. */
@@ -193,19 +198,19 @@ class TableExporter<T> {
 
     private async download(format: ExportFormat, filename: string | undefined, given: ExportRequest<T> | readonly T[] | undefined): Promise<void> {
         const request: ExportRequest<T> = Array.isArray(given) ? { rows: given as readonly T[] } : ((given as ExportRequest<T> | undefined) ?? {});
-        const name = exportFilename(filename ?? this.options.filename, format);
+        const name = exportFilename(filename || this.options.filename, format);
         try {
             await this.busy(async () => {
                 const grid = await this.grid(request, format === 'xlsx' && request.typedCells === true);
                 this.check(request.signal);
-                if (grid.length === 0) {
-                    this.host.announce(this.locale().exportEmpty);
+                const rows = grid.length - (request.includeHeaders === false ? 0 : 1);
+                if (rows === 0) {
+                    this.host.announce(this.locale().exportEmpty); // no data row: no file, header or not
                     return;
                 }
                 const blob =
                     format === 'csv' ? new Blob([CSV_BOM + toCsv(grid as string[][])], { type: CSV_MIME }) : new Blob([this.workbook(grid, request)], { type: XLSX_MIME });
                 downloadBlob(blob, name);
-                const rows = grid.length - (request.includeHeaders === false ? 0 : 1);
                 this.host.emit('export-complete', { format, filename: name, rows, bytes: blob.size });
                 this.host.announce(this.locale().exportDone);
             });
@@ -238,7 +243,8 @@ class TableExporter<T> {
         if (request.rows) return request.rows;
         const query = this.query();
         const provider = request.provider ?? this.options.provider;
-        if (provider) return provider(query.exportQuery());
+        const { signal } = request;
+        if (provider) return untilAborted(signal ? provider(query.exportQuery(), signal) : provider(query.exportQuery()), signal);
         switch (request.scope) {
             case 'all':
                 return query.rawRows();
@@ -246,11 +252,17 @@ class TableExporter<T> {
                 return query.renderedRows();
             case 'selected': {
                 const selection = this.host.provider('selection');
-                return selection ? query.sortedData().filter((row) => selection.isSelected(query.rowId(row))) : [];
+                return selection ? this.filtered(query).filter((row) => selection.isSelected(query.rowId(row))) : [];
             }
             default:
-                return query.sortedData();
+                return this.filtered(query);
         }
+    }
+
+    /** The filtered, sorted rows of every page; in a tree table every node of the filtered tree, depth-first in drawn order, whatever is collapsed. */
+    private filtered(query: QueryService<T>): readonly T[] {
+        const tree = query.flatTree();
+        return tree.length > 0 ? tree : query.sortedData();
     }
 
     /** Header plus the rows' cells, built `EXPORT_CHUNK_ROWS` rows at a time; `typed` swaps raw values in where the column has no `cell()`. */
