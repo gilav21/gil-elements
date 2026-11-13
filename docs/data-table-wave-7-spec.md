@@ -187,6 +187,10 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 - `register-addon.mjs` `option()` accepts a following flag (`--base --component`) as a value.
 - The element reaches the `addons` service through more than one accessor (the addon host part and the busy port); keep one private accessor.
 
+### Package A follow-ups (PR #79)
+- `ge-context-menu-item variant="destructive"` fails axe `color-contrast` in dark mode (the menu element or its tokens, not the addon); the addon's axe test uses plain items until it is fixed.
+- After a long press that opened a menu, Chromium's touch emulation (and iOS) sends compatibility mouse events at the lift; their `mousedown` focuses the held cell natively, so focus leaves the menu there. `shared/touch.ts` `swallowReleaseClick` takes only the `click`; it could cancel the compatibility events of a claimed press too (Android sends none).
+
 ## H. Work packages (strict file ownership after step 0)
 
 Merge order: Step 0 -> A, B, C, D in parallel (disjoint files) -> integration PR (cross-addon browser tests, `full`-style smoke with all addons on one table, axe, size budget lines, parity cases finalised).

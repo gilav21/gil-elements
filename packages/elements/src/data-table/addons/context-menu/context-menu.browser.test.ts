@@ -357,6 +357,25 @@ describe('touch', () => {
         expect(opened).toHaveLength(1);
     });
 
+    it('the finger lift after a long press that opened the menu is not a tap: focus stays in the menu', async () => {
+        const table = await mount({ rowActions: ROW_ITEMS });
+        // Android sends no compatibility mouse events after a long press; Chromium's touch emulation does (a mousedown that focuses the
+        // cell natively). Cancelling them at the touchend models that platform, so what is left is the table's own tap handling (pointerup).
+        const noCompatMouse = (event: Event): void => event.preventDefault();
+        window.addEventListener('touchend', noCompatMouse, { passive: false });
+        try {
+            await touchLongPress(cellAt(table, 1, 'name')!, 700);
+            const menu = builtMenu('row')!;
+            expect(menu.open).toBe(true);
+            await focusedItem(menu);
+            await frames(4);
+            expect(itemsOf(menu)).toContain(focusedMenuItem());
+            expect(menu.open).toBe(true);
+        } finally {
+            window.removeEventListener('touchend', noCompatMouse);
+        }
+    });
+
     it('custom mode with range selection on: a hold on an unselected cell is the range\'s, a hold on the selected cell opens the menu', async () => {
         const menu = ownMenu();
         leftovers.push(menu);
