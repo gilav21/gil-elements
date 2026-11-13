@@ -55,6 +55,16 @@ describe('isFilterValueEmpty', () => {
     it.each([[undefined], [null], [''], [[]], [{ start: null, end: null }], [{ start: null }], [{ end: undefined }], [{ start: undefined, end: undefined }], [{ start: '', end: '' }], [{ start: '', end: null }], [{ end: '' }], [new Set()], [Object.assign(Object.create(null), { start: null })]])('%j is empty', (v) => {
         expect(isFilterValueEmpty(v)).toBe(true);
     });
+    it("a class instance with start and end both null is empty, as on main (round 24: main's rule for non-plain objects)", () => {
+        class Range {
+            start: Date | null = null;
+            end: Date | null = null;
+        }
+        expect(isFilterValueEmpty(new Range())).toBe(true);
+        const set = new Range();
+        set.start = new Date(1);
+        expect(isFilterValueEmpty(set)).toBe(false);
+    });
     it('isPlainObject: object literals and null-prototype objects only (round 18)', () => {
         expect(isPlainObject({})).toBe(true);
         expect(isPlainObject(Object.create(null))).toBe(true);

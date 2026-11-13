@@ -78,7 +78,10 @@ export function isFilterValueEmpty(value: unknown): boolean {
     // wave5: a PLAIN object whose own keys are a NON-EMPTY subset of `start` / `end` with no end set (null, undefined, '') is a range that filters
     // nothing. Any other key makes it a real value (`{ start: null, end: null, includeBlanks: true }` is a consumer's filter and reaches filterFn);
     // a key-less object (`{}`) is not a range and reaches filterFn too, as on main.
-    if (!isPlainObject(value)) return false;
+    if (!isPlainObject(value)) {
+        // Any other object (a class instance): main's rule, unchanged.
+        return typeof value === 'object' && 'start' in value && 'end' in value && value.start === null && value.end === null;
+    }
     const entries = Object.entries(value);
     const unset = (end: unknown): boolean => end == null || end === '';
     return entries.length > 0 && entries.every(([key, end]) => (key === 'start' || key === 'end') && unset(end));
