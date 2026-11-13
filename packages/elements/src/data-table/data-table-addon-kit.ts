@@ -136,11 +136,12 @@ export class AddonSet<T = unknown> {
 
     /** Adds an addon (with options) regardless of the attribute; the returned function removes it (not an addon that replaced it under the same id). */
     use(addon: DataTableAddon<T>, options?: unknown): () => void {
-        this.used.set(addon.id, { addon, options });
+        const entry = { addon, options };
+        this.used.set(addon.id, entry);
         this.merge();
         this.sync();
         return () => {
-            if (this.used.get(addon.id)?.addon !== addon) return;
+            if (this.used.get(addon.id) !== entry) return; // replaced by a later use() (another addon, or the same one with new options)
             this.used.delete(addon.id);
             this.merge();
             this.sync();

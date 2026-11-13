@@ -331,6 +331,19 @@ describe('AddonSet: final review', () => {
         expect(log).toEqual(['start mine']);
     });
 
+    it('the remover of a use() replaced by a use() of the same addon object (new options) leaves the new one running (final review 4)', () => {
+        const { host } = fakeHost();
+        const log: string[] = [];
+        const addon: DataTableAddon = { id: 'x', setup: (_h, options) => (log.push(`start ${JSON.stringify(options)}`), () => log.push('stop')) };
+        const set = new AddonSet(host, new Map());
+        set.start();
+        const first = set.use(addon, { v: 1 });
+        set.use(addon, { v: 2 });
+        log.length = 0;
+        first();
+        expect(log).toEqual([]);
+    });
+
     it('after the teardown, the addon host announces, renders and provides nothing', () => {
         const announce = vi.fn();
         const requestRender = vi.fn();

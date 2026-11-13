@@ -171,6 +171,8 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 - A topic listener that throws (e.g. `defineAddon`'s locale re-run after it released its previous run) leaves a half set-up addon counted as running.
 - The `_actions` cell is drawn in two code paths (`specialCell` for the auto column, `cellContent` for a consumer's column).
 - The columns controller looks up the `addons` provider on every `current()` call.
+- The row action context (`rowContext`) is built per slot per row; build it once per row.
+- The element reaches the `addons` service through more than one accessor (the addon host part and the busy port); keep one private accessor.
 
 ## H. Work packages (strict file ownership after step 0)
 

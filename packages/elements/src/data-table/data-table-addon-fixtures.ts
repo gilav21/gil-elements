@@ -31,6 +31,7 @@ export function stubDownload(): DownloadStub {
     const { createObjectURL, revokeObjectURL } = URL;
     const anchor = globalThis.HTMLAnchorElement?.prototype;
     const click = anchor?.click;
+    const ownClick = anchor !== undefined && Object.hasOwn(anchor, 'click'); // HTMLAnchorElement inherits HTMLElement's click
     URL.createObjectURL = (object: Blob | MediaSource): string => {
         const url = `blob:stub/${stub.created.length + 1}`;
         if (object instanceof Blob) blobs.set(url, object);
@@ -46,7 +47,9 @@ export function stubDownload(): DownloadStub {
     function restore(): void {
         URL.createObjectURL = createObjectURL;
         URL.revokeObjectURL = revokeObjectURL;
-        if (anchor && click) anchor.click = click;
+        if (!anchor) return;
+        if (ownClick && click) anchor.click = click;
+        else delete (anchor as Partial<HTMLAnchorElement>).click; // the prototype chain again
     }
     return stub;
 }

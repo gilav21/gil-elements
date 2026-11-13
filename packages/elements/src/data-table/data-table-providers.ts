@@ -130,6 +130,8 @@ export interface QueryService<T> {
     cellValue(row: T, key: string | keyof T, column?: ColumnDef<T>): unknown;
     /** Header row plus cells as strings, the view copy and export share. `onlyVisible: false` includes the hidden data columns. */
     exportData(options?: DataTableExportOptions, rows?: readonly T[]): string[][];
+    /** Wave 7: the global text the toolbar box shows: the typed text while it waits on `filterDebounce`, else the model value. */
+    globalText(): string;
     /** Wave 7: `data` as given, unfiltered and unsorted (Angular `getRawRows`). */
     rawRows(): readonly T[];
     /** Wave 7: the row's id (`getRowId`). */
@@ -197,6 +199,8 @@ export interface FilterService<T> {
     hasAnyFloating(): boolean;
     /** The number of conditions in the advanced filter (the toolbar badge). */
     advancedCount(): number;
+    /** Wave 7: drops every floating column write still waiting on its debounce (`applyFilters` with `columnFilters`). */
+    dropPending?(): void;
 }
 
 export interface FooterService {

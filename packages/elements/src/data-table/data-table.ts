@@ -923,7 +923,7 @@ export class GeDataTable<T = unknown> extends LitElement implements DataTableVie
         const visibility = this.store.get('columnVisibility');
         return html`<div data-slot="data-table-toolbar">
             <div data-slot="data-table-toolbar-start">
-                <div data-slot="data-table-filter"><ge-input placeholder=${locale.filterPlaceholder} aria-label=${locale.filterPlaceholder} .value=${live(this.store.get('globalFilter'))}
+                <div data-slot="data-table-filter"><ge-input placeholder=${locale.filterPlaceholder} aria-label=${locale.filterPlaceholder} .value=${live(query.globalText())}
                     @input=${(event: Event) => query.changeGlobalFilter((event.currentTarget as HTMLInputElement).value)}></ge-input></div>
                 ${this.renderParts('renderToolbar')}
                 ${this.nodes('toolbar-start')}

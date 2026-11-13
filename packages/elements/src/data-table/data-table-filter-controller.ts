@@ -71,6 +71,7 @@ export class FilterUiController<T> {
         setter: (key) => this.handlersOf(key).set,
         floatingInput: (key) => this.handlersOf(key).input,
         floatingText: (key) => this.pending.get(key)?.text,
+        dropPending: () => this.dropPending(),
     };
 
     attach(): void {

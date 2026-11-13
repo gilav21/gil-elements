@@ -21,6 +21,9 @@ function probe(id: string) {
     return { addon, runs, stops };
 }
 
+/** Whether the anchor prototype has its own `click` before any test stubs it (it inherits HTMLElement's). */
+const ANCHOR_OWN_CLICK = Object.hasOwn(HTMLAnchorElement.prototype, 'click');
+
 let id = 0;
 const uniqueId = (): string => `step0-probe-${++id}`;
 const announcer = (table: Element): string => (q(table, '[data-slot="data-table-announcer"]').textContent ?? '').replace('​', '');
@@ -130,6 +133,30 @@ describe('use() and the addon host', () => {
         await settle(table);
         expect(box.value).toBe('');
         expect(table.globalFilter).toBe('');
+    });
+
+    it('keeps typed global text that waits on the debounce across an unrelated render (final review 4)', async () => {
+        const table = await mountTable({ filterDebounce: 5000 });
+        const box = q(table, '[data-slot="data-table-filter"] ge-input') as HTMLElement & { value: string };
+        await typeText(box.shadowRoot!.querySelector('input')!, 'abc');
+        table.showRowBorders = false; // an unrelated render
+        await settle(table);
+        expect(box.value).toBe('abc');
+        expect(table.globalFilter).toBe('');
+    });
+
+    it('drops the floating column-filter writes still waiting when applyFilters sets the column filters (final review 4)', async () => {
+        const { addon, runs } = probe(uniqueId());
+        const columns = [{ accessorKey: 'name', header: 'Name', enableFiltering: true }, { accessorKey: 'age', header: 'Age' }];
+        const table = await mountTable({ columns, enableFloatingFilters: true, filterDebounce: 300 });
+        table.use(addon);
+        const input = table.querySelector('[data-kind="filter"] ge-input')!.shadowRoot!.querySelector('input')!;
+        await typeText(input, 'Al'); // waits on the debounce
+        runs[0]!.host.provider('query')?.applyFilters({ columnFilters: { age: '30' } });
+        await new Promise((resolve) => setTimeout(resolve, 400));
+        await settle(table);
+        expect(table.columnFilters).toEqual({ age: '30' });
+        expect(input.value).toBe('');
     });
 
     it('shows the busy overlay with the label an addon sets, and clears it', async () => {
@@ -441,5 +468,11 @@ describe('stubDownload (browser)', () => {
         a.download = 'export.csv';
         a.click();
         expect(downloads.downloads).toEqual([{ name: 'export.csv', href: 'blob:stub/1', blob }]);
+    });
+
+    it('restores the prototype chain: no own click is left on HTMLAnchorElement.prototype (final review 4)', () => {
+        stubDownload().restore();
+        expect(Object.hasOwn(HTMLAnchorElement.prototype, 'click')).toBe(ANCHOR_OWN_CLICK); // as before any stub of this file
+        expect(HTMLAnchorElement.prototype.click).toBe(HTMLElement.prototype.click);
     });
 });
