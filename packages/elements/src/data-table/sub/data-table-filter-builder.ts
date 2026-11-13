@@ -95,9 +95,11 @@ export class GeDataTableFilterBuilder extends UiElement {
 
     protected override willUpdate(changed: PropertyValues<this>): void {
         if (changed.has('labels')) this.l = { ...EN_FILTER_BUILDER_LABELS, ...this.labels } as Required<FilterBuilderLabels>;
-        // A tree replaced from outside makes the waiting values meaningless (their paths name another tree's conditions): they are dropped. A tree
-        // structurally equal to the last one reported is that report coming back (a framework's binding writing a copy), not a replacement.
-        if (!this.owner && changed.has('group') && this.pending.size > 0 && !sameStructure(this.group, this.lastEmitted)) {
+        // A tree replaced from outside makes the waiting values meaningless (their paths name another tree's conditions): they are dropped. Not a
+        // replacement: a copy equal to the PREVIOUS group (reassigned unchanged, before anything was reported), nor one equal to the last tree
+        // reported (that report coming back through a framework's binding).
+        const replaced = !sameStructure(this.group, changed.get('group')) && !sameStructure(this.group, this.lastEmitted);
+        if (!this.owner && changed.has('group') && this.pending.size > 0 && replaced) {
             clearTimeout(this.timer);
             this.timer = undefined;
             this.pending.clear();

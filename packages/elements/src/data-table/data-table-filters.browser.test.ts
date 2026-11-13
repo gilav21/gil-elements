@@ -1310,6 +1310,26 @@ describe('F7 the advanced filter builder', () => {
         });
     });
 
+    it('an equal copy of the tree reassigned before anything was reported keeps the typed text; a different tree drops it (round 18)', async () => {
+        const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: '' }] };
+        const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 400 });
+        await openBuilder(table);
+        const input = inner(table, 'input.value')[0]! as HTMLInputElement;
+        await typeText(input, 'A');
+        table.advancedFilter = structuredClone(group); // the same tree, a new object, nothing reported yet
+        await settle(table);
+        expect(input.value).toBe('A');
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await settle(table);
+        expect((table.advancedFilter!.rules[0] as FilterCondition).value).toBe('A');
+        await typeText(input, 'B');
+        table.advancedFilter = { ...group, combinator: 'or' }; // a real replacement
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        await settle(table);
+        expect((table.advancedFilter!.rules[0] as FilterCondition).value).toBe('');
+        await closePopover(table);
+    });
+
     it("an async copy of the reported tree (a consumer's binding) keeps the text typed since (round 17)", async () => {
         const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: '' }] };
         const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 200 });
