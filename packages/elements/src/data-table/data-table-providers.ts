@@ -151,9 +151,9 @@ export interface QueryService<T> {
      */
     filtersRestored(globalChanged: boolean): void;
     /**
-     * wave5: the ONE column / advanced filter result announcement, for the LATEST filter change, after the edits have settled: the matching rows
-     * (server filtering: once the query's answer is in; nothing without a count), or that every filter is cleared. A newer call or filter change
-     * drops a waiting one. The change numbering and the count wait are the query controller's own.
+     * wave5: the column / advanced filter result announcement. Local filtering: 500 ms after the call, the number of matching rows, or that every
+     * filter is cleared; a newer call or filter change replaces a waiting one (one timer slot, the latest change speaks). Server filtering: nothing
+     * (the rows held are not the matches). No numbering and no waiting for a server answer.
      */
     announceFilters(): void;
 }

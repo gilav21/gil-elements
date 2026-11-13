@@ -517,7 +517,7 @@ Wave 6 is developed in parallel, so step 0 is written together with wave 6's (se
 - **Escape with a date picker**: Escape closes the picker panel first (the popover stops there with `defaultPrevented`); the edit handler cancels only when the event is not `defaultPrevented`. Real-keyboard test (E5).
 - **Window blur**: a text editor does not commit when the WINDOW loses focus (`relatedTarget === null && !document.hasFocus()`); Angular commits (html 276).
 - **Blur with a rejected value** keeps the editor open with its error (Angular parity, D15); the user's text is not thrown away.
-- **Editing under sort**: a commit into the sort column moves the row; the editor is already closed, focus stays on the cell index (wave 4 rule: ring stays at the screen position).
+- **Editing under sort**: a commit into the sort column moves the row; the editor closes and the focus follows the edited RECORD to where it is drawn after the re-sort (found by row id), not the index it had (as built; the earlier "stays on the cell index" plan was replaced in review).
 - **Group, tree, virtual**: addresses are drawn indexes (`renderedRowAt`); a collapsing group drops the editor like a page change; a virtual editor row is retained out of the window; scrolling does not close the editor.
 - **Filter result announcements (as built, review round 21, simplified)**: LOCAL filtering only: one polite message 500 ms after the last filter change (global, column, advanced, a restored view state), with the count of the rows that match (or that every filter is cleared). ONE timer slot: every filter change clears it, every announcement replaces it, so the latest change speaks once. SERVER filtering (`localFiltering = false`): the GLOBAL filter announces as on main (the server's `total` for the typed text, nothing without a total); column and advanced filters announce NO result, since the rows the table holds are not the matches and it cannot know the count of the server's answer (the earlier answer-wait machinery, rounds 2-20, is removed; round 22 restored main's global rule).
 - **A table removed from the document** drops the floating filter writes still waiting on `filterDebounce` (no filter event from a removed table). On a DOM move, text typed but not yet applied is lost (accepted, round 21).
@@ -558,6 +558,9 @@ Wave 6 is developed in parallel, so step 0 is written together with wave 6's (se
      - One subscriber for the structural echo checks (the query and filter controllers each keep their own).
      - `dropPendingGlobal` also in `detach` and at the start of `changeGlobalFilter`.
      - Exports that are private in practice, and where `FILTER_ANNOUNCE_MS` lives.
+  10. **Round 26 review, deferred:**
+     - A Date filter value mutated in place and re-emitted (the same reference) is not a change: `sameFilterValue`'s Date branch compares the times before the same-reference rule.
+     - V8's lenient `new Date(string)` lets non-date text match the date filters; accept only ISO / date-shaped strings.
 
 ## 4. Size
 Static cost in `data-table/define.js` (gzip): package A about 2.3 KB (trigger + floating row 1.2, controller + toolbar button 0.8, glue 0.3); package B about 4.5 KB (pure edit 1.3, session 2.2, editor view 1.0). Pure filter fns and builder operations sit in the index only (about 0.8 KB there, not in define). Provisional budget: `data-table/define.js` 77 020 -> 84 000, `data-table/index.js` 77 470 -> 85 000 (both final after the integration measurement, rounded up, and justified in the PR as "wave 5: filter trigger, floating row, edit session; the builder, panels, calendar, command and date picker are lazy").

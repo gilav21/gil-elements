@@ -330,7 +330,9 @@ export class QueryController<T> {
             if (debounce > 0) this.cancelFilter = this.host.disposables.timeout(() => this.applyGlobalFilter(value), debounce);
             else this.applyGlobalFilter(value);
         },
-        // wave 5, package A (filters): the column filter write and the count. They are the only part of this file wave 5 edits.
+        // wave 5, package A (filters) added to this file: the column filter write and `filteredCount` below, `announceFilters` / `filtersRestored`
+        // and the one announcement slot they share with the global filter (`announce`), and the outside-write watch in `attach` (an outside filter
+        // write clears a waiting announcement; an outside global text drops a typed one still waiting).
         // The value is stored as given (`null` stays a key, Angular cmp 3629), with the page reset in ONE batch; the loading controller marks the
         // `filtering` trigger from the `columnFilters` key. The model fires `column-filters-change`; no other event.
         changeColumnFilter: (key, value) => {
