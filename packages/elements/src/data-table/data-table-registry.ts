@@ -97,8 +97,9 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
     // `virtual`: the flash snapshot covers the drawn window only.
     spec('formatting', { provides: ['formatting'], needs: ['query', 'columns'], uses: ['virtual'], reads: ['rows', 'columns'], writes: ['cell'] }),
     spec('footer', { provides: ['footer'], needs: ['query', 'columns'], reads: ['rows', 'columns'] }),
-    spec('filter-ui', { provides: ['filters'], needs: ['columns'], uses: ['query'], reads: ['columns', 'locale'] }),
+    // ai before filter-ui: the toolbar draws in plan order, and the NL box comes before the advanced-filter trigger (Angular html 369-386).
     spec('ai', { provides: ['ai'], needs: ['query', 'columns'], uses: ['interaction'], reads: ['locale'] }),
+    spec('filter-ui', { provides: ['filters'], needs: ['columns'], uses: ['query'], reads: ['columns', 'locale'] }),
     spec('diagnostics', { uses: ['virtual', 'query'], reads: ['config', 'rows'] }),
     spec('aria', { needs: ['query', 'columns'], uses: ['interaction', 'virtual'], reads: ['rows', 'columns', 'selection', 'cell', 'viewport', 'locale'] }),
     spec('addon-host', { provides: ['addons'], uses: ['query', 'columns', 'interaction', 'selection'], reads: ['locale'] }),

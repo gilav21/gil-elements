@@ -61,6 +61,14 @@ describe('the NL filter box', () => {
         expect(hidden.querySelector(NL)).toBeNull();
     });
 
+    it('sits after the global filter and before the advanced-filter trigger (Angular order)', async () => {
+        const table = await mountAi(() => '{}', { enableAdvancedFilter: true });
+        const start = [...q(table, '[data-slot="data-table-toolbar-start"]').children].map((el) => el.getAttribute('data-slot') ?? el.tagName.toLowerCase());
+        expect(start.indexOf('data-table-filter')).toBe(0);
+        expect(start.indexOf('table-nl-filter')).toBe(1);
+        expect(start.indexOf('ge-popover')).toBe(2); // the advanced-filter trigger's popover
+    });
+
     it('typing a question and pressing Enter filters the rows, returns to page 0 and announces the count', async () => {
         const ai = makeAiProvider(JSON.stringify({ globalFilter: 'Alice' }));
         const table = await mountAi(ai.provider, { paginationState: { pageIndex: 1, pageSize: 2 } });
