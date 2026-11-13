@@ -17,6 +17,7 @@ import {
     updateRule,
 } from './data-table-filter-panels.js';
 import {
+    anyFilterOn,
     EMPTY_GROUP,
     builderColumns,
     currentFilterValue,
@@ -140,6 +141,21 @@ describe('date filter values of any shape (a saved view restored from JSON, a ti
 
     it('dateRangeFilterFn treats a value that is not a range, or a range of non-dates, as no filter, and never throws', () => {
         for (const bad of ['2024-03-11', 7, true, [], { start: 'x', end: {} }, { from: day }]) expect(dateRangeFilterFn(row, bad as never, at(0))).toBe(true);
+    });
+});
+
+describe('anyFilterOn (round 20)', () => {
+    const columns: ColumnDef<unknown>[] = [
+        { accessorKey: 'name', header: 'Name', enableFiltering: true },
+        { accessorKey: 'ghost', header: 'Ghost' }, // no enableFiltering: its value filters nothing
+    ];
+    it('counts a set value on a filtering column, an advanced condition or the global text; never a key of another column', () => {
+        expect(anyFilterOn(columns, {}, 0, '')).toBe(false);
+        expect(anyFilterOn(columns, { ghost: 'x', removed: 'y' }, 0, '')).toBe(false);
+        expect(anyFilterOn(columns, { name: null }, 0, '  ')).toBe(false);
+        expect(anyFilterOn(columns, { name: 'a' }, 0, '')).toBe(true);
+        expect(anyFilterOn(columns, {}, 1, '')).toBe(true);
+        expect(anyFilterOn(columns, {}, 0, 'b')).toBe(true);
     });
 });
 

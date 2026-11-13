@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Disposables } from '../shared/registry.js';
 import { FilterUiController } from './data-table-filter-controller.js';
-import { FILTER_ANNOUNCE_MS as FILTER_UI_ANNOUNCE_MS } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import type { DataTableCoreHost } from './data-table-host.js';
 import { ModelStore } from './data-table-model.js';
@@ -21,12 +20,9 @@ function fakeHost(config: Partial<Record<string, unknown>> = {}) {
         changeColumnFilter: vi.fn((key: string, value: unknown) => model.set('columnFilters', { ...model.get('columnFilters'), [key]: value })),
         changeAdvancedFilter: vi.fn((group: FilterGroup | null) => model.set('advancedFilter', group)),
         filteredCount: vi.fn(() => 3 as number | undefined),
-        // The query service's one count rule, reduced to "now, if there is a count" (the waiting half is the query controller's, browser-tested).
-        whenCounted: (say: (count: number) => void): void => {
-            const count = query.filteredCount();
-            if (count !== undefined) say(count);
-        },
-        filterSeq: (): number => 0,
+        seq: 0,
+        filterSeq: (): number => query.seq,
+        announceFilters: vi.fn(),
     };
     const columns: ColumnDef<Row>[] = [{ accessorKey: 'name', header: 'Name', enableFiltering: true }];
     const disposables = new Disposables();
@@ -129,63 +125,32 @@ describe('FilterUiController', () => {
         expect(query.changeColumnFilter).toHaveBeenCalledTimes(1);
     });
 
-    it('announces the settled count once, 500 ms after the last column or advanced edit (D7)', () => {
-        const { service, announce, query } = fakeHost();
+    // Round 20: the announcement itself (the 500 ms settle, the count, "all filters cleared", the server wait) is the query service's ONE
+    // `announceFilters` (browser-tested in F9, its "any filter on" rule node-tested as anyFilterOn); the filter UI hands it every table write.
+    it('hands each table write of the column or advanced filter to the query service announcement, with the change number (D7)', () => {
+        const { service, model, query } = fakeHost();
+        query.seq = 4;
         service.setter('name')('a');
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS - 1);
-        service.setter('name')('al');
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS - 1);
-        expect(announce).not.toHaveBeenCalled();
-        vi.advanceTimersByTime(1);
-        expect(announce).toHaveBeenCalledTimes(1);
-        expect(announce).toHaveBeenCalledWith('3 rows match the filters');
-        query.filteredCount.mockReturnValue(1);
-        service.setter('name')('ali');
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
-        expect(announce).toHaveBeenLastCalledWith('1 row matches the filters');
+        expect(query.announceFilters).toHaveBeenLastCalledWith(4);
+        query.seq = 5;
+        model.set('advancedFilter', { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: 'a' }] });
+        expect(query.announceFilters).toHaveBeenLastCalledWith(5);
+        expect(query.announceFilters).toHaveBeenCalledTimes(2);
     });
 
-    it('announces that every filter is cleared, and nothing for an unknown server count', () => {
-        const { service, announce, query } = fakeHost();
-        service.setter('name')('a');
-        service.setter('name')(null);
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
-        expect(announce).toHaveBeenCalledWith('All filters cleared, showing all rows');
-        query.filteredCount.mockReturnValue(undefined);
-        service.setter('name')('b');
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
-        expect(announce).toHaveBeenCalledTimes(1);
-    });
-
-    it('a value left on a column without enableFiltering is no filter "on": clearing the real one says all filters are cleared (round 16)', () => {
-        const { service, announce, model } = fakeHost();
-        model.assign('columnFilters', { ghost: 'x' }); // a key of no filtering column (a removed column, a typo)
-        service.setter('name')('a');
-        service.setter('name')(null);
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
-        expect(announce).toHaveBeenCalledWith('All filters cleared, showing all rows');
-    });
-
-    it('announces nothing for a table write that leaves the filters structurally equal (round 16)', () => {
-        const { announce, model } = fakeHost();
+    it('hands over nothing for a table write that leaves the filters structurally equal (round 16)', () => {
+        const { model, query } = fakeHost();
         model.set('columnFilters', { name: 'a' });
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
-        expect(announce).toHaveBeenCalledTimes(1);
+        expect(query.announceFilters).toHaveBeenCalledTimes(1);
         model.set('columnFilters', { name: 'a' }); // a new, equal object (a restore that changed only the sort)
         model.set('advancedFilter', null);
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
-        expect(announce).toHaveBeenCalledTimes(1);
+        expect(query.announceFilters).toHaveBeenCalledTimes(1);
     });
 
-    it('does not announce a filter the consumer set as a property, nor after detach', () => {
-        const { controller, model, announce, service } = fakeHost();
+    it('hands over nothing for a filter the consumer set as a property', () => {
+        const { model, query } = fakeHost();
         model.assign('columnFilters', { name: 'x' });
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
-        expect(announce).not.toHaveBeenCalled();
-        service.setter('name')('y');
-        controller.detach();
-        vi.advanceTimersByTime(FILTER_UI_ANNOUNCE_MS);
-        expect(announce).not.toHaveBeenCalled();
+        expect(query.announceFilters).not.toHaveBeenCalled();
     });
 
     it('hands one stable prefetch handler per column (round 15)', () => {

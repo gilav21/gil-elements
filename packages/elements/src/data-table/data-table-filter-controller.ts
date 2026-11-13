@@ -1,12 +1,12 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { ref } from 'lit/directives/ref.js';
 import { chromeIcon } from './data-table-icons.js';
-import { anyFilterOn, BUILT_IN_FILTER_PANELS, builderColumns, currentFilterValue, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive, sameStructure } from './data-table-filters.js';
+import { BUILT_IN_FILTER_PANELS, builderColumns, currentFilterValue, EMPTY_GROUP, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive, sameStructure } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import { composedContains, type DataTableCoreHost, ownElements, requireProvider, VIEWPORT } from './data-table-host.js';
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
 import { countConditions, memoLast } from './data-table-query.js';
-import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels, interpolate } from './data-table.locales.js';
+import { EN_FILTER_BUILDER_LABELS, type FilterBuilderLabels } from './data-table.locales.js';
 import type { ColumnDef, ComponentOutputs, FilterGroup } from './data-table.types.js';
 
 /** The header panel's `ge-popover` as the scroll watch uses it. */
@@ -41,7 +41,6 @@ export class FilterUiController<T> {
     /** The column whose panel popover is open (one at a time: opening another closes the first by its outside click). */
     private openColumn: string | null = null;
     private builderOpen = false;
-    private cancelAnnounce: (() => void) | undefined;
     /** The pending debounced floating-input writes, by column key: the timer's cancel and the text it will write (what the input shows meanwhile). */
     private readonly pending = new Map<string, { cancel: () => void; text: string }>();
     /** Stable per-column handlers, so the component listeners and the input's `@input` are not re-bound at every render; dropped at detach. */
@@ -113,8 +112,6 @@ export class FilterUiController<T> {
         for (const popover of ownElements(this.host.root, popovers)) popover.open = false;
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
-        this.cancelAnnounce?.();
-        this.cancelAnnounce = undefined;
         this.handlers.clear();
         this.stopScrollWatch();
         this.openColumn = null;
@@ -337,22 +334,13 @@ export class FilterUiController<T> {
         this.stopScroll = () => clearTimeout(timer);
     }
 
-    /** One polite message once the column and advanced filter edits have settled: the rows that match now, or that every filter is cleared (D7). */
+    /**
+     * One polite message once the column and advanced filter edits have settled: the rows that match now, or that every filter is cleared (D7).
+     * The query service's ONE filter announcement (`announceFilters`, also a restored view's), for the change just numbered: a later filter change
+     * (a global one too) makes it an older one, which says nothing.
+     */
     private scheduleAnnouncement(): void {
-        this.cancelAnnounce?.();
-        // The change this announcement is for: a later filter change (a global one too, in the query controller) makes it an older one, which says nothing.
-        const seq = this.host.provider('query')?.filterSeq() ?? 0;
-        this.cancelAnnounce = this.host.disposables.timeout(() => {
-            this.cancelAnnounce = undefined;
-            const query = this.host.provider('query');
-            if (!query || seq < query.filterSeq()) return;
-            const { model, resolvedLocale: locale } = this.host;
-            const any = anyFilterOn(this.host.config.columns, model.get('columnFilters'), countConditions(model.get('advancedFilter')), model.get('globalFilter'));
-            if (!any) return this.host.announce(locale.filtersClearedAnnouncement);
-            const say = (count: number): void => this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
-            // ONE rule with the global filter: the query service says the count now, or (server filtering) once the query's answer is in, or never
-            // (no total); a newer filter change drops a waiting one.
-            query.whenCounted(say, seq);
-        }, FILTER_ANNOUNCE_MS);
+        const query = this.host.provider('query');
+        query?.announceFilters(query.filterSeq());
     }
 }

@@ -157,6 +157,11 @@ export interface QueryService<T> {
      * is cleared). Returns the new number.
      */
     filtersRestored(globalChanged: boolean): number;
+    /**
+     * wave5: the ONE column / advanced filter result announcement, for the change numbered `seq`, after the edits have settled (500 ms): the
+     * matching rows (through `whenCounted`), or that every filter is cleared. A newer call or filter change drops a waiting one.
+     */
+    announceFilters(seq: number): void;
 }
 
 /** Which user action the busy overlay stands for; `loadingVisibility` can silence it per trigger. */

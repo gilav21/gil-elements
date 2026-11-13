@@ -246,8 +246,10 @@ export class QueryController<T> {
     /** The overall result of the filters for the change numbered `seq` (a restored view state): the matching rows, or that every filter is cleared. */
     private announceFilters(seq: number): void {
         const { config, model, resolvedLocale: locale } = this.host;
+        this.cancelAnnounce?.(); // a newer call replaces a waiting one (the edits have not settled yet)
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             this.cancelAnnounce = undefined;
+            if (seq < this.seq) return; // an older change's: a newer one speaks
             if (!anyFilterOn(config.columns, model.get('columnFilters'), countConditions(model.get('advancedFilter')), model.get('globalFilter'))) {
                 return this.host.announce(locale.filtersClearedAnnouncement);
             }
@@ -369,6 +371,7 @@ export class QueryController<T> {
         changeAdvancedFilter: (group) => void changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group, () => this.filterChanged()),
         whenCounted: (say, seq) => this.whenCounted(say, seq),
         filterSeq: () => this.seq,
+        announceFilters: (seq) => this.announceFilters(seq),
         filtersRestored: (globalChanged) => {
             this.dropPendingGlobal(); // the restore wrote the global text: a typed one still waiting would overwrite it
             const seq = this.filterChanged();
