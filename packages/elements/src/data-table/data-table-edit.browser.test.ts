@@ -845,6 +845,30 @@ describe('round 16: the first control of a custom editor', () => {
         expect(table.editingCell).toEqual({ rowIndex: 1, columnKey: 'name' });
         expect(composedContainsFocus(select)).toBe(true); // its trigger's button, not the tabindex=-1 span and not the cell
     });
+
+    it('a ge-select editor whose row moves (a sort) gets the focus back inside it (round 20)', async () => {
+        await import('../select/define.js');
+        const select = Object.assign(document.createElement('ge-select'), { options: ['a', 'b'] }) as HTMLElement;
+        const table = await mount({ columns: editColumns({ name: { editRenderer: () => select } }) });
+        // A record that an age sort brings to the FRONT from further down (keyed rows: its own node is the one moved, so its focus is lost).
+        const rows = table.provider('query')!.renderedRows();
+        const youngest = rows.reduce((best, r, i) => (r.age < rows[best]!.age ? i : best), 0);
+        const oldest = rows.reduce((best, r, i) => (r.age > rows[best]!.age ? i : best), 0);
+        const [index, direction] = youngest > 0 ? [youngest, 'asc' as const] : [oldest, 'desc' as const];
+        expect(index).toBeGreaterThan(0);
+        await startEditingAt(table, index, 'name');
+        await frames(6);
+        expect(composedContainsFocus(select)).toBe(true);
+        const id = (select.closest('[data-row-id]') as HTMLElement).dataset['rowId'];
+        // The focus fell back to the editor's own cell (what a move that drops the focus leaves: the grid puts it on the cell); the render that
+        // moves the row must put it back INSIDE the editor.
+        (select.closest('[data-slot="table-cell"]') as HTMLElement).focus();
+        table.sortState = { column: 'age', direction }; // the edited row moves to the front
+        await settle(table);
+        expect((select.closest('[data-row-id]') as HTMLElement).dataset['rowId']).toBe(id);
+        expect(table.editingCell).not.toBeNull();
+        expect(composedContainsFocus(select)).toBe(true);
+    });
 });
 
 /** `el` is or holds (through open shadow roots) the element with the focus. */

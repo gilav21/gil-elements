@@ -291,7 +291,9 @@ export class EditSession<T> implements CellSession {
             this.quiet = true;
             try {
                 if (!rovingOk) this.context.setFocus(at.rowIndex, at.columnKey);
-                (inEditor ? (active as HTMLElement) : this.editorTarget(cell, open.kind))?.focus({ preventScroll: true });
+                // Back into the editor as it is focused at open (`focusInto`: a ge-select's trigger inside its shadow root, never its unfocusable host).
+                const target = inEditor ? (active as HTMLElement) : this.editorTarget(cell, open.kind);
+                if (target) focusInto(target, this.deepActive);
             } finally {
                 this.quiet = false;
             }
