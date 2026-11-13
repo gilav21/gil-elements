@@ -618,6 +618,67 @@ describe('virtual grid', () => {
     });
 });
 
+describe('review fixes', () => {
+    it('draws a range the consumer edited in place and assigned again', async () => {
+        const table = await mountRange();
+        table.cellRange = { startRow: 0, startCol: 'name', endRow: 1, endCol: 'name' };
+        await settle(table);
+        const r = table.cellRange!;
+        r.endRow = 6;
+        table.cellRange = r;
+        await settle(table);
+        expect(cell(table, 6, 'name').hasAttribute('data-in-range')).toBe(true);
+        expect(inRange(table)).toHaveLength(7);
+    });
+
+    it('fill handle only: a press on another cell ends the range a fill left, so the handle and a copy follow the new cell', async () => {
+        const clipboard = fakeClipboard();
+        try {
+            const table = await mountRange({ enableCellRangeSelection: false, enableFillHandle: true });
+            await focusAt(table, 0, 'score');
+            expect(table.fillDownTo(3)).toBe(true); // the fill leaves the range rows 0..3
+            await settle(table);
+            expect(table.provider('range')?.normalized()).not.toBeNull();
+            await userEvent.click(cell(table, 6, 'label'));
+            await settle(table);
+            expect(table.provider('range')?.normalized()).toBeNull();
+            await press('{Control>}c{/Control}');
+            await vi.waitFor(() => expect(clipboard.writes).toEqual(['Item 7']));
+            await vi.waitFor(() => {
+                const r = cell(table, 6, 'label').getBoundingClientRect();
+                const h = handle(table)!.getBoundingClientRect();
+                expect(Math.abs(h.top + h.height / 2 - r.bottom)).toBeLessThanOrEqual(1);
+            });
+        } finally {
+            clipboard.restore();
+        }
+    });
+
+    it('a long press on the focused cell (no range) starts a range: only a cell inside the range is left to the context menu', async () => {
+        await emulateTouch(true);
+        const table = await mountRange();
+        await focusAt(table, 1, 'name');
+        await touchLongPressDrag(cell(table, 1, 'name'), cell(table, 2, 'score'), { holdBeforeMs: 650, steps: 4 });
+        await settle(table);
+        expect(table.cellRange).toEqual({ startRow: 1, startCol: 'name', endRow: 2, endCol: 'score' });
+    });
+
+    it('Tab and Shift+Tab both end the range; Shift+arrows still extend it', async () => {
+        const table = await mountRange();
+        await focusAt(table, 1, 'name');
+        await press('{Shift>}{ArrowDown}{/Shift}');
+        expect(table.cellRange).not.toBeNull();
+        await focusAt(table, 1, 'name');
+        await press('{Shift>}{Tab}{/Shift}');
+        expect(table.cellRange).toBeNull();
+        await focusAt(table, 1, 'name');
+        await press('{Shift>}{ArrowDown}{/Shift}');
+        await focusAt(table, 1, 'name');
+        await press('{Tab}');
+        expect(table.cellRange).toBeNull();
+    });
+});
+
 describe('a gesture cut short', () => {
     it('gives back the range from before the press when the part detaches mid-drag (the session failed, the part was disposed)', async () => {
         const attach = vi.spyOn(RangePart.prototype, 'attach');

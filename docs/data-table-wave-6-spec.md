@@ -729,6 +729,14 @@ Recommendation (D2): **lazy, flag-gated `import()` for range + fill, paste and r
 - **D17. Touch long press** 500 ms / 10 px, passive until it fires, a long press on a selected cell left to the context menu (wave 7). Default: parity.
 - **D18. Parallel work with wave 5:** one joint step-0 PR first, frozen shared files, session split, `KEY_PRIORITY` table, merge order 5 then 6 (F.3). Default: yes.
 
+### Follow-ups (triaged out of PR #74 under the review rules: not user-facing bugs, or narrow edge cases)
+- Paste: the kept `early` native paste is not cleared when `enable-clipboard-paste` turns off, and after a latched part-load failure a native paste is still taken (prevented) though nothing pastes.
+- Clipboard: the native `copy` / `paste` fallback (insecure contexts, no Async Clipboard) ignores an event whose target is this table's viewport or root rather than a cell.
+- Flash: two different strings that read as the same number (`'007'` -> `'7'`) count as unchanged and do not flash.
+- Fill handle: drawn by measuring the cell after layout; drawing it in CSS (a pseudo-element of the corner cell) would need no measuring at all.
+- Paste: `columnByKey` searches the columns per cell; a Map per paste would do.
+- One shared `rowIndexOf` (id -> drawn index) for the clipboard controller and the row-drag part.
+
 ### Candidate Angular bugs (verified only by reading; nothing filed; verify against a running Angular build before filing)
 - **AB1** cmp 4494, 4502 (-> 4256), 4482 (-> 4532) and 4439 (-> 2747): the copy and paste promises are neither awaited nor caught; with permission denied (or `readText` unsupported) the handler has already called `preventDefault`, nothing is copied or pasted, the user gets no feedback and an unhandled rejection is raised.
 - **AB2** cmp 2696-2701: `coercePasteValue` uses `Number(raw)`, so an empty (or whitespace) pasted cell becomes `0` in a number column, and `'0x10'` / `'1e3'` coerce too.

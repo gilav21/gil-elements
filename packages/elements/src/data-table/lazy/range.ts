@@ -237,9 +237,10 @@ export class RangePart<T> {
         const range = this.range;
         const keys = this.keys();
         const memo = this.normMemo;
-        if (memo?.range === range && memo.keys === keys) return memo.norm;
+        // Compared by VALUE: the range may be the consumer's own object, edited in place and assigned again (`r.endRow = 9; table.cellRange = r`).
+        if (memo && memo.keys === keys && sameRange(memo.range, range)) return memo.norm;
         const norm = normalizeCellRange(range, keys);
-        this.normMemo = { range, keys, norm };
+        this.normMemo = { range: range && { ...range }, keys, norm };
         return norm;
     }
 
@@ -316,6 +317,8 @@ export class RangePart<T> {
 
     onPointerDown(event: PointerEvent, at: CellAddress | null, press: PointerPress): boolean {
         if (press.pressed?.matches(HANDLE)) return this.startFill(event, press);
+        // Fill handle only (no range selection): a press on a body cell moves the focus there, so the range a fill or a paste left goes (the handle and a copy follow the new cell).
+        if (!this.context.host.config.enableCellRangeSelection && at && press.startCell) this.setOwn(null);
         if (event.pointerType === 'touch' || !at || !press.startCell || !this.canSelect() || isSpecialColumnKey(at.columnKey)) return false;
         const extend = event.shiftKey && press.anchor !== null && !isSpecialColumnKey(press.anchor.columnKey);
         this.startRange(extend && press.anchor ? press.anchor : at, at, press, event.clientX, event.clientY);
@@ -480,7 +483,7 @@ export class RangePart<T> {
         const { cell } = this.hit(touch.clientX, touch.clientY);
         if (!cell) return;
         // A hold on what is already selected belongs to its context menu (Angular): starting a fresh range would erase what the menu is about.
-        if (host.provider('interaction')?.isCellSelected(cell.rowIndex, cell.columnKey)) return;
+        if (this.range && this.isInRange(cell.rowIndex, cell.columnKey)) return; // inside the range (not merely the focused cell or a selected row)
         this.startRange(cell, cell, null, touch.clientX, touch.clientY);
     }
 
@@ -515,7 +518,7 @@ export class RangePart<T> {
         if (event.key === 'Escape') return this.onEscape(event);
         // A focus move WITHOUT Shift (an arrow, Home / End, a page key, Tab) ends the range, as in a spreadsheet: the next Shift+key starts a new one
         // anchored at the cell the focus moved to. The key goes on to navigation (false: not consumed here).
-        if (!event.shiftKey && this.range && !this.drag && (NAVIGATION_KEYS.has(event.key) || event.key === 'Tab')) {
+        if (this.range && !this.drag && (event.key === 'Tab' || (!event.shiftKey && NAVIGATION_KEYS.has(event.key)))) {
             this.setOwn(null);
             return false;
         }
