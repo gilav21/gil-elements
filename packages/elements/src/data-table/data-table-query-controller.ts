@@ -91,6 +91,10 @@ export class QueryController<T> {
     private readonly fullTree = memoLast((roots: T[], getId: (row: T) => string, getChildren: DataTableCoreHost<T>['config']['getChildren']): readonly T[] =>
         flattenTree(roots, { getId, getChildren, expanded: {}, defaultExpandedDepth: -1 }).map((r) => r.row),
     );
+    /** The same over `data` as given (no filter, no sort): `flatTree({ unfiltered: true })`. */
+    private readonly rawFullTree = memoLast((data: T[], getId: (row: T) => string, getChildren: DataTableCoreHost<T>['config']['getChildren']): readonly T[] =>
+        flattenTree(data, { getId, getChildren, expanded: {}, defaultExpandedDepth: -1 }).map((r) => r.row),
+    );
 
     /**
      * The page of tree rows: the visible list sliced as it is (`subRowsPaginated`), or the rows of the roots on the page,
@@ -276,7 +280,11 @@ export class QueryController<T> {
         sortedData: () => this.output().sorted,
         visibleTreeRows: () => this.tree().visible,
         treeRoots: () => this.tree().roots,
-        flatTree: () => this.fullTree(this.tree().roots, this.host.config.getRowId, this.host.config.getChildren),
+        flatTree: (options) => {
+            const { config, model } = this.host;
+            if (!config.enableSubRows) return [];
+            return options?.unfiltered ? this.rawFullTree(model.get('data'), config.getRowId, config.getChildren) : this.fullTree(this.tree().roots, config.getRowId, config.getChildren);
+        },
         treeRows: () => this.tree().page,
         treeIndex: () => this.indexOf(this.host.model.get('data'), this.host.config.getRowId, this.host.config.getChildren),
         groupRows: () => this.groups(),
@@ -298,8 +306,8 @@ export class QueryController<T> {
         },
         cellValue: (row, key, column) => getCellValue(row, key, column),
         exportColumns: (options = {}) => this.exportColumns(options),
-        exportData: (options = {}, rows) => {
-            const columns = this.exportColumns(options);
+        exportData: (options = {}, rows, given) => {
+            const columns = given ?? this.exportColumns(options);
             const body = (rows ?? (options.onlyFiltered === false ? this.host.model.get('data') : this.output().sorted)).map((row) =>
                 columns.map((c) => (c.cell ? this.exportCell({ ...c, cell: c.cell }, row) : stringifyValue(getCellValue(row, c.accessorKey, c)))),
             );

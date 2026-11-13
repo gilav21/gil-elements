@@ -164,6 +164,17 @@ describe('QueryService wave 7 additions', () => {
         model.set('globalFilter', 'x'); // matches team 'x': drops c13
         expect(query.flatTree().map((r) => r.id)).toEqual(['p1', 'c11', 'c12', 'p2', 'p3', 'c31']);
         expect(setup().query.flatTree()).toEqual([]);
+        // unfiltered: every node of `data`, depth-first in data order (no filter, no sort)
+        expect(query.flatTree({ unfiltered: true }).map((r) => r.id)).toEqual(['p1', 'c12', 'c11', 'c13', 'p3', 'c31', 'p2']);
+        expect(setup().query.flatTree({ unfiltered: true })).toEqual([]);
+    });
+
+    it('exportData draws a given column snapshot verbatim, and without one keeps the exportColumns list (wave 7 export)', () => {
+        const { query } = setup();
+        const snapshot = [COLUMNS[1] as ColumnDef<Row>, { accessorKey: 'name', header: 'N', cell: (r: Row) => `<${r.name}>` } as ColumnDef<Row>];
+        expect(query.exportData({}, [DATA[0] as Row], snapshot)).toEqual([['Team', 'N'], ['x', '<Bo>']]);
+        expect(query.exportData({ includeHeaders: false }, [DATA[0] as Row], [])).toEqual([[]]);
+        expect(query.exportData({}, [DATA[0] as Row])).toEqual([['Id', 'Name'], ['r1', 'Bo']]);
     });
 
     it('exportColumns is the column list exportData draws, visible and all (wave 7 export)', () => {
