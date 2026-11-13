@@ -523,6 +523,19 @@ describe('row drag: keyboard (Alt+ArrowUp / Alt+ArrowDown) and moveRow', () => {
         await vi.waitFor(() => expect(document.activeElement).toBe(cellOf(rowEl(table, 1))));
     });
 
+    it('judges every key move fresh: a target refused since the last move is refused (no verdict kept outside a pointer drag)', async () => {
+        let refuse = false;
+        const table = await mountDrag({ localReorder: false, rowDragAllowDrop: () => !refuse }); // the rows do not change between the two moves
+        const seen = record(table);
+        await focus(table, 1);
+        await press('{Alt>}{ArrowDown}{/Alt}');
+        expect(seen.reorders).toHaveLength(1);
+        refuse = true; // the same veto function now refuses that target
+        await focus(table, 1);
+        await press('{Alt>}{ArrowDown}{/Alt}');
+        expect(seen.reorders).toHaveLength(1);
+    });
+
     it('is a no-op at the ends, skips disabled rows and honours the veto', async () => {
         const table = await mountDrag({ disabledRowIds: ['r2'] });
         const seen = record(table);

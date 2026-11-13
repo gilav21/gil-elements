@@ -265,6 +265,7 @@ export class QueryController<T> {
     private readonly service: QueryService<T> = {
         sortedData: () => this.output().sorted,
         visibleTreeRows: () => this.tree().visible,
+        treeRoots: () => this.tree().roots,
         treeRows: () => this.tree().page,
         treeIndex: () => this.indexOf(this.host.model.get('data'), this.host.config.getRowId, this.host.config.getChildren),
         groupRows: () => this.groups(),

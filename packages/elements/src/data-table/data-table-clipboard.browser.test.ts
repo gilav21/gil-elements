@@ -212,6 +212,30 @@ describe('copy', () => {
         expect(fake.writes).toEqual([]);
     });
 
+    it('copies the selected rows of the tree the table draws: a filtered-out child is not copied, a matching child is (includeParentOnChildMatch)', async () => {
+        const fake = install();
+        type Node = Row & { children?: Node[] };
+        const tree: Node[] = [
+            { id: 'p', name: 'Parent', qty: 1, ok: true, note: 'p', children: [
+                { id: 'k', name: 'Match', qty: 2, ok: false, note: 'k' },
+                { id: 'x', name: 'Other', qty: 3, ok: true, note: 'x' },
+            ] },
+        ];
+        const table = await mountTable<Node>({
+            columns: COLUMNS as ColumnDef<Node>[],
+            data: tree,
+            getRowId: (row: Node) => row.id,
+            enableSubRows: true,
+            subRowDefaultExpanded: true,
+            subRowFilterMode: 'includeParentOnChildMatch',
+            globalFilter: 'Match',
+            enableRowSelection: true,
+            rowSelection: { k: true, x: true },
+        });
+        await expect(table.copySelectedToClipboard()).resolves.toEqual({ status: 'done', cells: 4 });
+        expect(fake.text.split('\n')).toEqual(['Name\tQty\tOK\tNote', 'Match\t2\tfalse\tk']);
+    });
+
     it('copies the selected rows of the WHOLE tree in the drawn order: children included, under a collapsed parent and on another page too', async () => {
         const fake = install();
         type Node = Row & { children?: Node[] };
@@ -230,7 +254,7 @@ describe('copy', () => {
             rowSelection: { k: true, h: true, z: true },
             paginationState: { pageIndex: 0, pageSize: 1 }, // z is on page 3
         });
-        await expect(table.copySelectedToClipboard()).resolves.toEqual({ status: 'done', cells: 16 });
+        await expect(table.copySelectedToClipboard()).resolves.toEqual({ status: 'done', cells: 12 }); // the data cells: the header line is not counted
         expect(fake.text.split('\n')).toEqual(['Name\tQty\tOK\tNote', 'Kid\t2\tfalse\tk', 'Hidden\t4\ttrue\th', 'Last\t5\tfalse\tz']);
     });
 
@@ -266,9 +290,11 @@ describe('copy', () => {
     it('the public copy methods write what the scopes say and resolve to the result', async () => {
         const fake = install();
         const table = await grid({ enableRowSelection: true, rowSelection: { d: true }, paginationState: { pageIndex: 0, pageSize: 2 } });
-        await expect(table.copyAllToClipboard()).resolves.toEqual({ status: 'done', cells: 20 });
+        await expect(table.copyAllToClipboard()).resolves.toEqual({ status: 'done', cells: 16 }); // 4 rows x 4 columns: the header line is not counted
+        await settle(table);
+        expect(announced(table)).toContain('16 cells copied');
         expect(fake.text.split('\n')).toHaveLength(5); // header + every row, paging ignored
-        await expect(table.copySelectedToClipboard()).resolves.toEqual({ status: 'done', cells: 8 }); // a row of another page
+        await expect(table.copySelectedToClipboard()).resolves.toEqual({ status: 'done', cells: 4 }); // a row of another page (its data cells)
         expect(fake.text).toBe('Name\tQty\tOK\tNote\nDee\t4\tfalse\tw');
         await expect(table.copyRowToClipboard(ROWS[1] as Row)).resolves.toEqual({ status: 'done', cells: 4 });
         expect(fake.text).toBe('Bob\t2\tfalse\ty');

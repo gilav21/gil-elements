@@ -217,8 +217,10 @@ export class RowDragPart<T> {
         if (!from) return null;
         const { config } = this.host;
         const rows = this.host.provider('query')?.renderedRows() ?? [];
-        // One verdict per (target, position) while the drawn rows, the disabled rows and the veto stay the same: a `dragover` fires every few
-        // milliseconds over the same half of the same row, and the veto is the consumer's code.
+        // A key move or `moveRow` (not the pointer drag in progress) is judged fresh: the disabled rows may have changed with no new rows array.
+        if (from !== this.dragged) return this.verdict(rows, index, raw, from);
+        // During a pointer drag, one verdict per (target, position) while the drawn rows, the disabled rows and the veto stay the same: a `dragover`
+        // fires every few milliseconds over the same half of the same row, and the veto is the consumer's code. Cleared when the drag ends.
         const memo = this.verdicts;
         if (memo?.id !== from.id || memo.rows !== rows || memo.veto !== config.rowDragAllowDrop || memo.disabled !== config.disabledRowIds) {
             this.verdicts = { id: from.id, rows, veto: config.rowDragAllowDrop, disabled: config.disabledRowIds, map: new Map() };

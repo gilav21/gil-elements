@@ -4,7 +4,7 @@
  * `lazyPart` when `enable-clipboard-paste` is on.
  */
 import { type CellAddress, type DataTableCoreHost, requireProvider } from '../data-table-host.js';
-import { pasteStart } from '../data-table-clipboard-grid.js';
+import { pasteStart, rowIdsAt } from '../data-table-clipboard-grid.js';
 import { pasteAnnouncement, pastedGrid, pasteEvent, planPasteRequests } from '../data-table-paste-apply.js';
 import type { ClipboardResult } from '../data-table-providers.js';
 import { rangeModeOn } from '../data-table-range.js';
@@ -38,6 +38,8 @@ export class PastePart<T> {
             cellValue: (row, column) => query.cellValue(row, column.accessorKey, column),
         });
         if (!plan) return { status: 'ignored' };
+        const span = plan.rect ? [plan.rect.startRow, plan.rect.endRow] as const : null;
+        const before = span ? rowIdsAt(host, span[0], span[1]) : [];
         const results = host.runAsCommand(() => host.writeCells(plan.requests));
         const detail = pasteEvent(plan, results);
         if (detail.cellsApplied === 0) {
@@ -48,7 +50,11 @@ export class PastePart<T> {
         }
         host.emit('cells-paste', detail);
         const { rect } = plan;
-        if (rect && rangeModeOn(host.config) && (rect.endRow > rect.startRow || rect.endCol !== rect.startCol)) host.provider('range')?.setRange(rect);
+        // The write re-sorted or re-filtered the pasted rows (the column pasted into is the sort or filter key): the rectangle would now cover other
+        // rows, so no range is left at all.
+        const moved = span !== null && rowIdsAt(host, span[0], span[1]).some((id, i) => id !== before[i]);
+        if (moved && rangeModeOn(host.config)) host.provider('range')?.setRange(null);
+        else if (rect && rangeModeOn(host.config) && (rect.endRow > rect.startRow || rect.endCol !== rect.startCol)) host.provider('range')?.setRange(rect);
         host.announce(pasteAnnouncement(host.resolvedLocale, detail.cellsApplied, detail.cellsRejected));
         return { status: 'done', cells: detail.cellsApplied, rejected: detail.cellsRejected };
     }

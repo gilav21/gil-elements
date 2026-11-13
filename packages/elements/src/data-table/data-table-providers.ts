@@ -106,6 +106,8 @@ export interface QueryService<T> {
     sortedData(): readonly T[];
     /** What the virtual window slices in tree mode: the visible nodes of the page, flattened. */
     visibleTreeRows(): readonly FlattenedTreeRow<T>[];
+    /** The filtered, sorted top-level rows of the tree, their children filtered and sorted with them (tree mode; empty otherwise): the whole tree the table draws, whatever is collapsed or paged. */
+    treeRoots(): readonly T[];
     /** The tree rows of the page as drawn (tree mode). */
     treeRows(): readonly FlattenedTreeRow<T>[];
     /** Id -> node, parent, children and descendants; rebuilt only when `data`, `getRowId` or `getChildren` change. */

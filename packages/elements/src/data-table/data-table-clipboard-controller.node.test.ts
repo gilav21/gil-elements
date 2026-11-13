@@ -153,7 +153,7 @@ describe('ClipboardController', () => {
         await expect(off.service().copy('range')).resolves.toEqual({ status: 'empty' }); // no range
         const t = fakeHost();
         new ClipboardController(t.host).attach();
-        await expect(t.service().copy('all')).resolves.toEqual({ status: 'done', cells: 6 });
+        await expect(t.service().copy('all')).resolves.toEqual({ status: 'done', cells: 4 }); // the data cells: the header line is not counted
         expect(writeText).toHaveBeenLastCalledWith('ID\tN\n1\t1\n2\t2');
         await expect(t.service().copy('selected')).resolves.toEqual({ status: 'empty' });
     });
@@ -168,6 +168,7 @@ describe('ClipboardController', () => {
         controller.hostUpdate();
         await loaded();
         expect(t.key({ key: 'v' }).consumed).toBe(false); // not consumed, nothing read: the browser's paste event follows
+        (t.raw.root.ownerDocument as EventTarget).dispatchEvent(new Event('paste')); // (as Chromium does: no fallback read for this keystroke)
         expect(readText).not.toHaveBeenCalled();
         void t.service().paste();
         t.focus({ rowIndex: 1, columnKey: 'n' }); // the focus moves during the await

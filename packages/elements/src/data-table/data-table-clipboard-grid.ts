@@ -50,8 +50,12 @@ export function rowGrid<T>(columns: readonly ColumnDef<T>[], row: T): string[][]
 export function selectedGrid<T>(source: CopySource<T>): string[][] | null {
     const rows = source.drawnRows().filter((row) => source.isSelected(row));
     if (rows.length === 0) return null;
-    return [source.columns.map((c) => c.header), ...rows.map((row) => source.columns.map((c) => cellText(c, row)))];
+    return withHeader([source.columns.map((c) => c.header), ...rows.map((row) => source.columns.map((c) => cellText(c, row)))]);
 }
+
+/** A grid whose first line is a header: the copied-cells count leaves it out (`gridCells`). */
+type HeadedGrid = string[][] & { readonly header?: true };
+const withHeader = (grid: string[][]): HeadedGrid => Object.assign(grid, { header: true as const });
 
 /** The range rectangle, no header, cells in drawn column order, rows that do not exist skipped; null without a range. */
 export function rangeGrid<T>(source: CopySource<T>): string[][] | null {
@@ -80,7 +84,7 @@ export function copyGrid<T>(scope: CopyScope, source: CopySource<T>, row?: T): s
         default: {
             // A header with no data row under it is nothing to copy (`empty`, like the other scopes), not a header-only clipboard.
             const all = source.exportAll();
-            return all.length > 1 ? all : null;
+            return all.length > 1 ? withHeader(all) : null;
         }
     }
 }
@@ -91,7 +95,8 @@ export function keyboardCopyGrid<T>(source: CopySource<T>): string[][] | null {
 }
 
 /** The number of cells a grid holds (what the announcement counts). */
-export const gridCells = (grid: readonly (readonly string[])[]): number => grid.reduce((sum, cells) => sum + cells.length, 0);
+export const gridCells = (grid: readonly (readonly string[])[] & { readonly header?: true }): number =>
+    grid.reduce((sum, cells, i) => (i === 0 && grid.header ? sum : sum + cells.length), 0); // DATA cells: a header line is not counted
 
 /** A body DATA cell of the table (it has a column). */
 export const CELL_SELECTOR = '[data-slot="table-cell"][data-column]'; // a DATA cell: a detail, group or full-width cell has no column
@@ -145,6 +150,20 @@ export function pasteStart<T>(host: DataTableCoreHost<T>): CellAddress | null {
     const key = rect ? host.provider('columns')?.navigableKeys()[rect.minCol] : undefined;
     if (rect && key !== undefined) return { rowIndex: rect.minRow, columnKey: key };
     return host.provider('interaction')?.focusedCell() ?? null;
+}
+
+/**
+ * The ids of the drawn rows `from`..`to` (inclusive), read now: compared before and after a fill or a paste, they say whether the write re-sorted or
+ * re-filtered those rows (a range kept over the same indexes would then cover other rows).
+ */
+export function rowIdsAt<T>(host: DataTableCoreHost<T>, from: number, to: number): string[] {
+    const query = host.provider('query');
+    const ids: string[] = [];
+    for (let i = from; i <= to; i++) {
+        const row = query?.renderedRowAt(i);
+        ids.push(row === undefined ? '' : String(host.config.getRowId(row)));
+    }
+    return ids;
 }
 
 /** An editor is open somewhere in the table (the one test the clipboard controller and the paste part share). */

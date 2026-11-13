@@ -136,8 +136,8 @@ export class ClipboardController<T> {
             range: range?.active() ? range.normalized() : null,
             drawnRows: () => {
                 // A tree: every node of the whole (filtered, sorted) tree, flattened in the drawn order (children under their parents), whatever is collapsed
-                // and whatever the page, like the grouped and flat copies (`sortedData()` holds the sorted roots, their children sorted with them).
-                if (host.config.enableSubRows) return depthFirst(query.sortedData(), host.config.getChildren);
+                // and whatever the page, like the grouped and flat copies (`treeRoots()`: the tree the table draws, filtered and sorted, children with them).
+                if (host.config.enableSubRows) return depthFirst(query.treeRoots(), host.config.getChildren);
                 // Grouping draws group by group (collapsed groups included): the copy follows the screen, across pages.
                 const groups = query.groupRows();
                 return groups.length > 0 ? groups.flatMap((group) => group.rows) : query.sortedData();

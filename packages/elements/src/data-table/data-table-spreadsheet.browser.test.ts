@@ -212,6 +212,18 @@ describe('review fixes', () => {
         expect(names(table)).toEqual(['n0', 'n1', 'n2', 'n3']);
     });
 
+    it('a paste into the column the table sorts by leaves no range (the pasted rows moved: the rectangle would cover other rows)', async () => {
+        const table = await ready(
+            (await mountTable<SampleRow>({ columns: editColumns(), data: makeRows(4), sortState: { column: 'age', direction: 'asc' }, enableCellRangeSelection: true, enableClipboardPaste: true })) as Table,
+        );
+        const cell = await focusAt(table, 1, 'age'); // r1 (age 1)
+        dispatchPaste(cell, '10\n20'); // r1 -> 10, r2 -> 20: drawn now r0, r3, r1, r2
+        await settle(table);
+        expect((table.provider('query')!.renderedRows() as SampleRow[]).map((r) => r.id)).toEqual(['r0', 'r3', 'r1', 'r2']);
+        expect(table.cellRange).toBeNull();
+        expect(table.querySelector('[data-in-range]')).toBeNull();
+    });
+
     it('restarts the flash of a data row whose detail row is open (the detail row shares its id)', async () => {
         const table = (await mountTable<SampleRow>({
             data: makeRows(3),

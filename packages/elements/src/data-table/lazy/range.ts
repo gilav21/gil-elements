@@ -22,7 +22,7 @@ import { html, nothing, type TemplateResult } from 'lit';
 import { startAutoScroll, type AutoScrollController } from '../../shared/auto-scroll.js';
 import { onLongPress } from '../../shared/touch.js';
 import type { InteractionContext, PointerPress } from '../data-table-cell-session.js';
-import { CELL_SELECTOR, onGrid } from '../data-table-clipboard-grid.js';
+import { CELL_SELECTOR, onGrid, rowIdsAt } from '../data-table-clipboard-grid.js';
 import { buildFillValues } from '../data-table-fill.js';
 import { fillOutcome, type FillInput, planFill, repeatFirst } from '../data-table-fill-apply.js';
 import { type CellAddress, cellAddressOf, ownClosest, ownElements, ownsTarget, shortcutLetter, VIEWPORT } from '../data-table-host.js';
@@ -601,9 +601,12 @@ export class RangePart<T> {
         });
         if (!plan) return false;
         // ONE command and ONE write: one undo step, one data-change, every row resolved before the first write.
+        const before = rowIdsAt(host, source.minRow, plan.target);
         const outcome = fillOutcome(plan, host.runAsCommand(() => host.writeCells(plan.requests)));
         if (!outcome) return false;
-        this.setOwn(outcome.range);
+        // The write re-sorted or re-filtered the filled rows (the filled column is the sort or filter key): the rectangle would cover other rows, so none is left.
+        const moved = rowIdsAt(host, source.minRow, plan.target).some((id, i) => id !== before[i]);
+        this.setOwn(moved ? null : outcome.range);
         host.emit('fill-series', outcome.event);
         host.announce(interpolate(host.resolvedLocale.fillAnnouncement, { count: outcome.rows }));
         return true;

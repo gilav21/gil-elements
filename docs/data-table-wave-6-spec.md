@@ -739,6 +739,10 @@ Recommendation (D2): **lazy, flag-gated `import()` for range + fill, paste and r
 - Copy: `copiesSelectedText` only looks at selections over the focused cell or the range cells; a text selection elsewhere in the table (a header, a detail row) does not hand Ctrl/Cmd+C to the browser.
 - Range mode: a plain click renders twice (the focus move, then the 1x1 range collapsing on release).
 - Flash: the snapshot of the drawn rows is rebuilt at every change of the virtual window, also when no data changed.
+- Clipboard: the tree copy's `depthFirst` could reuse `flattenTree` (with everything expanded) instead of its own walk.
+- Fill handle: after a range change the handle can show one frame at its old place before it is measured again.
+- Clipboard: `withTimeout`'s timer could go through `host.disposables` (cleared at detach) instead of a bare `setTimeout`.
+- Range part: `inGrid` is now a one-line wrapper of `onGrid` and could be inlined.
 
 ### Candidate Angular bugs (verified only by reading; nothing filed; verify against a running Angular build before filing)
 - **AB1** cmp 4494, 4502 (-> 4256), 4482 (-> 4532) and 4439 (-> 2747): the copy and paste promises are neither awaited nor caught; with permission denied (or `readText` unsupported) the handler has already called `preventDefault`, nothing is copied or pasted, the user gets no feedback and an unhandled rejection is raised.
