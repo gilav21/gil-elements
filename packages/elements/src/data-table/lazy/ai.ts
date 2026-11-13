@@ -9,7 +9,7 @@
  */
 import type { TemplateResult } from 'lit';
 import { interpolate } from '../../shared/interpolate.js';
-import { askAi, hardenSpec, nlColumns, parseNlFilterSpec, projectRow, runFill } from '../data-table-ai.js';
+import { anySignal, askAi, type FillResult, hardenSpec, nlColumns, parseNlFilterSpec, projectRow, runFill } from '../data-table-ai.js';
 import type { DataTableCoreHost } from '../data-table-host.js';
 import { renderNlFilter } from '../data-table-nl-filter.js';
 import type { DataTableAiFillOptions } from '../data-table.types.js';
@@ -80,8 +80,14 @@ export class AiPart<T> {
             const keys = columns.map((c) => c.key);
             const spec = hardenSpec(parseNlFilterSpec(answer, keys), config.columns);
             this.host.emit('nl-filter', { query, spec });
-            if (spec.globalFilter === undefined && !spec.columnFilters) this.host.announce(t.nlFilterNoChange);
-            else this.host.provider('query')?.applyFilters({ globalFilter: spec.globalFilter ?? '', columnFilters: spec.columnFilters ?? {} });
+            const { model } = this.host;
+            const global = model.get('globalFilter');
+            const filters = model.get('columnFilters');
+            if (spec.globalFilter !== undefined || spec.columnFilters) {
+                this.host.provider('query')?.applyFilters({ globalFilter: spec.globalFilter ?? '', columnFilters: spec.columnFilters ?? {} });
+            }
+            // An empty spec, or one equal to the current filters (applyFilters wrote nothing and announces nothing): "Filtering…" is not the last word.
+            if (model.get('globalFilter') === global && model.get('columnFilters') === filters) this.host.announce(t.nlFilterNoChange);
         } catch {
             // A replaced or cancelled request says nothing; a provider error or the timeout is announced.
             if (!run.abort.signal.aborted) this.host.announce(t.nlFilterFailed);
@@ -103,39 +109,54 @@ export class AiPart<T> {
         // writeCells finds a row by id among the rows of `data` (top level): a row it cannot find (a tree child) is left out before any request.
         const inData = new Set(query.rawRows().map((row) => query.rowId(row)));
         const rows = picked.filter((row) => inData.has(query.rowId(row)));
-        this.fillRun?.abort();
+        // The drawn index of each row on the page, read ONCE per run (what cell-edit / edit-error report; -1 off the page). Writes are by id.
+        const drawn = new Map(query.renderedRows().map((row, i) => [query.rowId(row), i]));
+        const read = (row: unknown, key: string): unknown => query.cellValue(row as T, key, config.columns.find((c) => String(c.accessorKey) === key));
         const abort = new AbortController();
+        const signal = options.signal ? anySignal(abort.signal, options.signal) : abort.signal; // built before this run is published
+        this.fillRun?.abort();
         this.fillRun = abort;
-        const signal = options.signal ? AbortSignal.any([abort.signal, options.signal]) : abort.signal;
-        this.host.requestRender(); // aria-busy
-        const total = rows.length;
-        let lastProgress = Date.now();
-        let decile = 0;
-        const result = await runFill(rows, options.concurrency ?? 1, {
-            signal,
-            ask: (row) =>
-                askAi(provider, { task: 'table-fill', input: JSON.stringify(projectRow(row, options.inputColumns)), prompt, context: { column: column.header } }, signal),
-            // By id, so the rows of every page are written; `rowIndex` -1 (no drawn address: a write can re-sort the page, so no index stays true).
-            write: (batch) =>
-                this.host.writeCells(batch.map(({ row, value }) => ({ target: { rowIndex: -1, columnKey, rowId: query.rowId(row) }, value })), { emitEdit: true }).map((r) => r.status),
-            progress: (done) => {
-                const now = Date.now();
-                if (done === total || now - lastProgress >= PROGRESS_MS) {
-                    lastProgress = now;
-                    this.host.emit('ai-fill-progress', { columnKey, done, total });
-                }
-                const reached = Math.floor((done * 10) / total);
-                if (done < total && reached > decile) {
-                    decile = reached;
-                    this.host.announce(interpolate(t.aiFillRunning, { done, total }));
-                }
-            },
-        });
-        const cancelled = signal.aborted; // cancelAi, the caller's signal, or a newer fill (read before the abort below)
-        abort.abort(); // a failed batch's other requests stop
-        if (this.fillRun === abort) {
-            this.fillRun = undefined;
-            this.host.requestRender();
+        let result: FillResult;
+        let cancelled: boolean;
+        try {
+            this.host.requestRender(); // aria-busy
+            const total = rows.length;
+            let lastProgress = Date.now();
+            let decile = 0;
+            result = await runFill(rows, options.concurrency ?? 1, {
+                signal,
+                ask: (row) =>
+                    askAi(provider, { task: 'table-fill', input: JSON.stringify(projectRow(row, options.inputColumns, read)), prompt, context: { column: column.header } }, signal),
+                write: (batch) =>
+                    this.host
+                        .writeCells(
+                            batch.map(({ row, value }) => {
+                                const rowId = query.rowId(row);
+                                return { target: { rowIndex: drawn.get(rowId) ?? -1, columnKey, rowId }, value };
+                            }),
+                            { emitEdit: true },
+                        )
+                        .map((r) => r.status),
+                progress: (done) => {
+                    const now = Date.now();
+                    if (done === total || now - lastProgress >= PROGRESS_MS) {
+                        lastProgress = now;
+                        this.host.emit('ai-fill-progress', { columnKey, done, total });
+                    }
+                    const reached = Math.floor((done * 10) / total);
+                    if (done < total && reached > decile) {
+                        decile = reached;
+                        this.host.announce(interpolate(t.aiFillRunning, { done, total }));
+                    }
+                },
+            });
+        } finally {
+            cancelled = signal.aborted; // cancelAi, the caller's signal, or a newer fill (read before the abort below)
+            abort.abort(); // a failed batch's other requests stop
+            if (this.fillRun === abort) {
+                this.fillRun = undefined; // also after a throw: the table never stays busy
+                this.host.requestRender();
+            }
         }
         if (!this.attached) return; // a table that left the document reports nothing
         const { failed, error, ...counts } = result;

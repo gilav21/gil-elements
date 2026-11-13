@@ -18,7 +18,8 @@ export interface NlFilterSpec {
 /**
  * Parses an AI provider's JSON into a safe {@link NlFilterSpec}: keeps a string `globalFilter` and only the
  * `columnFilters` whose keys are known columns. Malformed input gives an empty spec; the provider's output is never
- * trusted to address unknown columns.
+ * trusted to address unknown columns. An explicit empty `columnFilters: {}` is kept (it clears the column filters); one whose keys are all
+ * unknown is dropped.
  */
 export function parseNlFilterSpec(raw: string, validColumnKeys: readonly string[]): NlFilterSpec {
     let parsed: unknown;
@@ -34,9 +35,10 @@ export function parseNlFilterSpec(raw: string, validColumnKeys: readonly string[
     const columnFilters = obj['columnFilters'];
     if (columnFilters && typeof columnFilters === 'object') {
         const valid = new Set(validColumnKeys);
-        const kept = Object.entries(columnFilters).filter(([key]) => valid.has(key));
+        const entries = Object.entries(columnFilters);
+        const kept = entries.filter(([key]) => valid.has(key));
         // fromEntries defines own properties, so a column named `__proto__` cannot rewrite the prototype.
-        if (kept.length > 0) spec.columnFilters = Object.fromEntries(kept);
+        if (kept.length > 0 || (entries.length === 0 && isPlainObject(columnFilters))) spec.columnFilters = Object.fromEntries(kept);
     }
     return spec;
 }
@@ -51,11 +53,12 @@ const filterable = <T>(column: ColumnDef<T>): boolean => !!column.enableFilterin
 export const nlColumns = <T>(columns: readonly ColumnDef<T>[]): { key: string; header: string }[] =>
     columns.filter(filterable).map((c) => ({ key: String(c.accessorKey), header: c.header }));
 
-const isDateish = (v: unknown): boolean => (typeof v === 'string' || typeof v === 'number') && asEditableDate(v) !== null;
+/** A `Date`, or an ISO date or date-time string (`YYYY-MM-DD...`) that reads as a date; never a bare number. */
+const isDateish = (v: unknown): boolean => (v instanceof Date || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v))) && asEditableDate(v) !== null;
 const isRangeEnd = (v: unknown): boolean => v == null || isDateish(v);
 
 /**
- * The value fits the column's filter: the built-in multiselect panel takes an array of primitives, the date panel a date (ISO string or timestamp),
+ * The value fits the column's filter: the built-in multiselect panel takes an array of primitives, the date panel a date (a `Date` or an ISO string),
  * the date-range panel `{ start, end }` (dates or open ends, nothing else); a column filtered by the default text match takes a string or a finite
  * number. A consumer's own `filterFn` or panel decides its own shapes: its value passes as given.
  */
@@ -70,9 +73,12 @@ export function fitsFilter<T>(column: ColumnDef<T>, value: unknown): boolean {
     return typeof value === 'string' || Number.isFinite(value);
 }
 
-/** `spec` without the column filters of a column that is not filterable or whose value does not fit its filter (`fitsFilter`); an emptied record is dropped. */
+/**
+ * `spec` without the column filters of a column that is not filterable or whose value does not fit its filter (`fitsFilter`); a record this empties
+ * is dropped, an explicit empty one (it clears) is kept.
+ */
 export function hardenSpec<T>(spec: NlFilterSpec, columns: readonly ColumnDef<T>[]): NlFilterSpec {
-    if (!spec.columnFilters) return spec;
+    if (!spec.columnFilters || Object.keys(spec.columnFilters).length === 0) return spec;
     const kept = Object.entries(spec.columnFilters).filter(([key, value]) => {
         const column = columns.find((c) => String(c.accessorKey) === key);
         return column !== undefined && filterable(column) && fitsFilter(column, value);
@@ -81,13 +87,26 @@ export function hardenSpec<T>(spec: NlFilterSpec, columns: readonly ColumnDef<T>
     return kept.length > 0 ? { ...rest, columnFilters: Object.fromEntries(kept) } : rest;
 }
 
+/** A signal that aborts, with that reason, as soon as one of `signals` does (`AbortSignal.any` without needing it: older engines lack it). */
+export function anySignal(...signals: AbortSignal[]): AbortSignal {
+    const any = new AbortController();
+    for (const signal of signals) {
+        if (signal.aborted) {
+            any.abort(signal.reason);
+            break;
+        }
+        signal.addEventListener('abort', () => any.abort(signal.reason), { once: true });
+    }
+    return any.signal;
+}
+
 /**
  * Runs one request and answers its LAST emission (an async iterable emits the full text so far). Rejects with the signal's reason once `signal`
  * aborts or `ms` pass, even when the provider ignores `request.signal`; the provider gets the combined signal, and a stream is stopped (its
  * iterator's `return()`), not read to its end.
  */
 export async function askAi(provider: AiProvider, request: Omit<AiRequest, 'signal'>, signal: AbortSignal, ms = AI_TIMEOUT_MS): Promise<string> {
-    const combined = AbortSignal.any([signal, AbortSignal.timeout(ms)]);
+    const combined = anySignal(signal, AbortSignal.timeout(ms));
     combined.throwIfAborted();
     let iterator: AsyncIterator<string> | undefined;
     let onAbort: () => void = () => undefined;
@@ -115,11 +134,9 @@ export async function askAi(provider: AiProvider, request: Omit<AiRequest, 'sign
     }
 }
 
-/** What the provider sees of a row: only `columns` when given (own keys only; a class instance too), else the whole row. */
-export const projectRow = (row: unknown, columns?: readonly string[]): unknown =>
-    columns && typeof row === 'object' && row !== null
-        ? Object.fromEntries(columns.filter((k) => Object.hasOwn(row, k)).map((k) => [k, (row as Record<string, unknown>)[k]]))
-        : row;
+/** What the provider sees of a row: with `columns`, only those, each read by `read` (the table's cell value: paths, `accessorFn`); else the whole row. */
+export const projectRow = (row: unknown, columns: readonly string[] | undefined, read: (row: unknown, key: string) => unknown): unknown =>
+    columns ? Object.fromEntries(columns.map((key) => [key, read(row, key)])) : row;
 
 export interface FillPorts<T> {
     /** The provider's answer for `row`. */

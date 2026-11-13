@@ -190,6 +190,9 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 ### Package D follow-ups (triaged out of PR #80)
 - `ge-input` feature: `readonly` and `enterkeyhint` (forwarded to the inner input), so the NL box can be readonly while a question runs and show "go" on a virtual keyboard (spec D.2); today it stays editable (a changed question replaces the running one) and sets no hint.
 - `aiTimeout` config input (spec D.3): the per-request timeout is fixed at 60 s (`AI_TIMEOUT_MS` in `data-table-ai.ts`).
+- The `ai` shell keeps its own copy of `lazyPart`'s failure latch (`failed`): expose `failed()` on `lazyPart` and read it instead.
+- The built-in filter panel tags are spelled twice (`BUILT_IN_FILTER_PANELS` in `data-table-filters.ts` and `fitsFilter` in `data-table-ai.ts`, which must not import the filter module): one shared constant in a module both can import without splitting a chunk.
+- Coalesce the AI fill's writes on large fills (one `writeCells` per batch today: with `concurrency: 1` that is one `data` write, and one pipeline run, per row).
 
 ## H. Work packages (strict file ownership after step 0)
 

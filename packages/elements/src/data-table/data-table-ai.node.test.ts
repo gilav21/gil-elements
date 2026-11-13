@@ -140,14 +140,24 @@ describe('nlColumns, fitsFilter, hardenSpec, projectRow', () => {
         const custom = { ...text, filterFn: () => true };
         expect([fitsFilter(text, 'x'), fitsFilter(text, 5), fitsFilter(text, Number.NaN), fitsFilter(text, ['x']), fitsFilter(text, { a: 1 })]).toEqual([true, true, false, false, false]);
         expect([fitsFilter(multi, ['a', 2, null]), fitsFilter(multi, 'a'), fitsFilter(multi, [{}])]).toEqual([true, false, false]);
-        expect([fitsFilter(date, '2024-03-01'), fitsFilter(date, 5), fitsFilter(date, 'soon'), fitsFilter(date, {})]).toEqual([true, true, false, false]);
+        // Date panels: a Date or an ISO date(-time) string only, never a bare number (final review)
+        expect([fitsFilter(date, '2024-03-01'), fitsFilter(date, '2024-03-01T10:00:00Z'), fitsFilter(date, new Date(0)), fitsFilter(date, 5), fitsFilter(date, '5'), fitsFilter(date, 'soon'), fitsFilter(date, {})]).toEqual([
+            true,
+            true,
+            true,
+            false,
+            false,
+            false,
+            false,
+        ]);
         expect([
             fitsFilter(range, { start: '2024-01-01', end: null }),
             fitsFilter(range, { end: '2024-01-01' }),
             fitsFilter(range, { from: '2024-01-01' }),
             fitsFilter(range, { start: 'never' }),
+            fitsFilter(range, { start: 5 }),
             fitsFilter(range, 5),
-        ]).toEqual([true, true, false, false, false]);
+        ]).toEqual([true, true, false, false, false, false]);
         expect(fitsFilter(custom, { anything: true })).toBe(true);
     });
 
@@ -156,12 +166,21 @@ describe('nlColumns, fitsFilter, hardenSpec, projectRow', () => {
         expect(hardenSpec({ columnFilters: { name: ['x'] } }, COLUMNS)).toEqual({});
         expect(hardenSpec({ globalFilter: 'x' }, COLUMNS)).toEqual({ globalFilter: 'x' });
         expect(hardenSpec({ columnFilters: { name: 'Alice', status: 'active' } }, COLUMNS)).toEqual({ columnFilters: { status: 'active' } }); // `name` is not filterable
+        const dated = [{ accessorKey: 'when', header: 'When', enableFiltering: true, filterComponent: 'ge-data-table-date-filter' }] as ColumnDef<Row>[];
+        expect(hardenSpec({ columnFilters: { when: 5 } }, dated)).toEqual({}); // {date: 5} dropped (final review)
+        expect(hardenSpec({ columnFilters: {} }, COLUMNS)).toEqual({ columnFilters: {} }); // an explicit empty record is kept: it clears
     });
 
-    it('projects a row to the given own keys only', () => {
-        const row = Object.assign(Object.create({ inherited: 1 }) as object, { id: '1', secret: 's', name: 'A' });
-        expect(projectRow(row, ['id', 'name', 'inherited', 'missing'])).toEqual({ id: '1', name: 'A' });
-        expect(projectRow(DATA[0])).toBe(DATA[0]);
+    it('parseNlFilterSpec keeps an explicit empty columnFilters (it clears), drops an all-unknown one (final review)', () => {
+        expect(parseNlFilterSpec('{"columnFilters":{}}', ['status'])).toEqual({ columnFilters: {} });
+        expect(parseNlFilterSpec('{"columnFilters":{"zzz":1}}', ['status'])).toEqual({});
+        expect(parseNlFilterSpec('{"columnFilters":[]}', ['status'])).toEqual({});
+    });
+
+    it('projects a row to the given columns through the reader (the table cell value), else the whole row', () => {
+        const read = (row: unknown, key: string) => `${key}:${(row as Row).id}`;
+        expect(projectRow(DATA[0], ['name', 'a.b'], read)).toEqual({ name: 'name:1', 'a.b': 'a.b:1' });
+        expect(projectRow(DATA[0], undefined, read)).toBe(DATA[0]);
     });
 });
 
@@ -304,6 +323,20 @@ describe('the AI part: NL filter', () => {
         expect(announced.at(-1)).toBe(t.filtersClearedAnnouncement);
     });
 
+    it('"show everything" answered as an explicit empty columnFilters clears the column filters (final review)', async () => {
+        const { ai, model } = setup({ provider: makeAiProvider('{"columnFilters":{}}').provider });
+        model.set('columnFilters', { status: 'active' });
+        await ai.applyNaturalLanguageFilter('show everything');
+        expect(model.get('columnFilters')).toEqual({});
+    });
+
+    it('a spec equal to the current filters writes nothing and says so, never leaving "Filtering…" as the last word (final review)', async () => {
+        const { ai, model, announced } = setup({ provider: makeAiProvider('{"globalFilter":"Bob"}').provider });
+        model.set('globalFilter', 'Bob');
+        await ai.applyNaturalLanguageFilter('bob again');
+        expect(announced).toEqual([t.nlFilterRunning, t.nlFilterNoChange]);
+    });
+
     it('a failure is announced, never thrown, and the running state is reset (Angular B8)', async () => {
         const { ai, announced, controller } = setup({ provider: () => Promise.reject(new Error('boom')) });
         await expect(ai.applyNaturalLanguageFilter('show anything')).resolves.toBeUndefined();
@@ -383,16 +416,50 @@ describe('the AI part: AI fill', () => {
         expect(scripted.requests[0]).toMatchObject({ task: 'table-fill', prompt: 'write a note', context: { column: 'Note' } });
     });
 
-    it('fills only the filtered rows, written by id (rowIndex -1: no drawn address), without re-reading the drawn rows per batch (PR #80 review)', async () => {
+    it('fills only the filtered rows, written by id; the drawn index (read ONCE per run) for a drawn row, -1 off the page (final review)', async () => {
         const scripted = makeAiProvider((req) => `n${(JSON.parse(req.input) as Row).id}`);
         const { ai, model, named, providers } = setup({ provider: scripted.provider, pageSize: 1 });
         model.set('columnFilters', { status: 'active' });
         const rendered = vi.spyOn(providers.get('query') as { renderedRows(): unknown }, 'renderedRows');
         await ai.aiFillColumn('note', 'p');
         expect(model.get('data').map((r) => r.note)).toEqual(['n1', '', 'n3']);
-        expect(named('cell-edit').map((e) => (e as { rowIndex: number }).rowIndex)).toEqual([-1, -1]);
+        expect(named('cell-edit').map((e) => (e as { rowIndex: number }).rowIndex)).toEqual([0, -1]);
         expect(named('ai-fill-complete')).toEqual([{ columnKey: 'note', count: 2, rejected: 0, skipped: 0 }]);
-        expect(rendered).not.toHaveBeenCalled();
+        expect(rendered).toHaveBeenCalledTimes(1);
+    });
+
+    it("rows: 'page' reports each cell's drawn index (final review)", async () => {
+        const { ai, named, model } = setup({ provider: () => 'v', pageSize: 2 });
+        model.set('sortState', { column: 'name', direction: 'desc' }); // drawn: Cyd, Bob
+        await ai.aiFillColumn('note', 'p', { rows: 'page' });
+        expect(named('cell-edit').map((e) => [(e as { row: Row }).row.name, (e as { rowIndex: number }).rowIndex])).toEqual([
+            ['Cyd', 0],
+            ['Bob', 1],
+        ]);
+    });
+
+    it('reads inputColumns through the table cell value (paths, accessorFn) (final review)', async () => {
+        const scripted = makeAiProvider('v');
+        const columns: ColumnDef<Row>[] = [...COLUMNS, { accessorKey: 'shout', header: 'Shout', accessorFn: (r) => r.name.toUpperCase() }];
+        const { ai } = setup({ provider: scripted.provider, columns, data: [{ id: '1', name: 'Ann', status: 's', note: '', meta: { city: 'Rome' } } as Row] });
+        await ai.aiFillColumn('note', 'p', { inputColumns: ['shout', 'meta.city'] });
+        expect(JSON.parse(scripted.requests[0]?.input ?? '')).toEqual({ shout: 'ANN', 'meta.city': 'Rome' });
+    });
+
+    it('works without AbortSignal.any (older engines), with a caller signal too (final review)', async () => {
+        const any = AbortSignal.any;
+        Reflect.deleteProperty(AbortSignal, 'any');
+        try {
+            const { ai, model } = setup({ provider: () => 'v' });
+            await ai.aiFillColumn('note', 'p', { signal: new AbortController().signal });
+            expect(model.get('data').map((r) => r.note)).toEqual(['v', 'v', 'v']);
+            const nl = setup({ provider: () => '{"globalFilter":"Bob"}' });
+            await nl.ai.applyNaturalLanguageFilter('bob');
+            expect(nl.model.get('globalFilter')).toBe('Bob');
+            expect(nl.ai.busy()).toBe(false);
+        } finally {
+            AbortSignal.any = any;
+        }
     });
 
     it('leaves out the rows writeCells cannot find by id (tree children) BEFORE asking, and counts them skipped (PR #80 review)', async () => {
