@@ -52,7 +52,7 @@ describe('getCellValue', () => {
 describe('isFilterValueEmpty', () => {
     // Wave 5 review round 9: a range with no end set is empty however its keys are spelled ({ start: null }, undefined ends, `{}`); Angular
     // asks for both keys (cmp 3981), so `{ start: null }` there filters every row out.
-    it.each([[undefined], [null], [''], [[]], [{ start: null, end: null }], [{ start: null }], [{ end: undefined }], [{ start: undefined, end: undefined }], [{}], [{ start: '', end: '' }], [{ start: '', end: null }], [{ end: '' }], [new Set()], [Object.assign(Object.create(null), { start: null })]])('%j is empty', (v) => {
+    it.each([[undefined], [null], [''], [[]], [{ start: null, end: null }], [{ start: null }], [{ end: undefined }], [{ start: undefined, end: undefined }], [{ start: '', end: '' }], [{ start: '', end: null }], [{ end: '' }], [new Set()], [Object.assign(Object.create(null), { start: null })]])('%j is empty', (v) => {
         expect(isFilterValueEmpty(v)).toBe(true);
     });
     it('isPlainObject: object literals and null-prototype objects only (round 18)', () => {
@@ -63,7 +63,7 @@ describe('isFilterValueEmpty', () => {
         expect(isPlainObject(new (class {})())).toBe(false);
         expect(isPlainObject(null)).toBe(false);
     });
-    it.each([['a'], [0], [false], [['a']], [{ start: new Date(), end: null }], [{ end: new Date() }], [new Date()], [{ other: 1 }], [{ start: '2024-01-01', end: '' }], [{ start: null, end: null, includeBlanks: true }], [{ start: null, mode: 'x' }], [new Set(['a'])]])('%j is not empty', (v) => {
+    it.each([['a'], [0], [false], [['a']], [{ start: new Date(), end: null }], [{ end: new Date() }], [new Date()], [{ other: 1 }], [{ start: '2024-01-01', end: '' }], [{ start: null, end: null, includeBlanks: true }], [{ start: null, mode: 'x' }], [new Set(['a'])], [{}], [Object.create(null)]])('%j is not empty', (v) => {
         expect(isFilterValueEmpty(v)).toBe(false);
     });
 });

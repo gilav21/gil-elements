@@ -75,11 +75,13 @@ export function isFilterValueEmpty(value: unknown): boolean {
     if (Array.isArray(value)) return value.length === 0;
     if (value instanceof Set) return value.size === 0; // wave5: a Set is a multiselect selection too (multiselectFilterFn reads it)
     if (value instanceof Date) return false;
-    // wave5: a PLAIN object whose only keys are `start` / `end` (any subset, `{}` too) with no end set (null, undefined, '') is a range that filters
-    // nothing. Any other key makes it a real value (`{ start: null, end: null, includeBlanks: true }` is a consumer's filter and reaches filterFn).
+    // wave5: a PLAIN object whose own keys are a NON-EMPTY subset of `start` / `end` with no end set (null, undefined, '') is a range that filters
+    // nothing. Any other key makes it a real value (`{ start: null, end: null, includeBlanks: true }` is a consumer's filter and reaches filterFn);
+    // a key-less object (`{}`) is not a range and reaches filterFn too, as on main.
     if (!isPlainObject(value)) return false;
+    const entries = Object.entries(value);
     const unset = (end: unknown): boolean => end == null || end === '';
-    return Object.entries(value).every(([key, end]) => (key === 'start' || key === 'end') && unset(end));
+    return entries.length > 0 && entries.every(([key, end]) => (key === 'start' || key === 'end') && unset(end));
 }
 
 /** wave5: a plain object literal: `Object.prototype` or a `null` prototype (`Object.create(null)`), never a class instance, an array or a Date. ONE rule for the filters. */

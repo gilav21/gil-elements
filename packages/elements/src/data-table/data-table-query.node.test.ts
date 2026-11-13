@@ -245,6 +245,10 @@ describe('createQueryPipeline', () => {
         run(input({ columns, columnFilters: { age: value } }));
         expect(filterFn).toHaveBeenCalled();
         expect(filterFn.mock.calls[0]![1]).toBe(value);
+        // Round 23: a key-less object is a value as on main (it reaches filterFn).
+        filterFn.mockClear();
+        run(input({ columns, columnFilters: { age: {} } }));
+        expect(filterFn).toHaveBeenCalled();
         // A bare empty range is still no filter.
         filterFn.mockClear();
         run(input({ columns, columnFilters: { age: { start: null, end: '' } } }));
