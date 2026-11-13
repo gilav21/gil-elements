@@ -71,12 +71,15 @@ export class ClipboardController<T> {
     private keystroke: { handled: boolean } | null = null;
     /** A native paste that arrived before the paste part was loaded: its text and target (by row id), applied when the part attaches. */
     private early: { text: string; rowId: string; columnKey: string } | null = null;
+    /** The paste part failed to load (latched until the flag turns off or the table detaches): a native paste is then left to the browser, not kept. */
+    private loadFailed = false;
     private readonly paste = lazyPart<PastePart<T>>(() => import('./lazy/clipboard.js').then((m) => new m.PastePart(this.host)), {
         changed: () => this.applyEarly(),
         onError: (error) => {
             console.error('[ge-data-table] a lazy part failed to load:', error);
             if (this.early) this.host.announce(this.host.resolvedLocale.pasteFailedAnnouncement);
             this.early = null;
+            this.loadFailed = true;
         },
     });
 
@@ -105,13 +108,19 @@ export class ClipboardController<T> {
     }
 
     hostUpdate(): void {
-        this.paste.sync(this.host.config.enableClipboardPaste);
+        const on = this.host.config.enableClipboardPaste;
+        if (!on) {
+            this.early = null; // a paste kept while the part loaded belongs to a feature that is off now
+            this.loadFailed = false; // the latch of `lazyPart` is released with the flag too
+        }
+        this.paste.sync(on);
     }
 
     detach(): void {
         this.attachment++;
         this.pending = false;
         this.early = null;
+        this.loadFailed = false; // `dispose()` releases the latch: the next attach loads again
         this.paste.dispose();
         for (const undo of this.teardown.reverse()) undo();
         this.teardown = [];
@@ -274,7 +283,7 @@ export class ClipboardController<T> {
         if (event.defaultPrevented || !host.config.enableClipboardPaste || editorOpen(host) || isTextFieldKey(host.root, event)) return;
         if (!clipboardEventForGrid(host.root, event)) return;
         const target = this.target();
-        if (!target) return;
+        if (!target || (!this.paste.part && this.loadFailed)) return; // no part will come (its load failed): the browser keeps its event
         event.preventDefault();
         const text = event.clipboardData?.getData('text/plain') ?? '';
         if (this.paste.part) this.pasteAt(text, target);

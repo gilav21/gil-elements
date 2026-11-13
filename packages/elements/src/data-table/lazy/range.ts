@@ -588,7 +588,7 @@ export class RangePart<T> {
         const { host } = this.context;
         const query = host.provider('query');
         const columns = host.provider('columns')?.enhancedColumns() ?? [];
-        if (!query) return false;
+        if (!query || host.config.loading) return false; // no write into rows that are being replaced (like a paste or a row drag)
         const plan = planFill<T>({
             source,
             target,

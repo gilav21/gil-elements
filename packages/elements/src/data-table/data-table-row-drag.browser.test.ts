@@ -523,6 +523,18 @@ describe('row drag: keyboard (Alt+ArrowUp / Alt+ArrowDown) and moveRow', () => {
         await vi.waitFor(() => expect(document.activeElement).toBe(cellOf(rowEl(table, 1))));
     });
 
+    it('a row move that reorders the data leaves no range (it would cover other rows)', async () => {
+        const table = await mountDrag({ enableCellRangeSelection: true });
+        await vi.waitFor(() => expect(table.provider('range')?.active()).toBe(true));
+        table.cellRange = { startRow: 0, startCol: 'name', endRow: 2, endCol: 'age' };
+        await settle(table);
+        await focus(table, 1);
+        await press('{Alt>}{ArrowDown}{/Alt}');
+        await settle(table);
+        expect(ids(table)).toEqual(['r0', 'r2', 'r1', 'r3', 'r4', 'r5']);
+        expect(table.cellRange).toBeNull();
+    });
+
     it('judges every key move fresh: a target refused since the last move is refused (no verdict kept outside a pointer drag)', async () => {
         let refuse = false;
         const table = await mountDrag({ localReorder: false, rowDragAllowDrop: () => !refuse }); // the rows do not change between the two moves

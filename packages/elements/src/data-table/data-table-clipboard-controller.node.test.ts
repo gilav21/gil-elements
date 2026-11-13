@@ -166,7 +166,8 @@ describe('ClipboardController', () => {
         const controller = new ClipboardController(t.host);
         controller.attach();
         controller.hostUpdate();
-        await loaded();
+        // the paste part is loaded (a fixed wait was flaky under load): `pasteText` of an empty text answers 'empty' only then
+        await vi.waitFor(() => expect(t.service().pasteText('', { rowIndex: 0, columnKey: 'n' }).status).toBe('empty'));
         expect(t.key({ key: 'v' }).consumed).toBe(false); // not consumed, nothing read: the browser's paste event follows
         (t.raw.root.ownerDocument as EventTarget).dispatchEvent(new Event('paste')); // (as Chromium does: no fallback read for this keystroke)
         expect(readText).not.toHaveBeenCalled();

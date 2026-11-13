@@ -298,6 +298,7 @@ export class RowDragPart<T> {
             // The one reorder path: the service's `reorderData` (the element's public one), which knows the flat and the tree rules.
             const reorder = this.host.provider('rowDrag');
             if (reorder) model.set('data', reorder.reorderData(model.get('data'), event));
+            this.host.provider('range')?.setRange(null); // the rows moved: a range would now cover other rows (as after a fill or a paste that moved them)
         }
         this.host.emit('row-reorder', event);
         // The position said is where the row IS once the reorder is drawn (in a tree, a sibling move jumps over a whole expanded subtree, so `toIndex`

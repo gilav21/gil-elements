@@ -679,6 +679,21 @@ describe('review fixes', () => {
     });
 });
 
+describe('fill while loading', () => {
+    it('refuses a fill (fillDownTo, Ctrl+D) while the table is loading, like a paste or a row drag', async () => {
+        const table = await mountRange({ enableFillHandle: true });
+        table.cellRange = { startRow: 0, startCol: 'score', endRow: 2, endCol: 'score' };
+        await focusAt(table, 0, 'score');
+        table.loading = true;
+        await settle(table);
+        const data = table.data;
+        expect(table.fillDownTo(4)).toBe(false);
+        cell(table, 0, 'score').dispatchEvent(new KeyboardEvent('keydown', { key: 'd', code: 'KeyD', ctrlKey: true, bubbles: true, cancelable: true, composed: true }));
+        await settle(table);
+        expect(table.data).toBe(data);
+    });
+});
+
 describe('a gesture cut short', () => {
     it('gives back the range from before the press when the part detaches mid-drag (the session failed, the part was disposed)', async () => {
         const attach = vi.spyOn(RangePart.prototype, 'attach');

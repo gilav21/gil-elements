@@ -743,6 +743,9 @@ Recommendation (D2): **lazy, flag-gated `import()` for range + fill, paste and r
 - Fill handle: after a range change the handle can show one frame at its old place before it is measured again.
 - Clipboard: `withTimeout`'s timer could go through `host.disposables` (cleared at detach) instead of a bare `setTimeout`.
 - Range part: `inGrid` is now a one-line wrapper of `onGrid` and could be inlined.
+- Row drag: a link or image drag that starts inside a draggable row is cancelled, and a press on a control can still start a row drag (the pointerdown origin is not recorded; `dragstart` judges by its own target).
+- Fill handle: a `dir` change inherited from an ancestor (not on the table itself) does not re-measure the handle.
+- One shared, memoised column-by-key lookup for fill, paste and copy.
 
 ### Candidate Angular bugs (verified only by reading; nothing filed; verify against a running Angular build before filing)
 - **AB1** cmp 4494, 4502 (-> 4256), 4482 (-> 4532) and 4439 (-> 2747): the copy and paste promises are neither awaited nor caught; with permission denied (or `readText` unsupported) the handler has already called `preventDefault`, nothing is copied or pasted, the user gets no feedback and an unhandled rejection is raised.

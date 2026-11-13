@@ -37,7 +37,7 @@ export class PastePart<T> {
             columnByKey: (key) => all.find((c) => String(c.accessorKey) === key),
             cellValue: (row, column) => query.cellValue(row, column.accessorKey, column),
         });
-        if (!plan) return { status: 'ignored' };
+        if (!plan || plan.requests.length === 0) return { status: 'ignored' }; // nothing can be written there (no setter, no row): no event (spec B.2)
         const span = plan.rect ? [plan.rect.startRow, plan.rect.endRow] as const : null;
         const before = span ? rowIdsAt(host, span[0], span[1]) : [];
         const results = host.runAsCommand(() => host.writeCells(plan.requests));

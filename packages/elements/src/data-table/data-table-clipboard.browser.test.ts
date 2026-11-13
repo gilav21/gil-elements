@@ -372,6 +372,47 @@ describe('paste', () => {
         expect((table.data as Row[])[1]?.name).toBe('=SUM(1,2)');
     });
 
+    it('drops a paste kept during the load when the feature is switched off, and leaves the event to the browser once the load has failed', async () => {
+        const table = await grid();
+        const cell = await focusCell(table, 2, 'qty');
+        table.enableClipboardPaste = true;
+        expect(dispatchPaste(cell, '33')).toBe(false); // kept while the part loads
+        table.enableClipboardPaste = false; // ...and the feature goes off
+        await settle(table);
+        table.enableClipboardPaste = true;
+        await pasteReady(table);
+        await frames(3);
+        expect((table.data as Row[])[2]?.qty).toBe(3); // nothing pasted
+
+        const failing = vi.spyOn(PastePart.prototype, 'attach').mockImplementation(() => {
+            throw new Error('no part');
+        });
+        const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        try {
+            const broken = await grid({ enableClipboardPaste: true });
+            await pasteReady(broken);
+            const brokenCell = await focusCell(broken, 1, 'qty');
+            expect(dispatchPaste(brokenCell, '44')).toBe(true); // not taken: no part will paste it
+        } finally {
+            failing.mockRestore();
+            errors.mockRestore();
+        }
+    });
+
+    it('a paste aimed at one table\'s cell while the focus is in ANOTHER table is that other table\'s', async () => {
+        const one = await grid({ enableClipboardPaste: true });
+        const two = await grid({ enableClipboardPaste: true });
+        await pasteReady(one);
+        await pasteReady(two);
+        const oneCell = await focusCell(one, 0, 'qty'); // table one had the focus (its focused cell stays: a caret could be left here)
+        await focusCell(two, 1, 'qty'); // the focus is in table two now
+        dispatchPaste(oneCell, '55');
+        await settle(one);
+        await settle(two);
+        expect((one.data as Row[]).map((r) => r.qty)).toEqual([1, 2, 3, 4]);
+        expect((two.data as Row[])[1]?.qty).toBe(55);
+    });
+
     it('applies a native paste that arrives while the paste part is still loading, once it has loaded', async () => {
         const table = await grid();
         const cell = await focusCell(table, 2, 'qty');
@@ -464,7 +505,7 @@ describe('paste', () => {
         // 500 and 600 are refused by the qty validator
         expect(service.pasteText('500\n600', { rowIndex: 0, columnKey: 'qty' })).toEqual({ status: 'done', cells: 0, rejected: 2 });
         // the note column has no valueSetter
-        expect(service.pasteText('a\tb', { rowIndex: 0, columnKey: 'note' })).toEqual({ status: 'done', cells: 0, rejected: 0 });
+        expect(service.pasteText('a\tb', { rowIndex: 0, columnKey: 'note' })).toEqual({ status: 'ignored' }); // nothing can be written there (spec B.2)
         await settle(table);
         expect(pastes).toEqual([]);
         expect(table.cellRange).toEqual(range);
