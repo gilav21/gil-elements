@@ -878,6 +878,21 @@ describe('round 20: the edited column scrolls out of the drawn columns', () => {
         ) as Promise<Table>;
     };
 
+    it('startEditing on a column outside the drawn columns reveals it: the editor opens, takes the focus and stays open (round 26)', async () => {
+        const table = await wide();
+        await scrollGrid(table, { left: 150 * 20 }); // c2 leaves the drawn columns
+        await settle(table);
+        expect(cellAt(table, 0, 'c2')).toBeNull();
+        await startEditingAt(table, 0, 'c2');
+        await frames(4);
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'c2' });
+        expect(deepActive()).toBe(openEditor(table));
+        table.requestUpdate(); // the next render
+        await settle(table);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'c2' });
+    });
+
     it('a valid draft is committed (left like a blur)', async () => {
         const table = await wide();
         await startEditingAt(table, 0, 'c2');

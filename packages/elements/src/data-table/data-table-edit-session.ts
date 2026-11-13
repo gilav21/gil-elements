@@ -410,6 +410,7 @@ export class EditSession<T> implements CellSession {
             shownDate: null,
             pointerPick: false,
         };
+        host.provider('virtual')?.reveal(rowIndex, columnKey); // its cell is drawn (a column outside the window would leave it at once), as Tab's move
         this.open = open;
         this.reconciledWith = query.renderedRows(); // opened from these rows: nothing to follow until they change
         this.changed();
