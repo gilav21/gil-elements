@@ -287,11 +287,25 @@ export class QueryController<T> {
         },
         cellValue: (row, key, column) => getCellValue(row, key, column),
         exportData: (options = {}, rows) => {
-            const columns = this.visibleDataColumns();
+            // `onlyVisible: false`: every data column as defined, hidden ones included, in definition order (Angular `getExportData`, cmp 4190-4202).
+            const columns = options.onlyVisible === false ? this.host.config.columns.filter((c) => !isSpecialColumnKey(c.accessorKey)) : this.visibleDataColumns();
             const body = (rows ?? (options.onlyFiltered === false ? this.host.model.get('data') : this.output().sorted)).map((row) =>
                 columns.map((c) => (c.cell ? c.cell(row) : stringifyValue(getCellValue(row, c.accessorKey, c)))),
             );
             return options.includeHeaders === false ? body : [columns.map((c) => c.header), ...body];
+        },
+        rawRows: () => this.host.model.get('data'),
+        rowId: (row) => this.host.config.getRowId(row),
+        applyFilters: ({ globalFilter, columnFilters }) => {
+            const { model } = this.host;
+            if (globalFilter !== undefined) this.dropPendingGlobal(); // a typed text still waiting on the debounce would overwrite this one
+            model.batch(() => {
+                if (globalFilter !== undefined) model.set('globalFilter', globalFilter);
+                if (columnFilters !== undefined) model.set('columnFilters', { ...columnFilters });
+                this.resetPage();
+            });
+            this.host.emit('filter-change', model.get('globalFilter'));
+            this.announceFilters();
         },
         sortDirection: (key) => this.sorts().find((s) => s.column === String(key))?.direction ?? null,
         changeSort: (key, direction, multi = false) => {
@@ -368,7 +382,6 @@ export class QueryController<T> {
         const columns = requireProvider(this.host, 'columns');
         return columns.enhancedColumns().filter((c) => !isSpecialColumnKey(c.accessorKey));
     }
-
     private currentQuery(): DataTableQuery {
         const { model } = this.host;
         return currentQuery({

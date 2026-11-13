@@ -6,6 +6,7 @@ import { resolveAddonLocale } from '../shared/addon-locale.js';
 import { Disposables } from '../shared/registry.js';
 import { warnOncePer } from './data-table-warn.js';
 import type { DataTableLocale } from './data-table.locales.js';
+import type { DataTableAddonEvents } from './data-table-events.js';
 import type { DataTableTopic } from './data-table-host.js';
 import type { AddonsService, CellActionSlot, DataTableProviders, HeaderActionSlot } from './data-table-providers.js';
 
@@ -13,7 +14,7 @@ export { resolveAddonLocale };
 export type { AddonLocaleTable } from '../shared/addon-locale.js';
 
 /** Services an addon may reach through `provider()`; the rest of the host is not its business. */
-export type DataTableAddonServiceKey = 'query' | 'columns' | 'interaction';
+export type DataTableAddonServiceKey = 'query' | 'columns' | 'interaction' | 'selection';
 
 /**
  * The stable surface an addon sees. Of the 26 members of Angular's `DataTableAddonHost` only the registration of the two
@@ -21,7 +22,18 @@ export type DataTableAddonServiceKey = 'query' | 'columns' | 'interaction';
  * commands the core already has, so they are reached as services through `provider()` instead of being copied here.
  */
 export interface DataTableAddonHost<T = unknown> {
+    /** The table element (light DOM): where an addon listens for gestures on rows, cells and headers. */
+    readonly root: HTMLElement;
     readonly resolvedLocale: DataTableLocale;
+    /**
+     * Fires a bubbling, composed `CustomEvent` on the table. Names are kebab-case; an addon types its own by augmenting
+     * `DataTableAddonEvents` (`data-table-events.ts`).
+     */
+    emit<K extends string>(name: K, detail?: K extends keyof DataTableAddonEvents ? DataTableAddonEvents[K] : unknown): void;
+    /** Writes to the table's polite live region. */
+    announce(message: string): void;
+    /** Publishes this addon's imperative API: `table.addon<A>(id)` returns it until the addon is torn down. */
+    expose<A extends object>(api: A): void;
     /** `'locale'` re-runs `defineAddon`'s `create`; the other topics are for addons that follow rows or the cell. */
     subscribe(topic: DataTableTopic, fn: () => void): () => void;
     registerCellAction(slot: CellActionSlot<T>): () => void;
@@ -105,7 +117,9 @@ function sameValue(a: unknown, b: unknown): boolean {
  */
 export class AddonSet<T = unknown> {
     private readonly used = new Map<string, { addon: DataTableAddon<T>; options: unknown }>();
-    private readonly active = new Map<string, { teardown: void | (() => void); options: unknown }>();
+    private readonly active = new Map<string, { teardown: () => void; options: unknown }>();
+    /** What each running addon exposed (`host.expose`), by addon id. */
+    private readonly apis = new Map<string, object>();
     private ids: readonly string[] = [];
     private optionsMap: Readonly<Record<string, unknown>> = {};
     private settings: Readonly<Record<string, unknown>> = {};
@@ -142,8 +156,13 @@ export class AddonSet<T = unknown> {
 
     stop(): void {
         this.started = false;
-        for (const { teardown } of this.active.values()) teardown?.();
+        for (const { teardown } of this.active.values()) teardown();
         this.active.clear();
+    }
+
+    /** The API the running addon `id` exposed, or undefined. */
+    api<A extends object>(id: string): A | undefined {
+        return this.apis.get(id) as A | undefined;
     }
 
     /** Called when the registry gained an addon, so an id listed before its module loaded now starts. */
@@ -153,14 +172,29 @@ export class AddonSet<T = unknown> {
         for (const [id, running] of this.active) {
             const addon = wanted.get(id);
             if (addon && this.optionsFor(id, addon) === running.options) continue;
-            running.teardown?.();
+            running.teardown();
             this.active.delete(id);
         }
         for (const [id, addon] of wanted) {
             const options = this.optionsFor(id, addon);
             if (options === false || this.active.has(id)) continue;
-            this.active.set(id, { teardown: addon.setup(this.host, options), options });
+            this.launch(id, addon, options);
         }
+    }
+
+    /** Sets an addon up with a host of its own, whose `expose` files the API under its id until its teardown (a late call after it is ignored). */
+    private launch(id: string, addon: DataTableAddon<T>, options: unknown): void {
+        let live = true;
+        const expose = (api: object): void => void (live && this.apis.set(id, api));
+        const teardown = addon.setup(Object.create(this.host, { expose: { value: expose } }) as DataTableAddonHost<T>, options);
+        this.active.set(id, {
+            options,
+            teardown: () => {
+                live = false;
+                this.apis.delete(id);
+                teardown?.();
+            },
+        });
     }
 
     /**
@@ -201,15 +235,23 @@ export class AddonSet<T = unknown> {
  * calls this once; nothing else implements `DataTableAddonHost`.
  */
 export function createAddonHost<T>(parts: {
+    readonly root: HTMLElement;
     readonly resolvedLocale: () => DataTableLocale;
+    readonly emit: (name: string, detail: unknown) => void;
+    readonly announce: (message: string) => void;
     readonly subscribe: DataTableAddonHost<T>['subscribe'];
     readonly provider: DataTableAddonHost<T>['provider'];
     readonly addons: () => Pick<AddonsService<T>, 'cellActions' | 'headerActions' | 'setBusy'>;
 }): DataTableAddonHost<T> {
     return {
+        root: parts.root,
         get resolvedLocale() {
             return parts.resolvedLocale();
         },
+        emit: (name, detail) => parts.emit(name, detail),
+        announce: parts.announce,
+        // `AddonSet` hands each addon a host of its own whose `expose` files the API under the addon's id; this one has no id to file under.
+        expose: () => undefined,
         subscribe: parts.subscribe,
         provider: parts.provider,
         registerCellAction: (slot) => parts.addons().cellActions.register(slot),

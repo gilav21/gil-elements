@@ -283,6 +283,17 @@ export interface DataTableLoadingVisibility {
     filtering?: boolean;
 }
 
+/** Options of `aiFillColumn` (wave 7). */
+export interface DataTableAiFillOptions {
+    /** Which rows to fill: the filtered rows of every page (default, Angular), the selected ones, or the drawn page. */
+    rows?: 'filtered' | 'selected' | 'page';
+    /** How many requests run at once; default 1 (sequential, as Angular). */
+    concurrency?: number;
+    signal?: AbortSignal;
+    /** Only these columns of a row are sent to the provider (default: the whole row). */
+    inputColumns?: string[];
+}
+
 export interface DataTableExportOptions {
     includeHeaders?: boolean;
     onlyVisible?: boolean;

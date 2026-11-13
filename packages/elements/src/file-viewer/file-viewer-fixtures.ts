@@ -1,4 +1,4 @@
-import { generateXlsx } from './parsers/xlsx.js';
+import { generateXlsx } from '../shared/xlsx.js';
 import { onePagePdf } from './parsers/pdf-test-fixtures.js';
 
 const encoder = new TextEncoder();

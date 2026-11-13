@@ -760,6 +760,15 @@ Recommendation (D2): **lazy, flag-gated `import()` for range + fill, paste and r
 - Flash: `restart()` queries each restarted cell (one `querySelector` per cell with a `cssString` selector, as the edit session does, would be cheaper than mapping every row).
 - Range: a per-render snapshot of the range flags instead of three service calls per cell (`isInRange`, `edgeOf`, `isFillPreview`).
 
+Final-review follow-ups (PR #74):
+- Clipboard: Ctrl+V with focus on the viewport or root and no focused cell does nothing (`clipboardEventForGrid` and the `onGrid` targets disagree).
+- Range: Escape is consumed for a range that is held but not drawn (`onEscape` tests `this.range`, not `normalized()`).
+- Range, fill-only mode: Shift+navigation keeps the old range.
+- Range: the internal `setRange` writes set `assignedSince` (the turn-off rule).
+- `lazyPart` `onError` also catches `applyEarly` / `detach` errors and latches `loadFailed`.
+- `rowIndexOf` duplicates `indexOfRowId` (and row-drag has inline copies).
+- `edgeCell` queries the DOM every frame during the edge auto-scroll.
+
 ### Candidate Angular bugs (verified only by reading; nothing filed; verify against a running Angular build before filing)
 - **AB1** cmp 4494, 4502 (-> 4256), 4482 (-> 4532) and 4439 (-> 2747): the copy and paste promises are neither awaited nor caught; with permission denied (or `readText` unsupported) the handler has already called `preventDefault`, nothing is copied or pasted, the user gets no feedback and an unhandled rejection is raised.
 - **AB2** cmp 2696-2701: `coercePasteValue` uses `Number(raw)`, so an empty (or whitespace) pasted cell becomes `0` in a number column, and `'0x10'` / `'1e3'` coerce too.

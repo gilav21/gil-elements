@@ -170,7 +170,7 @@ function plainContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowInd
 }
 
 function cellContent<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number, node: FlattenedTreeRow<T> | undefined, editing: boolean): unknown {
-    const special = specialCell(v, c, row);
+    const special = specialCell(v, c, row, rowIndex);
     if (special !== undefined) return special;
     // The open editor (wave 5) takes the place of the plain content; the tree-host wrapper stays around it.
     // `undefined` is "not drawn by the editor view"; a `null` (an editRenderer that draws nothing) is the editor's answer and stays.

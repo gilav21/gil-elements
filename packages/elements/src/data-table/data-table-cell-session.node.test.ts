@@ -65,6 +65,17 @@ describe('the joint step 0 sessions', () => {
         expect(isInRange).toHaveBeenCalled();
     });
 
+    it('wave 7: says range selection is enabled only with the range SELECTION flag on and the part active (the aria-selected gate)', () => {
+        const { context, flags } = rangeContext({ enableCellRangeSelection: false, enableFillHandle: true });
+        const session = new RangeSession(context);
+        const active = vi.spyOn(session.rangeService, 'active').mockReturnValue(true);
+        expect(session.service.rangeSelectionEnabled?.()).toBe(false); // fill handle only
+        flags.enableCellRangeSelection = true;
+        expect(session.service.rangeSelectionEnabled?.()).toBe(true);
+        active.mockReturnValue(false); // part not loaded (or failed)
+        expect(session.service.rangeSelectionEnabled?.()).toBe(false);
+    });
+
     it('answers isCellSelected as Angular does: with a range, only its cells; with none, the focused cell', () => {
         const { context, flags } = rangeContext({ ...off }, { focused: { rowIndex: 1, columnKey: 'a' } });
         const session = new RangeSession(context);

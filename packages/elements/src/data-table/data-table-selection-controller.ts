@@ -103,6 +103,13 @@ export class SelectionController<T> {
             const { config, model } = this.host;
             return config.enableSubRows && config.subRowSelectionMode !== 'self' && this.indeterminate(model.get('rowSelection'), this.query.treeIndex(), config.subRowSelectionMode).has(id);
         },
+        // The element's `selectedRows` getter, as a service for the addons.
+        selectedRows: () => {
+            const { config, model } = this.host;
+            const selection = model.get('rowSelection');
+            if (config.enableSubRows) return [...this.query.treeIndex().nodes].filter(([id]) => isSelectedId(selection, id)).map(([, node]) => node as T);
+            return model.get('data').filter((row) => isSelectedId(selection, config.getRowId(row)));
+        },
     };
 
     /** A range of the drawn rows between the last toggled row and this one takes the state the clicked checkbox now shows. */

@@ -65,6 +65,12 @@ export interface DataTableModelEvents<T> {
     'column-order-change': string[];
 }
 
+/**
+ * The events addons fire through `host.emit(name, detail)`, as name -> `detail` type. Empty in the core: each addon adds its own
+ * by declaration merging (`declare module '.../data-table-events.js' { interface DataTableAddonEvents { 'row-menu-open': ... } }`).
+ */
+export interface DataTableAddonEvents {}
+
 export type DataTableEventMap<T = unknown> = DataTableInteractionEvents<T> & DataTableModelEvents<T>;
 
 export type DataTableEventName = keyof DataTableEventMap;

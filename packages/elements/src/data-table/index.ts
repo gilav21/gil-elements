@@ -8,7 +8,10 @@ export type { ClipboardResult } from './data-table-providers.js';
 export type { HistoryResult, StaleChange } from './data-table-cell-write.js';
 export type { CellAddress } from './data-table-host.js';
 export { KEY_PRIORITY } from './data-table-registry.js';
-export type { DataTableEventMap, DataTableInteractionEvents, DataTableModelEvents, NlFilterEventDetail } from './data-table-events.js';
+export type { DataTableAddonEvents, DataTableEventMap, DataTableInteractionEvents, DataTableModelEvents, NlFilterEventDetail } from './data-table-events.js';
+export { defineAddon as defineDataTableAddon, type DataTableAddon, type DataTableAddonContext, type DataTableAddonHost, type DataTableAddonServiceKey } from './data-table-addon-kit.js';
+export { registerDataTableAddon } from './data-table-addon-registry.js';
+export type { CellActionSlot, HeaderActionSlot } from './data-table-providers.js';
 export {
     DATA_TABLE_LOCALES,
     registerDataTableLocale,

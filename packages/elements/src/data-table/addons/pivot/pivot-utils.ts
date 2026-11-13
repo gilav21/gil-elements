@@ -2,7 +2,7 @@
  * Pivot a flat dataset into rows x columns x one aggregated value. Pure; bind the result's `columns` and `rows` to a
  * data table.
  */
-import { toAggregatableNumber } from '../../data-table.utils.js';
+import { toAggregatableNumber } from '../../../shared/aggregate-number.js';
 
 /**
  * Aggregate applied at each pivot cell. `count` counts the source rows in the cell, whatever their values. The others

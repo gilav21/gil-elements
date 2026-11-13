@@ -9,6 +9,9 @@ import './define.js';
 import type { GeDataTable } from './data-table.js';
 import type { ColumnDef } from './data-table.types.js';
 
+// Wave 7: the download recorder and the scripted AI provider (node-safe, in their own module).
+export { makeAiProvider, stubDownload, type AiAnswer, type DownloadStub, type RecordedDownload, type ScriptedAiProvider } from './data-table-addon-fixtures.js';
+
 export interface SampleRow {
     id: string;
     name: string;

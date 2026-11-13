@@ -224,17 +224,61 @@ it('warns once per TABLE (set) and id, though two tables share one registry: eac
     });
 });
 
+describe('AddonSet: exposed APIs (wave 7)', () => {
+    it('files what an addon exposes under its id, replaces it on a re-expose, and drops it at the teardown', () => {
+        const { host } = fakeHost();
+        const set = new AddonSet(host, new Map());
+        set.start();
+        const off = set.use({ id: 'export', setup: (h) => h.expose({ version: 1 }) });
+        expect(set.api<{ version: number }>('export')).toEqual({ version: 1 });
+        expect(set.api('pivot')).toBeUndefined();
+        off();
+        expect(set.api('export')).toBeUndefined();
+    });
+
+    it('keeps one API per addon (each gets a host of its own) and ignores an expose after the teardown', () => {
+        const { host } = fakeHost();
+        const set = new AddonSet(host, new Map());
+        const hosts: DataTableAddonHost[] = [];
+        const addon = (id: string): DataTableAddon => ({ id, setup: (h) => (hosts.push(h), h.expose({ id })) });
+        set.start();
+        set.use(addon('a'));
+        set.use(addon('b'));
+        expect(set.api('a')).toEqual({ id: 'a' });
+        expect(set.api('b')).toEqual({ id: 'b' });
+        expect(Object.getPrototypeOf(hosts[0])).toBe(host); // the shared host's members, with its own `expose`
+        set.stop();
+        hosts[0]!.expose({ late: true });
+        expect(set.api('a')).toBeUndefined();
+        expect(set.api('b')).toBeUndefined();
+    });
+
+    it('drops the API of an addon restarted with new options until it exposes again', () => {
+        const { host } = fakeHost();
+        const registry = new Map<string, DataTableAddon>([['x', { id: 'x', setup: (h, options) => (options as { on?: boolean } | undefined)?.on && h.expose({}) }]]);
+        const set = new AddonSet(host, registry);
+        set.start();
+        set.configure('x', { x: { on: true } });
+        expect(set.api('x')).toBeDefined();
+        set.configure('x', { x: { on: false } });
+        expect(set.api('x')).toBeUndefined();
+    });
+});
+
 describe('createAddonHost', () => {
-    it('exposes only registration, busy, locale, subscribe and provider, wired to the addons service', () => {
+    function build() {
         const service = createAddonsService<unknown>(() => {});
         const locale = { code: 'en' } as DataTableLocale;
-        const host = createAddonHost<unknown>({
-            resolvedLocale: () => locale,
-            subscribe: () => () => {},
-            provider: () => undefined,
-            addons: () => service,
-        });
-        expect(Object.keys(host).sort()).toEqual(['provider', 'registerCellAction', 'registerHeaderAction', 'resolvedLocale', 'setBusy', 'subscribe']);
+        const root = {} as HTMLElement;
+        const emit = vi.fn();
+        const announce = vi.fn();
+        const host = createAddonHost<unknown>({ root, resolvedLocale: () => locale, emit, announce, subscribe: () => () => {}, provider: () => undefined, addons: () => service });
+        return { host, service, locale, root, emit, announce };
+    }
+
+    it('exposes only root, registration, busy, events, announcements, locale, subscribe and provider, wired to the addons service', () => {
+        const { host, service, locale, root } = build();
+        expect(Object.keys(host).sort()).toEqual(['announce', 'emit', 'expose', 'provider', 'registerCellAction', 'registerHeaderAction', 'resolvedLocale', 'root', 'setBusy', 'subscribe']);
 
         host.registerCellAction({ id: 'c', onClick: vi.fn() });
         host.registerHeaderAction({ id: 'h', onClick: vi.fn() });
@@ -243,5 +287,19 @@ describe('createAddonHost', () => {
         expect(service.headerActions.slots).toHaveLength(1);
         expect(service.busyLabel()).toBe('Working');
         expect(host.resolvedLocale).toBe(locale);
+        expect(host.root).toBe(root);
+    });
+
+    it('passes emit and announce through to the table', () => {
+        const { host, emit, announce } = build();
+        host.emit('row-menu-open', { row: 1 });
+        host.emit('export-complete');
+        host.announce('Done');
+        expect(emit.mock.calls).toEqual([['row-menu-open', { row: 1 }], ['export-complete', undefined]]);
+        expect(announce).toHaveBeenCalledWith('Done');
+    });
+
+    it('has an inert expose outside an AddonSet (no addon id to file under)', () => {
+        expect(() => build().host.expose({})).not.toThrow();
     });
 });

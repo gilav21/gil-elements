@@ -61,7 +61,8 @@ const spec = (
  * - aria after the services it summarises; addon-host last, nothing in the core waits for it.
  */
 export const DEFAULT_ORDER: readonly ControllerSpec[] = [
-    spec('columns', { provides: ['columns'], reads: ['config', 'locale'], writes: ['columns'] }),
+    // `addons`: the `_actions` column is drawn while a row action is registered.
+    spec('columns', { provides: ['columns'], uses: ['addons'], reads: ['config', 'locale'], writes: ['columns'] }),
     spec('query', { provides: ['query'], needs: ['columns'], reads: ['config', 'columns', 'expansion'], writes: ['rows'] }),
     spec('loading', { provides: ['loading'], reads: ['config', 'rows'], writes: ['loading'] }),
     spec('expansion', { provides: ['expansion'], needs: ['query'], reads: ['rows', 'config'], writes: ['expansion'] }),
@@ -97,10 +98,10 @@ export const DEFAULT_ORDER: readonly ControllerSpec[] = [
     spec('formatting', { provides: ['formatting'], needs: ['query', 'columns'], uses: ['virtual'], reads: ['rows', 'columns'], writes: ['cell'] }),
     spec('footer', { provides: ['footer'], needs: ['query', 'columns'], reads: ['rows', 'columns'] }),
     spec('filter-ui', { provides: ['filters'], needs: ['columns'], uses: ['query'], reads: ['columns', 'locale'] }),
-    spec('ai', { needs: ['query', 'columns'], uses: ['interaction'], reads: ['locale'] }),
+    spec('ai', { provides: ['ai'], needs: ['query', 'columns'], uses: ['interaction'], reads: ['locale'] }),
     spec('diagnostics', { uses: ['virtual', 'query'], reads: ['config', 'rows'] }),
     spec('aria', { needs: ['query', 'columns'], uses: ['interaction', 'virtual'], reads: ['rows', 'columns', 'selection', 'cell', 'viewport', 'locale'] }),
-    spec('addon-host', { provides: ['addons'], uses: ['query', 'columns', 'interaction'], reads: ['locale'] }),
+    spec('addon-host', { provides: ['addons'], uses: ['query', 'columns', 'interaction', 'selection'], reads: ['locale'] }),
 ];
 
 /**

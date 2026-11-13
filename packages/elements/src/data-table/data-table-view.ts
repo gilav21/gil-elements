@@ -5,6 +5,7 @@
  */
 import { computeGridAria } from './data-table-aria.js';
 import type { GridView } from './data-table-grid.js';
+import { actionsView } from './data-table-grid-actions.js';
 import { editView } from './data-table-grid-edit.js';
 import { filtersView } from './data-table-grid-filters.js';
 import { columnsView } from './data-table-grid-head.js';
@@ -44,6 +45,7 @@ export function buildView<T>(host: DataTableViewHost<T>, rangeActive?: boolean):
         ...stateView(host, rangeActive),
         filters,
         edit: editView(host),
+        actions: actionsView(host),
         focusedCell: win.focusedCell,
         viewportTabbable: win.viewportTabbable,
         locale: host.resolvedLocale,

@@ -1,8 +1,8 @@
 // @ts-nocheck - vendored from shadcn-angular lib/parsers, which is type-checked there without noUncheckedIndexedAccess.
 import { describe, expect, it } from 'vitest';
 import { generateXlsx } from './xlsx.js';
-import { readZip } from './zip-reader.js';
-import { parseXlsx } from './xlsx-reader.js';
+import { readZip } from '../file-viewer/parsers/zip-reader.js';
+import { parseXlsx } from '../file-viewer/parsers/xlsx-reader.js';
 
 const decode = (u: Uint8Array): string => new TextDecoder().decode(u);
 

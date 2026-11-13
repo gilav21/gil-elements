@@ -97,7 +97,7 @@ function headCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, n: number): Templa
     return html`<div data-slot="table-head" role="columnheader" aria-colindex=${v.aria.colIndex(n)} aria-sort=${ariaSortOf(c, v.sortDirection(key)) ?? nothing}
         data-column-id=${key} data-width=${c._width === 'auto' ? 'auto' : 'fixed'} data-pinned=${c._pin ?? nothing} data-special=${isSpecialColumnKey(key) ? specialSlotOf(c) : nothing}
         data-border ?data-resizable=${v.resizable} ?data-draggable=${draggable} aria-description=${draggable ? v.locale.reorderColumnHint : nothing} style=${cellVarsStyle(c, n)}>
-        <div data-slot="data-table-head-content"><div data-slot="data-table-head-main">${headContent(v, c)}</div></div>
+        <div data-slot="data-table-head-content"><div data-slot="data-table-head-main">${headContent(v, c)}</div>${v.actions.head(c)}</div>
         ${v.resizable && key !== '_selection' ? resizeHandle(v, c) : nothing}
     </div>`;
 }

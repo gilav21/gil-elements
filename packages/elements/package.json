@@ -1705,6 +1705,46 @@
       "types": "./dist/data-table/define.d.ts",
       "development": "./src/data-table/define.ts",
       "default": "./dist/data-table/define.js"
+    },
+    "./data-table/addons/context-menu": {
+      "types": "./dist/data-table/addons/context-menu/index.d.ts",
+      "development": "./src/data-table/addons/context-menu/index.ts",
+      "default": "./dist/data-table/addons/context-menu/index.js"
+    },
+    "./data-table/addons/context-menu/define": {
+      "types": "./dist/data-table/addons/context-menu/define.d.ts",
+      "development": "./src/data-table/addons/context-menu/define.ts",
+      "default": "./dist/data-table/addons/context-menu/define.js"
+    },
+    "./data-table/addons/export": {
+      "types": "./dist/data-table/addons/export/index.d.ts",
+      "development": "./src/data-table/addons/export/index.ts",
+      "default": "./dist/data-table/addons/export/index.js"
+    },
+    "./data-table/addons/export/define": {
+      "types": "./dist/data-table/addons/export/define.d.ts",
+      "development": "./src/data-table/addons/export/define.ts",
+      "default": "./dist/data-table/addons/export/define.js"
+    },
+    "./data-table/addons/pivot": {
+      "types": "./dist/data-table/addons/pivot/index.d.ts",
+      "development": "./src/data-table/addons/pivot/index.ts",
+      "default": "./dist/data-table/addons/pivot/index.js"
+    },
+    "./data-table/addons/pivot/define": {
+      "types": "./dist/data-table/addons/pivot/define.d.ts",
+      "development": "./src/data-table/addons/pivot/define.ts",
+      "default": "./dist/data-table/addons/pivot/define.js"
+    },
+    "./data-table/range-chart": {
+      "types": "./dist/data-table/range-chart/index.d.ts",
+      "development": "./src/data-table/range-chart/index.ts",
+      "default": "./dist/data-table/range-chart/index.js"
+    },
+    "./data-table/range-chart/define": {
+      "types": "./dist/data-table/range-chart/define.d.ts",
+      "development": "./src/data-table/range-chart/define.ts",
+      "default": "./dist/data-table/range-chart/define.js"
     }
   },
   "scripts": {

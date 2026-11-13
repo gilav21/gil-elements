@@ -35,8 +35,9 @@ export function specialHead<T>(v: GridView<T>, c: EnhancedColumnDef<T>): unknown
     return undefined;
 }
 
-export function specialCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T): unknown {
+export function specialCell<T>(v: GridView<T>, c: EnhancedColumnDef<T>, row: T, rowIndex: number): unknown {
     const key = String(c.accessorKey);
+    if (key === '_actions') return v.actions.cell(row, rowIndex, v.isDisabled(row));
     if (key === '_selection') {
         const id = v.getRowId(row);
         return html`<ge-checkbox aria-label=${v.locale.selectRow} .checked=${v.selection[id] === true} .indeterminate=${v.isIndeterminate(id)} ?disabled=${v.isDisabled(row)} tabindex=${tabStop(v.roving)}></ge-checkbox>`;

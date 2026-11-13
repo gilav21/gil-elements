@@ -81,6 +81,16 @@ describe('data-table locales', () => {
         for (const key of ['columnLabel', 'operatorLabel', 'valueLabel', 'groupLabel'] as const) expect(EN_FILTER_BUILDER_LABELS[key], key).toBeTruthy();
     });
 
+    it('has every wave 7 key (step 0), with the placeholders the AI announcements interpolate', () => {
+        const keys = [
+            'rowActions', 'nlFilterLabel', 'nlFilterApply', 'nlFilterRunning', 'nlFilterFailed', 'nlFilterNoChange', 'aiFillRunning', 'aiFillDone', 'aiFillFailed',
+        ] as const satisfies readonly (keyof DataTableLocale)[];
+        for (const key of keys) expect(en[key], key).toBeTruthy();
+        expect(interpolate(en.aiFillRunning, { done: 2, total: 5 })).toBe('Filling 2 of 5');
+        expect(interpolate(en.aiFillDone, { count: 3 })).toBe('3 cells filled');
+        expect(interpolate(en.columnMenu, { column: 'Age' })).toBe('Column menu for Age'); // the header action button's default label
+    });
+
     it('fills the new keys from English for a dictionary that omits them', () => {
         registerDataTableLocale('de', { filterPlaceholder: 'Filtern...' });
         const resolved = resolveDataTableLocale('de');
