@@ -7,7 +7,7 @@ import { dateFilterFn, dateRangeFilterFn, multiselectFilterFn } from './data-tab
 import { emulateTouch, frames, mouseDrag, openPopover, parkMouse, press, scrollGrid, touchLongPressDrag, typeText, whenDefined, withRtl, withTheme } from './data-table-input-fixtures.js';
 import type { GeDataTable } from './data-table.js';
 import { DATA_TABLE_LOCALES } from './data-table.locales.js';
-import type { ColumnDef, DataTableDateRange, FilterGroup } from './data-table.types.js';
+import type { ColumnDef, DataTableDateRange, FilterCondition, FilterGroup } from './data-table.types.js';
 
 afterEach(parkMouse);
 
@@ -1246,6 +1246,27 @@ describe('F7 the advanced filter builder', () => {
             await settle(table);
             expect(table.advancedFilter).toEqual({ type: 'group', combinator: 'and', rules: [cond('name', 'Al')] });
         });
+    });
+
+    it("an async copy of the reported tree (a consumer's binding) keeps the text typed since (round 17)", async () => {
+        const group: FilterGroup = { type: 'group', combinator: 'and', rules: [{ type: 'condition', column: 'name', operator: 'contains', value: '' }] };
+        const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 200 });
+        table.addEventListener('advanced-filter-change', (e) => {
+            const copy = structuredClone((e as CustomEvent<FilterGroup>).detail);
+            setTimeout(() => (table.advancedFilter = copy), 100);
+        });
+        await openBuilder(table);
+        const input = inner(table, 'input.value')[0]! as HTMLInputElement;
+        await typeText(input, 'A');
+        await new Promise((resolve) => setTimeout(resolve, 230)); // 'A' reported; its copy comes back in ~100 ms
+        await typeText(input, 'B'); // waits on the debounce while the copy arrives
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        await settle(table);
+        expect(input.value).toBe('AB');
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        await settle(table);
+        expect((table.advancedFilter!.rules[0] as FilterCondition).value).toBe('AB');
+        await closePopover(table);
     });
 
     it('a value typed and erased within the debounce emits no group-change (round 15)', async () => {
