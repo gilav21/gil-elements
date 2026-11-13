@@ -525,6 +525,16 @@ describe('round 6: floating row index, handlers across a reattach', () => {
         expect(bodyRows(table)[0]!.getAttribute('aria-rowindex')).toBe('3');
     });
 
+    it('the floating cells are opaque, so a pinned one covers the content scrolled under it (round 18)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true, pin: 'left' }, roleColumn], enableFloatingFilters: true });
+        const cell = q(table, '[data-kind="filter"] > [data-slot="table-head"][data-pinned]');
+        // Read the computed color back through a canvas: the alpha of what the cell paints, whatever color syntax the browser reports.
+        const ctx = document.createElement('canvas').getContext('2d')!;
+        ctx.fillStyle = getComputedStyle(cell).backgroundColor;
+        ctx.fillRect(0, 0, 1, 1);
+        expect(ctx.getImageData(0, 0, 1, 1).data[3]).toBe(255);
+    });
+
     it("each floating cell's aria-colindex is its column's, as the header row and the body cells have it (round 13)", async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn, { accessorKey: 'id', header: 'Id', width: '80px', enableFiltering: true }], enableFloatingFilters: true, enableRowSelection: true });
         const headIndex = (key: string): string | null =>
