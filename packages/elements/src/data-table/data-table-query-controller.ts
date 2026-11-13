@@ -346,7 +346,7 @@ export class QueryController<T> {
             });
         },
         // ONE no-op rule (`changeAdvancedFilterOf`): an unchanged tree is no filter change (the filter UI announces nothing for it).
-        changeAdvancedFilter: (group) => void changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group),
+        changeAdvancedFilter: (group) => changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group),
         // The filter UI hands over each column / advanced write it hears: the latest one speaks.
         announceFilters: () => this.announceFilters(),
         filtersRestored: (globalChanged) => {

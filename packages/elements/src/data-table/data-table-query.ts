@@ -333,15 +333,11 @@ export function resetPageOf<T>(model: ModelStore<T>, emit: (page: PaginationStat
  * Replaces the advanced filter tree (`null` clears it), a no-op when it is already that (undefined and null are the same "no filter"). The model change and
  * the page reset are ONE batch, so `page-change` fires before the model's `advanced-filter-change`. Used by the query service and by the element while no
  * query service exists (before the first connect, detached), so both orders are the same.
- * wave5: answers whether it changed anything (the ONE no-op rule), and runs `beforeWrite` right before a write it makes (the query service numbers
- * the filter change there, before the model's listeners hear it).
  */
-export function changeAdvancedFilterOf<T>(model: ModelStore<T>, emit: (page: PaginationState) => void, group: FilterGroup | null, beforeWrite?: () => void): boolean {
-    if ((model.get('advancedFilter') ?? null) === (group ?? null)) return false;
-    beforeWrite?.();
+export function changeAdvancedFilterOf<T>(model: ModelStore<T>, emit: (page: PaginationState) => void, group: FilterGroup | null): void {
+    if ((model.get('advancedFilter') ?? null) === (group ?? null)) return;
     model.batch(() => {
         model.set('advancedFilter', group);
         resetPageOf(model, emit);
     });
-    return true;
 }
