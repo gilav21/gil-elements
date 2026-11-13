@@ -25,9 +25,6 @@ import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js
 import type { ColumnDef, DataTableDisplayRow, DataTableQuery, FlattenedTreeRow, PaginationState, SortDirection, SortState } from './data-table.types.js';
 import { getCellValue, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
 
-/** Server mode: how long the count waits for a query's answer it can see (new `data`, a changed `total`) before it trusts the `total` in hand. */
-const ANSWER_WAIT_MS = 2000;
-
 /** The memo graph filter -> sort -> page, the server-mode `query` event, and the header and pager gestures. */
 export class QueryController<T> {
     private readonly pipeline = createQueryPipeline<T>();
@@ -36,23 +33,9 @@ export class QueryController<T> {
     private lastQuery: DataTableQuery | null = null;
     private lastRows: readonly DataTableDisplayRow<T>[] | null = null;
     private cancelFilter: (() => void) | undefined;
+    /** The ONE waiting filter announcement (global, column, advanced, a restore): a newer filter change or announcement replaces it. */
     private cancelAnnounce: (() => void) | undefined;
-    // wave5: server filtering waits for the answer before it counts (see `filteredCount`, `whenCounted`)
-    /** A `query` was sent (server mode) and its rows have not arrived: `config.total` is still the previous answer's. */
-    private awaitingRows = false;
-    /** The announcement waiting for those rows (one: a newer filter replaces it). */
-    private onRows: (() => void) | null = null;
-    /** The sequence number of the latest filter change (global, column, advanced): an announcement for an older one says nothing. */
-    private seq = 0;
-    private unsubscribeData: (() => void) | undefined;
     private unsubscribeFilters: (() => void) | undefined;
-    /** `config.total` when the last query was sent: a different one is its answer. */
-    private totalAtQuery: number | undefined;
-    /** `loading` was seen true since the last query: the consumer drives it, and its end (not a data push) is the answer. */
-    private loadingSeen = false;
-    private cancelAnswerWait: (() => void) | undefined;
-    /** The cancel of an announcement `answered()` already scheduled (a tick later): a newer filter change drops it too. */
-    private cancelSay: (() => void) | undefined;
 
     constructor(private readonly host: DataTableCoreHost<T>) {}
 
@@ -226,18 +209,30 @@ export class QueryController<T> {
             this.resetPage();
         });
         this.host.emit('filter-change', value);
-        this.announceGlobal(value, this.filterChanged()); // a newer filter (also clearing it) drops every announcement of an earlier one
+        this.announceGlobal(value);
     }
 
-    /** The global filter's result announcement for the change numbered `seq` (the typed filter, or a restored view state's global text). */
-    private announceGlobal(value: string, seq: number): void {
-        const { resolvedLocale: locale } = this.host;
+    /**
+     * Schedules THE filter announcement, replacing a waiting one (the latest filter change speaks, once, after the edits settled). Server filtering
+     * announces nothing: the rows held are not the matches, and the count of the answer is not known here.
+     */
+    private announce(say: () => void): void {
+        this.filterChanged();
+        if (!this.host.config.localFiltering) return;
         this.cancelAnnounce = this.host.disposables.timeout(() => {
             this.cancelAnnounce = undefined;
-            if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
-            // ONE rule with the column and advanced filter announcement: `filteredCount` (server filtering: the total of the ANSWER, so wait for it).
-            this.whenCounted((count) => this.host.announce(interpolate(count === 1 ? locale.filterResultAnnouncement : locale.filterResultsAnnouncement, { count, value })), seq);
+            say();
         }, FILTER_ANNOUNCE_MS);
+    }
+
+    /** The global filter's result announcement (the typed filter, or a restored view state's global text). */
+    private announceGlobal(value: string): void {
+        const { resolvedLocale: locale } = this.host;
+        this.announce(() => {
+            if (!value.trim()) return this.host.announce(locale.filterClearedAnnouncement);
+            const count = this.output().filtered.length;
+            this.host.announce(interpolate(count === 1 ? locale.filterResultAnnouncement : locale.filterResultsAnnouncement, { count, value }));
+        });
     }
 
     /** Drops the global filter write still waiting on `filterDebounce`. */
@@ -246,42 +241,22 @@ export class QueryController<T> {
         this.cancelFilter = undefined;
     }
 
-    /** The overall result of the filters for the change numbered `seq` (a restored view state): the matching rows, or that every filter is cleared. */
-    private announceFilters(seq: number): void {
+    /** The overall result of the column and advanced filters (also a restored view state): the matching rows, or that every filter is cleared. */
+    private announceFilters(): void {
         const { config, model, resolvedLocale: locale } = this.host;
-        this.cancelAnnounce?.(); // a newer call replaces a waiting one (the edits have not settled yet)
-        this.cancelAnnounce = this.host.disposables.timeout(() => {
-            this.cancelAnnounce = undefined;
-            if (seq < this.seq) return; // an older change's: a newer one speaks
+        this.announce(() => {
             if (!anyFilterOn(config.columns, model.get('columnFilters'), countConditions(model.get('advancedFilter')), model.get('globalFilter'))) {
                 return this.host.announce(locale.filtersClearedAnnouncement);
             }
-            this.whenCounted((count) => this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count })), seq);
-        }, FILTER_ANNOUNCE_MS);
+            const count = this.output().filtered.length;
+            this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
+        });
     }
 
-    /** A filter change (global, column, advanced): it gets the next sequence number and drops every announcement of an EARLIER change. */
-    private filterChanged(): number {
-        this.dropWaiting();
-        return ++this.seq;
-    }
-
-    /**
-     * Calls `say` with the filtered count: now, or (server filtering, the request still unanswered) once the answer's rows arrive. No count
-     * (server filtering without `total`) says nothing. `seq` is the change the announcement is for: one for an OLDER change than the latest says
-     * nothing; an announcement FIRING never cancels anything scheduled after it (only a newer CHANGE does). A newer call replaces a waiting one.
-     */
-    private whenCounted(say: (count: number) => void, seq = this.seq): void {
-        if (seq < this.seq) return;
-        this.onRows = null;
-        this.cancelSay?.();
-        this.cancelSay = undefined;
-        const now = (): void => {
-            const count = this.service.filteredCount();
-            if (count !== undefined) say(count);
-        };
-        if (this.host.config.localFiltering || !this.awaitingRows) now();
-        else this.onRows = now;
+    /** A filter change (global, column, advanced, an outside write): the announcement still waiting is for an older change and says nothing. */
+    private filterChanged(): void {
+        this.cancelAnnounce?.();
+        this.cancelAnnounce = undefined;
     }
 
     private readonly service: QueryService<T> = {
@@ -362,32 +337,25 @@ export class QueryController<T> {
             // An equal value (a Clear of an empty panel, the same day again, the same text after a debounce, a fresh copy of the same range) changes
             // nothing: no new object, no page reset, no event, and a waiting announcement stays.
             if (sameFilterValue(Object.hasOwn(filters, name) ? filters[name] : undefined, value)) return;
-            // A newer filter drops the announcements of earlier ones; its number is taken BEFORE the write, so the filter controller, which hears the
-            // write and hands it to `announceFilters`, announces this change.
-            this.filterChanged();
             model.batch(() => {
                 model.set('columnFilters', { ...filters, [name]: value });
                 this.resetPage();
             });
         },
-        // ONE no-op rule (`changeAdvancedFilterOf`): an unchanged tree is no filter change and a waiting announcement stays; a change is numbered
-        // right before its write.
-        changeAdvancedFilter: (group) => void changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group, () => this.filterChanged()),
-        // The latest change's number: the column / advanced write the filter UI hands over was numbered on its way in (changeColumnFilter,
-        // changeAdvancedFilter, a property write, a restore).
-        announceFilters: () => this.announceFilters(this.seq),
+        // ONE no-op rule (`changeAdvancedFilterOf`): an unchanged tree is no filter change (the filter UI announces nothing for it).
+        changeAdvancedFilter: (group) => void changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group),
+        // The filter UI hands over each column / advanced write it hears: the latest one speaks.
+        announceFilters: () => this.announceFilters(),
         filtersRestored: (globalChanged) => {
             this.dropPendingGlobal(); // the restore wrote the global text: a typed one still waiting would overwrite it
-            const seq = this.filterChanged();
             const global = this.host.model.get('globalFilter');
-            // ONE announcement for the restore: a new global text speaks as the global filter does (its count reflects every filter); otherwise
-            // (an emptied global text too) the overall count, or that every filter is cleared.
-            if (globalChanged && global.trim() !== '') this.announceGlobal(global, seq);
-            else this.announceFilters(seq);
+            // ONE announcement for the restore (it replaces the filter UI's for the batch's own write): a new global text speaks as the global
+            // filter does (its count reflects every filter); otherwise (an emptied global text too) the overall count, or that every filter is cleared.
+            if (globalChanged && global.trim() !== '') this.announceGlobal(global);
+            else this.announceFilters();
         },
-        // Server filtering: the held rows are not the matches, so the server's `total`, but only once the ANSWER to the last query arrived (the next
-        // `data` from outside): before that, `total` is the previous answer's and `undefined` says "not known yet".
-        filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.awaitingRows ? undefined : this.host.config.total),
+        // Server filtering: the held rows are not the matches; the server's `total` (as the consumer gave it).
+        filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total),
     };
 
     private visibleDataColumns(): ColumnDef<T>[] {
@@ -414,35 +382,12 @@ export class QueryController<T> {
         this.unsubscribe = this.host.model.onFlush(() => {
             const next = this.currentQuery();
             if (this.lastQuery && sameQuery(this.lastQuery, next)) return;
-            const previous = this.lastQuery;
             this.lastQuery = next;
-            // Only server filtering waits for an answer, and only for a query whose FILTERS changed (a sort or a page changes no count): a local table
-            // and a server sort arm no timer and cause no extra render.
-            // Structurally (an echo of an equal filter object changes no count, so it waits for no answer).
-            const filtersChanged =
-                !previous || previous.globalFilter !== next.globalFilter || !sameStructure(previous.columnFilters, next.columnFilters) || !sameStructure(previous.advancedFilter, next.advancedFilter);
-            if (!this.host.config.localFiltering && filtersChanged) {
-                this.awaitingRows = true;
-                this.loadingSeen = false;
-                this.totalAtQuery = this.host.config.total;
-                this.cancelAnswerWait?.();
-                // The fallback: a consumer that answers in a way the table cannot see (rows mutated in place, the same total) is taken as answered.
-                this.cancelAnswerWait = this.host.disposables.timeout(() => this.answered(), ANSWER_WAIT_MS);
-            }
             this.host.emit('query', next);
         });
-        // Without `loading`, the answer's rows (a `data` set from outside) end the wait; `total` is read a tick later, so a consumer may set it
-        // after `data`. While the consumer drives `loading`, only its end does (a push during the request is not the answer).
-        this.unsubscribeData = this.host.model.subscribe('data', (_, origin) => {
-            if (origin === 'internal' || !this.awaitingRows) return;
-            // Data arriving WHILE the consumer shows `loading` marks the request as loading-driven, also when loading went true and will go false
-            // in the same task (a cache answering at once): the update that sees loading false then ends the wait.
-            if (this.host.config.loading) this.loadingSeen = true;
-            else if (!this.loadingSeen) this.answered();
-        });
-        // wave5: a consumer's own write of a filter (the property) is a filter change too: it takes the next number, so every announcement of an older
-        // change (the global filter's here, the column / advanced one of the filter UI) says nothing. It announces nothing itself. An ECHO (a new
-        // object structurally equal to the value held, a framework's two-way binding writing back what the table emitted) is no change at all.
+        // wave5: a consumer's own write of a filter (the property) is a filter change too: the announcement still waiting (for an older change)
+        // says nothing, and it announces nothing itself. An ECHO (a new object structurally equal to the value held, a framework's two-way binding
+        // writing back what the table emitted) is no change at all.
         const { model } = this.host;
         const watch = (key: 'columnFilters' | 'advancedFilter' | 'globalFilter'): (() => void) => {
             let last: unknown = model.get(key);
@@ -459,74 +404,17 @@ export class QueryController<T> {
         this.unsubscribeFilters = () => filterSubscriptions.forEach((undo) => undo());
     }
 
-    /**
-     * The answer to the last query is in, and `filteredCount` answers the total again. What counts as the answer:
-     * - when the consumer drives `loading` (it went true after the query): `loading` going back to false; nothing else (a `data` push during the
-     *   request, a `total` change, the timer) ends the wait then;
-     * - otherwise: its `data` (from outside), a changed `total`, or the `ANSWER_WAIT_MS` fallback.
-     * A waiting announcement is spoken a tick later (the consumer may set `total` after `data`), and the table renders, so a controller that
-     * waits for the count in its own update sees it.
-     *
-     * KNOWN LIMITATIONS: (1) for a consumer that does not drive `loading`, the table cannot tell an answer from any other `data` the consumer
-     * assigns, so ANY outside `data` assignment ends the wait (an unrelated push between the query and its answer ends it early, and the count
-     * spoken is that moment's `total`). (2) With `loading` and OVERLAPPING requests, the older request's `loading = false` ends the wait of the
-     * newer query (the table does not know which request a loading cycle belongs to), and a `loading = true` that lasts keeps the count waiting
-     * as long as it lasts. An explicit answer signal (a consumer call naming the query it answers) is a possible future API.
-     */
-    private answered(): void {
-        if (!this.awaitingRows) return;
-        this.awaitingRows = false;
-        this.cancelAnswerWait?.();
-        this.cancelAnswerWait = undefined;
-        const waiting = this.onRows;
-        this.onRows = null;
-        // Kept cancellable: a filter change in the tick before it runs drops it too.
-        if (waiting)
-            this.cancelSay = this.host.disposables.timeout(() => {
-                this.cancelSay = undefined;
-                waiting();
-            }, 0);
-        this.host.requestRender();
-    }
-
-    /**
-     * A newer filter change (global, column or advanced): every announcement of an earlier one is dropped, the global filter's own 500 ms one
-     * included, as well as one waiting for an answer or already scheduled.
-     */
-    private dropWaiting(): void {
-        this.cancelAnnounce?.();
-        this.cancelAnnounce = undefined;
-        this.onRows = null;
-        this.cancelSay?.();
-        this.cancelSay = undefined;
-    }
-
     detach(): void {
         this.unsubscribe?.();
-        this.unsubscribeData?.();
         this.unsubscribeFilters?.();
         this.unsubscribeFilters = undefined;
-        this.cancelAnswerWait?.();
-        this.cancelAnswerWait = undefined;
-        this.dropWaiting();
-        this.awaitingRows = false;
+        this.filterChanged(); // the waiting announcement goes with the table
         this.unprovide?.();
         this.cancelFilter?.();
         this.lastRows = null;
     }
 
     hostUpdate(): void {
-        if (this.awaitingRows) {
-            if (this.host.config.loading) {
-                // The consumer drives `loading` for this request: its end is the answer (no fallback timer while it loads).
-                this.loadingSeen = true;
-                this.cancelAnswerWait?.();
-                this.cancelAnswerWait = undefined;
-            } else if (this.loadingSeen || this.host.config.total !== this.totalAtQuery) {
-                // Loading ended, or (without loading) a changed `total`: rows mutated in place keep the same `data` array.
-                this.answered();
-            }
-        }
         this.clampPage();
         const next = this.displayRows();
         if (next !== this.lastRows) {
