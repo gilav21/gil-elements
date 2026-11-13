@@ -20,30 +20,60 @@ export const toDateOnlyTimestamp = (d: Date): number => new Date(d.getFullYear()
  * `filterFn: (row, value) => dateFilterFn(row, value, (r) => r.date)`.
  */
 export function dateFilterFn<R>(row: R, filterValue: Date | string | number | null | undefined, getValue: (row: R) => unknown): boolean {
-    const day = asEditableDate(filterValue);
-    if (!day) return true;
+    const day = dayOfFilter(filterValue);
+    if (day === null) return true;
     const cell = asEditableDate(getValue(row));
     if (!cell) return false;
-    return toDateOnlyTimestamp(cell) === toDateOnlyTimestamp(day);
+    return toDateOnlyTimestamp(cell) === day;
 }
 
+/** A Date as its time (a Date mutated in place is another key), anything else as itself: the key of the one-slot caches below. */
+const keyOf = (value: unknown): unknown => (value instanceof Date ? value.getTime() : value);
+
+/**
+ * `fn` with a ONE-slot cache on its arguments (compared with `Object.is`, Dates by time): a filter function is called once per row with the same
+ * filter value, so what it derives from that value is computed once per value, not once per row.
+ */
+function lastOf<A extends unknown[], R>(fn: (...args: A) => R): (...args: A) => R {
+    let keys: unknown[] | null = null;
+    let result: R;
+    return (...args) => {
+        const next = args.map(keyOf);
+        if (keys?.length === next.length && keys.every((k, i) => Object.is(k, next[i]))) return result;
+        result = fn(...args);
+        keys = next;
+        return result;
+    };
+}
+
+/** The filter value's day (local midnight timestamp), or null when it is no date. */
+const dayOfFilter = lastOf((value: unknown): number | null => {
+    const day = asEditableDate(value);
+    return day ? toDateOnlyTimestamp(day) : null;
+});
+
 /** One end of a range filter value, read like a cell (a `Date`, an ISO string, a timestamp); anything else is an open end. */
-const rangeEnd = (range: unknown, end: 'start' | 'end'): Date | null =>
-    typeof range === 'object' && range !== null ? asEditableDate((range as Record<string, unknown>)[end]) : null;
+const rangeEnd = (range: unknown, end: 'start' | 'end'): unknown => (typeof range === 'object' && range !== null ? (range as Record<string, unknown>)[end] : null);
+
+/** The range's two days (local midnight timestamps; null for an open end), keyed by the range object AND its two raw ends (an end set in place). */
+const rangeDays = lastOf((_range: unknown, start: unknown, end: unknown): { start: number | null; end: number | null } => {
+    const from = asEditableDate(start);
+    const to = asEditableDate(end);
+    return { start: from ? toDateOnlyTimestamp(from) : null, end: to ? toDateOnlyTimestamp(to) : null };
+});
 
 /**
  * The date-range panel's filter: inclusive at both ends, open-ended when one end is missing. The ends are read like cells, so a range restored
  * from JSON (ISO strings) still filters; no range, an empty one, or a value that is not a range lets every row through (never a throw).
  */
 export function dateRangeFilterFn<R>(row: R, filterValue: DataTableDateRange | { start?: unknown; end?: unknown } | null | undefined, getValue: (row: R) => unknown): boolean {
-    const start = rangeEnd(filterValue, 'start');
-    const end = rangeEnd(filterValue, 'end');
-    if (!start && !end) return true;
+    const { start, end } = rangeDays(filterValue, rangeEnd(filterValue, 'start'), rangeEnd(filterValue, 'end'));
+    if (start === null && end === null) return true;
     const cell = asEditableDate(getValue(row));
     if (!cell) return false;
     const ts = toDateOnlyTimestamp(cell);
-    if (start && ts < toDateOnlyTimestamp(start)) return false;
-    return !end || ts <= toDateOnlyTimestamp(end);
+    if (start !== null && ts < start) return false;
+    return end === null || ts <= end;
 }
 
 /**
@@ -52,8 +82,9 @@ export function dateRangeFilterFn<R>(row: R, filterValue: DataTableDateRange | {
  * row through. It never throws and never matches a substring.
  */
 export function multiselectFilterFn<R>(row: R, filterValue: readonly unknown[] | ReadonlySet<unknown> | null | undefined, getValue: (row: R) => unknown): boolean {
-    const selected: readonly unknown[] = Array.isArray(filterValue) ? filterValue : filterValue instanceof Set ? [...filterValue] : [];
-    return selected.length === 0 || selected.includes(getValue(row));
+    if (filterValue instanceof Set) return filterValue.size === 0 || filterValue.has(getValue(row)); // no per-row array: `has` is the same SameValueZero
+    if (!Array.isArray(filterValue)) return true;
+    return filterValue.length === 0 || filterValue.includes(getValue(row));
 }
 
 /** How long a filter result announcement waits for the edits to settle (D7): ONE value for the global filter and the column / advanced filters. */

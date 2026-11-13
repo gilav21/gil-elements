@@ -66,6 +66,27 @@ describe('dateFilterFn', () => {
     });
 });
 
+describe('the date filters read the filter value once per value (round 19)', () => {
+    it('a filter value changed IN PLACE (a Date set to another day, a range end replaced) is read again', () => {
+        const at = (r: { d: Date }): Date => r.d;
+        const day = new Date(2024, 0, 3);
+        expect(dateFilterFn({ d: new Date(2024, 0, 3, 9) }, day, at)).toBe(true);
+        day.setDate(4); // the same object, another day
+        expect(dateFilterFn({ d: new Date(2024, 0, 3, 9) }, day, at)).toBe(false);
+        const range: { start: Date | null; end: Date | null } = { start: new Date(2024, 0, 1), end: new Date(2024, 0, 2) };
+        expect(dateRangeFilterFn({ d: new Date(2024, 0, 5) }, range, at)).toBe(false);
+        range.end = new Date(2024, 0, 9); // the same range object, a new end
+        expect(dateRangeFilterFn({ d: new Date(2024, 0, 5) }, range, at)).toBe(true);
+        range.start = null;
+        expect(dateRangeFilterFn({ d: new Date(2023, 5, 5) }, range, at)).toBe(true);
+    });
+    it('a Set selection is read with has (SameValueZero), an empty one passes every row', () => {
+        const at = (r: { v: unknown }): unknown => r.v;
+        expect(multiselectFilterFn({ v: Number.NaN }, new Set([Number.NaN]), at)).toBe(true);
+        expect(multiselectFilterFn({ v: 'x' }, new Set(), at)).toBe(true);
+    });
+});
+
 describe('dateRangeFilterFn', () => {
     interface Row {
         date: Date | string;
