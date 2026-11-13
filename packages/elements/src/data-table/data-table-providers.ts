@@ -109,6 +109,8 @@ export interface QueryService<T> {
     visibleTreeRows(): readonly FlattenedTreeRow<T>[];
     /** The filtered, sorted top-level rows of the tree, their children filtered and sorted with them (tree mode; empty otherwise): the whole tree the table draws, whatever is collapsed or paged. */
     treeRoots(): readonly T[];
+    /** Wave 7: `treeRoots()` and every descendant, depth-first in drawn order, whatever is collapsed or paged (tree mode; empty otherwise). Export reads it. */
+    flatTree(): readonly T[];
     /** The tree rows of the page as drawn (tree mode). */
     treeRows(): readonly FlattenedTreeRow<T>[];
     /** Id -> node, parent, children and descendants; rebuilt only when `data`, `getRowId` or `getChildren` change. */

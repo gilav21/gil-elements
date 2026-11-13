@@ -11,6 +11,7 @@ interface Row {
     id: string;
     name: string;
     team: string;
+    children?: Row[];
 }
 
 const COLUMNS: ColumnDef<Row>[] = [
@@ -29,12 +30,14 @@ function setup({
     filterDebounce = 0,
     timeout = (fn: () => void) => (fn(), () => undefined),
     server = false,
-}: { columns?: ColumnDef<Row>[]; filterDebounce?: number; timeout?: (fn: () => void) => () => void; server?: boolean } = {}) {
+    data = DATA,
+    extra = {},
+}: { columns?: ColumnDef<Row>[]; filterDebounce?: number; timeout?: (fn: () => void) => () => void; server?: boolean; data?: Row[]; extra?: Record<string, unknown> } = {}) {
     const events: [string, unknown][] = [];
     const announced: string[] = [];
-    const model = new ModelStore<Row>((name, detail) => events.push([name, detail]), { data: DATA, paginationState: { pageIndex: 2, pageSize: 1 } });
+    const model = new ModelStore<Row>((name, detail) => events.push([name, detail]), { data, paginationState: { pageIndex: 2, pageSize: 1 } });
     const providers = new Map<string, unknown>();
-    const config = { columns, filterDebounce, getRowId: (r: Row) => r.id, localSorting: true, localPagination: true, localFiltering: !server, total: server ? 42 : undefined, showPagination: true } as unknown as DataTableConfig<Row>;
+    const config = { columns, filterDebounce, getRowId: (r: Row) => r.id, localSorting: true, localPagination: true, localFiltering: !server, total: server ? 42 : undefined, showPagination: true, ...extra } as unknown as DataTableConfig<Row>;
     // The drawn columns: `team` is hidden and `id` is drawn first (a reorder), so definition order and drawn order differ.
     providers.set('columns', { enhancedColumns: () => [COLUMNS[2], COLUMNS[0]] });
     const host = {
@@ -139,6 +142,28 @@ describe('QueryService wave 7 additions', () => {
         const { query } = setup();
         expect(query.exportData({}, [DATA[0] as Row])).toEqual([['Id', 'Name'], ['r1', 'Bo']]);
         expect(query.exportData({ onlyVisible: false }, [DATA[0] as Row])).toEqual([['Name', 'Team', 'Id'], ['Bo', 'x', 'r1']]);
+    });
+
+    it('flatTree is the whole filtered, sorted tree depth-first, collapse and paging ignored, and empty outside tree mode (wave 7 export)', () => {
+        const kid = (id: string, team: string): Row => ({ id, name: id, team });
+        const tree: Row[] = [
+            { id: 'p1', name: 'p1', team: 'x', children: [kid('c12', 'x'), kid('c11', 'x'), kid('c13', 'y')] },
+            { id: 'p3', name: 'p3', team: 'x', children: [kid('c31', 'x')] },
+            { id: 'p2', name: 'p2', team: 'x' },
+        ];
+        const extra = {
+            enableSubRows: true,
+            getChildren: (r: Row) => r.children,
+            setChildren: (r: Row, children: Row[]) => ({ ...r, children }),
+            subRowFilterMode: 'includeParentOnChildMatch',
+            enableSubRowSorting: true,
+            subRowDefaultExpanded: false, // everything collapsed, and the page is 1 row long on page 2
+        };
+        const { query, model } = setup({ data: tree, extra });
+        model.set('sortState', { column: 'name', direction: 'asc' });
+        model.set('globalFilter', 'x'); // matches team 'x': drops c13
+        expect(query.flatTree().map((r) => r.id)).toEqual(['p1', 'c11', 'c12', 'p2', 'p3', 'c31']);
+        expect(setup().query.flatTree()).toEqual([]);
     });
 
     it('exportColumns is the column list exportData draws, visible and all (wave 7 export)', () => {
