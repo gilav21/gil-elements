@@ -381,8 +381,9 @@ export interface VirtualService {
 }
 
 /**
- * A button the core draws in every enabled data row's `_actions` cell (`[data-action-id]`, `tabindex="-1"`: the keyboard path is the
- * context-menu key). Clicking it calls `onClick` with the row's context.
+ * A button the core draws in every enabled data row's `_actions` cell (`[data-action-id]`). Like every in-cell control it is `tabindex="-1"` only
+ * while a roving cell exists (one tab stop per grid: the keyboard path is then the context-menu key); without one it stays in the tab order.
+ * Clicking it calls `onClick` with the row's context.
  */
 export interface CellActionSlot<T = unknown> {
     /** Stable id (the registering addon's id, e.g. `context-menu`). */

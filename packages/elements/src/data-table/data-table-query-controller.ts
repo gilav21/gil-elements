@@ -305,7 +305,10 @@ export class QueryController<T> {
             const { globalFilter, columnFilters } = spec;
             const { model } = this.host;
             // The caller sets the global filter explicitly: a typed text still waiting on the debounce is dropped, whether or not the value differs.
-            if (Object.hasOwn(spec, 'globalFilter')) this.dropPendingGlobal();
+            if (Object.hasOwn(spec, 'globalFilter')) {
+                this.dropPendingGlobal();
+                this.host.requestRender(); // the toolbar box shows the model text again (it still shows the dropped one when the model is unchanged)
+            }
             // Only the parts given, and only when they differ (per key for the column filters): an equal spec writes nothing, resets no page, fires nothing.
             const globalChanged = globalFilter !== undefined && globalFilter !== model.get('globalFilter');
             const current = model.get('columnFilters');

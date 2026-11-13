@@ -4,7 +4,7 @@ import type { DataTableAddon, DataTableAddonHost } from './data-table-addon-kit.
 import { registerDataTableAddon } from './data-table-addon-registry.js';
 import type { GeDataTable } from './data-table.js';
 import { bodyRows, headCell, makeRows, mountTable, q, qa, SAMPLE_COLUMNS, SAMPLE_ROWS, settle, stubDownload, trackTable, type DownloadStub, type SampleRow } from './data-table-fixtures.js';
-import { mouseDrag, parkMouse } from './data-table-input-fixtures.js';
+import { mouseDrag, parkMouse, typeText } from './data-table-input-fixtures.js';
 import type { RowActionContext } from './data-table.types.js';
 
 /** An addon that hands its host (and options) to the test. */
@@ -116,6 +116,20 @@ describe('use() and the addon host', () => {
         offTwo();
         await settle(table);
         expect(table.querySelector('[data-kind="busy"]')).toBeNull();
+    });
+
+    it('shows the model text again in the toolbar box when applyFilters drops a typed text still waiting (final review 3)', async () => {
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable({ filterDebounce: 5000 });
+        table.use(addon);
+        const box = q(table, '[data-slot="data-table-filter"] ge-input') as HTMLElement & { value: string };
+        const inner = box.shadowRoot!.querySelector('input')!;
+        await typeText(inner, 'abc'); // waits on the debounce: the model is still ''
+        expect(table.globalFilter).toBe('');
+        runs[0]!.host.provider('query')?.applyFilters({ globalFilter: '' });
+        await settle(table);
+        expect(box.value).toBe('');
+        expect(table.globalFilter).toBe('');
     });
 
     it('shows the busy overlay with the label an addon sets, and clears it', async () => {
@@ -330,6 +344,26 @@ describe('the action buttons addons register', () => {
         expect(cells.map((c) => c.querySelectorAll('[data-action-id="menu"]').length)).toEqual([1, 1, 0, 1]);
         const buttonAfterContent = cells[0]!.lastElementChild;
         expect(buttonAfterContent?.getAttribute('data-action-id')).toBe('menu');
+    });
+
+    it('makes the actions column wide enough for its buttons: none overflows its cell (final review 3)', async () => {
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable({}, {}, { width: 900, height: 400 });
+        table.use(addon);
+        runs[0]!.host.registerCellAction({ id: 'one', onClick: () => undefined });
+        runs[0]!.host.registerCellAction({ id: 'two', onClick: () => undefined });
+        await settle(table);
+        const cell = q(table, '[data-slot="table-cell"][data-column="_actions"]');
+        const box = cell.getBoundingClientRect();
+        const buttons = [...cell.querySelectorAll('button')];
+        expect(buttons).toHaveLength(2);
+        for (const button of buttons) {
+            const r = button.getBoundingClientRect();
+            expect(r.left).toBeGreaterThanOrEqual(box.left - 0.5);
+            expect(r.right).toBeLessThanOrEqual(box.right + 0.5);
+        }
+        // At the coarse-pointer size (2.75rem each) they still fit: two buttons and the padding, as px.
+        expect(box.width).toBeGreaterThanOrEqual(2 * 44 + 16 - 0.5);
     });
 
     it('reports a throwing slot callback once and still draws the table and the button (final review)', async () => {

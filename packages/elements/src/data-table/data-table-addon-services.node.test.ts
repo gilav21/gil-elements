@@ -40,6 +40,7 @@ function setup({ columns = COLUMNS, filterDebounce = 0, timeout = (fn: () => voi
         topics: { emit: () => undefined },
         emit: (name: string, detail: unknown) => events.push([name, detail]),
         announce: (message: string) => announced.push(message),
+        requestRender: () => undefined,
         disposables: { timeout }, // by default announcements (and debounced writes) run at once
         resolvedLocale: DATA_TABLE_LOCALES.en,
     } as unknown as DataTableCoreHost<Row>;

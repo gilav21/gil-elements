@@ -20,7 +20,7 @@ export class ColumnsController<T> {
     private warned: unknown = null;
 
     private readonly layout = memoLast(
-        (columns: DataTableCoreHost<T>['config']['columns'], widths: Record<string, string>, live: ReadonlyMap<string, number>, visibility: Record<string, boolean>, order: string[], pins: Readonly<Record<string, Pin>>, selection: boolean, expansion: boolean, actions: boolean) =>
+        (columns: DataTableCoreHost<T>['config']['columns'], widths: Record<string, string>, live: ReadonlyMap<string, number>, visibility: Record<string, boolean>, order: string[], pins: Readonly<Record<string, Pin>>, selection: boolean, expansion: boolean, actions: number) =>
             computeColumnLayout<T>({
                 columns,
                 widths: live.size === 0 ? widths : { ...widths, ...Object.fromEntries([...live].map(([key, px]) => [key, `${px}px`])) },
@@ -29,7 +29,8 @@ export class ColumnsController<T> {
                 pins,
                 enableRowSelection: selection,
                 enableRowExpansion: expansion,
-                hasActions: actions,
+                hasActions: actions > 0,
+                actionSlots: actions,
             }),
     );
 
@@ -37,8 +38,8 @@ export class ColumnsController<T> {
 
     private current(): ColumnLayout<T> {
         const { config, model } = this.host;
-        // wave 7: the `_actions` column is drawn while an addon has registered a row action (a kebab).
-        const actions = (this.host.provider('addons')?.cellActions.slots.length ?? 0) > 0;
+        // wave 7: the `_actions` column is drawn while an addon has registered a row action (a kebab), as wide as its buttons.
+        const actions = this.host.provider('addons')?.cellActions.slots.length ?? 0;
         return this.layout(config.columns, model.get('columnWidths'), this.live, model.get('columnVisibility'), model.get('columnOrder'), this.pins, config.enableRowSelection, config.enableRowExpansion, actions);
     }
 

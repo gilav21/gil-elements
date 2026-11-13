@@ -168,6 +168,9 @@ All values are estimates before any build; the one measured fact is the xlsx sou
 - `exportData({ onlyVisible: false })` dedupes keys with its own loop; reuse `indexColumns` from the drawn path.
 - `data-table-grid-actions.ts` inlines the roving tab rule; reuse `tabStop` from `data-table-grid-special.ts`.
 - `selectedRows` stays duplicated (element getter and selection service) on purpose: the getter must work detached.
+- A topic listener that throws (e.g. `defineAddon`'s locale re-run after it released its previous run) leaves a half set-up addon counted as running.
+- The `_actions` cell is drawn in two code paths (`specialCell` for the auto column, `cellContent` for a consumer's column).
+- The columns controller looks up the `addons` provider on every `current()` call.
 
 ## H. Work packages (strict file ownership after step 0)
 
