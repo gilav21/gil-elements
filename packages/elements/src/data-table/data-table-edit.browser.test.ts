@@ -96,6 +96,30 @@ describe('E1 opening an editor', () => {
         expect(edits).toHaveLength(0);
     });
 
+    it('a data push under an untouched editor: Enter writes nothing and the pushed value stays; a typed draft still writes (round 19)', async () => {
+        const table = await mount();
+        const edits = record(table, 'cell-edit');
+        await startEditingAt(table, 0, 'name');
+        const id = table.data.find((r) => r.name === names(table)[0])!.id;
+        table.data = table.data.map((r) => (r.id === id ? { ...r, name: 'Pushed' } : r));
+        await settle(table);
+        expect(table.editingCell).not.toBeNull();
+        await press('{Enter}');
+        await settle(table);
+        expect(edits).toHaveLength(0);
+        expect(table.data.find((r) => r.id === id)!.name).toBe('Pushed');
+        // A changed draft is the user's intent: it writes over the pushed value.
+        await startEditingAt(table, table.provider('query')!.renderedRows().findIndex((r) => r.id === id), 'name');
+        table.data = table.data.map((r) => (r.id === id ? { ...r, name: 'Pushed again' } : r));
+        await settle(table);
+        const input = openEditor(table) as HTMLInputElement;
+        await userEvent.type(input, '!');
+        await press('{Enter}');
+        await settle(table);
+        expect(edits).toHaveLength(1);
+        expect(table.data.find((r) => r.id === id)!.name).toBe('Pushed!');
+    });
+
     it("a held key's auto-repeat neither opens an editor (Enter, F2) nor commits one (Enter) (round 14)", async () => {
         const table = await mount();
         const first = names(table)[0];

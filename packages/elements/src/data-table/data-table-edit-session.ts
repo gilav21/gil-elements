@@ -409,7 +409,9 @@ export class EditSession<T> implements CellSession {
             this.close(refocus);
             return 'cancelled';
         }
-        const decision = decideCommit(open.draft, query.cellValue(row, open.at.columnKey, column), open.error, open.at, open.kind);
+        // "Unchanged" is measured against the value the editor OPENED with: an untouched draft never writes, even when the cell was changed under
+        // the open editor (a data push), so that new value stays; a changed draft writes (the user's intent; the event's old value is the stored one).
+        const decision = decideCommit(open.draft, open.original, open.error, open.at, open.kind);
         if (decision.action === 'cancel') {
             this.close(refocus);
             return 'cancelled';
