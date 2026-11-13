@@ -295,7 +295,13 @@ export class QueryController<T> {
         currentQuery: () => this.currentQuery(),
         exportQuery: () => {
             const { model } = this.host;
-            return exportQuery({ globalFilter: model.get('globalFilter'), columnFilters: model.get('columnFilters'), sort: model.get('sortState'), sortStates: model.get('multiSortState') });
+            return exportQuery({
+                globalFilter: model.get('globalFilter'),
+                columnFilters: model.get('columnFilters'),
+                sort: model.get('sortState'),
+                sortStates: model.get('multiSortState'),
+                advancedFilter: model.get('advancedFilter'),
+            });
         },
         renderedRowAt: (index) => this.renderedRows()[index],
         renderedTreeRowAt: (index) => this.tree().page[index],

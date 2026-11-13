@@ -176,8 +176,8 @@ export function currentQuery(m: Pick<ViewModel, 'globalFilter' | 'columnFilters'
 }
 
 /** The filter and sort of the view without a page, for a server-side export provider. */
-export function exportQuery(m: Pick<ViewModel, 'globalFilter' | 'columnFilters' | 'sort' | 'sortStates'>): DataTableExportQuery {
-    return { globalFilter: m.globalFilter, columnFilters: m.columnFilters, sort: m.sort, sortStates: [...m.sortStates] };
+export function exportQuery(m: Pick<ViewModel, 'globalFilter' | 'columnFilters' | 'sort' | 'sortStates' | 'advancedFilter'>): DataTableExportQuery {
+    return { globalFilter: m.globalFilter, columnFilters: m.columnFilters, sort: m.sort, sortStates: [...m.sortStates], advancedFilter: m.advancedFilter };
 }
 
 const sameSort = (a: SortState, b: SortState): boolean => a.column === b.column && a.direction === b.direction;

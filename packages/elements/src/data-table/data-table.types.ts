@@ -311,6 +311,8 @@ export interface DataTableExportQuery {
     sort: SortState;
     /** Full multi-column sort chain (highest priority first); empty when unused. */
     sortStates: SortState[];
+    /** Wave 7: the advanced filter tree, `null` when none (the table always fills it; optional so a hand-built query stays valid). */
+    advancedFilter?: FilterGroup | null;
 }
 
 /** Everything a server needs to answer one page of a data table (server mode: `local-*` set to false). */
