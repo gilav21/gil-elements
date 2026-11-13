@@ -25,7 +25,7 @@ import type { InteractionContext, PointerPress } from '../data-table-cell-sessio
 import { CELL_SELECTOR, onGrid } from '../data-table-clipboard-grid.js';
 import { buildFillValues } from '../data-table-fill.js';
 import { fillOutcome, type FillInput, planFill, repeatFirst } from '../data-table-fill-apply.js';
-import { type CellAddress, cellAddressOf, ownClosest, ownElements, ownsTarget, VIEWPORT } from '../data-table-host.js';
+import { type CellAddress, cellAddressOf, ownClosest, ownElements, ownsTarget, shortcutLetter, VIEWPORT } from '../data-table-host.js';
 import { ensureIconElement } from '../data-table-icons.js';
 import { NAVIGATION_KEYS } from '../data-table-keys.js';
 import { interpolate } from '../data-table.locales.js';
@@ -525,7 +525,7 @@ export class RangePart<T> {
         if (this.context.hasOpenEditor()) return false;
         const { config } = this.context.host;
         const mod = event.ctrlKey || event.metaKey;
-        const key = event.key.toLowerCase();
+        const key = shortcutLetter(event); // Ctrl/Cmd+A and D on a non-Latin layout too (the physical key)
         if (event.shiftKey && NAVIGATION_KEYS.has(event.key)) return config.enableCellRangeSelection && this.extend(event);
         if (!mod || event.shiftKey) return false;
         if (key === 'a') return config.enableCellRangeSelection && this.selectAll(event);

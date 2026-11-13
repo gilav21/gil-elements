@@ -1,5 +1,5 @@
 import { clipboardEventForGrid, type CopyScope, type CopySource, copyGrid, editorOpen, gridCells, keyboardCopyGrid, onGrid, pasteStart, selectsGridText } from './data-table-clipboard-grid.js';
-import { type DataTableCoreHost, isTextFieldKey, ownElements, requireProvider } from './data-table-host.js';
+import { type DataTableCoreHost, isTextFieldKey, ownElements, requireProvider, shortcutLetter } from './data-table-host.js';
 import { lazyPart } from './data-table-lazy.js';
 import { interpolate } from './data-table.locales.js';
 import type { ClipboardResult, ClipboardService } from './data-table-providers.js';
@@ -65,8 +65,10 @@ export class ClipboardController<T> {
     private teardown: (() => void)[] = [];
     /** A programmatic `paste()` is reading the clipboard: another one meanwhile is ignored, not queued (a permission prompt may hold the first one). */
     private pending = false;
-    /** Bumped by every attach and detach, and by a read that timed out: a read that resolves after that pastes nothing. */
+    /** Bumped by every attach and detach: a read that resolves after the table detached (or attached anew) pastes nothing. */
     private attachment = 0;
+    /** A Ctrl/Cmd+V keystroke whose native `paste` event has not arrived yet (see `keyPaste`); the event marks it handled. */
+    private keystroke: { handled: boolean } | null = null;
     /** A native paste that arrived before the paste part was loaded: its text and target (by row id), applied when the part attaches. */
     private early: { text: string; rowId: string; columnKey: string } | null = null;
     private readonly paste = lazyPart<PastePart<T>>(() => import('./lazy/clipboard.js').then((m) => new m.PastePart(this.host)), {
@@ -208,8 +210,27 @@ export class ClipboardController<T> {
      */
     private onKey(event: KeyboardEvent): boolean {
         if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey || !(event.ctrlKey || event.metaKey)) return false;
-        if (event.key.toLowerCase() !== 'c' || !onGrid(this.host.root, event)) return false;
+        const key = shortcutLetter(event); // the physical key on a non-Latin layout
+        if ((key !== 'c' && key !== 'v') || !onGrid(this.host.root, event)) return false;
+        if (key === 'v') return this.keyPaste();
         return this.keyCopy(event);
+    }
+
+    /**
+     * Ctrl/Cmd+V is the browser's (not prevented): its native `paste` event pastes. An engine that fires no `paste` on non-editable content (WebKit)
+     * would paste nothing, so ONE zero-delay timeout checks after the keystroke: when no native paste arrived for it, the programmatic read is the
+     * fallback. Never consumed.
+     */
+    private keyPaste(): false {
+        const { host } = this;
+        if (!host.config.enableClipboardPaste || editorOpen(host) || !canRead()) return false;
+        const keystroke = { handled: false };
+        this.keystroke = keystroke;
+        host.disposables.timeout(() => {
+            if (this.keystroke === keystroke) this.keystroke = null;
+            if (!keystroke.handled) void this.pasteFromClipboard();
+        }, 0);
+        return false;
     }
 
     /** Angular's precedence (cmp 4571): the range, else the focused cell, else the selected rows. Consumed only when the API can write it. */
@@ -249,6 +270,7 @@ export class ClipboardController<T> {
      */
     private onNativePaste(event: ClipboardEvent): void {
         const { host } = this;
+        if (this.keystroke) this.keystroke.handled = true; // the browser fired its paste for the keystroke: no fallback read
         if (event.defaultPrevented || !host.config.enableClipboardPaste || editorOpen(host) || isTextFieldKey(host.root, event)) return;
         if (!clipboardEventForGrid(host.root, event)) return;
         const target = this.target();

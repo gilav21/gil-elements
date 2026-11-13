@@ -204,6 +204,27 @@ describe('ClipboardController', () => {
         controller.detach();
     });
 
+    it('Ctrl+V falls back to the clipboard read once when the browser fired no native paste for it (WebKit), and not when it did', async () => {
+        const readText = vi.fn(() => Promise.resolve('9'));
+        stubClipboard({ readText });
+        const t = fakeHost();
+        const controller = new ClipboardController(t.host);
+        controller.attach();
+        controller.hostUpdate();
+        await loaded();
+        // no native paste follows the keystroke: the read runs once
+        expect(t.key({ key: 'v' }).consumed).toBe(false);
+        await loaded();
+        expect(readText).toHaveBeenCalledTimes(1);
+        expect(t.raw.writeCells).toHaveBeenCalledTimes(1);
+        // the browser fires its paste for the keystroke: no read
+        expect(t.key({ key: 'v' }).consumed).toBe(false);
+        (t.raw.root.ownerDocument as EventTarget).dispatchEvent(new Event('paste'));
+        await loaded();
+        expect(readText).toHaveBeenCalledTimes(1);
+        controller.detach();
+    });
+
     it('refuses pasteText while an editor is open (the editor owns its input)', async () => {
         const t = fakeHost();
         const controller = new ClipboardController(t.host);

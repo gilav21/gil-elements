@@ -174,6 +174,83 @@ describe('range selection with row selection, a tree and detail rows', () => {
     });
 });
 
+describe('review fixes', () => {
+    const key = (target: Element, init: KeyboardEventInit): KeyboardEvent => {
+        const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, composed: true, ...init });
+        target.dispatchEvent(event);
+        return event;
+    };
+
+    it('a control in an open detail row keeps its keys and its paste: no row move, no select-all, no grid copy, no grid paste', async () => {
+        clip = fakeClipboard();
+        const button = document.createElement('button');
+        button.textContent = 'in the detail';
+        const table = await ready(
+            (await mountTable<SampleRow>({
+                columns: editColumns(),
+                data: makeRows(4),
+                enableRowExpansion: true,
+                expandedRows: { r0: true },
+                renderDetail: () => button,
+                enableCellRangeSelection: true,
+                enableRowDrag: true,
+                enableClipboardPaste: true,
+            })) as Table,
+        );
+        await focusAt(table, 1, 'name'); // a focused grid cell exists...
+        button.focus(); // ...but the keys come from the detail row's button
+        await settle(table);
+        key(button, { key: 'ArrowDown', code: 'ArrowDown', altKey: true });
+        key(button, { key: 'a', code: 'KeyA', ctrlKey: true });
+        key(button, { key: 'c', code: 'KeyC', ctrlKey: true });
+        expect(dispatchPaste(button, 'pasted')).toBe(true); // not taken
+        await frames(3);
+        await settle(table);
+        expect((table.data as SampleRow[]).map((r) => r.id)).toEqual(['r0', 'r1', 'r2', 'r3']);
+        expect(table.cellRange).toBeNull();
+        expect(clip.writes).toEqual([]);
+        expect(names(table)).toEqual(['n0', 'n1', 'n2', 'n3']);
+    });
+
+    it('restarts the flash of a data row whose detail row is open (the detail row shares its id)', async () => {
+        const table = (await mountTable<SampleRow>({
+            data: makeRows(3),
+            enableCellFlash: true,
+            cellFlashDuration: 3000,
+            enableRowExpansion: true,
+            expandedRows: { r0: true },
+            renderDetail: () => Object.assign(document.createElement('div'), { textContent: 'detail' }),
+        })) as Table;
+        const flashCell = (): HTMLElement => table.querySelector<HTMLElement>('[data-kind="data"][data-row-id="r0"] [data-column="age"]')!;
+        const update = async (age: number): Promise<void> => {
+            table.data = (table.data as SampleRow[]).map((r) => (r.id === 'r0' ? { ...r, age } : r));
+            await settle(table);
+        };
+        await update(40);
+        expect(getComputedStyle(flashCell()).animationName).toBe('ge-dt-flash');
+        await update(45);
+        expect(getComputedStyle(flashCell()).animationName).toBe('ge-dt-flash-again');
+    });
+
+    it('Ctrl+A, Ctrl+C and Ctrl+D work on a non-Latin layout (the physical key: key "ש", code "KeyA")', async () => {
+        clip = fakeClipboard();
+        const table = await ready(
+            (await mountTable<SampleRow>({ columns: editColumns(), data: makeRows(4), enableCellRangeSelection: true, enableFillHandle: true })) as Table,
+        );
+        const cell = await focusAt(table, 0, 'age');
+        expect(key(cell, { key: 'ש', code: 'KeyA', ctrlKey: true }).defaultPrevented).toBe(true);
+        await settle(table);
+        expect(table.cellRange).toEqual({ startRow: 0, startCol: 'id', endRow: 3, endCol: 'age' });
+        key(cell, { key: 'ב', code: 'KeyC', ctrlKey: true });
+        await vi.waitFor(() => expect(clip!.writes).toHaveLength(1));
+        table.cellRange = { startRow: 0, startCol: 'age', endRow: 2, endCol: 'age' };
+        await settle(table);
+        key(cell, { key: 'ג', code: 'KeyD', ctrlKey: true });
+        await settle(table);
+        expect(ages(table)).toEqual([0, 0, 0, 3]);
+    });
+});
+
 /** The first three drawn rows of the expanded tree (r0, r0-c0, r0-c1), name and age. */
 function expectedTreeCopy(tree: SampleRow[]): string {
     const root = tree[0]!;

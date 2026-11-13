@@ -110,7 +110,7 @@ export class FormattingController<T> {
      */
     private restart(cells: readonly (readonly [string, string])[]): void {
         const { root } = this.host;
-        const rows = new Map(ownElements(root, root.querySelectorAll<HTMLElement>('[data-slot="table-row"][data-row-id]')).map((row) => [row.dataset['rowId'], row]));
+        const rows = new Map(ownElements(root, root.querySelectorAll<HTMLElement>('[data-slot="table-row"][data-kind="data"][data-row-id]')).map((row) => [row.dataset['rowId'], row]));
         for (const [rowId, key] of cells) {
             const cell = [...(rows.get(rowId)?.querySelectorAll<HTMLElement>('[data-slot="table-cell"][data-column]') ?? [])].find((el) => el.dataset['column'] === key);
             cell?.toggleAttribute('data-flash-again');

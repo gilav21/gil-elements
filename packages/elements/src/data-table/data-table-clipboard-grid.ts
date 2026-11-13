@@ -93,8 +93,8 @@ export function keyboardCopyGrid<T>(source: CopySource<T>): string[][] | null {
 /** The number of cells a grid holds (what the announcement counts). */
 export const gridCells = (grid: readonly (readonly string[])[]): number => grid.reduce((sum, cells) => sum + cells.length, 0);
 
-/** A body cell of the table. */
-export const CELL_SELECTOR = '[data-slot="table-cell"]';
+/** A body DATA cell of the table (it has a column). */
+export const CELL_SELECTOR = '[data-slot="table-cell"][data-column]'; // a DATA cell: a detail, group or full-width cell has no column
 
 /**
  * The user selected TEXT over what the grid would copy (a non-collapsed selection that intersects one of `cells`: the focused cell, the cells in the
