@@ -75,7 +75,8 @@ function focusInto(target: HTMLElement, deepActive: () => Element | null): boole
     target.focus({ preventScroll: true });
     if (composedContains(target, deepActive())) return true;
     for (const el of target.shadowRoot?.querySelectorAll<HTMLElement>('*') ?? []) {
-        if (!el.matches(FOCUSABLE) && !el.shadowRoot?.delegatesFocus) continue;
+        // Skipped, as editorTarget skips them: what is kept out of the tab order on purpose (tabindex=-1).
+        if ((!el.matches(FOCUSABLE) && !el.shadowRoot?.delegatesFocus) || el.getAttribute('tabindex') === '-1') continue;
         el.focus({ preventScroll: true });
         if (composedContains(target, deepActive())) return true;
     }

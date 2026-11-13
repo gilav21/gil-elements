@@ -125,12 +125,14 @@ export function sameEditValue(a: unknown, b: unknown): boolean {
     return a instanceof Date && b instanceof Date && a.getTime() === b.getTime();
 }
 
-/**
- * What a commit does before it writes: `cancel` for a draft equal to the stored value (no event, Angular cmp 4836), else `write`; `report`
- * says whether a rejection may fire `edit-error` (false for the value of the cell already reported: a repeated rejection is reported once).
- */
+/** An empty field's value: '', null or undefined (a text or number editor shows all three as an empty field). */
 const isEmptyText = (value: unknown): boolean => value === '' || value === null || value === undefined;
 
+/**
+ * What a commit does before it writes: `cancel` for a draft equal to `stored` (no event, Angular cmp 4836), else `write`; `report` says whether
+ * a rejection may fire `edit-error` (false for the value of the cell already reported: a repeated rejection is reported once). The edit session
+ * passes the value the editor OPENED with as `stored`, so an untouched draft never writes.
+ */
 export function decideCommit(draft: unknown, stored: unknown, error: CellEditError | null, at: EditingCell, kind?: EditKind): { action: 'cancel' } | { action: 'write'; report: boolean } {
     if (sameEditValue(draft, stored)) return { action: 'cancel' };
     // A text or number editor shows an empty cell (null, undefined, '') as an empty field: typing then deleting leaves it as it was. 0 is a value.
