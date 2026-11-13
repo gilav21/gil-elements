@@ -630,6 +630,27 @@ describe('date panels given a filter restored from JSON (ISO strings)', () => {
 describe('F4 the multiselect panel', () => {
     const optionRow = (panel: Element, label: string): HTMLElement => panel.shadowRoot!.querySelector<HTMLElement>(`ge-command-item[value="${label}"]`)!;
 
+    it('an open panel whose column is hidden is closed with its scroll watch; showing the column again draws it closed (round 17)', async () => {
+        const table = await mount();
+        await openPanel(table, 'role', 'ge-data-table-multiselect-filter');
+        await frames(2); // the scroll watch is armed after the opening task
+        const service = table.provider('filters') as unknown as { panelOpen(key: string): boolean };
+        expect(service.panelOpen('role')).toBe(true);
+        const removed = vi.spyOn(globalThis, 'removeEventListener');
+        try {
+            table.columnVisibility = { role: false };
+            await settle(table);
+            expect(service.panelOpen('role')).toBe(false);
+            expect(removed.mock.calls.some(([type]) => type === 'scroll')).toBe(true);
+        } finally {
+            removed.mockRestore();
+        }
+        table.columnVisibility = {};
+        await settle(table);
+        expect(service.panelOpen('role')).toBe(false);
+        expect(trigger(table, 'role')).not.toBeNull();
+    });
+
     it("stays open when a pick shrinks the rows of a scrolled table (its own scroll); a page scroll closes it (round 14)", async () => {
         const data: Row[] = Array.from({ length: 40 }, (_, i) => ({ id: String(i), name: `N${i}`, role: i === 0 ? 'Manager' : 'Engineer', day: dayOf(1) }));
         const table = (await mountTable<Row>({ columns: [nameColumn, roleColumn], data, showPagination: false }, {}, { width: 600, height: 300 })) as Table;

@@ -272,6 +272,23 @@ export class FilterUiController<T> {
     private stopScrollWatch(): void {
         this.stopScroll?.();
         this.stopScroll = undefined;
+        this.openPopover = undefined;
+    }
+
+    /** The popover of the open header panel (for the scroll watch and the check below). */
+    private openPopover: PanelPopover | undefined;
+
+    /**
+     * Before every render: an open panel whose column is no longer drawn (hidden, removed, no longer filterable) or whose popover left the DOM (its
+     * head cell was not drawn again) is closed here, with its scroll watch. Its popover never sends the `open-change` that would say so.
+     */
+    hostUpdate(): void {
+        const key = this.openColumn;
+        if (key === null) return;
+        const drawn = this.host.provider('columns')?.enhancedColumns().some((c) => String(c.accessorKey) === key && hasFilterTrigger(c)) ?? false;
+        if (drawn && (!this.openPopover || this.openPopover.isConnected)) return;
+        this.openColumn = null;
+        this.stopScrollWatch();
     }
 
     /**
@@ -282,6 +299,7 @@ export class FilterUiController<T> {
      */
     private watchScroll(popover: PanelPopover): void {
         this.stopScrollWatch();
+        this.openPopover = popover;
         const onScroll = (event: Event): void => {
             const target = event.composedPath()[0] as Node | undefined;
             if (target instanceof Node && composedContains(this.host.root, target)) {
