@@ -1,6 +1,33 @@
+import { SlotRegistry } from '../shared/registry.js';
 import type { DataTableCoreHost } from './data-table-host.js';
-import type { AddonsService, DataTableProviders } from './data-table-providers.js';
-import { createAddonsService } from './data-table-registry.js';
+import type { AddonsService, CellActionSlot, DataTableProviders, HeaderActionSlot } from './data-table-providers.js';
+
+/** What the table's addons contribute: a ⋮ button in every data row's action cell and in every column header. */
+export interface DataTableSlots<T> {
+    readonly cellActions: SlotRegistry<CellActionSlot<T>>;
+    readonly headerActions: SlotRegistry<HeaderActionSlot<T>>;
+}
+
+export function createDataTableSlots<T>(): DataTableSlots<T> {
+    return { cellActions: new SlotRegistry(), headerActions: new SlotRegistry() };
+}
+
+/** The `addons` service: the slot registries plus the busy-overlay label; `onChange` is the element's re-render. */
+export function createAddonsService<T>(onChange: () => void): AddonsService<T> {
+    const slots = createDataTableSlots<T>();
+    let busy: string | null = null;
+    slots.cellActions.subscribe(onChange);
+    slots.headerActions.subscribe(onChange);
+    return {
+        ...slots,
+        busyLabel: () => busy,
+        setBusy(label) {
+            if (busy === label) return;
+            busy = label;
+            onChange();
+        },
+    };
+}
 
 /**
  * Provides the `addons` service: the row and header action slots addons register and the busy-overlay label. A change to

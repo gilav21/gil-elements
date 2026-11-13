@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AddonSet, type DataTableAddon, type DataTableAddonHost, createAddonHost, defineAddon, parseAddonIds, resolveAddonLocale } from './data-table-addon-kit.js';
-import { createAddonsService } from './data-table-registry.js';
+import { createAddonsService } from './data-table-addon-host-controller.js';
 import { resolveAddonLocale as shared } from '../shared/addon-locale.js';
 import type { DataTableLocale } from './data-table.locales.js';
 
