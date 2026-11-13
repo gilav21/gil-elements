@@ -67,7 +67,7 @@ describe('dateFilterFn', () => {
     });
 });
 
-describe('the date filters read the filter value once per value (round 19)', () => {
+describe('the date filters read the filter value as it is now (rounds 19, 21: no per-value cache)', () => {
     it('a filter value changed IN PLACE (a Date set to another day, a range end replaced) is read again', () => {
         const at = (r: { d: Date }): Date => r.d;
         const day = new Date(2024, 0, 3);
