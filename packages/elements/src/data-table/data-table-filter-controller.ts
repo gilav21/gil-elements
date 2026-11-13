@@ -1,7 +1,7 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { ref } from 'lit/directives/ref.js';
 import { chromeIcon } from './data-table-icons.js';
-import { BUILT_IN_FILTER_PANELS, builderColumns, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive, sameStructure } from './data-table-filters.js';
+import { BUILT_IN_FILTER_PANELS, builderColumns, currentFilterValue, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive, sameStructure } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import { composedContains, type DataTableCoreHost, requireProvider, VIEWPORT } from './data-table-host.js';
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
@@ -189,7 +189,7 @@ export class FilterUiController<T> {
         const panel = builtInPanelOf(column.filterComponent);
         const calendarId = typeof locale === 'string' && locale ? locale : this.host.resolvedLocale.code;
         const own = panel ? { locale: panel === 'ge-data-table-multiselect-filter' ? this.host.resolvedLocale : calendarId } : {};
-        return { ...own, ...filterInputsOf(column), column, value: Object.hasOwn(filters, key) ? (filters[key] ?? null) : null }; // undefined is "none" too
+        return { ...own, ...filterInputsOf(column), column, value: currentFilterValue(filters, key) };
     }
 
     /**

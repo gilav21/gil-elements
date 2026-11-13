@@ -11,6 +11,7 @@ import { repeat } from 'lit/directives/repeat.js';
 import type { GridAria } from './data-table-aria.js';
 import { componentCell } from './data-table-component-cell.js';
 import { cellVarsStyle } from './data-table-columns.js';
+import { currentFilterValue } from './data-table-filters.js';
 import { chromeIcon } from './data-table-icons.js';
 import { columnParts, columnSpacer } from './data-table-grid-window.js';
 import { requireProvider } from './data-table-host.js';
@@ -82,7 +83,7 @@ export function filtersView<T>(host: DataTableViewHost<T>): FiltersView<T> {
     if (!floating && !anyTrigger) return NO_FILTERS as FiltersView<T>;
     const filters = host.model.get('columnFilters');
     // `null` for no filter, as the header panel gets it (the floating component and renderer see the same value for "none").
-    const valueOf = (key: string): unknown => (Object.hasOwn(filters, key) ? (filters[key] ?? null) : null);
+    const valueOf = (key: string): unknown => currentFilterValue(filters, key);
 
     const trigger = (c: EnhancedColumnDef<T>): unknown => {
         if (!service.hasTrigger(c)) return nothing;

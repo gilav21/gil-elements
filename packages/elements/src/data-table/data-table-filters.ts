@@ -116,6 +116,12 @@ export const builtInPanelOf = (tag: string | undefined): string | undefined => {
 /** The column holds a filter value that filters (`!isFilterValueEmpty`): the header's "filtered" state. */
 export const isFilterActive = (filters: Readonly<Record<string, unknown>>, key: string): boolean => !isFilterValueEmpty(Object.hasOwn(filters, key) ? filters[key] : undefined);
 
+/**
+ * The column's filter value as a panel, a floating component or a renderer is given it: the value held, `null` for none (an absent key, or one
+ * holding `undefined`). An own key only (never an inherited `toString`).
+ */
+export const currentFilterValue = (filters: Readonly<Record<string, unknown>>, key: string): unknown => (Object.hasOwn(filters, key) ? (filters[key] ?? null) : null);
+
 /** The header draws a filter trigger: `enableFiltering` and a panel (`filterComponent`), never on a special column (Angular html 633). */
 export const hasFilterTrigger = <T>(column: ColumnDef<T>): boolean => !!column.enableFiltering && !!column.filterComponent && !isSpecialColumnKey(column.accessorKey);
 

@@ -19,6 +19,7 @@ import {
 import {
     EMPTY_GROUP,
     builderColumns,
+    currentFilterValue,
     dateFilterFn,
     dateRangeFilterFn,
     filterInputsOf,
@@ -118,6 +119,16 @@ describe('date filter values of any shape (a saved view restored from JSON, a ti
 
     it('dateRangeFilterFn treats a value that is not a range, or a range of non-dates, as no filter, and never throws', () => {
         for (const bad of ['2024-03-11', 7, true, [], { start: 'x', end: {} }, { from: day }]) expect(dateRangeFilterFn(row, bad as never, at(0))).toBe(true);
+    });
+});
+
+describe('currentFilterValue (round 17)', () => {
+    it('is the value held, null for an absent key or undefined, own keys only', () => {
+        expect(currentFilterValue({ a: ['x'] }, 'a')).toEqual(['x']);
+        expect(currentFilterValue({ a: 0 }, 'a')).toBe(0);
+        expect(currentFilterValue({ a: undefined }, 'a')).toBeNull();
+        expect(currentFilterValue({}, 'a')).toBeNull();
+        expect(currentFilterValue({}, 'toString')).toBeNull();
     });
 });
 
