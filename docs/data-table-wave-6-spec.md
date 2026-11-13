@@ -752,6 +752,12 @@ Recommendation (D2): **lazy, flag-gated `import()` for range + fill, paste and r
 - The readout stats memo is keyed on array identity: a resize that rebuilds the arrays recomputes them every frame.
 - One central "the rows under the range moved" check in the range session, instead of the fill / paste / drop patches (it would also cover undo, redo and a data refresh).
 - After a fill or a paste, Shift+Arrow extends from the range's start while Shift+click extends from the focused cell: one anchor rule.
+- Tree: dropping an expanded node `above` its next sibling (where it already is) still emits `row-reorder` (a no-op move).
+- Ctrl/Cmd+C is prevented before `writeText` can reject (a cross-origin iframe without `clipboard-write`); the native `copy` event could carry it instead, with care for WebKit.
+- Paste and fill write disabled rows and non-editable columns (Angular does the same): decide.
+- Tree "copy all" copies the root rows only (Angular's `exportData` does the same): check.
+- `--ge-dt-flash-ms` is lost when the host's `style` attribute is replaced by the consumer.
+- Flash: the diff and the new snapshot read every cell twice; one pass could do both.
 
 ### Candidate Angular bugs (verified only by reading; nothing filed; verify against a running Angular build before filing)
 - **AB1** cmp 4494, 4502 (-> 4256), 4482 (-> 4532) and 4439 (-> 2747): the copy and paste promises are neither awaited nor caught; with permission denied (or `readText` unsupported) the handler has already called `preventDefault`, nothing is copied or pasted, the user gets no feedback and an unhandled rejection is raised.

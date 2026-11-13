@@ -372,6 +372,24 @@ describe('paste', () => {
         expect((table.data as Row[])[1]?.name).toBe('=SUM(1,2)');
     });
 
+    it('a page that stops the paste event does not trigger the clipboard-read fallback for the keystroke (the keystroke is marked in the capture phase)', async () => {
+        const fake = install({ text: '9' });
+        const wrapper = document.createElement('div');
+        wrapper.addEventListener('paste', (event) => event.stopPropagation()); // a consumer wrapper: the paste never bubbles to the document
+        document.body.append(wrapper);
+        try {
+            const table = await mountTable<Row>({ columns: COLUMNS, data: ROWS, getRowId: (row: Row) => row.id, enableClipboardPaste: true });
+            wrapper.append(table);
+            await pasteReady(table);
+            await focusCell(table, 0, 'qty');
+            await press('{Control>}v{/Control}'); // Chromium fires its native paste on the focused cell
+            await frames(3);
+            expect(fake.reads.count).toBe(0);
+        } finally {
+            wrapper.remove();
+        }
+    });
+
     it('drops a paste kept during the load when the feature is switched off, and leaves the event to the browser once the load has failed', async () => {
         const table = await grid();
         const cell = await focusCell(table, 2, 'qty');

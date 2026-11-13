@@ -104,6 +104,11 @@ export class ClipboardController<T> {
             // On the document: the browser's copy and paste may target something outside the table (the body) while the focus is in it (`clipboardEventForGrid`).
             disposables.listen<ClipboardEvent>(root.ownerDocument, 'copy', (event) => this.onNativeCopy(event)),
             disposables.listen<ClipboardEvent>(root.ownerDocument, 'paste', (event) => this.onNativePaste(event)),
+            // The browser fired its paste for a Ctrl/Cmd+V keystroke: no fallback read. Heard in the CAPTURE phase, before anything on the page can stop the
+            // event (a consumer's stopPropagation must not make the fallback read the clipboard a second time).
+            disposables.listen(root.ownerDocument, 'paste', () => {
+                if (this.keystroke) this.keystroke.handled = true;
+            }, true),
         ];
     }
 
@@ -279,7 +284,6 @@ export class ClipboardController<T> {
      */
     private onNativePaste(event: ClipboardEvent): void {
         const { host } = this;
-        if (this.keystroke) this.keystroke.handled = true; // the browser fired its paste for the keystroke: no fallback read
         if (event.defaultPrevented || !host.config.enableClipboardPaste || editorOpen(host) || isTextFieldKey(host.root, event)) return;
         if (!clipboardEventForGrid(host.root, event)) return;
         const target = this.target();

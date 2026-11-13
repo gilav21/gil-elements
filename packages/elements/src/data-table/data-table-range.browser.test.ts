@@ -400,6 +400,27 @@ describe('the fill handle', () => {
         expect(handle(table)!.getBoundingClientRect().top).toBeGreaterThan(before + 100);
     });
 
+    it('stays under the sticky header when its cell scrolls beneath it (it never paints over the header)', async () => {
+        const table = await mountRange({ enableFillHandle: true, data: makeRows(60).map((r, i) => ({ ...ROWS[i % 8], ...r })) }, { width: 600, height: 300 });
+        await focusAt(table, 3, 'score');
+        await vi.waitFor(() => expect(handle(table)).not.toBeNull());
+        const viewport = q(table, '[data-slot="data-table-viewport"]');
+        const header = q(table, '[data-slot="table-header"]').getBoundingClientRect();
+        // scroll until the handle's cell (row 3) has its bottom edge under the header
+        const rowBottom = cell(table, 3, 'score').getBoundingClientRect().bottom;
+        await scrollGrid(viewport, { top: viewport.scrollTop + (rowBottom - (header.top + header.height / 2)) });
+        await settle(table);
+        await frames(2);
+        const h = handle(table)!.getBoundingClientRect();
+        const x = h.left + h.width / 2;
+        const y = h.top + h.height / 2;
+        expect(y).toBeGreaterThan(header.top);
+        expect(y).toBeLessThan(header.bottom);
+        const top = document.elementFromPoint(x, y);
+        expect(top?.closest('[data-slot="fill-handle"]')).toBeNull();
+        expect(top?.closest('[data-slot="table-header"]')).not.toBeNull();
+    });
+
     it('is hidden with no focus and no range, with the flag off, and follows the focused cell', async () => {
         const table = await mountRange({ enableFillHandle: true });
         expect(handle(table)).toBeNull();
