@@ -263,7 +263,15 @@ export class EditSession<T> implements CellSession {
         if (this.open !== open) return;
         const win = this.host.provider('virtual')?.window();
         if (!win || this.columnDrawn(open.at.columnKey, win)) return; // scrolled back meanwhile
-        if (!this.leaveForAnother(open)) this.host.provider('virtual')?.reveal(open.at.rowIndex, open.at.columnKey);
+        if (this.leaveForAnother(open)) {
+            // Left: the editor's cell is not drawn (its column scrolled away), so a focus the removal dropped goes to the viewport, in the grid.
+            const active = this.context.deepActive();
+            if (!active || active === this.host.root.ownerDocument.body) this.host.root.querySelector<HTMLElement>(VIEWPORT)?.focus({ preventScroll: true });
+            return;
+        }
+        // Rejected: its column is scrolled back, and the editor drawn again by that render takes the focus, as at the open.
+        this.host.provider('virtual')?.reveal(open.at.rowIndex, open.at.columnKey);
+        this.context.afterRender(() => void this.focusEditor(open));
     }
 
     /** The virtual window the last update saw (rows and columns drawn): a shift can move the editor's row in the DOM. */

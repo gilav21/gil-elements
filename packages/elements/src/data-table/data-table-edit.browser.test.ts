@@ -849,6 +849,7 @@ describe('round 20: the edited column scrolls out of the drawn columns', () => {
         await frames(2);
         expect(table.editingCell).toBeNull();
         expect((table.data[0] as Record<string, unknown>)['c2']).toBe('0.2x');
+        expect(deepActive()?.closest('ge-data-table')).toBe(table); // round 21: the focus stays in the grid, not on the page
     });
 
     it('a rejected draft keeps the editor open and scrolls its column back into view', async () => {
@@ -862,6 +863,7 @@ describe('round 20: the edited column scrolls out of the drawn columns', () => {
         expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'c2' });
         expect(cellAt(table, 0, 'c2')).not.toBeNull(); // drawn again
         expect(editError(table)?.textContent).toContain('No x');
+        expect(deepActive()).toBe(openEditor(table)); // round 21: the editor drawn again has the focus
     });
 });
 
