@@ -151,3 +151,5 @@ import '../packages/elements/src/data-table/define.js';
 // wave5: the advanced filter builder is a lazy entry the table loads on demand; imported here so its parity case can render it standalone
 // (the package's `sideEffects` names the lazy sources too, so the bundler keeps the module's define).
 import '../packages/elements/src/data-table/lazy/filter-builder.js';
+// wave7 A: the context-menu addon (registers `addons="context-menu"`); see the `data-row-actions` hook in run.mjs.
+import '../packages/elements/src/data-table/addons/context-menu/define.js';

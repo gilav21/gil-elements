@@ -43,8 +43,19 @@ interface Press {
     readonly overlay: boolean;
     /** A cell press that began on the body outside any cell (a group row, the stretch row): its focus work is to CLEAR the focus, by the element or, when a renderer replaced it, by this. */
     readonly clears: boolean;
+    /** The element that had DOM focus when the press began: a touch press during which focus moved OUT of the table (a long press opened a menu) is not a tap. */
+    readonly activeAtDown: Element | null;
 }
 /** Whether the point is in the box, or within `slop` px of it. */
+/** `el` is a menu or inside one (`role="menu"` / `"menuitem"`), across shadow roots. */
+function inMenu(el: Element | null): boolean {
+    for (let at: Element | null = el; at; at = at.parentElement ?? ((at.getRootNode() as Partial<ShadowRoot>).host ?? null)) {
+        const role = at.getAttribute('role');
+        if (role === 'menu' || role === 'menuitem') return true;
+    }
+    return false;
+}
+
 const inside = (box: DOMRect, x: number, y: number, slop = 0): boolean => x >= box.left - slop && x <= box.right + slop && y >= box.top - slop && y <= box.bottom + slop;
 
 const CELL = '[data-slot="table-cell"]';
@@ -644,7 +655,7 @@ export class CellInteractionController<T> {
         const startCell = !own || overlay ? null : this.addressOf(target);
         const view: PointerPress = Object.freeze({ anchor, pressed: target, startCell });
         if (this.presses.size === 0) this.watchPresses(); // the map goes from empty to non-empty: ONE watcher pair
-        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', focusesViewport: event.pointerType === 'touch' && this.tapFocusesViewport(path), seen: performance.now(), overlay, clears: !startCell && target !== null && this.clearsFocus(target) });
+        this.presses.set(event.pointerId, { view, claimedBy: null, bubbled: false, x: event.clientX, y: event.clientY, own, touch: event.pointerType === 'touch', focusesViewport: event.pointerType === 'touch' && this.tapFocusesViewport(path), seen: performance.now(), overlay, clears: !startCell && target !== null && this.clearsFocus(target), activeAtDown: this.deepActive() });
     }
 
     /**
@@ -724,6 +735,10 @@ export class CellInteractionController<T> {
 
     private tapFocus(event: PointerEvent, press: Press): void {
         const { pressed } = press.view;
+        // A MENU took focus while the finger was down (a long press opened a context menu): not a tap, the focus stays in the menu. Focus that went anywhere
+        // else (an overlay handing it back to its trigger) does not stop the tap.
+        const active = this.deepActive();
+        if (active !== press.activeAtDown && inMenu(active) && !composedContains(this.host.root, active)) return;
         if (!pressed?.isConnected) {
             // A renderer replaced the DOM between the down and the up: the press's start cell (an address) is still the cell that was tapped, if the finger
             // is where it went down.

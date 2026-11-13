@@ -20,7 +20,7 @@
  */
 import { html, nothing, type TemplateResult } from 'lit';
 import { startAutoScroll, type AutoScrollController } from '../../shared/auto-scroll.js';
-import { onLongPress } from '../../shared/touch.js';
+import { onLongPress, TOUCH_CONTROLS } from '../../shared/touch.js';
 import type { InteractionContext, PointerPress } from '../data-table-cell-session.js';
 import { CELL_SELECTOR, editorOpen, onGrid, rowIdsAt } from '../data-table-clipboard-grid.js';
 import { buildFillValues } from '../data-table-fill.js';
@@ -49,8 +49,6 @@ import { isSpecialColumnKey } from '../data-table.utils.js';
 const OVERLAY = '[data-pointer-transparent]';
 const HANDLE = '[data-slot="fill-handle"]';
 const ROW = '[data-row-index]';
-/** What a long press on a cell never starts a range on (Angular's mousedown list, plus the explicit opt-out). */
-const TOUCH_CONTROLS = 'input, textarea, select, button, a, [data-table-keeps-focus], ge-checkbox, ge-input, ge-button';
 /** The range announcement waits for the selection to stop changing (a drag across ten cells is one announcement, with the final size). */
 const ANNOUNCE_MS = 500;
 /** The auto-scroll band at the viewport's edges, as in Angular's row drag. */
