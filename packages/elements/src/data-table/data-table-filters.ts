@@ -117,6 +117,13 @@ export const builtInPanelOf = (tag: string | undefined): string | undefined => {
 export const isFilterActive = (filters: Readonly<Record<string, unknown>>, key: string): boolean => !isFilterValueEmpty(Object.hasOwn(filters, key) ? filters[key] : undefined);
 
 /**
+ * Some filter filters: a set value on a column with `enableFiltering` (a key of another column is skipped by the pipeline), an advanced condition
+ * (`advancedConditions`, counted by the caller), or the global text. ONE rule for "all filters cleared" in every filter announcement.
+ */
+export const anyFilterOn = <T>(columns: readonly ColumnDef<T>[], filters: Readonly<Record<string, unknown>>, advancedConditions: number, globalFilter: string): boolean =>
+    advancedConditions > 0 || globalFilter.trim() !== '' || columns.some((c) => !!c.enableFiltering && isFilterActive(filters, String(c.accessorKey)));
+
+/**
  * The column's filter value as a panel, a floating component or a renderer is given it: the value held, `null` for none (an absent key, or one
  * holding `undefined`). An own key only (never an inherited `toString`).
  */

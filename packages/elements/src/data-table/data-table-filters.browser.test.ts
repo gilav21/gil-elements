@@ -389,6 +389,22 @@ describe('round 8', () => {
         expect(table.provider('query')!.filterSeq()).toBe(now);
     });
 
+    it('one restore, one announcement: global and column changed -> the global result; global emptied, column kept -> the count (round 17)', async () => {
+        const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn] });
+        const spoken: string[] = [];
+        new MutationObserver(() => spoken.push(announcer(table))).observe(q(table, '[data-slot="data-table-announcer"]'), { childList: true, characterData: true, subtree: true });
+        const state = table.getViewState()!;
+        table.applyViewState({ ...structuredClone(state), globalFilter: 'Bob', columnFilters: { name: 'o' } });
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        await settle(table);
+        expect(spoken.filter((s) => s !== '')).toEqual(['1 result found for "Bob"']);
+        spoken.length = 0;
+        table.applyViewState({ ...table.getViewState()!, globalFilter: '' }); // the column filter 'o' stays
+        await new Promise((resolve) => setTimeout(resolve, 700));
+        await settle(table);
+        expect(spoken.filter((s) => s !== '')).toEqual(['2 rows match the filters']);
+    });
+
     it('a restore that changes only the sort announces nothing; one that changes the global text announces its result (round 16)', async () => {
         const table = await mount({ columns: [{ ...nameColumn, enableFiltering: true }, roleColumn], columnFilters: { name: 'o' } });
         const spoken: string[] = [];

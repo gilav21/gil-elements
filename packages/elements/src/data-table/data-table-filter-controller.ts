@@ -1,7 +1,7 @@
 import { html, nothing, type TemplateResult } from 'lit';
 import { ref } from 'lit/directives/ref.js';
 import { chromeIcon } from './data-table-icons.js';
-import { BUILT_IN_FILTER_PANELS, builderColumns, currentFilterValue, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive, sameStructure } from './data-table-filters.js';
+import { anyFilterOn, BUILT_IN_FILTER_PANELS, builderColumns, currentFilterValue, EMPTY_GROUP, FILTER_ANNOUNCE_MS, builtInPanelOf, filterInputsOf, hasAnyFloatingFilter, hasFilterTrigger, hasFloatingFilter, isFilterActive, sameStructure } from './data-table-filters.js';
 import type { FilterUiService } from './data-table-grid-filters.js';
 import { composedContains, type DataTableCoreHost, requireProvider, VIEWPORT } from './data-table-host.js';
 import { type LazyElement, lazyElement } from './data-table-lazy.js';
@@ -329,12 +329,7 @@ export class FilterUiController<T> {
             const query = this.host.provider('query');
             if (!query || seq < query.filterSeq()) return;
             const { model, resolvedLocale: locale } = this.host;
-            const filters = model.get('columnFilters');
-            // A filter "on" is one that filters: a set value on a column with `enableFiltering` (a key of another column is skipped by the pipeline),
-            // an advanced condition, or the global text.
-            const filtering = new Set(this.host.config.columns.filter((c) => c.enableFiltering).map((c) => String(c.accessorKey)));
-            const any =
-                Object.keys(filters).some((key) => filtering.has(key) && isFilterActive(filters, key)) || countConditions(model.get('advancedFilter')) > 0 || model.get('globalFilter').trim() !== '';
+            const any = anyFilterOn(this.host.config.columns, model.get('columnFilters'), countConditions(model.get('advancedFilter')), model.get('globalFilter'));
             if (!any) return this.host.announce(locale.filtersClearedAnnouncement);
             const say = (count: number): void => this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count }));
             // ONE rule with the global filter: the query service says the count now, or (server filtering) once the query's answer is in, or never

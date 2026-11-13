@@ -115,11 +115,10 @@ export class ColumnsController<T> {
             const next = applyViewState(this.viewModel(), state);
             if (next === null) return false;
             const { model } = this.host;
-            // wave5: a restore that changes a filter is ONE filter change: numbered once, before the batch (older announcements say nothing).
-            // A changed global text is announced like a typed one (the column / advanced part is the filter UI's, when it changed).
+            // wave5: a restore that changes a filter is ONE filter change with ONE announcement: the query service numbers and announces it right
+            // AFTER the batch (the filter UI's announcement of the batch's own write is then an older one and says nothing).
             const globalChange = model.get('globalFilter') !== next.globalFilter;
             const filtersChange = globalChange || !sameStructure(model.get('columnFilters'), next.columnFilters) || !sameStructure(model.get('advancedFilter') ?? null, next.advancedFilter ?? null);
-            if (filtersChange) this.host.provider('query')?.filterChanged(globalChange ? next.globalFilter : undefined);
             // One batch; `paginationState` flushes last, and these writes bypass the filter handlers whose page reset would clobber it.
             model.batch(() => {
                 this.writeOverrides(next.layout);
@@ -130,6 +129,7 @@ export class ColumnsController<T> {
                 model.set('globalFilter', next.globalFilter);
                 model.set('paginationState', next.pagination);
             });
+            if (filtersChange) this.host.provider('query')?.filtersRestored(globalChange);
             return true;
         },
         move: (key, targetIndex) => {

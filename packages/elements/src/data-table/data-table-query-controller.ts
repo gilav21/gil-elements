@@ -5,6 +5,7 @@ import type { QueryService } from './data-table-providers.js';
 import {
     activeSorts,
     changeAdvancedFilterOf,
+    countConditions,
     createQueryPipeline,
     localSortApplies,
     memoLast,
@@ -14,7 +15,7 @@ import {
     slicePage,
     type QueryOutput,
 } from './data-table-query.js';
-import { FILTER_ANNOUNCE_MS, sameFilterValue, sameStructure } from './data-table-filters.js';
+import { anyFilterOn, FILTER_ANNOUNCE_MS, sameFilterValue, sameStructure } from './data-table-filters.js';
 import { buildGroupedDisplayRows, isGroupingActive, partitionIntoGroups, renumberDataRows, type RowGroup } from './data-table-group.js';
 import { buildTreeIndex, filterTree, flattenTree, sortTree } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
@@ -236,6 +237,18 @@ export class QueryController<T> {
         }, FILTER_ANNOUNCE_MS);
     }
 
+    /** The overall result of the filters for the change numbered `seq` (a restored view state): the matching rows, or that every filter is cleared. */
+    private announceFilters(seq: number): void {
+        const { config, model, resolvedLocale: locale } = this.host;
+        this.cancelAnnounce = this.host.disposables.timeout(() => {
+            this.cancelAnnounce = undefined;
+            if (!anyFilterOn(config.columns, model.get('columnFilters'), countConditions(model.get('advancedFilter')), model.get('globalFilter'))) {
+                return this.host.announce(locale.filtersClearedAnnouncement);
+            }
+            this.whenCounted((count) => this.host.announce(count === 1 ? locale.filteredRowOneAnnouncement : interpolate(locale.filteredRowsAnnouncement, { count })), seq);
+        }, FILTER_ANNOUNCE_MS);
+    }
+
     /** A filter change (global, column, advanced): it gets the next sequence number and drops every announcement of an EARLIER change. */
     private filterChanged(): number {
         this.dropWaiting();
@@ -350,9 +363,13 @@ export class QueryController<T> {
         changeAdvancedFilter: (group) => void changeAdvancedFilterOf(this.host.model, (page) => this.host.emit('page-change', page), group, () => this.filterChanged()),
         whenCounted: (say, seq) => this.whenCounted(say, seq),
         filterSeq: () => this.seq,
-        filterChanged: (global) => {
+        filtersRestored: (globalChanged) => {
             const seq = this.filterChanged();
-            if (global !== undefined) this.announceGlobal(global, seq); // the global text changed too: its result is announced, for this same change
+            const global = this.host.model.get('globalFilter');
+            // ONE announcement for the restore: a new global text speaks as the global filter does (its count reflects every filter); otherwise
+            // (an emptied global text too) the overall count, or that every filter is cleared.
+            if (globalChanged && global.trim() !== '') this.announceGlobal(global, seq);
+            else this.announceFilters(seq);
             return seq;
         },
         // Server filtering: the held rows are not the matches, so the server's `total`, but only once the ANSWER to the last query arrived (the next
