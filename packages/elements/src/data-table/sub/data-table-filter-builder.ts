@@ -98,8 +98,9 @@ export class GeDataTableFilterBuilder extends UiElement {
         // A tree replaced from outside makes the waiting values meaningless (their paths name another tree's conditions): they are dropped. Not a
         // replacement: a copy equal to the PREVIOUS group (reassigned unchanged, before anything was reported), nor one equal to the last tree
         // reported (that report coming back through a framework's binding).
+        if (this.owner || !changed.has('group') || this.pending.size === 0) return; // the structural comparisons only when something could be dropped
         const replaced = !sameStructure(this.group, changed.get('group')) && !sameStructure(this.group, this.lastEmitted);
-        if (!this.owner && changed.has('group') && this.pending.size > 0 && replaced) {
+        if (replaced) {
             clearTimeout(this.timer);
             this.timer = undefined;
             this.pending.clear();
@@ -108,8 +109,10 @@ export class GeDataTableFilterBuilder extends UiElement {
 
     override disconnectedCallback(): void {
         super.disconnectedCallback();
-        // The popover closed while a typed value waited: the top level reports it now, once, against its latest tree.
-        this.flush();
+        // Removed while a typed value waited (a render that stops drawing the builder: `enable-advanced-filter` turned off): the top level reports it
+        // once, against its latest tree, in a microtask, AFTER the render that removed it (never a model write during that render). The table's
+        // own detach and its popover's close flush it earlier, synchronously.
+        if (!this.owner && this.pending.size > 0) queueMicrotask(() => this.flush());
     }
 
     /**

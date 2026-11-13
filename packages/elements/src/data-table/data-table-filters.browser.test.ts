@@ -1283,6 +1283,27 @@ describe('F7 the advanced filter builder', () => {
             expect(table.advancedFilter!.rules).toEqual([{ type: 'group', combinator: 'or', rules: [cond('role', 'Eng')] }]);
         });
 
+        it('turning enable-advanced-filter off within the debounce reports the value after the render; turned on, it is drawn closed (round 20)', async () => {
+            const group: FilterGroup = { type: 'group', combinator: 'and', rules: [cond('name', '')] };
+            const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 1000 });
+            await openBuilder(table);
+            await typeText(inner(table, 'input.value')[0]!, 'Al');
+            const warn = vi.spyOn(console, 'warn');
+            try {
+                table.enableAdvancedFilter = false;
+                await settle(table);
+                await settle(table);
+                expect(warn.mock.calls.filter((args) => String(args[0]).includes('change-in-update'))).toEqual([]);
+            } finally {
+                warn.mockRestore();
+            }
+            expect(table.advancedFilter).toEqual({ type: 'group', combinator: 'and', rules: [cond('name', 'Al')] });
+            table.enableAdvancedFilter = true;
+            await settle(table);
+            expect(q(table, '[data-slot="advanced-filter-panel"]').querySelector('ge-data-table-filter-builder')).toBeNull();
+            expect((q(table, '[data-slot="advanced-filter-panel"]').closest('ge-popover') as HTMLElement & { open: boolean }).open).toBe(false);
+        });
+
         it('closing the popover within the debounce reports the value outside the render: no change-in-update, one query (round 16)', async () => {
             const group: FilterGroup = { type: 'group', combinator: 'and', rules: [cond('name', '')] };
             const table = await mount({ enableAdvancedFilter: true, advancedFilter: group, filterDebounce: 1000 });

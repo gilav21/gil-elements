@@ -132,7 +132,13 @@ export class FilterUiController<T> {
     /** The toolbar slot after the global filter input: the advanced-filter trigger and its builder popover (html 380-413). */
     renderToolbar(): TemplateResult | null {
         const { config, model, resolvedLocale } = this.host;
-        if (!config.enableAdvancedFilter) return null;
+        if (!config.enableAdvancedFilter) {
+            // The toolbar no longer draws the builder: its popover is gone, so it is no longer open (turned back on, it is drawn closed). The builder's
+            // own disconnect reports a typed value still waiting, after this render.
+            this.builderOpen = false;
+            this.builder = undefined;
+            return null;
+        }
         const labels = this.builderLabels(resolvedLocale.advancedFilter);
         const group = model.get('advancedFilter');
         const count = countConditions(group);
