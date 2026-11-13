@@ -148,8 +148,9 @@ export class AddonSet<T = unknown> {
         };
     }
 
-    configure(addons: string, addonOptions: Readonly<Record<string, unknown>>): void {
-        this.ids = parseAddonIds(addons);
+    /** `addons` is null or undefined once the attribute is removed (or bound to nothing): no attribute addons then. */
+    configure(addons: string | null | undefined, addonOptions: Readonly<Record<string, unknown>>): void {
+        this.ids = parseAddonIds(addons ?? '');
         this.optionsMap = addonOptions;
         this.merge();
         this.sync();

@@ -24,12 +24,17 @@ const DATA: Row[] = [
     { id: 'r3', name: 'Cy', team: 'x' },
 ];
 
-function setup({ columns = COLUMNS, filterDebounce = 0, timeout = (fn: () => void) => (fn(), () => undefined) }: { columns?: ColumnDef<Row>[]; filterDebounce?: number; timeout?: (fn: () => void) => () => void } = {}) {
+function setup({
+    columns = COLUMNS,
+    filterDebounce = 0,
+    timeout = (fn: () => void) => (fn(), () => undefined),
+    server = false,
+}: { columns?: ColumnDef<Row>[]; filterDebounce?: number; timeout?: (fn: () => void) => () => void; server?: boolean } = {}) {
     const events: [string, unknown][] = [];
     const announced: string[] = [];
     const model = new ModelStore<Row>((name, detail) => events.push([name, detail]), { data: DATA, paginationState: { pageIndex: 2, pageSize: 1 } });
     const providers = new Map<string, unknown>();
-    const config = { columns, filterDebounce, getRowId: (r: Row) => r.id, localSorting: true, localPagination: true, localFiltering: true, showPagination: true } as unknown as DataTableConfig<Row>;
+    const config = { columns, filterDebounce, getRowId: (r: Row) => r.id, localSorting: true, localPagination: true, localFiltering: !server, total: server ? 42 : undefined, showPagination: true } as unknown as DataTableConfig<Row>;
     // The drawn columns: `team` is hidden and `id` is drawn first (a reorder), so definition order and drawn order differ.
     providers.set('columns', { enhancedColumns: () => [COLUMNS[2], COLUMNS[0]] });
     const host = {
@@ -66,7 +71,7 @@ describe('QueryService wave 7 additions', () => {
         expect(model.get('paginationState').pageIndex).toBe(0);
         expect(events.filter(([name]) => name === 'filter-change')).toEqual([['filter-change', 'Al']]);
         expect(events.filter(([name]) => name === 'page-change')).toHaveLength(1);
-        expect(announced).toEqual(['1 row matches the filters']);
+        expect(announced).toEqual(['1 result found for "Al"']); // a new global text speaks through the global path (final review 5)
     });
 
     it('applyFilters writes nothing, resets no page and fires nothing for values equal to the current ones (review)', () => {
@@ -109,6 +114,15 @@ describe('QueryService wave 7 additions', () => {
     it('exportData with onlyVisible: false draws a duplicated key once, the first column (final review)', () => {
         const { query } = setup({ columns: [...COLUMNS, { accessorKey: 'name', header: 'Name again' }] });
         expect(query.exportData({ onlyVisible: false }, [DATA[0] as Row])[0]).toEqual(['Name', 'Team', 'Id']);
+    });
+
+    it('applyFilters announces a new global text like typing it, server mode with total included (final review 5)', () => {
+        const typed = setup({ server: true });
+        typed.query.changeGlobalFilter('acme');
+        const applied = setup({ server: true });
+        applied.query.applyFilters({ globalFilter: 'acme' });
+        expect(applied.announced).toEqual(typed.announced);
+        expect(applied.announced).toEqual(['42 results found for "acme"']);
     });
 
     it('applyFilters keeps what the spec leaves out', () => {

@@ -20,7 +20,7 @@ export class ColumnsController<T> {
     private warned: unknown = null;
 
     private readonly layout = memoLast(
-        (columns: DataTableCoreHost<T>['config']['columns'], widths: Record<string, string>, live: ReadonlyMap<string, number>, visibility: Record<string, boolean>, order: string[], pins: Readonly<Record<string, Pin>>, selection: boolean, expansion: boolean, actions: number) =>
+        (columns: DataTableCoreHost<T>['config']['columns'], widths: Record<string, string>, live: ReadonlyMap<string, number>, visibility: Record<string, boolean>, order: string[], pins: Readonly<Record<string, Pin>>, selection: boolean, expansion: boolean, actions: number, buttonPx: number) =>
             computeColumnLayout<T>({
                 columns,
                 widths: live.size === 0 ? widths : { ...widths, ...Object.fromEntries([...live].map(([key, px]) => [key, `${px}px`])) },
@@ -31,6 +31,7 @@ export class ColumnsController<T> {
                 enableRowExpansion: expansion,
                 hasActions: actions > 0,
                 actionSlots: actions,
+                actionButtonPx: buttonPx,
             }),
     );
 
@@ -40,7 +41,9 @@ export class ColumnsController<T> {
         const { config, model } = this.host;
         // wave 7: the `_actions` column is drawn while an addon has registered a row action (a kebab), as wide as its buttons.
         const actions = this.host.provider('addons')?.cellActions.slots.length ?? 0;
-        return this.layout(config.columns, model.get('columnWidths'), this.live, model.get('columnVisibility'), model.get('columnOrder'), this.pins, config.enableRowSelection, config.enableRowExpansion, actions);
+        // The buttons' drawn size: 2.75rem under a coarse pointer (data-table.css), else 2rem; asked only while there are buttons.
+        const buttonPx = actions > 0 && globalThis.matchMedia?.('(pointer: coarse)').matches ? 44 : 32;
+        return this.layout(config.columns, model.get('columnWidths'), this.live, model.get('columnVisibility'), model.get('columnOrder'), this.pins, config.enableRowSelection, config.enableRowExpansion, actions, buttonPx);
     }
 
     private overrides(): ColumnOverrides {

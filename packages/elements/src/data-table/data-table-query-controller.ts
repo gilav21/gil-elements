@@ -330,8 +330,11 @@ export class QueryController<T> {
                 if (columnsChanged) model.set('columnFilters', { ...columnFilters });
                 this.resetPage();
             });
-            if (globalChanged) this.host.emit('filter-change', globalFilter);
-            this.announceFilters();
+            // A new global text speaks as typing it does (its count reflects every filter; server mode uses `total`); column filters alone as a column change.
+            if (globalChanged) {
+                this.host.emit('filter-change', globalFilter);
+                this.announceGlobal(globalFilter);
+            } else this.announceFilters();
         },
         sortDirection: (key) => this.sorts().find((s) => s.column === String(key))?.direction ?? null,
         changeSort: (key, direction, multi = false) => {

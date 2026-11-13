@@ -263,6 +263,21 @@ describe('the addons attribute, addonOptions and addon()', () => {
         expect(stops).toEqual([1, 2]);
     });
 
+    it('stops the attribute addons when the attribute is removed, without throwing (final review 5)', async () => {
+        const name = uniqueId();
+        const { addon, runs, stops } = probe(name);
+        registerDataTableAddon(addon);
+        const table = await mountTable({}, { addons: name });
+        expect(runs).toHaveLength(1);
+        table.removeAttribute('addons');
+        await settle(table);
+        expect(stops).toEqual([1]);
+        table.remove();
+        document.body.append(table); // a connect with no attribute
+        await settle(table);
+        expect(runs).toHaveLength(1);
+    });
+
     it('starts an addon the attribute lists as soon as its module registers it, after the connect', async () => {
         const name = uniqueId();
         const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
@@ -378,6 +393,51 @@ describe('the action buttons addons register', () => {
         expect(buttonAfterContent?.getAttribute('data-action-id')).toBe('menu');
     });
 
+    it.each([
+        [false, 50],
+        [true, 60],
+    ])('sizes the actions column for one button at its real size (coarse pointer %s: %s px) (final review 5)', async (coarse, width) => {
+        const real = window.matchMedia.bind(window);
+        const media = vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => {
+            const list = real(query);
+            if (query === '(pointer: coarse)') Object.defineProperty(list, 'matches', { value: coarse });
+            return list;
+        });
+        try {
+            const { addon, runs } = probe(uniqueId());
+            const table = await mountTable({}, {}, { width: 900, height: 400 });
+            table.use(addon);
+            runs[0]!.host.registerCellAction({ id: 'one', onClick: () => undefined });
+            await settle(table);
+            expect(q(table, '[data-slot="table-cell"][data-column="_actions"]').getBoundingClientRect().width).toBeCloseTo(width, 0);
+        } finally {
+            media.mockRestore();
+        }
+    });
+
+    it('keeps a header action visible while its menu is open (aria-expanded) (final review 5)', async () => {
+        await parkMouse();
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable();
+        table.use(addon);
+        runs[0]!.host.registerHeaderAction({ id: 'open', expanded: () => true, onClick: () => undefined });
+        await settle(table);
+        const kebab = headCell(table, 'name').querySelector<HTMLElement>('[data-action-id="open"]')!;
+        await expect.poll(() => getComputedStyle(kebab).opacity).toBe('1');
+    });
+
+    it("hands a header action the consumer's own column definition (final review 5)", async () => {
+        const { addon, runs } = probe(uniqueId());
+        const table = await mountTable();
+        table.use(addon);
+        const seen: unknown[] = [];
+        runs[0]!.host.registerHeaderAction({ id: 'col', expanded: (column) => (seen.push(column), false), onClick: (_event, column) => seen.push(column) });
+        await settle(table);
+        headCell(table, 'age').querySelector<HTMLButtonElement>('[data-action-id="col"]')!.click();
+        expect(seen.at(-1)).toBe(table.columns[1]);
+        expect(seen.filter((c) => (c as { accessorKey: string }).accessorKey === 'name').every((c) => c === table.columns[0])).toBe(true);
+    });
+
     it('makes the actions column wide enough for its buttons: none overflows its cell (final review 3)', async () => {
         const { addon, runs } = probe(uniqueId());
         const table = await mountTable({}, {}, { width: 900, height: 400 });
@@ -394,8 +454,8 @@ describe('the action buttons addons register', () => {
             expect(r.left).toBeGreaterThanOrEqual(box.left - 0.5);
             expect(r.right).toBeLessThanOrEqual(box.right + 0.5);
         }
-        // At the coarse-pointer size (2.75rem each) they still fit: two buttons and the padding, as px.
-        expect(box.width).toBeGreaterThanOrEqual(2 * 44 + 16 - 0.5);
+        // Two buttons at their drawn size and the padding (final review 5: the drawn size, not always the coarse one).
+        expect(box.width).toBeGreaterThanOrEqual(2 * buttons[0]!.getBoundingClientRect().width + 16 - 0.5);
     });
 
     it('reports a throwing slot callback once and still draws the table and the button (final review)', async () => {

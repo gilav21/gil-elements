@@ -563,7 +563,8 @@
         }
     }
     ge-data-table [data-slot="table-head"]:focus-within [data-slot="data-table-header-action"],
-    ge-data-table [data-slot="data-table-header-action"]:focus-visible {
+    ge-data-table [data-slot="data-table-header-action"]:focus-visible,
+    ge-data-table [data-slot="data-table-header-action"][aria-expanded="true"] {
         opacity: 1;
     }
     @media (hover: none) {

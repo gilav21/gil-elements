@@ -54,13 +54,15 @@ export function actionsView<T>(host: DataTableCoreHost<T>): ActionsView<T> {
                         aria-expanded=${expandedOf(slot, () => slot.expanded?.(context()))} tabindex=${roving ? '-1' : nothing} @click=${(event: Event) => slot.onClick(event, context())}>${slot.icon ?? chromeIcon('more-vertical')}</button>`,
             );
         },
-        head: (column) =>
-            isSpecialColumnKey(column.accessorKey)
-                ? nothing
-                : heads.map(
-                      (slot) =>
-                          html`<button type="button" data-slot="data-table-header-action" data-action-id=${slot.id} aria-label=${interpolate(slot.ariaLabel ?? locale.columnMenu, { column: column.header })} aria-haspopup=${slot.haspopup ?? nothing}
-                              aria-expanded=${expandedOf(slot, () => slot.expanded?.(column))} @click=${(event: Event) => slot.onClick(event, column)}>${slot.icon ?? chromeIcon('more-vertical', 'xs')}</button>`,
-                  ),
+        head: (drawn) => {
+            if (isSpecialColumnKey(drawn.accessorKey)) return nothing;
+            // The slot gets the consumer's own definition (first of its key, as drawn), not the enhanced copy the grid renders from.
+            const column = host.config.columns.find((c) => String(c.accessorKey) === String(drawn.accessorKey)) ?? drawn;
+            return heads.map(
+                (slot) =>
+                    html`<button type="button" data-slot="data-table-header-action" data-action-id=${slot.id} aria-label=${interpolate(slot.ariaLabel ?? locale.columnMenu, { column: column.header })} aria-haspopup=${slot.haspopup ?? nothing}
+                        aria-expanded=${expandedOf(slot, () => slot.expanded?.(column))} @click=${(event: Event) => slot.onClick(event, column)}>${slot.icon ?? chromeIcon('more-vertical', 'xs')}</button>`,
+            );
+        },
     };
 }
