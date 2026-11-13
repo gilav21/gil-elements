@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computePivot, PIVOT_KEY_PREFIX, toAggregatableNumber, type PivotConfig } from './pivot-utils.js';
+import { computePivot, PIVOT_KEY_PREFIX, pivotToColumns, toAggregatableNumber, type PivotConfig } from './pivot-utils.js';
 
 interface Sale {
     region: string;
@@ -68,6 +68,65 @@ describe('computePivot', () => {
     it('keeps a column value named like a prototype member as data', () => {
         const r = computePivot([{ region: 'N', quarter: '__proto__', amount: 3 }], cfg());
         expect(r.rows[0]?.[key('__proto__')]).toBe(3);
+    });
+
+    // Wave 7 (package B): the Angular cases not ported in wave 1, and the spec C edge cases.
+    it('counts rows per cell with the count aggregate (Angular spec 40)', () => {
+        const r = computePivot(DATA, cfg({ aggregate: 'count' }));
+        expect(r.rows).toEqual([
+            { region: 'N', [key('Q1')]: 2, [key('Q2')]: 1 },
+            { region: 'S', [key('Q1')]: 1, [key('Q2')]: 0 },
+        ]);
+    });
+    it('returns 0 from an unknown aggregate over non-empty values (Angular spec 120)', () => {
+        const r = computePivot(DATA, cfg({ aggregate: 'bogus' as unknown as 'sum' }));
+        expect(r.rows[0]?.[key('Q1')]).toBe(0);
+    });
+    it('keeps row dimension values and keys named like prototype members as own data', () => {
+        const data = [
+            { region: '__proto__', quarter: 'Q1', amount: 1 },
+            { region: 'constructor', quarter: 'Q1', amount: 2 },
+        ];
+        const r = computePivot(data, cfg());
+        expect(r.rows.map((row) => Object.hasOwn(row, 'region') && row['region'])).toEqual(['__proto__', 'constructor']);
+        const own = JSON.parse('{"__proto__":"x","quarter":"Q1","amount":1}') as Sale; // an own `__proto__` key, as parsed JSON data has
+        const byKey = computePivot([own], cfg({ rows: ['__proto__'] }), (row, k) => (Object.hasOwn(row, k) ? (row as unknown as Record<string, unknown>)[k] : undefined));
+        expect(Object.getOwnPropertyDescriptor(byKey.rows[0], '__proto__')?.value).toBe('x');
+        expect(Object.getPrototypeOf(byKey.rows[0])).toBe(Object.prototype);
+    });
+    it('keeps a column value named like the total key apart from the total column', () => {
+        const r = computePivot([{ region: 'N', quarter: '__total__', amount: 4 }], cfg({ showRowTotals: true }));
+        expect(r.rows[0]).toEqual({ region: 'N', [key('__total__')]: 4, __total__: 4 });
+        expect(r.columns.map((c) => c.key)).toEqual(['region', key('__total__'), '__total__']);
+    });
+    it('skips NaN and Infinity, as numbers and as text', () => {
+        const data = [Number.NaN, Infinity, -Infinity, 'NaN', 'Infinity', 5].map((amount) => ({ region: 'N', quarter: 'Q1', amount }));
+        expect(computePivot(data, cfg()).rows[0]?.[key('Q1')]).toBe(5);
+        expect(computePivot(data, cfg({ aggregate: 'max' })).rows[0]?.[key('Q1')]).toBe(5);
+    });
+    it('does not merge row dimension values that differ only by case (documented)', () => {
+        const r = computePivot([{ region: 'n', quarter: 'Q1', amount: 1 }, { region: 'N', quarter: 'Q1', amount: 2 }], cfg());
+        expect(r.rows).toHaveLength(2);
+    });
+    it('pivots 50k rows over 100 column values in reasonable time', () => {
+        const data = Array.from({ length: 50_000 }, (_, i) => ({ region: `r${i % 20}`, quarter: `c${i % 100}`, amount: i }));
+        const start = performance.now();
+        const r = computePivot(data, cfg({ showRowTotals: true }));
+        expect(r.pivotColumnKeys).toHaveLength(100);
+        expect(r.rows).toHaveLength(20);
+        expect(performance.now() - start).toBeLessThan(2000); // soft: about 50 ms locally
+    });
+});
+
+describe('pivotToColumns', () => {
+    it('maps the pivot columns to table columns', () => {
+        const r = computePivot(DATA, cfg({ showRowTotals: true }));
+        expect(pivotToColumns(r)).toEqual([
+            { accessorKey: 'region', header: 'region' },
+            { accessorKey: key('Q1'), header: 'Q1' },
+            { accessorKey: key('Q2'), header: 'Q2' },
+            { accessorKey: '__total__', header: 'Total' },
+        ]);
     });
 });
 

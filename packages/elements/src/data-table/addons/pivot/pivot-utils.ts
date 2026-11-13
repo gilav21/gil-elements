@@ -3,6 +3,7 @@
  * data table.
  */
 import { toAggregatableNumber } from '../../../shared/aggregate-number.js';
+import type { ColumnDef } from '../../data-table.types.js';
 
 /**
  * Aggregate applied at each pivot cell. `count` counts the source rows in the cell, whatever their values. The others
@@ -49,7 +50,9 @@ function aggregateNumbers(values: readonly number[], fn: PivotAggregate): number
     if (fn === 'sum') return sum;
     if (values.length === 0) return null;
     if (fn === 'avg') return Math.round((sum / values.length) * 100) / 100;
-    return values.reduce((a, b) => (fn === 'min' ? Math.min(a, b) : Math.max(a, b)));
+    if (fn === 'min') return values.reduce((a, b) => Math.min(a, b));
+    if (fn === 'max') return values.reduce((a, b) => Math.max(a, b));
+    return 0; // an unknown aggregate (a config from untyped code): 0, as Angular
 }
 
 function aggregateCell<T>(rows: readonly T[], config: PivotConfig, getValue: (row: T, key: string) => unknown): number | null {
@@ -105,4 +108,9 @@ export function computePivot<T>(
     });
 
     return { columns, rows, pivotColumnKeys: columnValues.map((v) => PIVOT_KEY_PREFIX + v) };
+}
+
+/** The pivot's columns as table columns (`accessorKey` = the pivot key, `header`), so `other.columns = pivotToColumns(result)` renders it. */
+export function pivotToColumns(result: Pick<PivotResult, 'columns'>): ColumnDef<Record<string, unknown>>[] {
+    return result.columns.map(({ key, header }) => ({ accessorKey: key, header }));
 }

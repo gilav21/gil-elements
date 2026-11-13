@@ -35,8 +35,9 @@ describe('generateXlsx', () => {
         const files = readZip(bytes);
 
         const ss = decode(files.get('xl/sharedStrings.xml')!);
-        // "Name" appears 3 times in data but must be stored once.
-        expect(ss).toContain('count="2"');
+        // "Name" appears 3 times in data but must be stored once. `count` is the number of references (4), `uniqueCount` the distinct
+        // strings (Angular writes the unique count in both, wave 7 spec B2).
+        expect(ss).toContain('count="4"');
         expect(ss).toContain('uniqueCount="2"');
         expect(ss).toContain('<si><t>Name</t></si>');
         expect(ss).toContain('<si><t>Alice</t></si>');
@@ -115,5 +116,29 @@ describe('generateXlsx', () => {
         // readZip throws on CRC mismatch, so a clean read proves CRCs are correct.
         const bytes = generateXlsx([['x']]);
         expect(() => readZip(bytes)).not.toThrow();
+    });
+
+    // Wave 7 (package B): what an XML parser makes of every part, and the corrections round-tripping through the file viewer's reader.
+    const HOSTILE = [
+        ['<tag>', '&amp;', '"q"', "'a'", ']]>', 'emoji \u{1F600}', 'עברית RTL', 'ctl\u0001\u0008\u000B\u000C\u001F', 'lone \uD800 x \uDC00', '￾￿'],
+        ['  lead', 'trail  ', 'two\nlines', '\ttab', '', 'plain'],
+    ];
+
+    it('writes parts every XML parser accepts, for hostile strings, a sheet name and typed cells', () => {
+        const bytes = generateXlsx([...HOSTILE, [1.5, true, new Date(2024, 0, 2), new Date(2024, 0, 2, 13, 30), Number.NaN, null]], { sheetName: 'a<b>&"c"' });
+        const files = readZip(bytes);
+        expect(files.size).toBe(7);
+        for (const [path, content] of files) {
+            const doc = new DOMParser().parseFromString(decode(content), 'application/xml');
+            expect(doc.getElementsByTagName('parsererror'), path).toHaveLength(0);
+        }
+    });
+
+    it('round-trips stripped control characters and preserved whitespace through parseXlsx', () => {
+        const result = parseXlsx(generateXlsx(HOSTILE, { sheetName: 'Q1 [draft]' }));
+        const sheet = result.sheets[0];
+        expect(sheet.name).toBe('Q1 _draft_');
+        expect(sheet.data[0]).toEqual(['<tag>', '&amp;', '"q"', "'a'", ']]>', 'emoji \u{1F600}', 'עברית RTL', 'ctl', 'lone  x ', '']);
+        expect(sheet.data[1]).toEqual(['  lead', 'trail  ', 'two\nlines', '\ttab', '', 'plain']);
     });
 });
