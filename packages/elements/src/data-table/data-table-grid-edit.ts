@@ -38,41 +38,36 @@ export function editView<T>(host: DataTableViewHost<T>): EditView<T> {
     };
 }
 
-/** A component editor's listeners, built once per open editor: the component cell keeps them while their identity is unchanged. */
-const outputsByEditor = new WeakMap<object, ComponentOutputs>();
-
+/** A component editor's listeners, built once per open editor (`open.outputs`): the component cell keeps them while their identity is unchanged. */
 function outputsOf<T>(session: EditSession<T>, open: OpenEditor<T>): ComponentOutputs {
-    let outputs = outputsByEditor.get(open);
-    if (!outputs) {
-        outputs = {
-            'value-change': (event) => session.setDraft(open, (event as CustomEvent).detail),
-            // Only the component's OWN `change` carries its value: a native `change` bubbling up from a control inside it (a light-DOM checkbox) is not.
-            change: (event) => {
-                const component = event.currentTarget;
-                if (event.target !== component && event.composedPath()[0] !== component) return;
-                session.setDraft(open, (component as { value?: unknown } | null)?.value);
-            },
-            commit: () => session.commitFrom(open),
-            cancel: () => session.cancelFrom(open),
-        };
-        outputsByEditor.set(open, outputs);
-    }
-    return outputs;
+    open.outputs ??= {
+        'value-change': (event) => session.setDraft(open, (event as CustomEvent).detail),
+        // Only the component's OWN `change` carries its value: a native `change` bubbling up from a control inside it (a light-DOM checkbox) is not.
+        change: (event) => {
+            const component = event.currentTarget;
+            if (event.target !== component && event.composedPath()[0] !== component) return;
+            session.setDraft(open, (component as { value?: unknown } | null)?.value);
+        },
+        commit: () => session.commitFrom(open),
+        cancel: () => session.cancelFrom(open),
+    };
+    return open.outputs;
 }
 
-/** The date editor's `Date` per open editor, kept while its shown value is the same: a render that changes nothing hands the picker the same object. */
-const shownDates = new WeakMap<object, { shown: unknown; date: Date | null }>();
-
+/** The date editor's `Date` (`open.shownDate`), kept while its shown value is the same: a render that changes nothing hands the picker the same object. */
 function shownDate<T>(open: OpenEditor<T>): Date | null {
-    const cached = shownDates.get(open);
-    if (cached && Object.is(cached.shown, open.shown)) return cached.date;
+    if (open.shownDate && Object.is(open.shownDate.shown, open.shown)) return open.shownDate.date;
     const date = asEditableDate(open.shown);
-    shownDates.set(open, { shown: open.shown, date });
+    open.shownDate = { shown: open.shown, date };
     return date;
 }
 
-/** Select editors the pointer is picking in (a press opened its list): their next `change` commits. */
-const pointerPicks = new WeakSet<object>();
+/** Takes the select editor's pending pointer pick (`open.pointerPick`): true once, for the `change` that ends it. */
+function takePointerPick<T>(open: OpenEditor<T>): boolean {
+    const pick = open.pointerPick;
+    open.pointerPick = false;
+    return pick;
+}
 
 function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overlay: boolean): TemplateResult {
     const { column, kind } = open;
@@ -120,8 +115,8 @@ function editorOf<T>(session: EditSession<T>, open: OpenEditor<T>, row: T, overl
             // `.value` (the option INDEX, '' for the placeholder) is bound with `live`: `setEditValue` and fresh options always reach the select,
             // whatever the user picked in it before.
             editor = html`<select data-edit-input .value=${live(selected === -1 ? '' : String(selected))} aria-label=${label} aria-invalid=${ariaInvalid} aria-describedby=${describedBy}
-                @pointerdown=${() => pointerPicks.add(open)} @keydown=${() => pointerPicks.delete(open)}
-                @change=${(event: Event) => session.change(open, (event.target as HTMLSelectElement).value, pointerPicks.delete(open))}>${selected === -1 ? html`<option value="" selected disabled data-placeholder></option>` : nothing}${options.map(
+                @pointerdown=${() => (open.pointerPick = true)} @keydown=${() => (open.pointerPick = false)}
+                @change=${(event: Event) => session.change(open, (event.target as HTMLSelectElement).value, takePointerPick(open))}>${selected === -1 ? html`<option value="" selected disabled data-placeholder></option>` : nothing}${options.map(
                     (o, i) => html`<option value=${i} ?selected=${i === selected}>${o.label}</option>`,
                 )}</select>`;
             break;

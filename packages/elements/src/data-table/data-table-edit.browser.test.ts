@@ -617,6 +617,25 @@ describe('E5 editor kinds', () => {
         expect(table.editingCell).toBeNull();
     });
 
+    it('setEditValue resets the select editor pending pointer pick: a later keyboard change only drafts (round 17)', async () => {
+        const options = [
+            { label: 'Twenty', value: 20 },
+            { label: 'Thirty', value: 30 },
+            { label: 'Forty-one', value: 41 },
+        ];
+        const table = await mount({ columns: editColumns({ age: { editType: 'select', editOptions: options } }) });
+        const edits = record<CellEditEvent<SampleRow>>(table, 'cell-edit');
+        await startEditingAt(table, 0, 'age');
+        const select = openEditor(table) as HTMLSelectElement;
+        select.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, composed: true, pointerType: 'mouse' })); // a press that picks nothing
+        table.provider('interaction')?.setEditValue?.(20);
+        await settle(table);
+        await userEvent.selectOptions(select, '1'); // a change with no press of its own
+        await settle(table);
+        expect(edits).toHaveLength(0);
+        expect(table.editingCell).toEqual({ rowIndex: 0, columnKey: 'age' });
+    });
+
     it('the arrow keys on a closed select move only the draft; Enter commits it (round 3)', async () => {
         const options = [
             { label: 'Twenty', value: 20 },

@@ -37,7 +37,7 @@ import { lazyElement } from './data-table-lazy.js';
 import type { CellInteractionService } from './data-table-providers.js';
 import { KEY_PRIORITY } from './data-table-registry.js';
 import { interpolate } from './data-table.locales.js';
-import type { CellEditError, EditingCell, EnhancedColumnDef } from './data-table.types.js';
+import type { CellEditError, ComponentOutputs, EditingCell, EnhancedColumnDef } from './data-table.types.js';
 import { isSpecialColumnKey } from './data-table.utils.js';
 
 type EditService = Pick<CellInteractionService, 'editingCell' | 'cellEditError' | 'startEditing' | 'commitEdit' | 'cancelEdit' | 'isEditing' | 'editValue' | 'setEditValue'>;
@@ -60,27 +60,20 @@ const DATE_PICKER = lazyElement('ge-date-picker', () => import('../date-picker/d
 /** What takes the focus when an editor opens: the built-in input or select, or a custom editor's own `[data-edit-input]`. */
 const EDIT_INPUT = '[data-edit-input]';
 
-/** The element that really holds the focus, through open shadow roots. */
-function deepActiveElement(): Element | null {
-    let active = document.activeElement;
-    while (active?.shadowRoot?.activeElement) active = active.shadowRoot.activeElement;
-    return active;
-}
-
 /** Frames an editor's first control is given to draw the part that takes the focus. */
 const FOCUS_ATTEMPTS = 4;
 
 /**
  * Focuses `target`; a library control whose host takes no focus itself (`ge-select`: its trigger, in its shadow root, does) is focused at the first
  * element of its open shadow root that takes it. A focus call on what cannot take focus is a no-op, so the candidates are simply tried in order.
- * True when the focus is inside `target`.
+ * True when the focus is inside `target`. `deepActive`: the grid's own reading of the focused element (the interaction context's).
  */
-function focusInto(target: HTMLElement): boolean {
+function focusInto(target: HTMLElement, deepActive: () => Element | null): boolean {
     target.focus({ preventScroll: true });
-    if (composedContains(target, deepActiveElement())) return true;
+    if (composedContains(target, deepActive())) return true;
     for (const el of target.shadowRoot?.querySelectorAll<HTMLElement>('*') ?? []) {
         el.focus({ preventScroll: true });
-        if (composedContains(target, deepActiveElement())) return true;
+        if (composedContains(target, deepActive())) return true;
     }
     return false;
 }
@@ -116,6 +109,13 @@ export interface OpenEditor<T> {
     badInput: boolean;
     /** The id of the error message, for `aria-describedby`. */
     readonly errorId: string;
+    // ---- the view's own state for this editor (data-table-grid-edit.ts); a programmatic `setEditValue` resets it -------------------------
+    /** A component editor's listeners, built once: the component cell keeps them while their identity is unchanged. */
+    outputs: ComponentOutputs | null;
+    /** The date editor's `Date` for the shown value it was made from: a render that changes nothing hands the picker the same object. */
+    shownDate: { readonly shown: unknown; readonly date: Date | null } | null;
+    /** The select editor's list was opened by a pointer press: its next `change` (the pick) commits. */
+    pointerPick: boolean;
 }
 
 /** How a commit ended: written (or skipped by the writer) and closed, cancelled (unchanged or nothing to write into), or rejected (the editor stays open). */
@@ -361,6 +361,9 @@ export class EditSession<T> implements CellSession {
             error: null,
             badInput: false,
             errorId: `ge-dt-${++uid}-edit-error`,
+            outputs: null,
+            shownDate: null,
+            pointerPick: false,
         };
         this.open = open;
         this.reconciledWith = query.renderedRows(); // opened from these rows: nothing to follow until they change
@@ -463,6 +466,10 @@ export class EditSession<T> implements CellSession {
         if (programmatic) {
             open.shown = value;
             open.badInput = false; // a value set by the API is readable: the unreadable text it replaces is gone
+            // The view's per-editor state starts over with the new value (a pending pointer pick no longer applies to it).
+            open.outputs = null;
+            open.shownDate = null;
+            open.pointerPick = false;
         }
         if (open.error || programmatic) {
             open.error = null;
@@ -490,7 +497,7 @@ export class EditSession<T> implements CellSession {
         }
         const target = this.editorTarget(cell, open.kind);
         if (!target) return;
-        focusInto(target);
+        focusInto(target, this.deepActive);
         if (!isBuiltInKind(open.kind)) void this.keepEditorFocus(open);
         // A text editor's caret goes to the end of its value (as F2 does in a spreadsheet); a number input has no selection to set.
         if (target instanceof HTMLInputElement && target.type === 'text') target.setSelectionRange(target.value.length, target.value.length);
@@ -508,12 +515,15 @@ export class EditSession<T> implements CellSession {
             // Found again each time: a renderer may draw a new control on a render.
             const cell = this.host.cellAt(open.at.rowIndex, open.at.columnKey);
             const target = this.editorTarget(cell, open.kind);
-            const active = deepActiveElement();
+            const active = this.context.deepActive();
             if (!target || composedContains(target, active)) continue;
             if (active && active !== document.body && active !== cell) return;
-            focusInto(target);
+            focusInto(target, this.deepActive);
         }
     }
+
+    /** The interaction context's reading of the focused element, as a stable function for `focusInto`. */
+    private readonly deepActive = (): Element | null => this.context.deepActive();
 
     /** The element of the open editor that takes focus. */
     private editorTarget(cell: HTMLElement | null, kind: EditKind): HTMLElement | null {
