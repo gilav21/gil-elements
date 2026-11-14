@@ -166,6 +166,15 @@ describe('generateXlsx (node, independent reader)', () => {
         expect(ss).toContain('<si><t>in side</t></si>');
     });
 
+    it('escapes a literal _xHHHH_ as Excel does, so it reads back unchanged (final review)', () => {
+        // Excel's reading of shared-string text: `_xHHHH_` is the character U+HHHH (so `_x005F_` is a literal underscore).
+        const excelText = (t: string): string => t.replace(/_x([0-9A-Fa-f]{4})_/g, (_, hex: string) => String.fromCodePoint(Number.parseInt(hex, 16)));
+        const ss = stringsOf(generateXlsx([['ID_x0041_7', 'a_x00e9_b_X0041_', 'plain_x41_']]));
+        expect(ss).toContain('<si><t>ID_x005F_x0041_7</t></si>');
+        const texts = [...ss.matchAll(/<t[^>]*>([^<]*)<\/t>/g)].map((m) => excelText(m[1] as string));
+        expect(texts).toEqual(['ID_x0041_7', 'a_x00e9_b_X0041_', 'plain_x41_']);
+    });
+
     it('cuts text to 32 767 characters without splitting a surrogate pair', () => {
         const long = 'x'.repeat(XLSX_MAX_CELL_LENGTH + 1);
         expect(stringsOf(generateXlsx([[long]]))).toContain(`<t>${'x'.repeat(XLSX_MAX_CELL_LENGTH)}</t>`);

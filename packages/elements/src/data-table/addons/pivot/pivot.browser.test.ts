@@ -61,6 +61,22 @@ describe('pivot addon on a real table', () => {
         expect(some.rows).toEqual([{ region: 'NA', 'pivot:A': 1 }]);
     });
 
+    it('pivots every node of a tree table, children included (final review)', async () => {
+        type Node = Sale & { children?: Sale[] };
+        const kids = (region: string, from: number): Sale[] =>
+            Array.from({ length: 10 }, (_, i) => ({ id: `${region}${i}`, region, product: 'A', sales: from + i, detail: { units: 1 } }));
+        const data: Node[] = [
+            { id: 'na', region: 'NA', product: 'A', sales: 1000, detail: { units: 1 }, children: kids('NA', 1) },
+            { id: 'eu', region: 'EU', product: 'A', sales: 2000, detail: { units: 1 }, children: kids('EU', 100) },
+        ];
+        const source = await mountTable<Node>({ columns: COLUMNS, data, enableSubRows: true }, { addons: 'pivot' });
+        const result = source.addon<PivotApi<Node>>('pivot')!.getPivot({ rows: ['region'], column: 'product', value: 'sales', aggregate: 'sum' });
+        expect(result.rows).toEqual([
+            { region: 'NA', 'pivot:A': 1000 + 55 },
+            { region: 'EU', 'pivot:A': 2000 + 1045 },
+        ]);
+    });
+
     it('tears down with the table: the API is gone', async () => {
         const source = await mountTable<Sale>({ columns: COLUMNS, data: SALES });
         source.use(pivotAddon);

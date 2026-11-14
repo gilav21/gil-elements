@@ -152,7 +152,8 @@ function stylesXml(): string {
 /** `xml:space="preserve"` when the text starts or ends with whitespace or holds a line break: Excel trims it otherwise. */
 function textElement(s: string): string {
   const space = /^\s|\s$|[\r\n]/.test(s) ? ' xml:space="preserve"' : '';
-  return `<t${space}>${escapeXml(s)}</t>`;
+  // Excel reads `_xHHHH_` in text as the character U+HHHH; a literal one keeps its underscore escaped (`_x005F_`), as Excel writes it.
+  return `<t${space}>${escapeXml(s.replace(/_(x[0-9A-Fa-f]{4}_)/g, '_x005F_$1'))}</t>`;
 }
 
 function sharedStringsXml(strings: readonly string[], references: number): string {

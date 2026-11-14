@@ -34,7 +34,7 @@ export interface ExportRequest<T = unknown> {
     includeHeaders?: boolean;
     /** These rows instead of the table's (Angular `customData`). */
     rows?: readonly T[];
-    /** Server-side rows for this call; wins over the addon option's provider. */
+    /** Server-side rows for this call; wins over the addon option's provider. Used for the `'filtered'` and `'all'` scopes only: `'selected'` and `'page'` always export the table's own rows. */
     provider?: ExportDataProvider<T>;
     /** XLSX: the sheet tab's name (default `Sheet1`), made valid for Excel. */
     sheetName?: string;
@@ -51,7 +51,7 @@ export interface ExportRequest<T = unknown> {
 
 /** The addon's options (`addonOptions.export` or `use(exportAddon, options)`). */
 export interface ExportOptions<T = unknown> {
-    /** Server-side rows for every call (Angular `exportDataProvider`). */
+    /** Server-side rows for every `'filtered'` / `'all'` call (Angular `exportDataProvider`); `'selected'` and `'page'` export the table's own rows. */
     provider?: ExportDataProvider<T>;
     /** File name without extension when a call gives none. Default `export`. */
     filename?: string;
@@ -212,8 +212,8 @@ class TableExporter<T> {
                 const grid = await this.grid(request, format === 'xlsx' && request.typedCells === true);
                 this.check(request.signal);
                 const rows = grid.length - (request.includeHeaders === false ? 0 : 1);
-                if (rows === 0) {
-                    this.host.announce(this.locale().exportEmpty); // no data row: no file, header or not
+                if (rows === 0 || (grid[0]?.length ?? 0) === 0) {
+                    this.host.announce(this.locale().exportEmpty); // no data row or no column: no file, header or not
                     return;
                 }
                 const blob =
@@ -250,6 +250,12 @@ class TableExporter<T> {
     private async rows(request: ExportRequest<T>): Promise<readonly T[]> {
         if (request.rows) return request.rows;
         const query = this.query();
+        // 'selected' and 'page' are rows the user sees in the table: always the local ones, never the provider's.
+        if (request.scope === 'page') return query.renderedRows();
+        if (request.scope === 'selected') {
+            const selection = this.host.provider('selection');
+            return selection ? this.filtered(query).filter((row) => selection.isSelected(query.rowId(row))) : [];
+        }
         const provider = request.provider ?? this.options.provider;
         const { signal } = request;
         if (provider) return untilAborted(signal ? provider(query.exportQuery(), signal) : provider(query.exportQuery()), signal);
@@ -258,12 +264,6 @@ class TableExporter<T> {
             case 'all': {
                 const tree = query.flatTree({ unfiltered: true }); // a tree table: every node of `data`, depth-first in data order
                 return tree.length > 0 ? tree : query.rawRows();
-            }
-            case 'page':
-                return query.renderedRows();
-            case 'selected': {
-                const selection = this.host.provider('selection');
-                return selection ? this.filtered(query).filter((row) => selection.isSelected(query.rowId(row))) : [];
             }
             default:
                 return this.filtered(query);

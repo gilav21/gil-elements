@@ -7,7 +7,7 @@ import type { DataTableAddon } from '../../data-table-addon-kit.js';
 import { computePivot, type PivotConfig, type PivotResult } from './pivot-utils.js';
 
 export interface PivotApi<T = unknown> {
-    /** The pivot of the table's raw `data`, or of `rows` when given (e.g. `query.sortedData()` for the filtered rows). */
+    /** The pivot of the table's raw `data` (in a tree table every node, children included), or of `rows` when given. */
     getPivot(config: PivotConfig, rows?: readonly T[]): PivotResult;
 }
 
@@ -22,7 +22,9 @@ export const pivotAddon: DataTableAddon = {
                 if (!query) return computePivot(rows ?? [], config);
                 // Every data column by key (hidden ones too), so a key that names a column reads through its `accessorFn`; any other key is a field or a dotted path.
                 const columns = new Map(query.exportColumns({ onlyVisible: false }).map((column) => [String(column.accessorKey), column]));
-                return computePivot(rows ?? query.rawRows(), config, (row, key) => query.cellValue(row, key, columns.get(key)));
+                const tree = rows ? [] : query.flatTree({ unfiltered: true }); // a tree table: every node, children included
+                const source = rows ?? (tree.length > 0 ? tree : query.rawRows());
+                return computePivot(source, config, (row, key) => query.cellValue(row, key, columns.get(key)));
             },
         });
     },

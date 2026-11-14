@@ -418,6 +418,28 @@ describe('export addon: download, signals and lifecycle', () => {
         expect(t.events).toEqual([]);
     });
 
+    it("exports the table's selected rows and page with a provider set, never calling it for those scopes (final review)", async () => {
+        const provider = vi.fn(async () => [{ id: 'srv', name: 'Server', score: 9 }]);
+        const t = setup({ provider });
+        t.state.sorted = [{ id: 'a', name: 'A', score: 1 }, { id: 'b', name: 'B', score: 2 }];
+        t.state.page = [{ id: 'b', name: 'B', score: 2 }];
+        t.selected.add('a');
+        expect(await t.api.toCsv({ scope: 'selected' })).toBe('ID,Name,Score\r\na,A,1');
+        expect(await t.api.toCsv({ scope: 'page' })).toBe('ID,Name,Score\r\nb,B,2');
+        expect(provider).not.toHaveBeenCalled();
+        expect(await t.api.toCsv()).toBe('ID,Name,Score\r\nsrv,Server,9'); // 'filtered' still asks the provider
+    });
+
+    it('downloads nothing when every column is hidden, and says so (final review)', async () => {
+        const t = setup();
+        t.state.columns = [];
+        await t.api.exportToCsv('x');
+        await t.api.exportToExcel('y', { includeHeaders: false });
+        expect(stub.downloads).toEqual([]);
+        expect(t.announced).toEqual(['Nothing to export', 'Nothing to export']);
+        expect(t.events).toEqual([]);
+    });
+
     it('falls back to the option filename for an empty-string name (review)', async () => {
         const t = setup({ filename: 'people' });
         await t.api.exportToCsv('');
