@@ -22,8 +22,9 @@ export const FILTER_ANNOUNCE_MS = 500;
 import { buildGroupedDisplayRows, isGroupingActive, partitionIntoGroups, renumberDataRows, type RowGroup } from './data-table-group.js';
 import { buildTreeIndex, filterTree, flattenTree, sortTree } from './data-table-tree.js';
 import { currentQuery, exportQuery, sameQuery } from './data-table-view-state.js';
-import type { ColumnDef, DataTableDisplayRow, DataTableQuery, FlattenedTreeRow, PaginationState, SortDirection, SortState } from './data-table.types.js';
+import type { ColumnDef, DataTableDisplayRow, DataTableExportOptions, DataTableQuery, FlattenedTreeRow, PaginationState, SortDirection, SortState } from './data-table.types.js';
 import { getCellValue, isSpecialColumnKey, stringifyValue } from './data-table.utils.js';
+import { warnOncePer } from './data-table-warn.js';
 
 /** The memo graph filter -> sort -> page, the server-mode `query` event, and the header and pager gestures. */
 export class QueryController<T> {
@@ -84,6 +85,15 @@ export class QueryController<T> {
     private readonly visibleTree = memoLast(
         (roots: T[], expanded: Record<string, boolean>, getId: (row: T) => string, getChildren: DataTableCoreHost<T>['config']['getChildren'], defaultExpandedDepth: number): readonly FlattenedTreeRow<T>[] =>
             flattenTree(roots, { getId, getChildren, expanded, defaultExpandedDepth }),
+    );
+
+    /** The whole filtered, sorted tree depth-first in drawn order with every node open (collapse ignored): `flatTree()`. */
+    private readonly fullTree = memoLast((roots: T[], getId: (row: T) => string, getChildren: DataTableCoreHost<T>['config']['getChildren']): readonly T[] =>
+        flattenTree(roots, { getId, getChildren, expanded: {}, defaultExpandedDepth: -1 }).map((r) => r.row),
+    );
+    /** The same over `data` as given (no filter, no sort): `flatTree({ unfiltered: true })`. */
+    private readonly rawFullTree = memoLast((data: T[], getId: (row: T) => string, getChildren: DataTableCoreHost<T>['config']['getChildren']): readonly T[] =>
+        flattenTree(data, { getId, getChildren, expanded: {}, defaultExpandedDepth: -1 }).map((r) => r.row),
     );
 
     /**
@@ -270,6 +280,11 @@ export class QueryController<T> {
         sortedData: () => this.output().sorted,
         visibleTreeRows: () => this.tree().visible,
         treeRoots: () => this.tree().roots,
+        flatTree: (options) => {
+            const { config, model } = this.host;
+            if (!config.enableSubRows) return [];
+            return options?.unfiltered ? this.rawFullTree(model.get('data'), config.getRowId, config.getChildren) : this.fullTree(this.tree().roots, config.getRowId, config.getChildren);
+        },
         treeRows: () => this.tree().page,
         treeIndex: () => this.indexOf(this.host.model.get('data'), this.host.config.getRowId, this.host.config.getChildren),
         groupRows: () => this.groups(),
@@ -280,7 +295,13 @@ export class QueryController<T> {
         currentQuery: () => this.currentQuery(),
         exportQuery: () => {
             const { model } = this.host;
-            return exportQuery({ globalFilter: model.get('globalFilter'), columnFilters: model.get('columnFilters'), sort: model.get('sortState'), sortStates: model.get('multiSortState') });
+            return exportQuery({
+                globalFilter: model.get('globalFilter'),
+                columnFilters: model.get('columnFilters'),
+                sort: model.get('sortState'),
+                sortStates: model.get('multiSortState'),
+                advancedFilter: model.get('advancedFilter'),
+            });
         },
         renderedRowAt: (index) => this.renderedRows()[index],
         renderedTreeRowAt: (index) => this.tree().page[index],
@@ -290,16 +311,11 @@ export class QueryController<T> {
             return { row, index, selected: Object.hasOwn(selection, id) && selection[id] === true };
         },
         cellValue: (row, key, column) => getCellValue(row, key, column),
-        exportData: (options = {}, rows) => {
-            // `onlyVisible: false`: every data column as defined, hidden ones included, in definition order (Angular `getExportData`, cmp 4190-4202).
-            // A duplicated key counts once, the first column (as drawn: indexColumns).
-            const all = (): ColumnDef<T>[] => {
-                const seen = new Set<string>();
-                return this.host.config.columns.filter((c) => !isSpecialColumnKey(c.accessorKey) && !seen.has(String(c.accessorKey)) && Boolean(seen.add(String(c.accessorKey))));
-            };
-            const columns = options.onlyVisible === false ? all() : this.visibleDataColumns();
+        exportColumns: (options = {}) => this.exportColumns(options),
+        exportData: (options = {}, rows, given) => {
+            const columns = given ?? this.exportColumns(options);
             const body = (rows ?? (options.onlyFiltered === false ? this.host.model.get('data') : this.output().sorted)).map((row) =>
-                columns.map((c) => (c.cell ? c.cell(row) : stringifyValue(getCellValue(row, c.accessorKey, c)))),
+                columns.map((c) => (c.cell ? this.exportCell({ ...c, cell: c.cell }, row) : stringifyValue(getCellValue(row, c.accessorKey, c)))),
             );
             return options.includeHeaders === false ? body : [columns.map((c) => c.header), ...body];
         },
@@ -412,6 +428,26 @@ export class QueryController<T> {
         // Server filtering: the held rows are not the matches; the server's `total` (as the consumer gave it).
         filteredCount: () => (this.host.config.localFiltering ? this.output().filtered.length : this.host.config.total),
     };
+
+    /**
+     * The columns `exportData` draws. `onlyVisible: false`: every data column as defined, hidden ones included, in definition order (Angular
+     * `getExportData`, cmp 4190-4202); a duplicated key counts once, the first column (as drawn: indexColumns).
+     */
+    private exportColumns(options: DataTableExportOptions): ColumnDef<T>[] {
+        if (options.onlyVisible !== false) return this.visibleDataColumns();
+        const seen = new Set<string>();
+        return this.host.config.columns.filter((c) => !isSpecialColumnKey(c.accessorKey) && !seen.has(String(c.accessorKey)) && Boolean(seen.add(String(c.accessorKey))));
+    }
+
+    /** A column's `cell()` that throws gives an empty cell (the export carries on), with one warning per table and column. */
+    private exportCell(column: ColumnDef<T> & { cell: (row: T) => string }, row: T): string {
+        try {
+            return column.cell(row);
+        } catch (error) {
+            warnOncePer(this, `export-cell:${String(column.accessorKey)}`, `[ge-data-table] the cell() of column "${String(column.accessorKey)}" threw; exported as an empty cell:`, error);
+            return '';
+        }
+    }
 
     private visibleDataColumns(): ColumnDef<T>[] {
         const columns = requireProvider(this.host, 'columns');

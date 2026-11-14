@@ -109,6 +109,11 @@ export interface QueryService<T> {
     visibleTreeRows(): readonly FlattenedTreeRow<T>[];
     /** The filtered, sorted top-level rows of the tree, their children filtered and sorted with them (tree mode; empty otherwise): the whole tree the table draws, whatever is collapsed or paged. */
     treeRoots(): readonly T[];
+    /**
+     * Wave 7: `treeRoots()` and every descendant, depth-first in drawn order, whatever is collapsed or paged (tree mode; empty otherwise). Export reads
+     * it. `unfiltered`: the whole tree of `data` as given (no filter, no sort), depth-first in data order.
+     */
+    flatTree(options?: { readonly unfiltered?: boolean }): readonly T[];
     /** The tree rows of the page as drawn (tree mode). */
     treeRows(): readonly FlattenedTreeRow<T>[];
     /** Id -> node, parent, children and descendants; rebuilt only when `data`, `getRowId` or `getChildren` change. */
@@ -129,7 +134,10 @@ export interface QueryService<T> {
     rowContext(row: T, index: number): RowActionContext<T>;
     cellValue(row: T, key: string | keyof T, column?: ColumnDef<T>): unknown;
     /** Header row plus cells as strings, the view copy and export share. `onlyVisible: false` includes the hidden data columns. */
-    exportData(options?: DataTableExportOptions, rows?: readonly T[]): string[][];
+    /** `columns` (wave 7): draw exactly these instead of `exportColumns(options)`, so a chunked export keeps one column snapshot. */
+    exportData(options?: DataTableExportOptions, rows?: readonly T[], columns?: readonly ColumnDef<T>[]): string[][];
+    /** Wave 7: the columns `exportData` draws for these options, in its order (the export addon reads raw values through them). */
+    exportColumns(options?: DataTableExportOptions): readonly ColumnDef<T>[];
     /** Wave 7: the global text the toolbar box shows: the typed text while it waits on `filterDebounce`, else the model value. */
     globalText(): string;
     /** Wave 7: `data` as given, unfiltered and unsorted (Angular `getRawRows`). */

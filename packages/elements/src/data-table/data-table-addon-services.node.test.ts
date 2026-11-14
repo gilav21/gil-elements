@@ -1,5 +1,5 @@
 /** Wave 7 step 0: the query service additions addons and the AI read (`rawRows`, `rowId`, `applyFilters`, `exportData` with `onlyVisible: false`). */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DataTableCoreHost } from './data-table-host.js';
 import { DATA_TABLE_LOCALES } from './data-table.locales.js';
 import { ModelStore } from './data-table-model.js';
@@ -11,6 +11,7 @@ interface Row {
     id: string;
     name: string;
     team: string;
+    children?: Row[];
 }
 
 const COLUMNS: ColumnDef<Row>[] = [
@@ -29,12 +30,14 @@ function setup({
     filterDebounce = 0,
     timeout = (fn: () => void) => (fn(), () => undefined),
     server = false,
-}: { columns?: ColumnDef<Row>[]; filterDebounce?: number; timeout?: (fn: () => void) => () => void; server?: boolean } = {}) {
+    data = DATA,
+    extra = {},
+}: { columns?: ColumnDef<Row>[]; filterDebounce?: number; timeout?: (fn: () => void) => () => void; server?: boolean; data?: Row[]; extra?: Record<string, unknown> } = {}) {
     const events: [string, unknown][] = [];
     const announced: string[] = [];
-    const model = new ModelStore<Row>((name, detail) => events.push([name, detail]), { data: DATA, paginationState: { pageIndex: 2, pageSize: 1 } });
+    const model = new ModelStore<Row>((name, detail) => events.push([name, detail]), { data, paginationState: { pageIndex: 2, pageSize: 1 } });
     const providers = new Map<string, unknown>();
-    const config = { columns, filterDebounce, getRowId: (r: Row) => r.id, localSorting: true, localPagination: true, localFiltering: !server, total: server ? 42 : undefined, showPagination: true } as unknown as DataTableConfig<Row>;
+    const config = { columns, filterDebounce, getRowId: (r: Row) => r.id, localSorting: true, localPagination: true, localFiltering: !server, total: server ? 42 : undefined, showPagination: true, ...extra } as unknown as DataTableConfig<Row>;
     // The drawn columns: `team` is hidden and `id` is drawn first (a reorder), so definition order and drawn order differ.
     providers.set('columns', { enhancedColumns: () => [COLUMNS[2], COLUMNS[0]] });
     const host = {
@@ -139,5 +142,66 @@ describe('QueryService wave 7 additions', () => {
         const { query } = setup();
         expect(query.exportData({}, [DATA[0] as Row])).toEqual([['Id', 'Name'], ['r1', 'Bo']]);
         expect(query.exportData({ onlyVisible: false }, [DATA[0] as Row])).toEqual([['Name', 'Team', 'Id'], ['Bo', 'x', 'r1']]);
+    });
+
+    it('flatTree is the whole filtered, sorted tree depth-first, collapse and paging ignored, and empty outside tree mode (wave 7 export)', () => {
+        const kid = (id: string, team: string): Row => ({ id, name: id, team });
+        const tree: Row[] = [
+            { id: 'p1', name: 'p1', team: 'x', children: [kid('c12', 'x'), kid('c11', 'x'), kid('c13', 'y')] },
+            { id: 'p3', name: 'p3', team: 'x', children: [kid('c31', 'x')] },
+            { id: 'p2', name: 'p2', team: 'x' },
+        ];
+        const extra = {
+            enableSubRows: true,
+            getChildren: (r: Row) => r.children,
+            setChildren: (r: Row, children: Row[]) => ({ ...r, children }),
+            subRowFilterMode: 'includeParentOnChildMatch',
+            enableSubRowSorting: true,
+            subRowDefaultExpanded: false, // everything collapsed, and the page is 1 row long on page 2
+        };
+        const { query, model } = setup({ data: tree, extra });
+        model.set('sortState', { column: 'name', direction: 'asc' });
+        model.set('globalFilter', 'x'); // matches team 'x': drops c13
+        expect(query.flatTree().map((r) => r.id)).toEqual(['p1', 'c11', 'c12', 'p2', 'p3', 'c31']);
+        expect(setup().query.flatTree()).toEqual([]);
+        // unfiltered: every node of `data`, depth-first in data order (no filter, no sort)
+        expect(query.flatTree({ unfiltered: true }).map((r) => r.id)).toEqual(['p1', 'c12', 'c11', 'c13', 'p3', 'c31', 'p2']);
+        expect(setup().query.flatTree({ unfiltered: true })).toEqual([]);
+    });
+
+    it('exportData draws a given column snapshot verbatim, and without one keeps the exportColumns list (wave 7 export)', () => {
+        const { query } = setup();
+        const snapshot = [COLUMNS[1] as ColumnDef<Row>, { accessorKey: 'name', header: 'N', cell: (r: Row) => `<${r.name}>` } as ColumnDef<Row>];
+        expect(query.exportData({}, [DATA[0] as Row], snapshot)).toEqual([['Team', 'N'], ['x', '<Bo>']]);
+        expect(query.exportData({ includeHeaders: false }, [DATA[0] as Row], [])).toEqual([[]]);
+        expect(query.exportData({}, [DATA[0] as Row])).toEqual([['Id', 'Name'], ['r1', 'Bo']]);
+    });
+
+    it('exportColumns is the column list exportData draws, visible and all (wave 7 export)', () => {
+        const { query } = setup({ columns: [...COLUMNS, { accessorKey: 'name', header: 'Name again' }] });
+        for (const options of [{}, { onlyVisible: true }, { onlyVisible: false }]) {
+            expect(query.exportColumns(options).map((c) => c.header)).toEqual(query.exportData(options, [])[0]);
+        }
+        expect(query.exportColumns().map((c) => c.accessorKey)).toEqual(['id', 'name']);
+    });
+
+    it('a cell() that throws exports an empty cell, the export carries on, and warns once per table and column (wave 7 export)', () => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+        try {
+            const boom = (row: Row): string => {
+                if (row.id !== 'r2') throw new Error('boom');
+                return 'ok';
+            };
+            const columns: ColumnDef<Row>[] = [{ accessorKey: 'name', header: 'Name', cell: boom }, { accessorKey: 'team', header: 'Team' }];
+            const { query } = setup({ columns });
+            const table = query.exportData({ onlyVisible: false }, DATA);
+            expect(table).toEqual([['Name', 'Team'], ['', 'x'], ['ok', 'y'], ['', 'x']]);
+            query.exportData({ onlyVisible: false }, DATA);
+            expect(warn).toHaveBeenCalledTimes(1);
+            setup({ columns }).query.exportData({ onlyVisible: false }, DATA); // another table warns for itself
+            expect(warn).toHaveBeenCalledTimes(2);
+        } finally {
+            warn.mockRestore();
+        }
     });
 });

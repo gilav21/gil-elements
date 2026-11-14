@@ -151,7 +151,9 @@ describe('query shape', () => {
     it('describes the current state and the export subset', () => {
         const q = currentQuery(MODEL);
         expect(q).toEqual({ globalFilter: '', columnFilters: {}, sort: MODEL.sort, sortStates: [], advancedFilter: null, page: MODEL.pagination });
-        expect(exportQuery(MODEL)).toEqual({ globalFilter: '', columnFilters: {}, sort: MODEL.sort, sortStates: [] });
+        expect(exportQuery(MODEL)).toEqual({ globalFilter: '', columnFilters: {}, sort: MODEL.sort, sortStates: [], advancedFilter: null });
+        const tree = { type: 'group' as const, combinator: 'and' as const, rules: [] };
+        expect(exportQuery({ ...MODEL, advancedFilter: tree }).advancedFilter).toBe(tree); // wave 7: a server export gets the advanced filter
     });
     it('survives a JSON round trip', () => {
         const q = currentQuery(MODEL);
