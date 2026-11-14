@@ -140,8 +140,9 @@ export interface QueryService<T> {
      * Wave 7 (spec D5; the NL filter and the AI use it). A given `globalFilter` replaces the global text; a given `columnFilters` REPLACES the whole
      * column-filter record (columns it leaves out are cleared); an omitted key leaves that part untouched. A part equal to the current value is not
      * written; what changed is written in ONE model batch with the page reset to 0. `filter-change` fires when the global text changed, and the result
-     * is announced: through the global path when the global text changed, else as a column filter change. A `globalFilter` key drops a typed global
-     * text still waiting on the debounce, and a `columnFilters` key every floating column write still waiting, whatever their values.
+     * is announced: through the global path when the global text changed (emptied: "filter cleared"), except an emptied text WITH changed column
+     * filters, which, like column filters alone, is announced as the overall filter result. A `globalFilter` key drops a typed global text still
+     * waiting on the debounce, and a `columnFilters` key every floating column write still waiting, whatever their values.
      */
     applyFilters(spec: { readonly globalFilter?: string; readonly columnFilters?: Readonly<Record<string, unknown>> }): void;
     sortDirection(columnKey: string | keyof T): SortDirection;
@@ -434,9 +435,15 @@ export interface AiService {
     /** Runs the NL filter box's text (Enter in the box). */
     runAiFilter(): Promise<void>;
     applyNaturalLanguageFilter(query: string): Promise<void>;
+    /**
+     * Writes by row id. The `rowIndex` its `cell-edit` / `edit-error` carry is the row's drawn index AT RUN START (-1 for a row not on the page):
+     * a write that re-sorts the page mid-run can make a later row's reported index stale.
+     */
     aiFillColumn(columnKey: string, prompt: string, options?: DataTableAiFillOptions): Promise<void>;
     /** Aborts the running AI request, if any. */
     cancelAi(): void;
+    /** An AI fill is running: the table draws `aria-busy`. */
+    busy?(): boolean;
 }
 
 export interface DataTableProviders<T = unknown> {

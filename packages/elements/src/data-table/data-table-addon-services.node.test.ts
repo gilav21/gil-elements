@@ -125,6 +125,39 @@ describe('QueryService wave 7 additions', () => {
         expect(applied.announced).toEqual(['42 results found for "acme"']);
     });
 
+    it('applyFilters that empties the global text and changes the column filters announces the filtered count, not "filter cleared" (wave 7 AI)', () => {
+        const { query, model, events, announced } = setup({ columns: COLUMNS.map((c) => (c.accessorKey === 'team' ? { ...c, enableFiltering: true } : c)) });
+        model.set('globalFilter', 'Bo');
+        query.applyFilters({ globalFilter: '', columnFilters: { team: 'x' } });
+        expect(events.filter(([name]) => name === 'filter-change')).toEqual([['filter-change', '']]);
+        expect(announced).toEqual(['2 rows match the filters']);
+        // emptied with nothing else on: every filter is cleared
+        announced.length = 0;
+        query.applyFilters({ globalFilter: 'Bo' });
+        announced.length = 0;
+        query.applyFilters({ globalFilter: '', columnFilters: {} });
+        expect(announced).toEqual([DATA_TABLE_LOCALES.en.filtersClearedAnnouncement]);
+    });
+
+    it('applyFilters that empties the global text and leaves the column filters as they are says "filter cleared", server mode too (PR #80 review)', () => {
+        for (const server of [false, true]) {
+            const { query, model, announced } = setup({ server, columns: COLUMNS.map((c) => (c.accessorKey === 'team' ? { ...c, enableFiltering: true } : c)) });
+            model.set('globalFilter', 'Bo');
+            model.set('columnFilters', { team: 'x' });
+            query.applyFilters({ globalFilter: '', columnFilters: { team: 'x' } }); // the columns are unchanged
+            expect(announced).toEqual([DATA_TABLE_LOCALES.en.filterClearedAnnouncement]);
+            model.set('globalFilter', 'Cy');
+            announced.length = 0;
+            query.applyFilters({ globalFilter: '' }); // no columnFilters key
+            expect(announced).toEqual([DATA_TABLE_LOCALES.en.filterClearedAnnouncement]);
+        }
+        // emptied AND the columns changed, server mode: the column change path (which says nothing for server filtering)
+        const server = setup({ server: true, columns: COLUMNS.map((c) => (c.accessorKey === 'team' ? { ...c, enableFiltering: true } : c)) });
+        server.model.set('globalFilter', 'Bo');
+        server.query.applyFilters({ globalFilter: '', columnFilters: { team: 'x' } });
+        expect(server.announced).toEqual([]);
+    });
+
     it('applyFilters keeps what the spec leaves out', () => {
         const { query, model } = setup();
         model.set('globalFilter', 'keep');

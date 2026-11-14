@@ -154,6 +154,14 @@
             width: 200px;
         }
     }
+    /* wave7:ai (package D): the NL box is h-8 like the global filter; its submit button is a table icon button (2rem, 44 px under a coarse pointer). */
+    ge-data-table [data-slot="table-nl-filter"] {
+        --density-input: calc(2 / 2.25 * var(--density, 1));
+    }
+    ge-data-table:dir(rtl) [data-slot="table-nl-filter"] svg {
+        scale: -1 1;
+    }
+    /* /wave7:ai */
     /* The outline buttons of the toolbar: advanced-filter trigger (386) and the columns trigger (420). */
     ge-data-table [data-slot="advanced-filter-trigger"],
     ge-data-table [data-slot="data-table-columns-trigger"] {
